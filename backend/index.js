@@ -12,6 +12,7 @@ import { authenticateToken } from "./middlewares/auth.js";
 dotenv.config();
 
 const app = express();
+const host = process.env.HOST || 5138;
 const port = process.env.PORT || 5138;
 
 const keyPath = process.env.SSL_KEY;
@@ -38,6 +39,6 @@ mongoose
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", authenticateToken, protectedRoutes);
 
-https.createServer(sslOptions, app).listen(port, "0.0.0.0", () => {
-  console.log(`🚀 Express HTTPS server running at https://0.0.0.0:${port}`);
+https.createServer(sslOptions, app).listen(port, host, () => {
+  console.log(`🚀 Express HTTPS server running at https://${host}:${port}`);
 });
