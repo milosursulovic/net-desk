@@ -25,6 +25,6 @@ import Logo from '@/components/Logo.vue'
 const appVersion = import.meta.env.VITE_APP_VERSION
 
 onMounted(() => {
-  document.title = `Stranica nije pronađena - Net Desk`
+  document.title = `Stranica nije pronađena - NetDesk`
 })
 </script>

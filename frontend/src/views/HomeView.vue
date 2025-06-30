@@ -394,6 +394,6 @@ watch(
 )
 
 onMounted(() => {
-  document.title = 'Početna - Net Desk'
+  document.title = 'Početna - NetDesk'
 })
 </script>

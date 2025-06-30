@@ -58,7 +58,10 @@
           {{ errorMessage }}
         </p>
 
-        <p class="text-center text-xs text-slate-500 mt-6">Verzija: {{ appVersion }}</p>
+        <div class="mt-8 text-center text-xs text-slate-500 space-y-1">
+          <p>Verzija aplikacije: {{ appVersion }}</p>
+          <p>&copy; {{ new Date().getFullYear() }} Informacioni sistem Opšte bolnice Bor</p>
+        </div>
       </form>
     </div>
   </div>
@@ -109,6 +112,6 @@ const handleLogin = async () => {
 }
 
 onMounted(() => {
-  document.title = `Prijavi se - Net Desk`
+  document.title = `Prijavi se - NetDesk`
 })
 </script>

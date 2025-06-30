@@ -9,7 +9,10 @@
     <main class="max-w-7xl mx-auto px-4 py-6">
       <router-view />
     </main>
-    <footer class="text-sm text-slate-500 text-center py-4">Verzija: {{ appVersion }}</footer>
+    <footer class="text-center text-sm text-gray-500 py-4 border-t">
+      <div>&copy; {{ new Date().getFullYear() }} Informacioni sistem Opšte bolnice Bor</div>
+      <div class="mt-1 text-xs text-gray-400">Verzija: {{ appVersion }}</div>
+    </footer>
   </div>
 </template>
 

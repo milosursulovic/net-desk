@@ -97,7 +97,7 @@ const handleSubmit = async () => {
 const goBack = () => router.push('/')
 
 onMounted(() => {
-  document.title = `Dodaj IP - Net Desk`
+  document.title = `Dodaj IP - NetDesk`
   if (route.query.ip) {
     form.value.ip = route.query.ip
   }

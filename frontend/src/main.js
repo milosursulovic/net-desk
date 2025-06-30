@@ -7,7 +7,7 @@ import router from './router'
 const app = createApp(App)
 
 router.beforeEach((to, from, next) => {
-  const defaultTitle = 'Net Desk'
+  const defaultTitle = 'NetDesk'
   document.title = to.meta.title || defaultTitle
   next()
 })

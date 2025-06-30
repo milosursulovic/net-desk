@@ -103,7 +103,7 @@ const handleUpdate = async () => {
 const goBack = () => router.push('/')
 
 onMounted(() => {
-  document.title = `Uredi IP - Net Desk`
+  document.title = `Uredi IP - NetDesk`
   fetchEntry()
 })
 </script>
