@@ -66,14 +66,12 @@ const fields = [
 
 const fetchEntry = async () => {
   try {
-    const res = await fetchWithAuth(`/api/protected/ip-addresses`)
-    const data = await res.json()
-    const found = data.entries.find((e) => e._id === route.params.id)
-    if (!found) {
+    const res = await fetchWithAuth(`/api/protected/ip-addresses/${route.params.id}`)
+    if (!res.ok) {
       error.value = 'Unos nije pronađen'
       return
     }
-    form.value = found
+    form.value = await res.json()
   } catch (err) {
     console.error(err)
     error.value = 'Neuspešno učitan unos'
