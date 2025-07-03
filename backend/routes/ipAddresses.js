@@ -1,12 +1,34 @@
 import express from "express";
-import IpEntry from "../models/IpEntry.js";
-import { Parser } from "json2csv";
 import multer from "multer";
-import csv from "csv-parser";
 import fs from "fs";
+import XLSX from "xlsx";
+import { Parser } from "json2csv";
+import IpEntry from "../models/IpEntry.js";
+import csv from "csv-parser";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
+
+const getSearchQuery = (search = "") => ({
+  $or: [
+    { ip: { $regex: search, $options: "i" } },
+    { computerName: { $regex: search, $options: "i" } },
+    { username: { $regex: search, $options: "i" } },
+    { fullName: { $regex: search, $options: "i" } },
+    { rdp: { $regex: search, $options: "i" } },
+  ],
+});
+
+const ipToNumeric = (ip) =>
+  ip.split(".").reduce((acc, octet) => (acc << 8) + parseInt(octet), 0);
+
+const numericToIp = (num) =>
+  [24, 16, 8, 0].map((shift) => (num >> shift) & 255).join(".");
+
+const getFilteredEntries = async (search) => {
+  const query = getSearchQuery(search);
+  return await IpEntry.find(query).sort({ ipNumeric: 1 });
+};
 
 router.get("/", async (req, res) => {
   try {
@@ -18,16 +40,7 @@ router.get("/", async (req, res) => {
       sortOrder = "asc",
     } = req.query;
 
-    const query = {
-      $or: [
-        { ip: { $regex: search, $options: "i" } },
-        { computerName: { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-        { fullName: { $regex: search, $options: "i" } },
-        { rdp: { $regex: search, $options: "i" } },
-      ],
-    };
-
+    const query = getSearchQuery(search);
     const allowedSortFields = [
       "ip",
       "computerName",
@@ -36,12 +49,9 @@ router.get("/", async (req, res) => {
       "rdp",
     ];
     let safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "ip";
+    if (safeSortBy === "ip") safeSortBy = "ipNumeric";
 
-    if (safeSortBy === "ip") {
-      safeSortBy = "ipNumeric";
-    }
     const sortDirection = sortOrder === "desc" ? -1 : 1;
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const entries = await IpEntry.find(query)
@@ -61,19 +71,17 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const entry = await IpEntry.findById(req.params.id)
-    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" })
-    res.json(entry)
+    const entry = await IpEntry.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
+    res.json(entry);
   } catch (err) {
-    console.error("Greška pri dohvatu unosa:", err)
-    res.status(500).json({ message: "Greška na serveru" })
+    console.error("Greška pri dohvatu unosa:", err);
+    res.status(500).json({ message: "Greška na serveru" });
   }
-})
-
+});
 
 router.post("/", async (req, res) => {
   const { ip, computerName, username, fullName, password, rdp } = req.body;
-
   if (!ip)
     return res.status(400).json({ message: "IP adresa je obavezno polje" });
 
@@ -127,100 +135,127 @@ router.delete("/:id", async (req, res) => {
 
 router.get("/export", async (req, res) => {
   try {
-    const { search = "" } = req.query;
-
-    const query = {
-      $or: [
-        { ip: { $regex: search, $options: "i" } },
-        { computerName: { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-        { fullName: { $regex: search, $options: "i" } },
-        { rdp: { $regex: search, $options: "i" } },
-      ],
-    };
-
-    const entries = await IpEntry.find(query).sort({ ipNumeric: 1 });
-
+    const entries = await getFilteredEntries(req.query.search);
     const fields = [
       "ip",
       "computerName",
+      "ipNumeric",
       "username",
       "fullName",
       "password",
       "rdp",
     ];
-    const opts = { fields };
-    const parser = new Parser(opts);
-    const csv = parser.parse(entries);
+    const csv = new Parser({ fields }).parse(entries);
 
     res.setHeader("Content-Disposition", "attachment; filename=ip-entries.csv");
     res.setHeader("Content-Type", "text/csv");
-    res.status(200).send(csv);
+    res.send(csv);
   } catch (err) {
     console.error("CSV Export error:", err);
     res.status(500).json({ message: "Greška pri izvozu CSV-a" });
   }
 });
 
+router.get("/export-xlsx", async (req, res) => {
+  try {
+    const entries = await getFilteredEntries(req.query.search);
+    const data = entries.map((e) => ({
+      ip: e.ip,
+      computerName: e.computerName,
+      ipNumeric: e.ipNumeric,
+      username: e.username,
+      fullName: e.fullName,
+      password: e.password,
+      rdp: e.rdp,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "IP-Entries");
+
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=ip-entries.xlsx"
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.send(buffer);
+  } catch (err) {
+    console.error("Greška pri izvozu XLSX:", err);
+    res.status(500).json({ message: "Greška pri izvozu XLSX" });
+  }
+});
+
 router.post("/import", upload.single("file"), async (req, res) => {
-  const filePath = req.file.path;
+  const filePath = req.file?.path;
+  const ext = req.file?.originalname?.split(".").pop().toLowerCase();
 
-  const results = [];
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on("data", (data) => {
-      results.push(data);
-    })
-    .on("end", async () => {
-      try {
-        // Validate & clean
-        const entriesToInsert = results
-          .map((row) => ({
-            ip: row.ip?.trim(),
-            computerName: row.computerName?.trim() || "",
-            username: row.username?.trim() || "",
-            fullName: row.fullName?.trim() || "",
-            password: row.password?.trim() || "",
-            rdp: row.rdp?.trim() || "",
-          }))
-          .filter((e) => e.ip); // Remove empty IPs
+  if (!filePath || !ext)
+    return res.status(400).json({ message: "Nevažeći fajl" });
 
-        const inserted = await IpEntry.insertMany(entriesToInsert, {
-          ordered: false,
-        });
+  try {
+    let results = [];
 
-        fs.unlinkSync(filePath); // cleanup
-        res
-          .status(200)
-          .json({ message: "Import uspešan", count: inserted.length });
-      } catch (err) {
-        console.error("CSV import error:", err);
-        fs.unlinkSync(filePath);
-        res.status(500).json({ message: "Greška pri importu CSV-a" });
-      }
+    if (ext === "csv") {
+      const resultsRaw = [];
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on("data", (data) => resultsRaw.push(data))
+          .on("end", resolve)
+          .on("error", reject);
+      });
+      results = resultsRaw;
+    } else if (ext === "xlsx") {
+      const workbook = XLSX.readFile(filePath);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      results = XLSX.utils.sheet_to_json(sheet);
+    } else {
+      return res.status(400).json({ message: "Nepodržan format fajla" });
+    }
+
+    const entriesToInsert = results
+      .map((row) => {
+        const ip = row.ip?.trim();
+        if (!ip) return null;
+        return {
+          ip,
+          computerName: row.computerName?.trim() || "",
+          ipNumeric: row.ipNumeric || ipToNumeric(ip),
+          username: row.username?.trim() || "",
+          fullName: row.fullName?.trim() || "",
+          password: row.password?.trim() || "",
+          rdp: row.rdp?.trim() || "",
+        };
+      })
+      .filter(Boolean);
+
+    const inserted = await IpEntry.insertMany(entriesToInsert, {
+      ordered: false,
     });
+    res.json({ message: "Import uspešan", count: inserted.length });
+  } catch (err) {
+    console.error("Greška pri importu:", err);
+    res.status(500).json({ message: "Greška pri importu" });
+  } finally {
+    fs.unlink(filePath, () => {});
+  }
 });
 
 router.get("/available", async (req, res) => {
   try {
     const occupiedEntries = await IpEntry.find({}, "ipNumeric");
-
     const occupiedSet = new Set(occupiedEntries.map((e) => e.ipNumeric));
-
-    const ipToNumeric = (ip) =>
-      ip.split(".").reduce((acc, octet) => (acc << 8) + parseInt(octet), 0);
-
-    const numericToIp = (num) =>
-      [24, 16, 8, 0].map((shift) => (num >> shift) & 255).join(".");
 
     const start = ipToNumeric("10.230.62.1");
     const end = ipToNumeric("10.230.63.254");
 
     const availableIps = [];
     for (let i = start; i <= end; i++) {
-      if (!occupiedSet.has(i)) {
-        availableIps.push(numericToIp(i));
-      }
+      if (!occupiedSet.has(i)) availableIps.push(numericToIp(i));
     }
 
     res.json({ available: availableIps });

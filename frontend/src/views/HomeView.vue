@@ -18,11 +18,18 @@
           📤 Izvezi CSV
         </button>
 
+        <button
+          @click="exportToXlsx"
+          class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700"
+        >
+          📤 Izvezi XLSX
+        </button>
+
         <label
           class="inline-flex items-center bg-yellow-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-yellow-600 shadow"
         >
-          <input type="file" @change="handleFileUpload" accept=".csv" class="hidden" />
-          📥 Uvezi CSV
+          <input type="file" @change="handleFileUpload" accept=".csv, .xlsx" class="hidden" />
+          📥 Uvezi
         </label>
 
         <button
@@ -357,6 +364,23 @@ const nextPage = () => {
 const prevPage = () => {
   if (page.value > 1) {
     page.value--
+  }
+}
+
+const exportToXlsx = async () => {
+  try {
+    const res = await fetchWithAuth(
+      `/api/protected/ip-addresses/export-xlsx?search=${search.value}`,
+    )
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ip-entries.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    console.log('Greška pri izvozu XLSX-a')
   }
 }
 
