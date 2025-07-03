@@ -69,6 +69,17 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/:id", async (req, res) => {
+  try {
+    const entry = await IpEntry.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
+    res.json(entry);
+  } catch (err) {
+    console.error("Greška pri dohvatu unosa:", err);
+    res.status(500).json({ message: "Greška na serveru" });
+  }
+});
+
 router.post("/", async (req, res) => {
   const { ip, computerName, username, fullName, password, rdp } = req.body;
   if (!ip)
