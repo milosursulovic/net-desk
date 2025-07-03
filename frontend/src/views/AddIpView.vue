@@ -49,7 +49,6 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
-import LogoutButton from '@/components/LogoutButton.vue'
 import { getFieldIcon } from '@/utils/icons.js'
 
 const route = useRoute()
@@ -66,11 +65,11 @@ const form = ref({
 })
 
 const fields = [
-  { name: 'ip', label: 'IP Adresa' },
+  { name: 'ip', label: 'IP Adresu' },
   { name: 'computerName', label: 'Ime računara' },
   { name: 'username', label: 'Korisničko ime' },
   { name: 'fullName', label: 'Puno ime' },
-  { name: 'password', label: 'Lozinka' },
+  { name: 'password', label: 'Lozinku' },
   { name: 'rdp', label: 'RDP' },
 ]
 

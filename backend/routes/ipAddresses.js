@@ -142,6 +142,26 @@ router.post("/import", upload.single("file"), async (req, res) => {
   }
 });
 
+router.get("/available", async (req, res) => {
+  try {
+    const occupiedEntries = await IpEntry.find({}, "ipNumeric");
+    const occupiedSet = new Set(occupiedEntries.map((e) => e.ipNumeric));
+
+    const start = ipToNumeric("10.230.62.1");
+    const end = ipToNumeric("10.230.63.254");
+
+    const availableIps = [];
+    for (let i = start; i <= end; i++) {
+      if (!occupiedSet.has(i)) availableIps.push(numericToIp(i));
+    }
+
+    res.json({ available: availableIps });
+  } catch (err) {
+    console.error("Greška pri dohvatanju slobodnih IP adresa:", err);
+    res.status(500).json({ message: "Greška na serveru" });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     const {
@@ -235,26 +255,6 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Unos obrisan" });
   } catch (err) {
     console.error("Error deleting IP entry:", err);
-    res.status(500).json({ message: "Greška na serveru" });
-  }
-});
-
-router.get("/available", async (req, res) => {
-  try {
-    const occupiedEntries = await IpEntry.find({}, "ipNumeric");
-    const occupiedSet = new Set(occupiedEntries.map((e) => e.ipNumeric));
-
-    const start = ipToNumeric("10.230.62.1");
-    const end = ipToNumeric("10.230.63.254");
-
-    const availableIps = [];
-    for (let i = start; i <= end; i++) {
-      if (!occupiedSet.has(i)) availableIps.push(numericToIp(i));
-    }
-
-    res.json({ available: availableIps });
-  } catch (err) {
-    console.error("Greška pri dohvatanju slobodnih IP adresa:", err);
     res.status(500).json({ message: "Greška na serveru" });
   }
 });
