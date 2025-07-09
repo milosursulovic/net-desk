@@ -8,6 +8,7 @@ const ipEntrySchema = new mongoose.Schema({
   fullName: String,
   password: String,
   rdp: String,
+  dnsLog: String,
 });
 
 ipEntrySchema.pre("save", function (next) {

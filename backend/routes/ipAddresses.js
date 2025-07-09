@@ -16,6 +16,7 @@ const getSearchQuery = (search = "") => ({
     { username: { $regex: search, $options: "i" } },
     { fullName: { $regex: search, $options: "i" } },
     { rdp: { $regex: search, $options: "i" } },
+    { dnsLog: { $regex: search, $options: "i" } },
   ],
 });
 
@@ -64,6 +65,7 @@ router.get("/export-xlsx", async (req, res) => {
       fullName: e.fullName,
       password: e.password,
       rdp: e.rdp,
+      dnsLog: e.dnsLog,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
@@ -126,6 +128,7 @@ router.post("/import", upload.single("file"), async (req, res) => {
           fullName: row.fullName?.trim() || "",
           password: row.password?.trim() || "",
           rdp: row.rdp?.trim() || "",
+          dnsLog: row.dnsLog?.trim() || "",
         };
       })
       .filter(Boolean);
@@ -179,6 +182,7 @@ router.get("/", async (req, res) => {
       "username",
       "fullName",
       "rdp",
+      "dnsLog",
     ];
     let safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "ip";
     if (safeSortBy === "ip") safeSortBy = "ipNumeric";
@@ -213,7 +217,15 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { ip, computerName, username, fullName, password, rdp } = req.body;
+  const {
+    ip,
+    computerName,
+    username,
+    fullName,
+    password,
+    rdp,
+    dnsLog = "",
+  } = req.body;
   if (!ip)
     return res.status(400).json({ message: "IP adresa je obavezno polje" });
 
@@ -225,6 +237,7 @@ router.post("/", async (req, res) => {
       fullName,
       password,
       rdp,
+      dnsLog,
     });
     await newEntry.save();
     res.status(201).json(newEntry);

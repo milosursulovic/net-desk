@@ -105,6 +105,11 @@
             <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('rdp')">
               🖧 RDP <span v-if="sortBy === 'rdp'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
+            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('dnsLog')">
+              🌐 DNS Log
+              <span v-if="sortBy === 'dnsLog'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
+
             <th class="p-2 whitespace-nowrap">⚙️ Akcije</th>
           </tr>
         </thead>
@@ -137,6 +142,9 @@
               </button>
             </td>
             <td class="p-2">{{ entry.rdp }}</td>
+            <td class="p-2">
+              {{ entry.dnsLog || '—' }}
+            </td>
             <td class="p-2 space-x-2 whitespace-nowrap">
               <button @click="editEntry(entry)" class="text-blue-600 hover:underline">
                 ✏️ Izmeni
@@ -370,7 +378,7 @@ const prevPage = () => {
 const exportToXlsx = async () => {
   try {
     const res = await fetchWithAuth(
-      `/api/protected/ip-addresses/export-xlsx?search=${search.value}`,
+      `/api/protected/ip-addresses/export-xlsx?search=${search.value}`
     )
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -401,7 +409,7 @@ const goToAddWithIp = (ip) => {
 }
 
 const filteredAvailableIps = computed(() =>
-  availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase())),
+  availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase()))
 )
 
 watch(
@@ -414,7 +422,7 @@ watch(
     sortOrder.value = query.sortOrder || 'asc'
     fetchData()
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onMounted(() => {

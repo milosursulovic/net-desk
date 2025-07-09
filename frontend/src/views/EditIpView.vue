@@ -53,6 +53,7 @@ const form = ref({
   fullName: '',
   password: '',
   rdp: '',
+  dnsLog: '',
 })
 
 const fields = [
@@ -62,6 +63,7 @@ const fields = [
   { name: 'fullName', label: 'Puno ime' },
   { name: 'password', label: 'Lozinka' },
   { name: 'rdp', label: 'RDP' },
+  { name: 'dnsLog', label: 'DNS Log' },
 ]
 
 const fetchEntry = async () => {
