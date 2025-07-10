@@ -6,6 +6,9 @@ export const getFieldIcon = (name) => {
     fullName: '🙍‍♂️',
     password: '🔒',
     rdp: '🖧',
+    dnsLog: '🌐',
+    anyDesk: '💻',
+    system: '🧩',
   }
   return icons[name] || '📄'
 }

@@ -9,6 +9,8 @@ const ipEntrySchema = new mongoose.Schema({
   password: String,
   rdp: String,
   dnsLog: String,
+  anyDesk: String,
+  system: String,
 });
 
 ipEntrySchema.pre("save", function (next) {

@@ -17,6 +17,8 @@ const getSearchQuery = (search = "") => ({
     { fullName: { $regex: search, $options: "i" } },
     { rdp: { $regex: search, $options: "i" } },
     { dnsLog: { $regex: search, $options: "i" } },
+    { anyDesk: { $regex: search, $options: "i" } },
+    { system: { $regex: search, $options: "i" } },
   ],
 });
 
@@ -42,7 +44,11 @@ router.get("/export", async (req, res) => {
       "fullName",
       "password",
       "rdp",
+      "dnsLog",
+      "anyDesk",
+      "system",
     ];
+
     const csv = new Parser({ fields }).parse(entries);
 
     res.setHeader("Content-Disposition", "attachment; filename=ip-entries.csv");
@@ -66,6 +72,8 @@ router.get("/export-xlsx", async (req, res) => {
       password: e.password,
       rdp: e.rdp,
       dnsLog: e.dnsLog,
+      anyDesk: e.anyDesk,
+      system: e.system,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
@@ -129,6 +137,8 @@ router.post("/import", upload.single("file"), async (req, res) => {
           password: row.password?.trim() || "",
           rdp: row.rdp?.trim() || "",
           dnsLog: row.dnsLog?.trim() || "",
+          anyDesk: row.anyDesk?.trim() || "",
+          system: row.system?.trim() || "",
         };
       })
       .filter(Boolean);
@@ -183,7 +193,10 @@ router.get("/", async (req, res) => {
       "fullName",
       "rdp",
       "dnsLog",
+      "anyDesk",
+      "system",
     ];
+
     let safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "ip";
     if (safeSortBy === "ip") safeSortBy = "ipNumeric";
 

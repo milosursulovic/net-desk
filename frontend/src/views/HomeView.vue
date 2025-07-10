@@ -109,6 +109,14 @@
               🌐 DNS Log
               <span v-if="sortBy === 'dnsLog'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
+            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('anyDesk')">
+              💻 AnyDesk
+              <span v-if="sortBy === 'anyDesk'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('system')">
+              🧩 Sistem
+              <span v-if="sortBy === 'system'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+            </th>
 
             <th class="p-2 whitespace-nowrap">⚙️ Akcije</th>
           </tr>
@@ -144,6 +152,12 @@
             <td class="p-2">{{ entry.rdp }}</td>
             <td class="p-2">
               {{ entry.dnsLog || '—' }}
+            </td>
+            <td class="p-2">
+              {{ entry.anyDesk || '—' }}
+            </td>
+            <td class="p-2">
+              {{ entry.system || '—' }}
             </td>
             <td class="p-2 space-x-2 whitespace-nowrap">
               <button @click="editEntry(entry)" class="text-blue-600 hover:underline">

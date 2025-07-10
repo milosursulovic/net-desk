@@ -63,6 +63,8 @@ const form = ref({
   password: '',
   rdp: '',
   dnsLog: '',
+  anyDesk: '',
+  system: '',
 })
 
 const fields = [
@@ -73,6 +75,8 @@ const fields = [
   { name: 'password', label: 'Lozinku' },
   { name: 'rdp', label: 'RDP' },
   { name: 'dnsLog', label: 'DNS Log' },
+  { name: 'anyDesk', label: 'AnyDesk' },
+  { name: 'system', label: 'Sistem' },
 ]
 
 const handleSubmit = async () => {
