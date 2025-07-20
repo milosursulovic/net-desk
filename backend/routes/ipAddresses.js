@@ -2,9 +2,7 @@ import express from "express";
 import multer from "multer";
 import fs from "fs";
 import XLSX from "xlsx";
-import { Parser } from "json2csv";
 import IpEntry from "../models/IpEntry.js";
-import csv from "csv-parser";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -32,33 +30,6 @@ const getFilteredEntries = async (search) => {
   const query = getSearchQuery(search);
   return await IpEntry.find(query).sort({ ipNumeric: 1 });
 };
-
-router.get("/export", async (req, res) => {
-  try {
-    const entries = await getFilteredEntries(req.query.search);
-    const fields = [
-      "ip",
-      "computerName",
-      "ipNumeric",
-      "username",
-      "fullName",
-      "password",
-      "rdp",
-      "dnsLog",
-      "anyDesk",
-      "system",
-    ];
-
-    const csv = new Parser({ fields }).parse(entries);
-
-    res.setHeader("Content-Disposition", "attachment; filename=ip-entries.csv");
-    res.setHeader("Content-Type", "text/csv");
-    res.send(csv);
-  } catch (err) {
-    console.error("CSV Export error:", err);
-    res.status(500).json({ message: "Greška pri izvozu CSV-a" });
-  }
-});
 
 router.get("/export-xlsx", async (req, res) => {
   try {
@@ -106,17 +77,7 @@ router.post("/import", upload.single("file"), async (req, res) => {
   try {
     let results = [];
 
-    if (ext === "csv") {
-      const resultsRaw = [];
-      await new Promise((resolve, reject) => {
-        fs.createReadStream(filePath)
-          .pipe(csv())
-          .on("data", (data) => resultsRaw.push(data))
-          .on("end", resolve)
-          .on("error", reject);
-      });
-      results = resultsRaw;
-    } else if (ext === "xlsx") {
+    if (ext === "xlsx") {
       const workbook = XLSX.readFile(filePath);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       results = XLSX.utils.sheet_to_json(sheet);
