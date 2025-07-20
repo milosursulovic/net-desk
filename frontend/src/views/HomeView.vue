@@ -1,6 +1,5 @@
 <template>
   <div class="glass-container">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🖥️ IP Adrese</h1>
 
@@ -10,12 +9,6 @@
           class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
         >
           ➕ Dodaj
-        </button>
-        <button
-          @click="exportToCsv"
-          class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-        >
-          📤 Izvezi CSV
         </button>
 
         <button
@@ -254,7 +247,6 @@ const copiedText = ref(null)
 const availableIps = ref([])
 const showingAvailableModal = ref(false)
 const ipSearch = ref('')
-
 const router = useRouter()
 const route = useRoute()
 
@@ -297,21 +289,6 @@ const deleteEntry = async (id) => {
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
   if (res.ok) fetchData()
   else console.log('Neuspešno brisanje')
-}
-
-const exportToCsv = async () => {
-  try {
-    const res = await fetchWithAuth(`/api/protected/ip-addresses/export?search=${search.value}`)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'ip-entries.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-  } catch {
-    console.log('Greška pri izvozu CSV-a')
-  }
 }
 
 const handleFileUpload = async (e) => {
