@@ -198,7 +198,9 @@ router.post("/", async (req, res) => {
     fullName,
     password,
     rdp,
-    dnsLog = "",
+    dnsLog,
+    anyDesk,
+    system,
   } = req.body;
   if (!ip)
     return res.status(400).json({ message: "IP adresa je obavezno polje" });
@@ -212,6 +214,8 @@ router.post("/", async (req, res) => {
       password,
       rdp,
       dnsLog,
+      anyDesk,
+      system,
     });
     await newEntry.save();
     res.status(201).json(newEntry);
