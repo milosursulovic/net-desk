@@ -2,7 +2,7 @@
   Hardware Inventory + JWT POST (Windows, PowerShell 5.1)
   - Prikuplja: OS, CPU, RAM (po modulu), Storage, GPU, BIOS, Motherboard, NIC
   - Snima lokalno JSON/CSV (opciono)
-  - Login -> JWT -> POST na /api/ip/:ip/metadata
+  - Login -> JWT -> POST na /api/protected/ip-addresses/:ip/metadata
 #>
 
 param(
@@ -10,7 +10,7 @@ param(
     [string]$ApiBase = "https://localhost:3000/api/protected/ip-addresses",
     [string]$Username = "admin",
     [string]$Password = "password",
-    [string]$Ip = "10.230.62.5",  # ako nije dato, autodetekcija privatnog IPv4
+    [string]$Ip = $null,  # ako nije dato, autodetekcija privatnog IPv4
     [string]$OutputDir = "$env:ProgramData\HW_Inventory",
     [switch]$WriteFiles,         # ako dodaš -WriteFiles, snimi JSON/CSV lokalno
     [switch]$TrustAllCerts       # za self-signed TLS na localhostu
