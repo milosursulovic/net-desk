@@ -3,6 +3,8 @@ import multer from "multer";
 import fs from "fs";
 import XLSX from "xlsx";
 import IpEntry from "../models/IpEntry.js";
+import ComputerMetadata from "../models/ComputerMetadata.js";
+import { setMetadataForIp } from "../services/ipEntry.service.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -247,6 +249,48 @@ router.delete("/:id", async (req, res) => {
   } catch (err) {
     console.error("Error deleting IP entry:", err);
     res.status(500).json({ message: "Greška na serveru" });
+  }
+});
+
+// POST/PUT ceo JSON metapodataka na 1-1 model
+router.post("/:ip/metadata", async (req, res, next) => {
+  try {
+    const out = await setMetadataForIp(req.params.ip, req.body);
+    res.json(out);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET: Vrati IpEntry + populate 1-1 metadata
+router.get("/:ip/metadata", async (req, res, next) => {
+  try {
+    const row = await IpEntry.findOne({ ip: req.params.ip })
+      .populate("metadata")
+      .lean();
+    if (!row) return res.status(404).json({ error: "Not found" });
+    res.json(row);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PATCH: delimično menjanje (direktno na ComputerMetadata)
+router.patch("/:ip/metadata", async (req, res, next) => {
+  try {
+    const ipEntry = await IpEntry.findOne({ ip: req.params.ip }).lean();
+    if (!ipEntry) return res.status(404).json({ error: "IpEntry not found" });
+
+    const meta = await ComputerMetadata.findOneAndUpdate(
+      { ipEntry: ipEntry._id },
+      { $set: req.body },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!meta) return res.status(404).json({ error: "Metadata not found" });
+    res.json(meta);
+  } catch (e) {
+    next(e);
   }
 });
 

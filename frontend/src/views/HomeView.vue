@@ -162,13 +162,15 @@
               <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline">
                 🔗 RDP
               </button>
+              <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline">
+                ℹ️ Meta
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
-
   <transition name="fade">
     <div
       v-if="copiedText"
@@ -227,6 +229,228 @@
       </div>
     </div>
   </transition>
+
+  <!-- METADATA DRAWER -->
+  <transition name="fade">
+    <div v-if="showMeta" class="fixed inset-0 z-[60] flex" @click.self="closeMetadata">
+      <!-- overlay -->
+      <div class="absolute inset-0 bg-black/40"></div>
+
+      <!-- panel -->
+      <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
+        <div
+          class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
+        >
+          <h3 class="text-lg font-semibold">
+            🧾 Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
+          </h3>
+          <button
+            @click="closeMetadata"
+            class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="p-4">
+          <div v-if="metaLoading" class="text-gray-600">Učitavanje…</div>
+          <div v-else-if="metaError" class="text-red-600">{{ metaError }}</div>
+          <div v-else-if="!meta" class="text-gray-600">Nema metapodataka za ovu IP adresu.</div>
+
+          <div v-else class="space-y-6">
+            <!-- Summary kartica -->
+            <div class="rounded-lg border p-4 bg-slate-50">
+              <div class="flex flex-col gap-1">
+                <div><span class="font-semibold">Računar:</span> {{ safe(meta.ComputerName) }}</div>
+                <div><span class="font-semibold">Korisnik:</span> {{ safe(meta.UserName) }}</div>
+                <div>
+                  <span class="font-semibold">Prikupljeno:</span> {{ fmtDate(meta.CollectedAt) }}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  Last update: {{ fmtDate(meta.updatedAt) }} • Created:
+                  {{ fmtDate(meta.createdAt) }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab-like grid (jednostavno) -->
+            <div class="grid grid-cols-1 gap-4">
+              <!-- OS -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🪟 Operativni sistem</h4>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <div class="text-gray-500">Caption</div>
+                  <div>{{ safe(meta.OS?.Caption) }}</div>
+                  <div class="text-gray-500">Verzija</div>
+                  <div>{{ safe(meta.OS?.Version) }}</div>
+                  <div class="text-gray-500">Build</div>
+                  <div>{{ safe(meta.OS?.Build) }}</div>
+                  <div class="text-gray-500">Install date</div>
+                  <div>{{ fmtDate(meta.OS?.InstallDate) }}</div>
+                </div>
+              </section>
+
+              <!-- Sistem -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">💻 Sistem</h4>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <div class="text-gray-500">Proizvođač</div>
+                  <div>{{ safe(meta.System?.Manufacturer) }}</div>
+                  <div class="text-gray-500">Model</div>
+                  <div>{{ safe(meta.System?.Model) }}</div>
+                  <div class="text-gray-500">RAM ukupno</div>
+                  <div>{{ fmtGb(meta.System?.TotalRAM_GB) }}</div>
+                </div>
+              </section>
+
+              <!-- CPU -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🧠 CPU</h4>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <div class="text-gray-500">Naziv</div>
+                  <div>{{ safe(meta.CPU?.Name) }}</div>
+                  <div class="text-gray-500">Jezgra</div>
+                  <div>{{ safe(meta.CPU?.Cores) }}</div>
+                  <div class="text-gray-500">Logičkih</div>
+                  <div>{{ safe(meta.CPU?.LogicalCPUs) }}</div>
+                  <div class="text-gray-500">Max MHz</div>
+                  <div>{{ safe(meta.CPU?.MaxClockMHz) }}</div>
+                  <div class="text-gray-500">Socket</div>
+                  <div>{{ safe(meta.CPU?.Socket) }}</div>
+                </div>
+              </section>
+
+              <!-- RAM modules -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">
+                  🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
+                </h4>
+                <div v-if="meta.RAMModules?.length" class="space-y-2">
+                  <div
+                    v-for="(r, idx) in meta.RAMModules"
+                    :key="idx"
+                    class="border rounded p-3 bg-white"
+                  >
+                    <div class="text-sm">
+                      <span class="text-gray-500">Slot:</span> {{ safe(r.Slot) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Mfr/PN:</span>
+                      {{ [r.Manufacturer, r.PartNumber].filter(Boolean).join(' · ') || '—' }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Serijski:</span> {{ safe(r.Serial) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Kapacitet:</span> {{ fmtGb(r.CapacityGB) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Brzina:</span> {{ safe(r.SpeedMTps) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Form factor:</span> {{ safe(r.FormFactor) }}
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+              </section>
+
+              <!-- Storage -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
+                <div v-if="meta.Storage?.length" class="space-y-2">
+                  <div
+                    v-for="(s, idx) in meta.Storage"
+                    :key="idx"
+                    class="border rounded p-3 bg-white"
+                  >
+                    <div class="text-sm">
+                      <span class="text-gray-500">Model:</span> {{ safe(s.Model) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Serijski/FW:</span>
+                      {{ [s.Serial, s.Firmware].filter(Boolean).join(' · ') || '—' }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Veličina:</span>
+                      {{ s.SizeGB ? `${s.SizeGB} GB` : '—' }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Tip/BUS:</span>
+                      {{ [s.MediaType, s.BusType].filter(Boolean).join(' · ') || '—' }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">DeviceID:</span> {{ safe(s.DeviceID) }}
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+              </section>
+
+              <!-- GPU -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
+                <div v-if="meta.GPUs?.length" class="space-y-2">
+                  <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded p-3 bg-white">
+                    <div class="text-sm">
+                      <span class="text-gray-500">Naziv:</span> {{ safe(g.Name) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Driver:</span> {{ safe(g.DriverVers) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">VRAM:</span>
+                      {{ g.VRAM_GB ? `${g.VRAM_GB} GB` : '—' }}
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+              </section>
+
+              <!-- Network -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
+                <div v-if="meta.NICs?.length" class="space-y-2">
+                  <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded p-3 bg-white">
+                    <div class="text-sm">
+                      <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+              </section>
+
+              <!-- BIOS / Motherboard -->
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🧬 BIOS / Matična</h4>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <div class="text-gray-500">BIOS Vendor</div>
+                  <div>{{ safe(meta.BIOS?.Vendor) }}</div>
+                  <div class="text-gray-500">BIOS Ver.</div>
+                  <div>{{ safe(meta.BIOS?.Version) }}</div>
+                  <div class="text-gray-500">BIOS Release</div>
+                  <div>{{ fmtDate(meta.BIOS?.ReleaseDate) }}</div>
+
+                  <div class="text-gray-500">MB Proizvođač</div>
+                  <div>{{ safe(meta.Motherboard?.Manufacturer) }}</div>
+                  <div class="text-gray-500">MB Model</div>
+                  <div>{{ safe(meta.Motherboard?.Product) }}</div>
+                  <div class="text-gray-500">MB Serijski</div>
+                  <div>{{ safe(meta.Motherboard?.Serial) }}</div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script setup>
@@ -249,6 +473,12 @@ const showingAvailableModal = ref(false)
 const ipSearch = ref('')
 const router = useRouter()
 const route = useRoute()
+// --- NOVO: state za metadata drawer ---
+const showMeta = ref(false)
+const metaLoading = ref(false)
+const metaError = ref(null)
+const metaEntry = ref(null) // ceo IpEntry sa populate (ili samo entry)
+const meta = ref(null) // ComputerMetadata dokument
 
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry._id}`)
@@ -381,6 +611,49 @@ const exportToXlsx = async () => {
   } catch {
     console.log('Greška pri izvozu XLSX-a')
   }
+}
+
+// Format helperi
+const fmtDate = (d) => {
+  if (!d) return '—'
+  const dt = new Date(d)
+  if (isNaN(dt)) return '—'
+  return dt.toLocaleString()
+}
+const fmtGb = (n) => (n || n === 0 ? `${n} GB` : '—')
+const fmtMbps = (n) => (n || n === 0 ? `${n} Mbps` : '—')
+const safe = (v) => v ?? '—'
+
+// Dohvati metadata za dati entry.ip preko backend rute: GET /api/ip/:ip/metadata
+const openMetadata = async (entry) => {
+  metaLoading.value = true
+  metaError.value = null
+  metaEntry.value = entry
+  meta.value = null
+  showMeta.value = true
+  try {
+    // Backend koji smo ranije dogovorili vraća IpEntry sa populate("metadata")
+    // Primer rute: router.get("/:ip/metadata", requireAuth, ...)
+    const res = await fetchWithAuth(
+      `/api/protected/ip-addresses/${encodeURIComponent(entry.ip)}/metadata`
+    )
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    // data može biti IpEntry (sa .metadata) ili direktno .metadata; podrži oba
+    meta.value = data?.metadata ?? data
+  } catch (e) {
+    console.error(e)
+    metaError.value = 'Neuspešno učitavanje metapodataka.'
+  } finally {
+    metaLoading.value = false
+  }
+}
+
+const closeMetadata = () => {
+  showMeta.value = false
+  meta.value = null
+  metaEntry.value = null
+  metaError.value = null
 }
 
 watch([page, limit, search, sortBy, sortOrder], () => {
