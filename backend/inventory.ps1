@@ -6,8 +6,8 @@
 #>
 
 param(
-    [string]$AuthUrl = "https://localhost:3000/api/auth/login",
-    [string]$ApiBase = "https://localhost:3000/api/protected/ip-addresses",
+    [string]$AuthUrl = "https://10.230.62.81:3000/api/auth/login",
+    [string]$ApiBase = "https://10.230.62.81:3000/api/protected/ip-addresses",
     [string]$Username = "admin",
     [string]$Password = "password",
     [string]$Ip = $null,  # ako nije dato, autodetekcija privatnog IPv4

@@ -1,7 +1,7 @@
-// models/computerMetadata.js
+// models/ComputerMetadata.js
 import mongoose from "mongoose";
 
-/** ISO string, WMI "/Date(…)/" ili broj (ms) -> Date */
+/** Parse WMI "/Date(…)/", ISO string or number (ms) into Date */
 const parseWmiOrIso = (val) => {
   if (val == null || val === "") return val;
   if (val instanceof Date) return val;
@@ -14,6 +14,9 @@ const parseWmiOrIso = (val) => {
   }
   return null;
 };
+
+// Helper: accept single object or array; null/undefined -> []
+const toArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
 const osSchema = new mongoose.Schema(
   {
@@ -71,7 +74,8 @@ const ramModuleSchema = new mongoose.Schema(
     Serial: String,
     CapacityGB: Number,
     SpeedMTps: Number,
-    FormFactor: Number,
+    // changed to String so values like "DIMM" don't cause cast errors
+    FormFactor: String,
   },
   { _id: false }
 );
@@ -82,8 +86,8 @@ const storageSchema = new mongoose.Schema(
     Serial: String,
     Firmware: String,
     SizeGB: Number,
-    MediaType: String,
-    BusType: String,
+    MediaType: String, // e.g., HDD/SSD
+    BusType: String, // e.g., SATA/NVMe/USB
     DeviceID: String,
   },
   { _id: false }
@@ -127,10 +131,12 @@ const computerMetadataSchema = new mongoose.Schema(
     Motherboard: motherboardSchema,
     BIOS: biosSchema,
     CPU: cpuSchema,
-    RAMModules: [ramModuleSchema],
-    Storage: [storageSchema],
-    GPUs: [gpuSchema],
-    NICs: [nicSchema],
+
+    // Lists with coercion (accept single object or array)
+    RAMModules: { type: [ramModuleSchema], set: toArray },
+    Storage: { type: [storageSchema], set: toArray },
+    GPUs: { type: [gpuSchema], set: toArray },
+    NICs: { type: [nicSchema], set: toArray },
 
     PSU: String,
   },
@@ -141,4 +147,5 @@ const ComputerMetadata = mongoose.model(
   "ComputerMetadata",
   computerMetadataSchema
 );
+
 export default ComputerMetadata;
