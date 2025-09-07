@@ -10,10 +10,10 @@
           🔄 Osveži
         </button>
         <button
-          @click="exportCsv"
+          @click="exportXlsx"
           class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
         >
-          📤 Izvezi CSV
+          📤 Izvezi XLSX
         </button>
       </div>
     </div>
@@ -46,7 +46,35 @@
       />
     </div>
 
-    <!-- Coverage + Recency -->
+    <!-- Extra KPIs -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <KpiCard
+        title="Jedinstvenih korisnika"
+        :value="stats.uniqueUsers"
+        :sub="'od ' + stats.totalWithMeta + ' mašina'"
+        icon="👤"
+      />
+      <KpiCard
+        title="Pros. # diskova"
+        :value="stats.avgDisks"
+        :sub="'med.: ' + stats.medDisks"
+        icon="🗄️"
+      />
+      <KpiCard
+        title="Pros. # NIC-ova"
+        :value="stats.avgNics"
+        :sub="'med.: ' + stats.medNics"
+        icon="🌐"
+      />
+      <KpiCard
+        title="Medijana starosti OS"
+        :value="stats.medOsAgeDays + ' dana'"
+        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
+        icon="⏳"
+      />
+    </div>
+
+    <!-- Coverage + Recency + OS -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">📈 Pokrivenost metapodacima</h2>
@@ -80,7 +108,7 @@
                 :style="{
                   width: ((row.count / (stats.totalWithMeta || 1)) * 100).toFixed(1) + '%',
                 }"
-              ></div>
+              />
             </div>
           </div>
         </div>
@@ -136,7 +164,37 @@
       </div>
     </div>
 
-    <!-- Tables: outliers / watchlist -->
+    <!-- CPU + Disks -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+        <h2 class="font-semibold text-slate-800 mb-3">🧮 CPU modeli (Top 5)</h2>
+        <div class="space-y-2">
+          <BarRow
+            v-for="row in topCpuModels"
+            :key="row.key"
+            :label="row.key || '—'"
+            :value="row.count"
+            :total="stats.totalWithMeta"
+          />
+        </div>
+        <div class="grid grid-cols-3 gap-3 mt-3">
+          <InfoPill label="Pros. jezgra" :value="stats.avgCpuCores" />
+          <InfoPill label="Pros. niti" :value="stats.avgCpuThreads" />
+          <InfoPill label="Pros. takt" :value="stats.avgCpuClockGHz + ' GHz'" />
+        </div>
+      </div>
+
+      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+        <h2 class="font-semibold text-slate-800 mb-3">💾 Broj diskova po mašini</h2>
+        <div class="space-y-2">
+          <BarRow label="1 disk" :value="diskBuckets.eq1" :total="stats.totalWithMeta" />
+          <BarRow label="2 diska" :value="diskBuckets.eq2" :total="stats.totalWithMeta" />
+          <BarRow label="3+ diska" :value="diskBuckets.ge3" :total="stats.totalWithMeta" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">🔍 Najmanje RAM-a (Top 10)</h2>
@@ -152,6 +210,13 @@
           :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
         />
       </div>
+      <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
+        <h2 class="font-semibold text-slate-800 mb-3">🧱 Najveći ukupni storage (Top 10)</h2>
+        <DataTable
+          :rows="tables.topStorage"
+          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -159,10 +224,9 @@
 <script setup>
 import { ref, computed, onMounted, h, defineComponent } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import * as XLSX from 'xlsx'
 
-/* =========================
-   Mini komponente (render)
-   ========================= */
+/* Mini komponente */
 const KpiCard = defineComponent({
   name: 'KpiCard',
   props: { title: String, value: [String, Number], sub: String, icon: String },
@@ -201,10 +265,7 @@ const BarRow = defineComponent({
           h('span', { class: 'tabular-nums text-slate-600' }, String(props.value ?? 0)),
         ]),
         h('div', { class: 'w-full h-2 bg-slate-100 rounded' }, [
-          h('div', {
-            class: 'h-2 bg-indigo-600 rounded',
-            style: { width: `${pct.value}%` },
-          }),
+          h('div', { class: 'h-2 bg-indigo-600 rounded', style: { width: `${pct.value}%` } }),
         ]),
       ])
   },
@@ -215,9 +276,9 @@ const Sparkline = defineComponent({
   props: { series: { type: Array, default: () => [] }, max: Number },
   setup(props) {
     return () => {
-      const width = 280
-      const height = 60
-      const pad = 6
+      const width = 280,
+        height = 60,
+        pad = 6
       const n = props.series.length
       const max = Math.max(1, props.max ?? Math.max(0, ...props.series, 1))
       const step = (width - pad * 2) / Math.max(1, n - 1)
@@ -267,7 +328,7 @@ const DataTable = defineComponent({
           h(
             'tbody',
             {},
-            props.rows.map((r, i) =>
+            (props.rows || []).map((r, i) =>
               h(
                 'tr',
                 { key: i, class: 'border-b hover:bg-slate-50' },
@@ -282,18 +343,13 @@ const DataTable = defineComponent({
   },
 })
 
-/* =============
-   State
-   ============= */
+/* State */
 const meta = ref([]) // list of ComputerMetadata
-const totalIpEntries = ref(0)
+const totalIpEntries = ref(0) // broj IP unosa
 const loading = ref(false)
 
-/* =============
-   Fetch
-   ============= */
+/* Fetch */
 async function fetchStatsPreferServer() {
-  // 1) probaj agregatnu rutu
   try {
     const r = await fetchWithAuth('/api/protected/metadata/stats')
     if (r.ok) {
@@ -307,8 +363,6 @@ async function fetchStatsPreferServer() {
       if (Array.isArray(payload.meta)) return
     }
   } catch {}
-
-  // 2) fallback: povuci total sa ip-addresses rute
   try {
     const r1 = await fetchWithAuth('/api/protected/ip-addresses?limit=1&page=1')
     if (r1.ok) {
@@ -316,11 +370,9 @@ async function fetchStatsPreferServer() {
       totalIpEntries.value = Number(d.total) || 0
     }
   } catch {}
-
-  // 3) fetchuj sve metadata (paginirano)
   try {
-    let page = 1
-    let all = []
+    let page = 1,
+      all = []
     while (true) {
       const r = await fetchWithAuth(`/api/protected/metadata?page=${page}&limit=200`)
       if (!r.ok) break
@@ -335,7 +387,6 @@ async function fetchStatsPreferServer() {
       } else break
     }
     if (all.length === 0) {
-      // 4) poslednji fallback: ip-entries sa populate("metadata")
       const r2 = await fetchWithAuth('/api/protected/ip-addresses?limit=10000&page=1')
       if (r2.ok) {
         const d2 = await r2.json()
@@ -363,81 +414,84 @@ onMounted(async () => {
   await refreshAll()
 })
 
-/* =============
-   Derived
-   ============= */
-const stats = computed(() => {
-  const m = meta.value
-  const n = m.length
-  const ramTotals = m.map(
-    (x) =>
-      Number(x?.System?.TotalRAM_GB) ||
-      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0))
+/* Derived & helpers */
+function cpuNameOf(x) {
+  return (
+    x?.CPU?.Name ||
+    x?.Processor?.Name ||
+    x?.System?.CPUName ||
+    x?.System?.Processor ||
+    x?.CPUName ||
+    ''
   )
-  const avgRam = avg(ramTotals)
-  const medRam = median(ramTotals)
-  const maxRam = Math.max(0, ...ramTotals)
+}
+function cpuCoresOf(x) {
+  return (
+    Number(x?.CPU?.Cores) ||
+    Number(x?.Processor?.Cores) ||
+    Number(x?.System?.CPUCores) ||
+    Number(x?.CPU?.NumberOfCores) ||
+    0
+  )
+}
+function cpuThreadsOf(x) {
+  return (
+    Number(x?.CPU?.LogicalCPUs) ||
+    Number(x?.CPU?.LogicalProcessors) ||
+    Number(x?.Processor?.LogicalProcessors) ||
+    Number(x?.System?.CPULogicalProcessors) ||
+    Number(x?.CPU?.Threads) ||
+    0
+  )
+}
+function cpuClockGHzOf(x) {
+  const ghz =
+    Number(x?.CPU?.MaxClockGHz) ||
+    Number(x?.Processor?.MaxClockGHz) ||
+    Number(x?.System?.CPU_MaxClockGHz)
+  if (Number.isFinite(ghz) && ghz > 0) return ghz
+  const mhz =
+    Number(x?.CPU?.MaxClockMHz) ||
+    Number(x?.Processor?.MaxClockMHz) ||
+    Number(x?.System?.CPU_MaxClockMHz)
+  return Number.isFinite(mhz) && mhz > 0 ? Math.round((mhz / 1000) * 10) / 10 : 0
+}
 
-  // storage
-  const stor = m.flatMap((x) => x?.Storage || [])
-  const ssd = stor.filter((s) => (s?.MediaType || '').toUpperCase().includes('SSD'))
-  const hdd = stor.filter((s) => (s?.MediaType || '').toUpperCase().includes('HDD'))
-  const totalGb = sum(stor.map((s) => Number(s?.SizeGB) || 0))
+const cpuDist = computed(() => groupCount(meta.value.map((x) => cpuNameOf(x)).filter(Boolean)))
+const topCpuModels = computed(() => cpuDist.value.slice(0, 5))
 
-  // gpu
-  const withGpu = m.filter((x) => (x?.GPUs || []).length > 0).length
-  const vramAll = m
-    .map((x) => avg((x?.GPUs || []).map((g) => Number(g?.VRAM_GB) || 0)))
-    .filter(Boolean)
-  const avgVram = avg(vramAll)
-
-  // coverage
-  const coverage = totalIpEntries.value ? Math.round((n / totalIpEntries.value) * 100) : 100
-
+const diskBuckets = computed(() => {
+  const counts = meta.value.map((x) => (x?.Storage ? x.Storage.length : 0))
   return {
-    totalWithMeta: n,
-    avgRamGb: round1(avgRam),
-    medRamGb: round1(medRam),
-    maxRamGb: round1(maxRam),
-    ssdCount: ssd.length,
-    hddCount: hdd.length,
-    totalStorageTb: round1(totalGb / 1024),
-    withGpu,
-    withoutGpu: Math.max(n - withGpu, 0),
-    avgVramGb: round1(avgVram),
-    coveragePct: coverage,
+    eq1: counts.filter((c) => c === 1).length,
+    eq2: counts.filter((c) => c === 2).length,
+    ge3: counts.filter((c) => c >= 3).length,
   }
 })
 
-// OS distribucija (Top 5)
 const osDist = computed(() =>
   groupCount(meta.value.map((x) => joinNonEmpty([x?.OS?.Caption, x?.OS?.Version], ' ')))
 )
 const topOs = computed(() => osDist.value.slice(0, 5))
 
-// Proizvođači sistema (Top 6)
 const manufacturers = computed(() =>
   groupCount(meta.value.map((x) => x?.System?.Manufacturer || x?.Motherboard?.Manufacturer))
 )
 const topManufacturers = computed(() => manufacturers.value.slice(0, 6))
 
-// NIC brzine (Top 5)
 const topNicSpeeds = computed(() => {
-  const speeds = meta.value
-    .flatMap((x) => (x?.NICs || []).map((n) => Number(n?.SpeedMbps) || 0))
-    .filter(Boolean)
-  const rounded = speeds.map((s) => (s >= 950 && s <= 1100 ? 1000 : s))
+  const speeds = meta.value.flatMap((x) => (x?.NICs || []).map((n) => Number(n?.SpeedMbps) || 0))
+  const filtered = speeds.filter((s) => Number.isFinite(s) && s > 0)
+  const rounded = filtered.map((s) => (s >= 950 && s <= 1100 ? 1000 : s))
   return groupCount(rounded.map(String)).slice(0, 5)
 })
 
-// GPU top model
 const topGpuName = computed(() => {
   const names = meta.value.flatMap((x) => (x?.GPUs || []).map((g) => g?.Name).filter(Boolean))
   const grouped = groupCount(names)
   return grouped[0]?.key
 })
 
-// RAM bucket-i
 const bucketRam = computed(() => {
   const totals = meta.value.map(
     (x) =>
@@ -451,11 +505,10 @@ const bucketRam = computed(() => {
   }
 })
 
-// Recency series (14 dana)
 const recencySeries = computed(() => {
-  const days = 14
-  const counts = Array(days).fill(0)
-  const now = new Date()
+  const days = 14,
+    counts = Array(days).fill(0),
+    now = new Date()
   for (const x of meta.value) {
     const d = new Date(x?.CollectedAt)
     if (isNaN(d)) continue
@@ -465,9 +518,81 @@ const recencySeries = computed(() => {
   return counts
 })
 
+const _osAgesDays = computed(() => {
+  const now = Date.now()
+  return meta.value
+    .map((x) => {
+      const d = new Date(x?.OS?.InstallDate)
+      return isNaN(d) ? null : Math.max(0, Math.floor((now - d.getTime()) / 86400000))
+    })
+    .filter((v) => Number.isFinite(v))
+})
+
+const stats = computed(() => {
+  const m = meta.value
+  const n = m.length
+
+  const ramTotals = m.map(
+    (x) =>
+      Number(x?.System?.TotalRAM_GB) ||
+      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0))
+  )
+  const avgRam = avg(ramTotals),
+    medRam = median(ramTotals),
+    maxRam = Math.max(0, ...ramTotals)
+
+  const stor = m.flatMap((x) => x?.Storage || [])
+  const ssd = stor.filter((s) => (s?.MediaType || '').toUpperCase().includes('SSD'))
+  const hdd = stor.filter((s) => (s?.MediaType || '').toUpperCase().includes('HDD'))
+  const totalGb = sum(stor.map((s) => Number(s?.SizeGB) || 0))
+
+  const withGpu = m.filter((x) => (x?.GPUs || []).length > 0).length
+  const vramAll = m
+    .map((x) => avg((x?.GPUs || []).map((g) => Number(g?.VRAM_GB) || 0)))
+    .filter(Boolean)
+  const avgVram = avg(vramAll)
+
+  const coverage = totalIpEntries.value ? Math.round((n / totalIpEntries.value) * 100) : 100
+
+  const uniqueUsers = new Set(m.map((x) => (x?.UserName || '').trim()).filter(Boolean))
+  const diskCounts = m.map((x) => (x?.Storage ? x.Storage.length : 0))
+  const nicCounts = m.map((x) => (x?.NICs ? x.NICs.length : 0))
+  const cores = m.map((x) => cpuCoresOf(x)).filter((v) => v > 0)
+  const threads = m.map((x) => cpuThreadsOf(x)).filter((v) => v > 0)
+  const clocks = m.map((x) => cpuClockGHzOf(x)).filter((v) => v > 0)
+  const osAges = _osAgesDays.value
+
+  return {
+    totalWithMeta: n,
+    avgRamGb: round1(avgRam),
+    medRamGb: round1(medRam),
+    maxRamGb: round1(maxRam),
+    ssdCount: ssd.length,
+    hddCount: hdd.length,
+    totalStorageTb: round1(totalGb / 1024),
+    withGpu,
+    withoutGpu: Math.max(n - withGpu, 0),
+    avgVramGb: round1(avgVram),
+    coveragePct: coverage,
+
+    uniqueUsers: uniqueUsers.size,
+    avgDisks: round1(avg(diskCounts)),
+    medDisks: median(diskCounts),
+    avgNics: round1(avg(nicCounts)),
+    medNics: median(nicCounts),
+    avgCpuCores: round1(avg(cores)),
+    avgCpuThreads: round1(avg(threads)),
+    avgCpuClockGHz: round1(avg(clocks)),
+    medOsAgeDays: Math.round(median(osAges)),
+    avgOsAgeDays: Math.round(avg(osAges)),
+  }
+})
+
+/* TABLES (FIX) */
 const tables = computed(() => {
-  // Low RAM top 10
-  const withTotals = meta.value.map((x) => ({
+  const m = meta.value
+
+  const withTotals = m.map((x) => ({
     ComputerName: x?.ComputerName || '—',
     TotalRAM_GB:
       Number(x?.System?.TotalRAM_GB) ||
@@ -478,8 +603,7 @@ const tables = computed(() => {
   }))
   const lowRam = [...withTotals].sort((a, b) => a.TotalRAM_GB - b.TotalRAM_GB).slice(0, 10)
 
-  // Oldest OS install top 10
-  const oldOs = meta.value
+  const oldOs = m
     .map((x) => ({
       ComputerName: x?.ComputerName || '—',
       OS: { Caption: x?.OS?.Caption, InstallDate: x?.OS?.InstallDate },
@@ -489,12 +613,23 @@ const tables = computed(() => {
     .sort((a, b) => new Date(a.OS.InstallDate) - new Date(b.OS.InstallDate))
     .slice(0, 10)
 
-  return { lowRam, oldOs }
+  const storageRows = m.map((x) => {
+    const disks = x?.Storage || []
+    return {
+      ComputerName: x?.ComputerName || '—',
+      DisksCount: disks.length || 0,
+      Storage_Total_GB: sum(disks.map((s) => Number(s?.SizeGB) || 0)),
+      CollectedAt: x?.CollectedAt,
+    }
+  })
+  const topStorage = storageRows
+    .sort((a, b) => b.Storage_Total_GB - a.Storage_Total_GB)
+    .slice(0, 10)
+
+  return { lowRam: lowRam || [], oldOs: oldOs || [], topStorage: topStorage || [] }
 })
 
-/* =============
-   Helpers
-   ============= */
+/* Helpers */
 function sum(arr) {
   return arr.reduce((a, b) => a + (Number(b) || 0), 0)
 }
@@ -539,10 +674,8 @@ function groupCount(items) {
     .sort((a, b) => b.count - a.count)
 }
 
-/* =============
-   Export CSV
-   ============= */
-function exportCsv() {
+/* Export XLSX */
+function exportXlsx() {
   const rows = meta.value.map((x) => ({
     ComputerName: x?.ComputerName || '',
     UserName: x?.UserName || '',
@@ -560,28 +693,18 @@ function exportCsv() {
     GPUs_Count: (x?.GPUs || []).length,
     Storage_Total_GB: sum((x?.Storage || []).map((s) => Number(s?.SizeGB) || 0)),
   }))
-  const header = Object.keys(rows[0] || { dummy: '' })
-  const csv = [
-    header.join(','),
-    ...rows.map((r) => header.map((k) => escapeCsv(r[k])).join(',')),
-  ].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'metadata_stats.csv'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-function escapeCsv(v) {
-  const s = v == null ? '' : String(v)
-  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
-  return s
-}
 
-/* =============
-   Expose for template
-   ============= */
+  const header = Object.keys(rows[0] || { dummy: '' })
+  const ws = XLSX.utils.json_to_sheet(rows, { header })
+
+  const colWidths = header.map((h) => {
+    const maxLen = Math.max(h.length, ...rows.map((r) => String(r[h] ?? '').length))
+    return { wch: Math.min(60, Math.max(8, maxLen + 2)) }
+  })
+  ws['!cols'] = colWidths
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Metadata')
+  XLSX.writeFile(wb, 'metadata_stats.xlsx')
+}
 </script>
