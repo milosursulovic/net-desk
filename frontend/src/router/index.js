@@ -5,6 +5,7 @@ import NotFoundView from '../views/NotFoundView.vue'
 import AddIpView from '../views/AddIpView.vue'
 import EditIpView from '../views/EditIpView.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
+import MetadataView from '@/views/MetadataView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -31,6 +32,12 @@ const router = createRouter({
           name: 'edit-ip',
           title: 'Uredi IP',
           component: EditIpView,
+        },
+        {
+          path: 'metadata',
+          name: 'metadata',
+          title: 'Metadata',
+          component: MetadataView,
         },
       ],
     },
