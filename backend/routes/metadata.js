@@ -12,6 +12,7 @@ const META_PROJECTION = {
   CollectedAt: 1,
   OS: { Caption: 1, Version: 1, Build: 1, InstallDate: 1 },
   System: { Manufacturer: 1, Model: 1, TotalRAM_GB: 1 },
+  CPU: { Name: 1, Cores: 1, LogicalCPUs: 1, MaxClockMHz: 1 },
   RAMModules: {
     CapacityGB: 1,
     Slot: 1,
