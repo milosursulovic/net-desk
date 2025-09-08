@@ -35,7 +35,22 @@ const getFilteredEntries = async (search) => {
 
 router.get("/export-xlsx", async (req, res) => {
   try {
-    const entries = await getFilteredEntries(req.query.search);
+    // 1) Povuci sve entry-je za zadati search + osnovna polja (+ metadata ref ako postoji u šemi)
+    const entries = await IpEntry.find(getSearchQuery(req.query.search))
+      .select(
+        "ip computerName ipNumeric username fullName password rdp dnsLog anyDesk system metadata"
+      )
+      .sort({ ipNumeric: 1 })
+      .lean();
+
+    // 2) Napravi skup ipEntry _id-eva koji imaju metadata (pokrije slučaj i kad nema ref-a u IpEntry)
+    const ids = entries.map((e) => e._id);
+    const metas = await ComputerMetadata.find({ ipEntry: { $in: ids } })
+      .select("ipEntry")
+      .lean();
+    const metaSet = new Set(metas.map((m) => String(m.ipEntry)));
+
+    // 3) Pripremi podatke za XLSX (dodaj kolonu hasMetadata)
     const data = entries.map((e) => ({
       ip: e.ip,
       computerName: e.computerName,
@@ -47,8 +62,10 @@ router.get("/export-xlsx", async (req, res) => {
       dnsLog: e.dnsLog,
       anyDesk: e.anyDesk,
       system: e.system,
+      hasMetadata: (Boolean(e.metadata) || metaSet.has(String(e._id))) ? "DA" : "NE",
     }));
 
+    // 4) XLSX
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "IP-Entries");
