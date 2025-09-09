@@ -1,7 +1,10 @@
 // models/ComputerMetadata.js
 import mongoose from "mongoose";
 
-/** Parse WMI "/Date(…)/", ISO string or number (ms) into Date */
+/** Omogući da se setteri izvršavaju i kod update query-ja */
+mongoose.set("runSettersOnQuery", true);
+
+/** Parse WMI "/Date(…)/", ISO string ili broj (ms) u Date */
 const parseWmiOrIso = (val) => {
   if (val == null || val === "") return val;
   if (val instanceof Date) return val;
@@ -18,7 +21,25 @@ const parseWmiOrIso = (val) => {
 // Helper: accept single object or array; null/undefined -> []
 const toArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// NEW: normalizacija CPU polja – prihvata objekat ili niz objekata
+// CPU field-level setteri
+const joinPlus = (v) => {
+  if (v == null || v === "") return v;
+  if (Array.isArray(v)) return [...new Set(v.map(String))].join(" + ");
+  return String(v);
+};
+const joinComma = (v) => {
+  if (v == null || v === "") return v;
+  if (Array.isArray(v)) return [...new Set(v.map(String))].join(", ");
+  return String(v);
+};
+const toNum = (v) => {
+  if (v == null || v === "") return v;
+  if (Array.isArray(v)) v = v[0];
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+// CPU normalizacija na nivou celog objekta (ako dođe niz CPU-ova)
 const normalizeCpu = (v) => {
   if (v == null) return v;
   const arr = Array.isArray(v) ? v : [v];
@@ -95,14 +116,15 @@ const biosSchema = new mongoose.Schema(
 
 const cpuSchema = new mongoose.Schema(
   {
-    Name: String,
-    Cores: Number,
-    LogicalCPUs: Number,
-    MaxClockMHz: Number,
-    Socket: String,
+    Name: { type: String, set: joinPlus },
+    Cores: { type: Number, set: toNum },
+    LogicalCPUs: { type: Number, set: toNum },
+    MaxClockMHz: { type: Number, set: toNum },
+    Socket: { type: String, set: joinComma },
   },
   { _id: false }
 );
+cpuSchema.set("runSettersOnQuery", true);
 
 const ramModuleSchema = new mongoose.Schema(
   {
@@ -112,7 +134,7 @@ const ramModuleSchema = new mongoose.Schema(
     Serial: String,
     CapacityGB: Number,
     SpeedMTps: Number,
-    FormFactor: String, // ostavljeno kao String
+    FormFactor: String,
   },
   { _id: false }
 );
@@ -167,10 +189,8 @@ const computerMetadataSchema = new mongoose.Schema(
     Motherboard: motherboardSchema,
     BIOS: biosSchema,
 
-    // KLJUČNO: primeni normalizaciju pri setovanju CPU polja
     CPU: { type: cpuSchema, set: normalizeCpu },
 
-    // Lists with coercion (accept single object or array)
     RAMModules: { type: [ramModuleSchema], set: toArray },
     Storage: { type: [storageSchema], set: toArray },
     GPUs: { type: [gpuSchema], set: toArray },
@@ -180,6 +200,7 @@ const computerMetadataSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+computerMetadataSchema.set("runSettersOnQuery", true);
 
 const ComputerMetadata = mongoose.model(
   "ComputerMetadata",
