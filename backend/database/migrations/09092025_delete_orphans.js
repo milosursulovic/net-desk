@@ -1,8 +1,7 @@
-import mongoose from "mongoose";
 import ComputerMetadata from "./models/ComputerMetadata.js";
 import IpEntry from "./models/ipEntry.js";
 
-async function deleteOrphanComputerMetadata() {
+export default async function () {
   try {
     // prvo pokupi sve validne IpEntry._id vrednosti
     const ipIds = await IpEntry.distinct("_id");
@@ -17,6 +16,3 @@ async function deleteOrphanComputerMetadata() {
     console.error("Greška pri brisanju siročića:", err);
   }
 }
-
-// primer pokretanja
-await deleteOrphanComputerMetadata();
