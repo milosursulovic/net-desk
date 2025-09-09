@@ -56,14 +56,27 @@ const router = createRouter({
   ],
 })
 
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = payload.exp * 1000 // u ms
+    return Date.now() > exp
+  } catch (e) {
+    return true // ako ne može da se parsira, tretiraj kao nevalidan
+  }
+}
+
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
 
-  if (to.meta.requiresAuth && !token) {
-    return next('/login')
+  if (to.meta.requiresAuth) {
+    if (!token || isTokenExpired(token)) {
+      localStorage.removeItem('token') // očisti ako je istekao
+      return next('/login')
+    }
   }
 
-  if (to.meta.guestOnly && token) {
+  if (to.meta.guestOnly && token && !isTokenExpired(token)) {
     return next('/')
   }
 
