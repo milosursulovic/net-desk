@@ -192,9 +192,7 @@ router.get("/stats", async (req, res) => {
     const nicTop = await ComputerMetadata.aggregate([
       { $unwind: { path: "$NICs", preserveNullAndEmptyArrays: false } },
       {
-        $project: {
-          speed: { $toDouble: { $ifNull: ["$NICs.SpeedMbps", 0] } },
-        },
+        $project: { speed: { $toDouble: { $ifNull: ["$NICs.SpeedMbps", 0] } } },
       },
       {
         $project: {
@@ -281,6 +279,36 @@ router.get("/stats", async (req, res) => {
       { $limit: 10 },
     ]);
 
+    const lexarFlagRows = await ComputerMetadata.aggregate([
+      { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
+      {
+        $addFields: {
+          _mediaTypeUpper: {
+            $toUpper: { $ifNull: ["$Storage.MediaType", ""] },
+          },
+          _model: { $ifNull: ["$Storage.Model", ""] },
+        },
+      },
+      {
+        $match: {
+          _model: { $regex: /lexar/i },
+          _mediaTypeUpper: { $regex: /SSD/ },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          ComputerName: { $ifNull: ["$ComputerName", "—"] },
+          "Storage.Model": "$Storage.Model",
+          "Storage.Serial": "$Storage.Serial",
+          "Storage.SizeGB": { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
+          "Storage.MediaType": "$Storage.MediaType",
+          CollectedAt: "$CollectedAt",
+        },
+      },
+      { $sort: { ComputerName: 1 } },
+    ]);
+
     let meta = undefined;
     if (includeMeta) {
       meta = await ComputerMetadata.find({}, META_PROJECTION)
@@ -309,7 +337,14 @@ router.get("/stats", async (req, res) => {
       topManufacturers: manufacturersTop,
       topNicSpeeds: nicTop,
       recencySeries,
-      tables: { lowRam: lowRamRows, oldOs: oldOsRows },
+      tables: {
+        lowRam: lowRamRows,
+        oldOs: oldOsRows,
+        lexarFlag: lexarFlagRows,
+      },
+      flags: {
+        lexarCount: lexarFlagRows.length,
+      },
       meta,
     });
   } catch (e) {
