@@ -2,7 +2,6 @@
   <div
     class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-white text-center px-4"
   >
-    <!-- Logo -->
     <Logo class="mb-6 scale-125" />
 
     <h1 class="text-6xl font-extrabold text-red-600 mb-4 tracking-wider">404</h1>

@@ -27,7 +27,6 @@ export default async function () {
     }
   }
 
-  // Obrisati staru bazu
   await oldConn.dropDatabase();
   console.log(`🗑️ Stara baza '${OLD_DB}' je obrisana.`);
 

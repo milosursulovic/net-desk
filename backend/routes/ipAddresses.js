@@ -35,7 +35,6 @@ const getFilteredEntries = async (search) => {
 
 router.get("/export-xlsx", async (req, res) => {
   try {
-    // 1) Povuci sve entry-je za zadati search + osnovna polja (+ metadata ref ako postoji u šemi)
     const entries = await IpEntry.find(getSearchQuery(req.query.search))
       .select(
         "ip computerName ipNumeric username fullName password rdp dnsLog anyDesk system metadata"
@@ -43,14 +42,12 @@ router.get("/export-xlsx", async (req, res) => {
       .sort({ ipNumeric: 1 })
       .lean();
 
-    // 2) Napravi skup ipEntry _id-eva koji imaju metadata (pokrije slučaj i kad nema ref-a u IpEntry)
     const ids = entries.map((e) => e._id);
     const metas = await ComputerMetadata.find({ ipEntry: { $in: ids } })
       .select("ipEntry")
       .lean();
     const metaSet = new Set(metas.map((m) => String(m.ipEntry)));
 
-    // 3) Pripremi podatke za XLSX (dodaj kolonu hasMetadata)
     const data = entries.map((e) => ({
       ip: e.ip,
       computerName: e.computerName,
@@ -269,7 +266,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// POST/PUT ceo JSON metapodataka na 1-1 model
 router.post("/:ip/metadata", async (req, res, next) => {
   try {
     const out = await setMetadataForIp(req.params.ip, req.body);
@@ -279,7 +275,6 @@ router.post("/:ip/metadata", async (req, res, next) => {
   }
 });
 
-// GET: Vrati IpEntry + populate 1-1 metadata
 router.get("/:ip/metadata", async (req, res, next) => {
   try {
     const row = await IpEntry.findOne({ ip: req.params.ip })
@@ -292,7 +287,6 @@ router.get("/:ip/metadata", async (req, res, next) => {
   }
 });
 
-// PATCH: delimično menjanje (direktno na ComputerMetadata)
 router.patch("/:ip/metadata", async (req, res, next) => {
   try {
     const ipEntry = await IpEntry.findOne({ ip: req.params.ip }).lean();

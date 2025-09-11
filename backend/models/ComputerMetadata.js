@@ -1,7 +1,5 @@
-// models/ComputerMetadata.js
 import mongoose from "mongoose";
 
-/** Parse WMI "/Date(…)/", ISO string ili broj (ms) u Date */
 const parseWmiOrIso = (val) => {
   if (val == null || val === "") return val;
   if (val instanceof Date) return val;
@@ -15,10 +13,8 @@ const parseWmiOrIso = (val) => {
   return null;
 };
 
-// Helper: accept single object or array; null/undefined -> []
 const toArray = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// CPU field-level setteri (rade i kod update)
 const joinPlus = (v) => {
   if (v == null || v === "") return v;
   if (Array.isArray(v)) return [...new Set(v.map(String))].join(" + ");
@@ -36,7 +32,6 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : undefined;
 };
 
-// CPU normalizacija na nivou celog objekta (ako dođe niz CPU-ova)
 const normalizeCpu = (v) => {
   if (v == null) return v;
   const arr = Array.isArray(v) ? v : [v];
@@ -187,7 +182,6 @@ const computerMetadataSchema = new mongoose.Schema(
     Motherboard: motherboardSchema,
     BIOS: biosSchema,
 
-    // CPU: prihvati i niz CPU objekata (normalizeCpu), plus field-level setteri
     CPU: { type: cpuSchema, set: normalizeCpu },
 
     RAMModules: { type: [ramModuleSchema], set: toArray },
@@ -200,25 +194,20 @@ const computerMetadataSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/** ---------- UPDATE MIDDLEWARE (hvata payload i „pegla” CPU / CPU.Name) ---------- */
 function fixCpuShapeInUpdate(update) {
   if (!update || typeof update !== "object") return;
 
-  // helperi nad jednim objektom (root, $set, $setOnInsert)
   const touch = (obj) => {
     if (!obj || typeof obj !== "object") return;
 
-    // Ako se postavlja ceo CPU kao niz objekata
     if (Array.isArray(obj.CPU)) {
       obj.CPU = normalizeCpu(obj.CPU);
     }
 
-    // Ako se postavlja CPU kao objekat ali Name dođe kao niz
     if (obj.CPU && typeof obj.CPU === "object" && Array.isArray(obj.CPU.Name)) {
       obj.CPU.Name = joinPlus(obj.CPU.Name);
     }
 
-    // Ako se direktno setuje "CPU.Name" kao niz (npr. iz klijenta)
     if (Array.isArray(obj["CPU.Name"])) {
       obj["CPU.Name"] = joinPlus(obj["CPU.Name"]);
     }
@@ -236,8 +225,6 @@ for (const op of UPDATE_OPS) {
     fixCpuShapeInUpdate(u);
   });
 }
-
-/** ---------------------------------------------------------------------------- */
 
 const ComputerMetadata = mongoose.model(
   "ComputerMetadata",

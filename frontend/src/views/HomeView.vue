@@ -41,7 +41,6 @@
       </div>
     </div>
 
-    <!-- Search + Pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <input
         v-model="search"
@@ -73,7 +72,6 @@
       </div>
     </div>
 
-    <!-- Toggle passwords -->
     <button
       @click="showPasswords = !showPasswords"
       class="text-sm text-gray-700 underline hover:text-gray-900"
@@ -81,7 +79,6 @@
       {{ showPasswords ? '🔒 Sakrij lozinke' : '🔓 Prikaži lozinke' }}
     </button>
 
-    <!-- Table -->
     <div class="overflow-x-auto rounded-lg shadow mt-4">
       <table class="min-w-full border border-gray-300 text-left bg-white bg-opacity-80">
         <thead class="bg-gray-200 text-sm sm:text-base">
@@ -237,13 +234,10 @@
     </div>
   </transition>
 
-  <!-- METADATA DRAWER -->
   <transition name="fade">
     <div v-if="showMeta" class="fixed inset-0 z-[60] flex" @click.self="closeMetadata">
-      <!-- overlay -->
       <div class="absolute inset-0 bg-black/40"></div>
 
-      <!-- panel -->
       <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
         <div
           class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
@@ -265,7 +259,6 @@
           <div v-else-if="!meta" class="text-gray-600">Nema metapodataka za ovu IP adresu.</div>
 
           <div v-else class="space-y-6">
-            <!-- Summary kartica -->
             <div class="rounded-lg border p-4 bg-slate-50">
               <div class="flex flex-col gap-1">
                 <div><span class="font-semibold">Računar:</span> {{ safe(meta.ComputerName) }}</div>
@@ -280,9 +273,7 @@
               </div>
             </div>
 
-            <!-- Tab-like grid (jednostavno) -->
             <div class="grid grid-cols-1 gap-4">
-              <!-- OS -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">🪟 Operativni sistem</h4>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -297,7 +288,6 @@
                 </div>
               </section>
 
-              <!-- Sistem -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">💻 Sistem</h4>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -310,7 +300,6 @@
                 </div>
               </section>
 
-              <!-- CPU -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">🧠 CPU</h4>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -327,7 +316,6 @@
                 </div>
               </section>
 
-              <!-- RAM modules -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">
                   🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
@@ -362,7 +350,6 @@
                 <div v-else class="text-sm text-gray-500">Nema podataka.</div>
               </section>
 
-              <!-- Storage -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
                 <div v-if="meta.Storage?.length" class="space-y-2">
@@ -394,7 +381,6 @@
                 <div v-else class="text-sm text-gray-500">Nema podataka.</div>
               </section>
 
-              <!-- GPU -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
                 <div v-if="meta.GPUs?.length" class="space-y-2">
@@ -414,7 +400,6 @@
                 <div v-else class="text-sm text-gray-500">Nema podataka.</div>
               </section>
 
-              <!-- Network -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
                 <div v-if="meta.NICs?.length" class="space-y-2">
@@ -433,7 +418,6 @@
                 <div v-else class="text-sm text-gray-500">Nema podataka.</div>
               </section>
 
-              <!-- BIOS / Motherboard -->
               <section class="rounded-lg border p-4">
                 <h4 class="font-semibold mb-2">🧬 BIOS / Matična</h4>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -480,12 +464,11 @@ const showingAvailableModal = ref(false)
 const ipSearch = ref('')
 const router = useRouter()
 const route = useRoute()
-// --- NOVO: state za metadata drawer ---
 const showMeta = ref(false)
 const metaLoading = ref(false)
 const metaError = ref(null)
-const metaEntry = ref(null) // ceo IpEntry sa populate (ili samo entry)
-const meta = ref(null) // ComputerMetadata dokument
+const metaEntry = ref(null)
+const meta = ref(null)
 
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry._id}`)
@@ -620,7 +603,6 @@ const exportToXlsx = async () => {
   }
 }
 
-// Format helperi
 const fmtDate = (d) => {
   if (!d) return '—'
   const dt = new Date(d)
@@ -631,7 +613,6 @@ const fmtGb = (n) => (n || n === 0 ? `${n} GB` : '—')
 const fmtMbps = (n) => (n || n === 0 ? `${n} Mbps` : '—')
 const safe = (v) => v ?? '—'
 
-// Dohvati metadata za dati entry.ip preko backend rute: GET /api/ip/:ip/metadata
 const openMetadata = async (entry) => {
   metaLoading.value = true
   metaError.value = null
@@ -639,14 +620,11 @@ const openMetadata = async (entry) => {
   meta.value = null
   showMeta.value = true
   try {
-    // Backend koji smo ranije dogovorili vraća IpEntry sa populate("metadata")
-    // Primer rute: router.get("/:ip/metadata", requireAuth, ...)
     const res = await fetchWithAuth(
       `/api/protected/ip-addresses/${encodeURIComponent(entry.ip)}/metadata`
     )
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    // data može biti IpEntry (sa .metadata) ili direktno .metadata; podrži oba
     meta.value = data?.metadata ?? data
   } catch (e) {
     console.error(e)

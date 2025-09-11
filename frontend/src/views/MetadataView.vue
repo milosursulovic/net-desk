@@ -18,7 +18,6 @@
       </div>
     </div>
 
-    <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         title="Ukupno mašina"
@@ -46,7 +45,6 @@
       />
     </div>
 
-    <!-- Extra KPIs -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         title="Jedinstvenih korisnika"
@@ -74,7 +72,6 @@
       />
     </div>
 
-    <!-- Coverage + Recency + OS -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">📈 Pokrivenost metapodacima</h2>
@@ -115,7 +112,6 @@
       </div>
     </div>
 
-    <!-- Hardware breakdowns -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🏭 Proizvođači sistema (Top 6)</h2>
@@ -164,7 +160,6 @@
       </div>
     </div>
 
-    <!-- CPU + Disks -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🧮 CPU modeli (Top 5)</h2>
@@ -194,7 +189,6 @@
       </div>
     </div>
 
-    <!-- Tables -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">🔍 Najmanje RAM-a (Top 10)</h2>
@@ -226,7 +220,6 @@ import { ref, computed, onMounted, h, defineComponent } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import * as XLSX from 'xlsx'
 
-/* Mini komponente */
 const KpiCard = defineComponent({
   name: 'KpiCard',
   props: { title: String, value: [String, Number], sub: String, icon: String },
@@ -343,12 +336,10 @@ const DataTable = defineComponent({
   },
 })
 
-/* State */
-const meta = ref([]) // list of ComputerMetadata
-const totalIpEntries = ref(0) // broj IP unosa
+const meta = ref([])
+const totalIpEntries = ref(0)
 const loading = ref(false)
 
-/* Fetch */
 async function fetchStatsPreferServer() {
   try {
     const r = await fetchWithAuth('/api/protected/metadata/stats')
@@ -414,7 +405,6 @@ onMounted(async () => {
   await refreshAll()
 })
 
-/* Derived & helpers */
 function cpuNameOf(x) {
   return (
     x?.CPU?.Name ||
@@ -588,7 +578,6 @@ const stats = computed(() => {
   }
 })
 
-/* TABLES (FIX) */
 const tables = computed(() => {
   const m = meta.value
 
@@ -629,7 +618,6 @@ const tables = computed(() => {
   return { lowRam: lowRam || [], oldOs: oldOs || [], topStorage: topStorage || [] }
 })
 
-/* Helpers */
 function sum(arr) {
   return arr.reduce((a, b) => a + (Number(b) || 0), 0)
 }
@@ -674,7 +662,6 @@ function groupCount(items) {
     .sort((a, b) => b.count - a.count)
 }
 
-/* Export XLSX */
 function exportXlsx() {
   const rows = meta.value.map((x) => ({
     ComputerName: x?.ComputerName || '',

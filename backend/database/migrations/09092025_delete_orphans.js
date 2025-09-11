@@ -3,10 +3,8 @@ import IpEntry from "./models/ipEntry.js";
 
 export default async function () {
   try {
-    // prvo pokupi sve validne IpEntry._id vrednosti
     const ipIds = await IpEntry.distinct("_id");
 
-    // obriši sve ComputerMetadata čiji ipEntry nije u toj listi
     const result = await ComputerMetadata.deleteMany({
       ipEntry: { $nin: ipIds },
     });

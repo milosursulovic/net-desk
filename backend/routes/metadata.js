@@ -1,11 +1,9 @@
-// routes/metadataRoutes.js
 import express from "express";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
 
 const router = express.Router();
 
-// zajednička projekcija koja pokriva sve sto front čita
 const META_PROJECTION = {
   ComputerName: 1,
   UserName: 1,
@@ -37,7 +35,6 @@ const META_PROJECTION = {
   updatedAt: 1,
 };
 
-// helper: median u JS (stabilno za sve verzije MongoDB)
 function median(nums) {
   if (!nums.length) return 0;
   const s = [...nums].sort((a, b) => a - b);
@@ -46,7 +43,6 @@ function median(nums) {
 }
 const round1 = (n) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : 0);
 
-// GET /api/protected/metadata  (paginirano)
 router.get("/", async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -71,19 +67,16 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/protected/metadata/stats?includeMeta=true
 router.get("/stats", async (req, res) => {
   try {
     const includeMeta =
       String(req.query.includeMeta || "").toLowerCase() === "true";
 
-    // 1) total-i za coverage
     const [totalIpEntries, totalWithMeta] = await Promise.all([
       IpEntry.estimatedDocumentCount(),
       ComputerMetadata.estimatedDocumentCount(),
     ]);
 
-    // 2) RAM total po mašini (System.TotalRAM_GB ili suma RAMModules.CapacityGB)
     const ramAgg = await ComputerMetadata.aggregate([
       {
         $addFields: {
@@ -105,7 +98,6 @@ router.get("/stats", async (req, res) => {
     const medRam = median(ramTotals);
     const maxRam = ramTotals.length ? Math.max(...ramTotals) : 0;
 
-    // 3) STORAGE (SSD/HDD i ukupni GB)
     const storageAgg = await ComputerMetadata.aggregate([
       { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
       {
@@ -145,7 +137,6 @@ router.get("/stats", async (req, res) => {
     ]);
     const storage = storageAgg[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
 
-    // 4) GPU prisutnost i prosečan VRAM (preko svih GPU-a)
     const [withGpu, vramAgg] = await Promise.all([
       ComputerMetadata.countDocuments({ "GPUs.0": { $exists: true } }),
       ComputerMetadata.aggregate([
@@ -162,7 +153,6 @@ router.get("/stats", async (req, res) => {
     ]);
     const avgVramGb = vramAgg[0]?.avgVramGb || 0;
 
-    // 5) OS distribucija (Top 5)
     const osTop = await ComputerMetadata.aggregate([
       {
         $project: {
@@ -185,7 +175,6 @@ router.get("/stats", async (req, res) => {
       { $project: { _id: 0, key: "$_id", count: 1 } },
     ]);
 
-    // 6) Proizvođači sistema (Top 6)
     const manufacturersTop = await ComputerMetadata.aggregate([
       {
         $project: {
@@ -200,7 +189,6 @@ router.get("/stats", async (req, res) => {
       { $project: { _id: 0, key: "$_id", count: 1 } },
     ]);
 
-    // 7) Brzine mreže (Top 5) uz normalizaciju ~1Gbps => 1000
     const nicTop = await ComputerMetadata.aggregate([
       { $unwind: { path: "$NICs", preserveNullAndEmptyArrays: false } },
       {
@@ -225,9 +213,8 @@ router.get("/stats", async (req, res) => {
       { $project: { _id: 0, key: { $toString: "$_id" }, count: 1 } },
     ]);
 
-    // 8) Recency (poslednjih 14 dana, grupisano po danu)
     const now = new Date();
-    const start = new Date(now.getTime() - 13 * 24 * 3600 * 1000); // 14 dana unazad
+    const start = new Date(now.getTime() - 13 * 24 * 3600 * 1000);
     const recencyAgg = await ComputerMetadata.aggregate([
       { $match: { CollectedAt: { $gte: start } } },
       {
@@ -255,7 +242,6 @@ router.get("/stats", async (req, res) => {
       return out;
     })();
 
-    // 9) Tabele: low RAM (Top 10) i old OS install (Top 10)
     const lowRamRows = await ComputerMetadata.aggregate([
       {
         $addFields: {
@@ -295,7 +281,6 @@ router.get("/stats", async (req, res) => {
       { $limit: 10 },
     ]);
 
-    // 10) Opciono vrati i “meta” (lagani projection) — može biti veliko; ograniči brojem
     let meta = undefined;
     if (includeMeta) {
       meta = await ComputerMetadata.find({}, META_PROJECTION)
@@ -325,7 +310,7 @@ router.get("/stats", async (req, res) => {
       topNicSpeeds: nicTop,
       recencySeries,
       tables: { lowRam: lowRamRows, oldOs: oldOsRows },
-      meta, // kad includeMeta=true; inače undefined
+      meta,
     });
   } catch (e) {
     console.error(e);

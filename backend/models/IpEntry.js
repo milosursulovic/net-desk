@@ -1,4 +1,3 @@
-// models/ipEntry.js
 import mongoose from "mongoose";
 
 const ipEntrySchema = new mongoose.Schema(
@@ -14,7 +13,6 @@ const ipEntrySchema = new mongoose.Schema(
     anyDesk: String,
     system: String,
 
-    // (opciono) pokazivač na 1-1 ComputerMetadata
     metadata: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ComputerMetadata",
@@ -25,7 +23,6 @@ const ipEntrySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// izračunaj ipNumeric
 ipEntrySchema.pre("save", function (next) {
   if (this.ip) {
     this.ipNumeric = this.ip

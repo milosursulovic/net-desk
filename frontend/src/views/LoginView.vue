@@ -3,7 +3,6 @@
     class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-slate-100"
   >
     <div class="bg-white/70 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md">
-      <!-- Logo -->
       <div class="flex justify-center mb-6">
         <Logo />
       </div>

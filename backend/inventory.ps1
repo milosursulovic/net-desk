@@ -1,22 +1,14 @@
-<# 
-  Hardware Inventory + JWT POST (Windows, PowerShell 5.1)
-  - Prikuplja: OS, CPU, RAM (po modulu), Storage, GPU, BIOS, Motherboard, NIC
-  - Snima lokalno JSON/CSV (opciono)
-  - Login -> JWT -> POST na /api/protected/ip-addresses/:ip/metadata
-#>
-
 param(
     [string]$AuthUrl = "https://10.230.62.81:3000/api/auth/login",
     [string]$ApiBase = "https://10.230.62.81:3000/api/protected/ip-addresses",
     [string]$Username = "admin",
     [string]$Password = "password",
-    [string]$Ip = $null,  # ako nije dato, autodetekcija privatnog IPv4
+    [string]$Ip = $null, 
     [string]$OutputDir = "$env:ProgramData\HW_Inventory",
-    [switch]$WriteFiles,         # ako dodaš -WriteFiles, snimi JSON/CSV lokalno
-    [switch]$TrustAllCerts       # za self-signed TLS na localhostu
+    [switch]$WriteFiles,
+    [switch]$TrustAllCerts
 )
 
-# ===== Helpers =====
 Function Try-Get { param([scriptblock]$Code) try { & $Code } catch { $null } }
 
 function Get-MyIPv4 {
@@ -34,7 +26,6 @@ function Get-MyIPv4 {
 }
 
 function Get-MediaType {
-    # HDD/SSD/NVMe best-effort
     param($wmiDrive, $physDisk)
     if ($physDisk) {
         if ($physDisk.MediaType) { return [string]$physDisk.MediaType }
@@ -46,7 +37,6 @@ function Get-MediaType {
     return 'HDD or Unknown'
 }
 
-# Self-signed TLS workaround (PS 5.1 nema -SkipCertificateCheck)
 if ($TrustAllCerts) {
     try {
         @"
@@ -61,7 +51,6 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
     catch { }
 }
 
-# ===== Kolekcija podataka =====
 $computer = $env:COMPUTERNAME
 $now = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 
@@ -82,7 +71,6 @@ if ($gp) {
     if ($pd) { $physDisks = $pd }
 }
 
-# RAM modules
 $ramList = @()
 $totalRamBytes = 0
 foreach ($m in ($mem | Where-Object { $_ })) {
@@ -101,7 +89,6 @@ foreach ($m in ($mem | Where-Object { $_ })) {
     }
 }
 
-# Storage
 $storageList = @()
 foreach ($d in ($dd | Where-Object { $_ })) {
     $pdMatch = $null
@@ -126,7 +113,6 @@ foreach ($d in ($dd | Where-Object { $_ })) {
     }
 }
 
-# GPUs
 $gpuList = @()
 foreach ($g in ($gpus | Where-Object { $_ })) {
     $vramGB = if ($g.AdapterRAM) { [math]::Round([int64]$g.AdapterRAM / 1GB, 2) } else { $null }
@@ -137,7 +123,6 @@ foreach ($g in ($gpus | Where-Object { $_ })) {
     }
 }
 
-# NICs
 $nicList = @()
 foreach ($n in ($nics | Where-Object { $_ })) {
     $speedMbps = if ($n.Speed) { [math]::Round([double]$n.Speed / 1MB, 0) } else { $null }
@@ -148,7 +133,6 @@ foreach ($n in ($nics | Where-Object { $_ })) {
     }
 }
 
-# Inventar objekat
 $inventory = [pscustomobject]@{
     CollectedAt  = (Get-Date).ToString("s")
     ComputerName = $computer
@@ -188,7 +172,6 @@ $inventory = [pscustomobject]@{
     PSU          = "Unknown (not programmatically detectable on standard Windows PCs)"
 }
 
-# ===== Lokalno snimanje (opciono) =====
 if ($WriteFiles) {
     New-Item -ItemType Directory -Path $OutputDir -ErrorAction SilentlyContinue | Out-Null
     $jsonPath = Join-Path $OutputDir "$computer-$now.json"
@@ -220,11 +203,9 @@ if ($WriteFiles) {
     Write-Host "  CSV : $csvPath"
 }
 
-# ===== IP cilj =====
 $targetIp = if ($Ip) { $Ip } else { Get-MyIPv4 }
 if (-not $targetIp) { throw "Nije pronađen cilj IP (ni parametar -Ip ni autodetekcija)." }
 
-# ===== AUTH + POST =====
 try {
     $loginBody = @{ username = $Username; password = $Password } | ConvertTo-Json
     $loginResp = Invoke-RestMethod -Method Post -Uri $AuthUrl -ContentType 'application/json' -Body $loginBody
