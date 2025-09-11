@@ -65,6 +65,7 @@ const form = ref({
   dnsLog: '',
   anyDesk: '',
   system: '',
+  department: '',
 })
 
 const fields = [
@@ -77,6 +78,7 @@ const fields = [
   { name: 'dnsLog', label: 'DNS Log' },
   { name: 'anyDesk', label: 'AnyDesk' },
   { name: 'system', label: 'Sistem' },
+  { name: 'department', label: 'Odeljenje' },
 ]
 
 const handleSubmit = async () => {
