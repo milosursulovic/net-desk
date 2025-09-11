@@ -19,6 +19,7 @@ const getSearchQuery = (search = "") => ({
     { dnsLog: { $regex: search, $options: "i" } },
     { anyDesk: { $regex: search, $options: "i" } },
     { system: { $regex: search, $options: "i" } },
+    { department: { $regex: search, $options: "i" } },
   ],
 });
 
@@ -37,7 +38,7 @@ router.get("/export-xlsx", async (req, res) => {
   try {
     const entries = await IpEntry.find(getSearchQuery(req.query.search))
       .select(
-        "ip computerName ipNumeric username fullName password rdp dnsLog anyDesk system metadata"
+        "ip computerName ipNumeric username fullName password rdp dnsLog anyDesk system department metadata"
       )
       .sort({ ipNumeric: 1 })
       .lean();
@@ -59,6 +60,7 @@ router.get("/export-xlsx", async (req, res) => {
       dnsLog: e.dnsLog,
       anyDesk: e.anyDesk,
       system: e.system,
+      department: e.department,
       hasMetadata: (Boolean(e.metadata) || metaSet.has(String(e._id))) ? "DA" : "NE",
     }));
 
@@ -116,6 +118,7 @@ router.post("/import", upload.single("file"), async (req, res) => {
           dnsLog: row.dnsLog?.trim() || "",
           anyDesk: row.anyDesk?.trim() || "",
           system: row.system?.trim() || "",
+          department: row.department?.trim() || "",
         };
       })
       .filter(Boolean);
@@ -172,6 +175,7 @@ router.get("/", async (req, res) => {
       "dnsLog",
       "anyDesk",
       "system",
+      "department",
     ];
 
     let safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "ip";
@@ -217,6 +221,7 @@ router.post("/", async (req, res) => {
     dnsLog,
     anyDesk,
     system,
+    department
   } = req.body;
   if (!ip)
     return res.status(400).json({ message: "IP adresa je obavezno polje" });
@@ -232,6 +237,7 @@ router.post("/", async (req, res) => {
       dnsLog,
       anyDesk,
       system,
+      department
     });
     await newEntry.save();
     res.status(201).json(newEntry);

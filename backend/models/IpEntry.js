@@ -12,7 +12,7 @@ const ipEntrySchema = new mongoose.Schema(
     dnsLog: String,
     anyDesk: String,
     system: String,
-
+    department: String,
     metadata: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ComputerMetadata",
