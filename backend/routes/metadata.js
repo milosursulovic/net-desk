@@ -1,6 +1,7 @@
 import express from "express";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
+import { ah } from "../utils/asyncHandler.js";
 
 const router = express.Router();
 
@@ -43,8 +44,10 @@ function median(nums) {
 }
 const round1 = (n) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : 0);
 
-router.get("/", async (req, res) => {
-  try {
+// ---- List ----
+router.get(
+  "/",
+  ah(async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -61,14 +64,13 @@ router.get("/", async (req, res) => {
       total,
       totalPages: Math.ceil(total / limit),
     });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Failed to list metadata" });
-  }
-});
+  })
+);
 
-router.get("/stats", async (req, res) => {
-  try {
+// ---- Stats ----
+router.get(
+  "/stats",
+  ah(async (req, res) => {
     const includeMeta =
       String(req.query.includeMeta || "").toLowerCase() === "true";
 
@@ -77,19 +79,22 @@ router.get("/stats", async (req, res) => {
       ComputerMetadata.estimatedDocumentCount(),
     ]);
 
-    const ramAgg = await ComputerMetadata.aggregate([
-      {
-        $addFields: {
-          ramTotal: {
-            $ifNull: [
-              "$System.TotalRAM_GB",
-              { $sum: "$RAMModules.CapacityGB" },
-            ],
+    const ramAgg = await ComputerMetadata.aggregate(
+      [
+        {
+          $addFields: {
+            ramTotal: {
+              $ifNull: [
+                "$System.TotalRAM_GB",
+                { $sum: "$RAMModules.CapacityGB" },
+              ],
+            },
           },
         },
-      },
-      { $project: { ramTotal: { $ifNull: ["$ramTotal", 0] } } },
-    ]);
+        { $project: { ramTotal: { $ifNull: ["$ramTotal", 0] } } },
+      ],
+      { allowDiskUse: true }
+    );
 
     const ramTotals = ramAgg.map((x) => Number(x.ramTotal) || 0);
     const avgRam = ramTotals.length
@@ -98,218 +103,247 @@ router.get("/stats", async (req, res) => {
     const medRam = median(ramTotals);
     const maxRam = ramTotals.length ? Math.max(...ramTotals) : 0;
 
-    const storageAgg = await ComputerMetadata.aggregate([
-      { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
-      {
-        $group: {
-          _id: null,
-          totalGb: { $sum: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } } },
-          ssdCount: {
-            $sum: {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: { $toUpper: "$Storage.MediaType" },
-                    regex: /SSD/,
-                  },
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          hddCount: {
-            $sum: {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: { $toUpper: "$Storage.MediaType" },
-                    regex: /HDD/,
-                  },
-                },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]);
-    const storage = storageAgg[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
-
-    const [withGpu, vramAgg] = await Promise.all([
-      ComputerMetadata.countDocuments({ "GPUs.0": { $exists: true } }),
-      ComputerMetadata.aggregate([
-        { $unwind: { path: "$GPUs", preserveNullAndEmptyArrays: false } },
+    const storageAgg = await ComputerMetadata.aggregate(
+      [
+        { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
         {
           $group: {
             _id: null,
-            avgVramGb: {
-              $avg: { $toDouble: { $ifNull: ["$GPUs.VRAM_GB", 0] } },
+            totalGb: {
+              $sum: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
             },
-          },
-        },
-      ]),
-    ]);
-    const avgVramGb = vramAgg[0]?.avgVramGb || 0;
-
-    const osTop = await ComputerMetadata.aggregate([
-      {
-        $project: {
-          key: {
-            $trim: {
-              input: {
-                $concat: [
-                  { $ifNull: ["$OS.Caption", ""] },
-                  " ",
-                  { $ifNull: ["$OS.Version", ""] },
+            ssdCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $regexMatch: {
+                      input: { $toUpper: "$Storage.MediaType" },
+                      regex: /SSD/,
+                    },
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            hddCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $regexMatch: {
+                      input: { $toUpper: "$Storage.MediaType" },
+                      regex: /HDD/,
+                    },
+                  },
+                  1,
+                  0,
                 ],
               },
             },
           },
         },
-      },
-      { $group: { _id: "$key", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 5 },
-      { $project: { _id: 0, key: "$_id", count: 1 } },
-    ]);
+      ],
+      { allowDiskUse: true }
+    );
+    const storage = storageAgg[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
 
-    const manufacturersTop = await ComputerMetadata.aggregate([
-      {
-        $project: {
-          key: {
-            $ifNull: ["$System.Manufacturer", "$Motherboard.Manufacturer"],
+    const [withGpu, vramAgg] = await Promise.all([
+      ComputerMetadata.countDocuments({ "GPUs.0": { $exists: true } }),
+      ComputerMetadata.aggregate(
+        [
+          { $unwind: { path: "$GPUs", preserveNullAndEmptyArrays: false } },
+          {
+            $group: {
+              _id: null,
+              avgVramGb: {
+                $avg: { $toDouble: { $ifNull: ["$GPUs.VRAM_GB", 0] } },
+              },
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      ),
+    ]);
+    const avgVramGb = vramAgg[0]?.avgVramGb || 0;
+
+    const osTop = await ComputerMetadata.aggregate(
+      [
+        {
+          $project: {
+            key: {
+              $trim: {
+                input: {
+                  $concat: [
+                    { $ifNull: ["$OS.Caption", ""] },
+                    " ",
+                    { $ifNull: ["$OS.Version", ""] },
+                  ],
+                },
+              },
+            },
           },
         },
-      },
-      { $group: { _id: "$key", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 6 },
-      { $project: { _id: 0, key: "$_id", count: 1 } },
-    ]);
+        { $group: { _id: "$key", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        { $project: { _id: 0, key: "$_id", count: 1 } },
+      ],
+      { allowDiskUse: true }
+    );
 
-    const nicTop = await ComputerMetadata.aggregate([
-      { $unwind: { path: "$NICs", preserveNullAndEmptyArrays: false } },
-      {
-        $project: { speed: { $toDouble: { $ifNull: ["$NICs.SpeedMbps", 0] } } },
-      },
-      {
-        $project: {
-          speedNorm: {
-            $cond: [
-              { $and: [{ $gte: ["$speed", 950] }, { $lte: ["$speed", 1100] }] },
-              1000,
-              "$speed",
-            ],
+    const manufacturersTop = await ComputerMetadata.aggregate(
+      [
+        {
+          $project: {
+            key: {
+              $ifNull: ["$System.Manufacturer", "$Motherboard.Manufacturer"],
+            },
           },
         },
-      },
-      { $group: { _id: "$speedNorm", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 5 },
-      { $project: { _id: 0, key: { $toString: "$_id" }, count: 1 } },
-    ]);
+        { $group: { _id: "$key", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 6 },
+        { $project: { _id: 0, key: "$_id", count: 1 } },
+      ],
+      { allowDiskUse: true }
+    );
+
+    const nicTop = await ComputerMetadata.aggregate(
+      [
+        { $unwind: { path: "$NICs", preserveNullAndEmptyArrays: false } },
+        {
+          $project: {
+            speed: { $toDouble: { $ifNull: ["$NICs.SpeedMbps", 0] } },
+          },
+        },
+        {
+          $project: {
+            speedNorm: {
+              $cond: [
+                {
+                  $and: [{ $gte: ["$speed", 950] }, { $lte: ["$speed", 1100] }],
+                },
+                1000,
+                "$speed",
+              ],
+            },
+          },
+        },
+        { $group: { _id: "$speedNorm", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        { $project: { _id: 0, key: { $toString: "$_id" }, count: 1 } },
+      ],
+      { allowDiskUse: true }
+    );
 
     const now = new Date();
     const start = new Date(now.getTime() - 13 * 24 * 3600 * 1000);
-    const recencyAgg = await ComputerMetadata.aggregate([
-      { $match: { CollectedAt: { $gte: start } } },
-      {
-        $group: {
-          _id: { $dateTrunc: { date: "$CollectedAt", unit: "day" } },
-          count: { $sum: 1 },
+    const recencyAgg = await ComputerMetadata.aggregate(
+      [
+        { $match: { CollectedAt: { $gte: start } } },
+        {
+          $group: {
+            _id: { $dateTrunc: { date: "$CollectedAt", unit: "day" } },
+            count: { $sum: 1 },
+          },
         },
-      },
-      { $project: { _id: 0, day: "$_id", count: 1 } },
-      { $sort: { day: 1 } },
-    ]);
-    const recencySeries = (() => {
-      const map = new Map(
-        recencyAgg.map((d) => [new Date(d.day).toDateString(), d.count])
+        { $project: { _id: 0, day: "$_id", count: 1 } },
+        { $sort: { day: 1 } },
+      ],
+      { allowDiskUse: true }
+    );
+    const recencyMap = new Map(
+      recencyAgg.map((d) => [new Date(d.day).toDateString(), d.count])
+    );
+    const recencySeries = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - (13 - i)
       );
-      const out = [];
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - i
-        );
-        out.push(map.get(d.toDateString()) || 0);
-      }
-      return out;
-    })();
+      return recencyMap.get(d.toDateString()) || 0;
+    });
 
-    const lowRamRows = await ComputerMetadata.aggregate([
-      {
-        $addFields: {
-          TotalRAM_GB_calc: {
-            $ifNull: [
-              "$System.TotalRAM_GB",
-              { $sum: "$RAMModules.CapacityGB" },
-            ],
+    const lowRamRows = await ComputerMetadata.aggregate(
+      [
+        {
+          $addFields: {
+            TotalRAM_GB_calc: {
+              $ifNull: [
+                "$System.TotalRAM_GB",
+                { $sum: "$RAMModules.CapacityGB" },
+              ],
+            },
           },
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          ComputerName: { $ifNull: ["$ComputerName", "—"] },
-          "OS.Caption": "$OS.Caption",
-          CollectedAt: "$CollectedAt",
-          TotalRAM_GB: { $ifNull: ["$TotalRAM_GB_calc", 0] },
-        },
-      },
-      { $sort: { TotalRAM_GB: 1 } },
-      { $limit: 10 },
-    ]);
-
-    const oldOsRows = await ComputerMetadata.aggregate([
-      {
-        $project: {
-          _id: 0,
-          ComputerName: { $ifNull: ["$ComputerName", "—"] },
-          "OS.Caption": "$OS.Caption",
-          "OS.InstallDate": "$OS.InstallDate",
-          CollectedAt: "$CollectedAt",
-        },
-      },
-      { $match: { "OS.InstallDate": { $ne: null } } },
-      { $sort: { "OS.InstallDate": 1 } },
-      { $limit: 10 },
-    ]);
-
-    const lexarFlagRows = await ComputerMetadata.aggregate([
-      { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
-      {
-        $addFields: {
-          _mediaTypeUpper: {
-            $toUpper: { $ifNull: ["$Storage.MediaType", ""] },
+        {
+          $project: {
+            _id: 0,
+            ComputerName: { $ifNull: ["$ComputerName", "—"] },
+            "OS.Caption": "$OS.Caption",
+            CollectedAt: "$CollectedAt",
+            TotalRAM_GB: { $ifNull: ["$TotalRAM_GB_calc", 0] },
           },
-          _model: { $ifNull: ["$Storage.Model", ""] },
         },
-      },
-      {
-        $match: {
-          _model: { $regex: /lexar/i },
-          _mediaTypeUpper: { $regex: /SSD/ },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          ComputerName: { $ifNull: ["$ComputerName", "—"] },
-          Storage: {
-            Model: "$Storage.Model",
-            Serial: "$Storage.Serial",
-            SizeGB: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
-            MediaType: "$Storage.MediaType",
+        { $sort: { TotalRAM_GB: 1 } },
+        { $limit: 10 },
+      ],
+      { allowDiskUse: true }
+    );
+
+    const oldOsRows = await ComputerMetadata.aggregate(
+      [
+        {
+          $project: {
+            _id: 0,
+            ComputerName: { $ifNull: ["$ComputerName", "—"] },
+            "OS.Caption": "$OS.Caption",
+            "OS.InstallDate": "$OS.InstallDate",
+            CollectedAt: "$CollectedAt",
           },
-          CollectedAt: "$CollectedAt",
         },
-      },
-      { $sort: { ComputerName: 1 } },
-    ]);
+        { $match: { "OS.InstallDate": { $ne: null } } },
+        { $sort: { "OS.InstallDate": 1 } },
+        { $limit: 10 },
+      ],
+      { allowDiskUse: true }
+    );
+
+    const lexarFlagRows = await ComputerMetadata.aggregate(
+      [
+        { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
+        {
+          $addFields: {
+            _mediaTypeUpper: {
+              $toUpper: { $ifNull: ["$Storage.MediaType", ""] },
+            },
+            _model: { $ifNull: ["$Storage.Model", ""] },
+          },
+        },
+        {
+          $match: {
+            _model: { $regex: /lexar/i },
+            _mediaTypeUpper: { $regex: /SSD/ },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            ComputerName: { $ifNull: ["$ComputerName", "—"] },
+            Storage: {
+              Model: "$Storage.Model",
+              Serial: "$Storage.Serial",
+              SizeGB: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
+              MediaType: "$Storage.MediaType",
+            },
+            CollectedAt: "$CollectedAt",
+          },
+        },
+        { $sort: { ComputerName: 1 } },
+      ],
+      { allowDiskUse: true }
+    );
 
     let meta = undefined;
     if (includeMeta) {
@@ -344,15 +378,10 @@ router.get("/stats", async (req, res) => {
         oldOs: oldOsRows,
         lexarFlag: lexarFlagRows,
       },
-      flags: {
-        lexarCount: lexarFlagRows.length,
-      },
+      flags: { lexarCount: lexarFlagRows.length },
       meta,
     });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Failed to build metadata stats" });
-  }
-});
+  })
+);
 
 export default router;

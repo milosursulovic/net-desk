@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+/** Helpers **/
 const parseWmiOrIso = (val) => {
   if (val == null || val === "") return val;
   if (val instanceof Date) return val;
@@ -71,6 +72,7 @@ const normalizeCpu = (v) => {
   return out;
 };
 
+/** Sub-schemes **/
 const osSchema = new mongoose.Schema(
   {
     Caption: String,
@@ -163,6 +165,7 @@ const nicSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/** Main schema **/
 const computerMetadataSchema = new mongoose.Schema(
   {
     ipEntry: {
@@ -173,7 +176,7 @@ const computerMetadataSchema = new mongoose.Schema(
       index: true,
     },
 
-    CollectedAt: { type: Date, set: parseWmiOrIso },
+    CollectedAt: { type: Date, set: parseWmiOrIso, index: true },
     ComputerName: { type: String, index: true },
     UserName: String,
 
@@ -194,6 +197,7 @@ const computerMetadataSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/** Update shape fixer for CPU **/
 function fixCpuShapeInUpdate(update) {
   if (!update || typeof update !== "object") return;
 
@@ -203,11 +207,9 @@ function fixCpuShapeInUpdate(update) {
     if (Array.isArray(obj.CPU)) {
       obj.CPU = normalizeCpu(obj.CPU);
     }
-
     if (obj.CPU && typeof obj.CPU === "object" && Array.isArray(obj.CPU.Name)) {
       obj.CPU.Name = joinPlus(obj.CPU.Name);
     }
-
     if (Array.isArray(obj["CPU.Name"])) {
       obj["CPU.Name"] = joinPlus(obj["CPU.Name"]);
     }
@@ -217,18 +219,22 @@ function fixCpuShapeInUpdate(update) {
   touch(update.$set);
   touch(update.$setOnInsert);
 }
-
-const UPDATE_OPS = ["findOneAndUpdate", "updateOne", "updateMany"];
-for (const op of UPDATE_OPS) {
+for (const op of ["findOneAndUpdate", "updateOne", "updateMany"]) {
   computerMetadataSchema.pre(op, function () {
-    const u = this.getUpdate();
-    fixCpuShapeInUpdate(u);
+    fixCpuShapeInUpdate(this.getUpdate());
   });
 }
+
+/** Useful indexes for agregacije/filtriranje **/
+computerMetadataSchema.index({ "OS.InstallDate": 1 });
+computerMetadataSchema.index({ "System.TotalRAM_GB": 1 });
+computerMetadataSchema.index({ "NICs.SpeedMbps": 1 });
+computerMetadataSchema.index({ "Storage.MediaType": 1 });
+computerMetadataSchema.index({ "Storage.SizeGB": 1 });
+computerMetadataSchema.index({ "GPUs.VRAM_GB": 1 });
 
 const ComputerMetadata = mongoose.model(
   "ComputerMetadata",
   computerMetadataSchema
 );
-
 export default ComputerMetadata;
