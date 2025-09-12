@@ -1,5 +1,5 @@
 <template>
-  <div class="glass-container">
+  <main class="glass-container relative">
     <!-- Header / Toolbar -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🖥️ IP Adrese</h1>
@@ -49,7 +49,7 @@
       </div>
     </div>
 
-    <!-- Search + pagination -->
+    <!-- Search + sort + pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <input
         v-model="search"
@@ -58,6 +58,23 @@
         placeholder="🔎 Pretraga..."
         class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
+
+      <!-- Sort kontrole -->
+      <div class="w-full sm:w-auto flex items-center gap-2">
+        <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
+          <option v-for="o in sortOptions" :key="o.value" :value="o.value">
+            {{ o.label }}
+          </option>
+        </select>
+
+        <button
+          @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+          class="px-3 py-2 border rounded text-sm"
+          :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'"
+        >
+          {{ sortOrder === 'asc' ? '↑ Rastuće' : '↓ Opadajuće' }}
+        </button>
+      </div>
 
       <div class="flex flex-col items-start sm:items-end gap-1">
         <div class="flex items-center gap-2">
@@ -110,8 +127,8 @@
 
           <div class="flex items-center gap-2">
             <span
-              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
               v-if="entry.department"
+              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
               title="Odeljenje"
             >
               🏢 {{ entry.department }}
@@ -191,406 +208,418 @@
         </div>
       </article>
     </div>
-  </div>
 
-  <!-- Toast -->
-  <transition name="fade">
-    <div
-      v-if="copiedText"
-      class="fixed top-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-[999]"
-    >
-      {{ copiedText }}
-    </div>
-  </transition>
+    <!-- Toast -->
+    <transition name="fade">
+      <div
+        v-if="copiedText"
+        class="fixed top-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-[999]"
+      >
+        {{ copiedText }}
+      </div>
+    </transition>
 
-  <!-- Modal: Slobodne IP -->
-  <transition name="fade">
-    <div
-      v-if="showingAvailableModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      @click.self="closeAvailableModal"
-    >
-      <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg">
-        <div class="mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              📡 Slobodne IP adrese
-            </h2>
+    <!-- Modal: Slobodne IP -->
+    <transition name="fade">
+      <div
+        v-if="showingAvailableModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        @click.self="closeAvailableModal"
+      >
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg">
+          <div class="mb-4">
+            <div class="flex justify-between items-center mb-2">
+              <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                📡 Slobodne IP adrese
+              </h2>
+              <button
+                @click="closeAvailableModal"
+                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <input
+              v-model="ipSearch"
+              type="text"
+              placeholder="🔍 Pretraga IP adresa..."
+              class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          <div v-if="availableIps.length > 0">
+            <ul class="space-y-2 max-h-60 overflow-y-auto">
+              <li
+                v-for="(ip, index) in filteredAvailableIps"
+                :key="index"
+                @click="goToAddWithIp(ip)"
+                class="p-2 bg-slate-100 rounded hover:bg-slate-200 transition flex justify-between items-center cursor-pointer"
+              >
+                <span>{{ ip }}</span>
+                <button
+                  @click.stop="copyToClipboard(ip, `IP ${ip} kopiran!`)"
+                  class="text-blue-500 text-sm hover:underline"
+                >
+                  📋 Kopiraj
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div v-else class="text-gray-500 text-center">Nema slobodnih IP adresa.</div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Modal: Metapodaci -->
+    <transition name="fade">
+      <div v-if="showMeta" class="fixed inset-0 z-[60] flex" @click.self="closeMetadata">
+        <div class="absolute inset-0 bg-black/40"></div>
+
+        <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
+          <div
+            class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
+          >
+            <h3 class="text-lg font-semibold">
+              🧾 Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
+            </h3>
             <button
-              @click="closeAvailableModal"
+              @click="closeMetadata"
               class="text-gray-500 hover:text-red-600 text-2xl leading-none"
             >
               &times;
             </button>
           </div>
-          <input
-            v-model="ipSearch"
-            type="text"
-            placeholder="🔍 Pretraga IP adresa..."
-            class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </div>
 
-        <div v-if="availableIps.length > 0">
-          <ul class="space-y-2 max-h-60 overflow-y-auto">
-            <li
-              v-for="(ip, index) in filteredAvailableIps"
-              :key="index"
-              @click="goToAddWithIp(ip)"
-              class="p-2 bg-slate-100 rounded hover:bg-slate-200 transition flex justify-between items-center cursor-pointer"
-            >
-              <span>{{ ip }}</span>
-              <button
-                @click.stop="copyToClipboard(ip, `IP ${ip} kopiran!`)"
-                class="text-blue-500 text-sm hover:underline"
-              >
-                📋 Kopiraj
-              </button>
-            </li>
-          </ul>
-        </div>
-        <div v-else class="text-gray-500 text-center">Nema slobodnih IP adresa.</div>
-      </div>
-    </div>
-  </transition>
+          <div class="p-4">
+            <div v-if="metaLoading" class="text-gray-600">Učitavanje…</div>
+            <div v-else-if="metaError" class="text-red-600">{{ metaError }}</div>
+            <div v-else-if="!meta" class="text-gray-600">Nema metapodataka za ovu IP adresu.</div>
 
-  <!-- Modal: Metapodaci -->
-  <transition name="fade">
-    <div v-if="showMeta" class="fixed inset-0 z-[60] flex" @click.self="closeMetadata">
-      <div class="absolute inset-0 bg-black/40"></div>
-
-      <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
-        <div
-          class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-        >
-          <h3 class="text-lg font-semibold">
-            🧾 Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
-          </h3>
-          <button
-            @click="closeMetadata"
-            class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div class="p-4">
-          <div v-if="metaLoading" class="text-gray-600">Učitavanje…</div>
-          <div v-else-if="metaError" class="text-red-600">{{ metaError }}</div>
-          <div v-else-if="!meta" class="text-gray-600">Nema metapodataka za ovu IP adresu.</div>
-
-          <div v-else class="space-y-6">
-            <div class="rounded-lg border p-4 bg-slate-50">
-              <div class="flex flex-col gap-1">
-                <div><span class="font-semibold">Računar:</span> {{ safe(meta.ComputerName) }}</div>
-                <div><span class="font-semibold">Korisnik:</span> {{ safe(meta.UserName) }}</div>
-                <div>
-                  <span class="font-semibold">Prikupljeno:</span> {{ fmtDate(meta.CollectedAt) }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  Last update: {{ fmtDate(meta.updatedAt) }} • Created:
-                  {{ fmtDate(meta.createdAt) }}
+            <div v-else class="space-y-6">
+              <div class="rounded-lg border p-4 bg-slate-50">
+                <div class="flex flex-col gap-1">
+                  <div>
+                    <span class="font-semibold">Računar:</span> {{ safe(meta.ComputerName) }}
+                  </div>
+                  <div><span class="font-semibold">Korisnik:</span> {{ safe(meta.UserName) }}</div>
+                  <div>
+                    <span class="font-semibold">Prikupljeno:</span> {{ fmtDate(meta.CollectedAt) }}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    Last update: {{ fmtDate(meta.updatedAt) }} • Created:
+                    {{ fmtDate(meta.createdAt) }}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 gap-4">
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">🪟 Operativni sistem</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <div class="text-gray-500">Caption</div>
-                  <div>{{ safe(meta.OS?.Caption) }}</div>
-                  <div class="text-gray-500">Verzija</div>
-                  <div>{{ safe(meta.OS?.Version) }}</div>
-                  <div class="text-gray-500">Build</div>
-                  <div>{{ safe(meta.OS?.Build) }}</div>
-                  <div class="text-gray-500">Install date</div>
-                  <div>{{ fmtDate(meta.OS?.InstallDate) }}</div>
-                </div>
-              </section>
+              <div class="grid grid-cols-1 gap-4">
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">🪟 Operativni sistem</h4>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div class="text-gray-500">Caption</div>
+                    <div>{{ safe(meta.OS?.Caption) }}</div>
+                    <div class="text-gray-500">Verzija</div>
+                    <div>{{ safe(meta.OS?.Version) }}</div>
+                    <div class="text-gray-500">Build</div>
+                    <div>{{ safe(meta.OS?.Build) }}</div>
+                    <div class="text-gray-500">Install date</div>
+                    <div>{{ fmtDate(meta.OS?.InstallDate) }}</div>
+                  </div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">💻 Sistem</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <div class="text-gray-500">Proizvođač</div>
-                  <div>{{ safe(meta.System?.Manufacturer) }}</div>
-                  <div class="text-gray-500">Model</div>
-                  <div>{{ safe(meta.System?.Model) }}</div>
-                  <div class="text-gray-500">RAM ukupno</div>
-                  <div>{{ fmtGb(meta.System?.TotalRAM_GB) }}</div>
-                </div>
-              </section>
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">💻 Sistem</h4>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div class="text-gray-500">Proizvođač</div>
+                    <div>{{ safe(meta.System?.Manufacturer) }}</div>
+                    <div class="text-gray-500">Model</div>
+                    <div>{{ safe(meta.System?.Model) }}</div>
+                    <div class="text-gray-500">RAM ukupno</div>
+                    <div>{{ fmtGb(meta.System?.TotalRAM_GB) }}</div>
+                  </div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">🧠 CPU</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <div class="text-gray-500">Naziv</div>
-                  <div>{{ safe(meta.CPU?.Name) }}</div>
-                  <div class="text-gray-500">Jezgra</div>
-                  <div>{{ safe(meta.CPU?.Cores) }}</div>
-                  <div class="text-gray-500">Logičkih</div>
-                  <div>{{ safe(meta.CPU?.LogicalCPUs) }}</div>
-                  <div class="text-gray-500">Max MHz</div>
-                  <div>{{ safe(meta.CPU?.MaxClockMHz) }}</div>
-                  <div class="text-gray-500">Socket</div>
-                  <div>{{ safe(meta.CPU?.Socket) }}</div>
-                </div>
-              </section>
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">🧠 CPU</h4>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div class="text-gray-500">Naziv</div>
+                    <div>{{ safe(meta.CPU?.Name) }}</div>
+                    <div class="text-gray-500">Jezgra</div>
+                    <div>{{ safe(meta.CPU?.Cores) }}</div>
+                    <div class="text-gray-500">Logičkih</div>
+                    <div>{{ safe(meta.CPU?.LogicalCPUs) }}</div>
+                    <div class="text-gray-500">Max MHz</div>
+                    <div>{{ safe(meta.CPU?.MaxClockMHz) }}</div>
+                    <div class="text-gray-500">Socket</div>
+                    <div>{{ safe(meta.CPU?.Socket) }}</div>
+                  </div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">
-                  🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
-                </h4>
-                <div v-if="meta.RAMModules?.length" class="space-y-2">
-                  <div
-                    v-for="(r, idx) in meta.RAMModules"
-                    :key="idx"
-                    class="border rounded p-3 bg-white"
-                  >
-                    <div class="text-sm">
-                      <span class="text-gray-500">Slot:</span> {{ safe(r.Slot) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Mfr/PN:</span>
-                      {{ [r.Manufacturer, r.PartNumber].filter(Boolean).join(' · ') || '—' }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Serijski:</span> {{ safe(r.Serial) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Kapacitet:</span> {{ fmtGb(r.CapacityGB) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Brzina:</span> {{ safe(r.SpeedMTps) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Form factor:</span> {{ safe(r.FormFactor) }}
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">
+                    🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
+                  </h4>
+                  <div v-if="meta.RAMModules?.length" class="space-y-2">
+                    <div
+                      v-for="(r, idx) in meta.RAMModules"
+                      :key="idx"
+                      class="border rounded p-3 bg-white"
+                    >
+                      <div class="text-sm">
+                        <span class="text-gray-500">Slot:</span> {{ safe(r.Slot) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Mfr/PN:</span>
+                        {{ [r.Manufacturer, r.PartNumber].filter(Boolean).join(' · ') || '—' }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Serijski:</span> {{ safe(r.Serial) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Kapacitet:</span> {{ fmtGb(r.CapacityGB) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Brzina:</span> {{ safe(r.SpeedMTps) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Form factor:</span> {{ safe(r.FormFactor) }}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-              </section>
+                  <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
-                <div v-if="meta.Storage?.length" class="space-y-2">
-                  <div
-                    v-for="(s, idx) in meta.Storage"
-                    :key="idx"
-                    class="border rounded p-3 bg-white"
-                  >
-                    <div class="text-sm">
-                      <span class="text-gray-500">Model:</span> {{ safe(s.Model) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Serijski/FW:</span>
-                      {{ [s.Serial, s.Firmware].filter(Boolean).join(' · ') || '—' }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Veličina:</span>
-                      {{ s.SizeGB ? `${s.SizeGB} GB` : '—' }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Tip/BUS:</span>
-                      {{ [s.MediaType, s.BusType].filter(Boolean).join(' · ') || '—' }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">DeviceID:</span> {{ safe(s.DeviceID) }}
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
+                  <div v-if="meta.Storage?.length" class="space-y-2">
+                    <div
+                      v-for="(s, idx) in meta.Storage"
+                      :key="idx"
+                      class="border rounded p-3 bg-white"
+                    >
+                      <div class="text-sm">
+                        <span class="text-gray-500">Model:</span> {{ safe(s.Model) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Serijski/FW:</span>
+                        {{ [s.Serial, s.Firmware].filter(Boolean).join(' · ') || '—' }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Veličina:</span>
+                        {{ s.SizeGB ? `${s.SizeGB} GB` : '—' }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Tip/BUS:</span>
+                        {{ [s.MediaType, s.BusType].filter(Boolean).join(' · ') || '—' }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">DeviceID:</span> {{ safe(s.DeviceID) }}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-              </section>
+                  <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
-                <div v-if="meta.GPUs?.length" class="space-y-2">
-                  <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded p-3 bg-white">
-                    <div class="text-sm">
-                      <span class="text-gray-500">Naziv:</span> {{ safe(g.Name) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Driver:</span> {{ safe(g.DriverVers) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">VRAM:</span>
-                      {{ g.VRAM_GB ? `${g.VRAM_GB} GB` : '—' }}
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
+                  <div v-if="meta.GPUs?.length" class="space-y-2">
+                    <div
+                      v-for="(g, idx) in meta.GPUs"
+                      :key="idx"
+                      class="border rounded p-3 bg-white"
+                    >
+                      <div class="text-sm">
+                        <span class="text-gray-500">Naziv:</span> {{ safe(g.Name) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Driver:</span> {{ safe(g.DriverVers) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">VRAM:</span>
+                        {{ g.VRAM_GB ? `${g.VRAM_GB} GB` : '—' }}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-              </section>
+                  <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
-                <div v-if="meta.NICs?.length" class="space-y-2">
-                  <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded p-3 bg-white">
-                    <div class="text-sm">
-                      <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
-                    </div>
-                    <div class="text-sm">
-                      <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
+                  <div v-if="meta.NICs?.length" class="space-y-2">
+                    <div
+                      v-for="(n, idx) in meta.NICs"
+                      :key="idx"
+                      class="border rounded p-3 bg-white"
+                    >
+                      <div class="text-sm">
+                        <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
+                      </div>
+                      <div class="text-sm">
+                        <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-              </section>
+                  <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                </section>
 
-              <section class="rounded-lg border p-4">
-                <h4 class="font-semibold mb-2">🧬 BIOS / Matična</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <div class="text-gray-500">BIOS Vendor</div>
-                  <div>{{ safe(meta.BIOS?.Vendor) }}</div>
-                  <div class="text-gray-500">BIOS Ver.</div>
-                  <div>{{ safe(meta.BIOS?.Version) }}</div>
-                  <div class="text-gray-500">BIOS Release</div>
-                  <div>{{ fmtDate(meta.BIOS?.ReleaseDate) }}</div>
+                <section class="rounded-lg border p-4">
+                  <h4 class="font-semibold mb-2">🧬 BIOS / Matična</h4>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div class="text-gray-500">BIOS Vendor</div>
+                    <div>{{ safe(meta.BIOS?.Vendor) }}</div>
+                    <div class="text-gray-500">BIOS Ver.</div>
+                    <div>{{ safe(meta.BIOS?.Version) }}</div>
+                    <div class="text-gray-500">BIOS Release</div>
+                    <div>{{ fmtDate(meta.BIOS?.ReleaseDate) }}</div>
 
-                  <div class="text-gray-500">MB Proizvođač</div>
-                  <div>{{ safe(meta.Motherboard?.Manufacturer) }}</div>
-                  <div class="text-gray-500">MB Model</div>
-                  <div>{{ safe(meta.Motherboard?.Product) }}</div>
-                  <div class="text-gray-500">MB Serijski</div>
-                  <div>{{ safe(meta.Motherboard?.Serial) }}</div>
-                </div>
-              </section>
+                    <div class="text-gray-500">MB Proizvođač</div>
+                    <div>{{ safe(meta.Motherboard?.Manufacturer) }}</div>
+                    <div class="text-gray-500">MB Model</div>
+                    <div>{{ safe(meta.Motherboard?.Product) }}</div>
+                    <div class="text-gray-500">MB Serijski</div>
+                    <div>{{ safe(meta.Motherboard?.Serial) }}</div>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </transition>
+    </transition>
 
-  <!-- Modal: Štampači -->
-  <transition name="fade">
-    <div v-if="showPrintersModal" class="fixed inset-0 z-[70] flex" @click.self="closePrinters">
-      <div class="absolute inset-0 bg-black/40"></div>
+    <!-- Modal: Štampači -->
+    <transition name="fade">
+      <div v-if="showPrintersModal" class="fixed inset-0 z-[70] flex" @click.self="closePrinters">
+        <div class="absolute inset-0 bg-black/40"></div>
 
-      <div class="relative ml-auto h-full w-full sm:w-[560px] bg-white shadow-xl overflow-y-auto">
-        <div
-          class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-        >
-          <h3 class="text-lg font-semibold">
-            🖨 Štampači — {{ printersEntry?.computerName || printersEntry?.ip || 'Nepoznato' }}
-          </h3>
-          <button
-            @click="closePrinters"
-            class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+        <div class="relative ml-auto h-full w-full sm:w-[560px] bg-white shadow-xl overflow-y-auto">
+          <div
+            class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
           >
-            &times;
-          </button>
-        </div>
+            <h3 class="text-lg font-semibold">
+              🖨 Štampači — {{ printersEntry?.computerName || printersEntry?.ip || 'Nepoznato' }}
+            </h3>
+            <button
+              @click="closePrinters"
+              class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+            >
+              &times;
+            </button>
+          </div>
 
-        <div class="p-4 space-y-6">
-          <div v-if="printersLoading" class="text-gray-600">Učitavanje…</div>
-          <div v-else-if="printersError" class="text-red-600">{{ printersError }}</div>
+          <div class="p-4 space-y-6">
+            <div v-if="printersLoading" class="text-gray-600">Učitavanje…</div>
+            <div v-else-if="printersError" class="text-red-600">{{ printersError }}</div>
 
-          <template v-else>
-            <div class="rounded-lg border p-3 bg-slate-50">
-              <div class="text-sm font-medium mb-2">Brzo povezivanje ovog računara na štampač</div>
-              <div class="flex gap-2 items-center flex-wrap">
-                <input
-                  v-model="printersSelectSearch"
-                  placeholder="🔎 Pretraga štampača..."
-                  class="border px-2 py-1 rounded text-sm w-full sm:w-auto"
-                />
-                <select
-                  v-model="selectedPrinterId"
-                  class="border px-2 py-1 rounded text-sm w-full sm:w-auto min-w-[220px]"
-                >
-                  <option disabled value="">— odaberi štampač —</option>
-                  <option v-for="p in filteredPrintersAll" :key="p._id" :value="p._id">
-                    {{ p.name || '—' }} ({{ p.ip || 'no-ip' }})
-                  </option>
-                </select>
-                <button
-                  @click="selectedPrinterId && connectPrinter(selectedPrinterId)"
-                  class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
-                  :disabled="!selectedPrinterId || !printersEntry"
-                >
-                  🔗 Poveži
-                </button>
-                <RouterLink to="/printers" class="text-sm text-indigo-600 hover:underline"
-                  >📃 Lista svih štampača</RouterLink
-                >
-              </div>
-            </div>
-
-            <section class="rounded-lg border p-4">
-              <div class="flex items-center justify-between mb-2">
-                <h4 class="font-semibold">🧷 Hostovani (USB + share na ovom računaru)</h4>
-              </div>
-
-              <div v-if="printersData.hosted.length" class="space-y-2">
-                <div
-                  v-for="p in printersData.hosted"
-                  :key="p._id"
-                  class="border rounded p-3 bg-slate-50"
-                >
-                  <div class="font-medium flex items-center justify-between">
-                    <span>{{ p.name || '—' }}</span>
-                    <div class="flex gap-2">
-                      <button
-                        @click="unsetHostPrinter(p._id)"
-                        class="text-sm text-red-600 hover:underline"
-                      >
-                        Ukloni host
-                      </button>
-                    </div>
-                  </div>
-                  <div class="text-sm text-gray-600">
-                    {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
-                  </div>
-                  <div class="text-sm">IP: {{ p.ip || '—' }}</div>
-                  <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
+            <template v-else>
+              <div class="rounded-lg border p-3 bg-slate-50">
+                <div class="text-sm font-medium mb-2">
+                  Brzo povezivanje ovog računara na štampač
+                </div>
+                <div class="flex gap-2 items-center flex-wrap">
+                  <input
+                    v-model="printersSelectSearch"
+                    placeholder="🔎 Pretraga štampača..."
+                    class="border px-2 py-1 rounded text-sm w-full sm:w-auto"
+                  />
+                  <select
+                    v-model="selectedPrinterId"
+                    class="border px-2 py-1 rounded text-sm w-full sm:w-auto min-w-[220px]"
+                  >
+                    <option disabled value="">— odaberi štampač —</option>
+                    <option v-for="p in filteredPrintersAll" :key="p._id" :value="p._id">
+                      {{ p.name || '—' }} ({{ p.ip || 'no-ip' }})
+                    </option>
+                  </select>
+                  <button
+                    @click="selectedPrinterId && connectPrinter(selectedPrinterId)"
+                    class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
+                    :disabled="!selectedPrinterId || !printersEntry"
+                  >
+                    🔗 Poveži
+                  </button>
+                  <RouterLink to="/printers" class="text-sm text-indigo-600 hover:underline"
+                    >📃 Lista svih štampača</RouterLink
+                  >
                 </div>
               </div>
-              <div v-else class="text-sm text-gray-500">Nema hostovanih štampača.</div>
-            </section>
 
-            <section class="rounded-lg border p-4">
-              <h4 class="font-semibold mb-2">🔗 Povezani (instalirani na ovom računaru)</h4>
-
-              <div v-if="printersData.connected.length" class="space-y-2">
-                <div
-                  v-for="p in printersData.connected"
-                  :key="p._id"
-                  class="border rounded p-3 bg-white"
-                >
-                  <div class="font-medium flex items-center justify-between">
-                    <span>{{ p.name || '—' }}</span>
-                    <div class="flex gap-2">
-                      <button
-                        @click="disconnectPrinter(p._id)"
-                        class="text-sm text-amber-700 hover:underline"
-                      >
-                        Otkači
-                      </button>
-                      <button
-                        @click="setHostPrinter(p._id)"
-                        class="text-sm text-indigo-700 hover:underline"
-                      >
-                        Postavi host
-                      </button>
-                    </div>
-                  </div>
-                  <div class="text-sm text-gray-600">
-                    {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
-                  </div>
-                  <div class="text-sm">IP: {{ p.ip || '—' }}</div>
-                  <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
+              <section class="rounded-lg border p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="font-semibold">🧷 Hostovani (USB + share na ovom računaru)</h4>
                 </div>
-              </div>
-              <div v-else class="text-sm text-gray-500">Nema povezanih štampača.</div>
-            </section>
-          </template>
+
+                <div v-if="printersData.hosted.length" class="space-y-2">
+                  <div
+                    v-for="p in printersData.hosted"
+                    :key="p._id"
+                    class="border rounded p-3 bg-slate-50"
+                  >
+                    <div class="font-medium flex items-center justify-between">
+                      <span>{{ p.name || '—' }}</span>
+                      <div class="flex gap-2">
+                        <button
+                          @click="unsetHostPrinter(p._id)"
+                          class="text-sm text-red-600 hover:underline"
+                        >
+                          Ukloni host
+                        </button>
+                      </div>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                      {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
+                    </div>
+                    <div class="text-sm">IP: {{ p.ip || '—' }}</div>
+                    <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema hostovanih štampača.</div>
+              </section>
+
+              <section class="rounded-lg border p-4">
+                <h4 class="font-semibold mb-2">🔗 Povezani (instalirani na ovom računaru)</h4>
+
+                <div v-if="printersData.connected.length" class="space-y-2">
+                  <div
+                    v-for="p in printersData.connected"
+                    :key="p._id"
+                    class="border rounded p-3 bg-white"
+                  >
+                    <div class="font-medium flex items-center justify-between">
+                      <span>{{ p.name || '—' }}</span>
+                      <div class="flex gap-2">
+                        <button
+                          @click="disconnectPrinter(p._id)"
+                          class="text-sm text-amber-700 hover:underline"
+                        >
+                          Otkači
+                        </button>
+                        <button
+                          @click="setHostPrinter(p._id)"
+                          class="text-sm text-indigo-700 hover:underline"
+                        >
+                          Postavi host
+                        </button>
+                      </div>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                      {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
+                    </div>
+                    <div class="text-sm">IP: {{ p.ip || '—' }}</div>
+                    <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">Nema povezanih štampača.</div>
+              </section>
+            </template>
+          </div>
         </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </main>
 </template>
 
 <script setup>
@@ -628,6 +657,24 @@ const printersData = ref({ hosted: [], connected: [] })
 const printersAll = ref([])
 const printersSelectSearch = ref('')
 const selectedPrinterId = ref('')
+
+// Sort opcije
+const sortOptions = [
+  { value: 'ip', label: 'IP adresa' },
+  { value: 'computerName', label: 'Ime računara' },
+  { value: 'username', label: 'Korisničko ime' },
+  { value: 'fullName', label: 'Puno ime' },
+  { value: 'department', label: 'Odeljenje' },
+  { value: 'rdp', label: 'RDP' },
+  { value: 'dnsLog', label: 'DNS Log' },
+  { value: 'anyDesk', label: 'AnyDesk' },
+  { value: 'system', label: 'Sistem' },
+]
+
+// Resetuj stranu kad se promeni sort
+watch([sortBy, sortOrder], () => {
+  page.value = 1
+})
 
 // Akcije rute
 const addEntry = () => router.push('/add')
