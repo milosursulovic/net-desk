@@ -1,12 +1,32 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import LoginView from '../views/LoginView.vue'
-import NotFoundView from '../views/NotFoundView.vue'
-import AddIpView from '../views/AddIpView.vue'
-import EditIpView from '../views/EditIpView.vue'
-import MainLayout from '@/layouts/MainLayout.vue'
-import MetadataView from '@/views/MetadataView.vue'
-import PrintersView from '@/views/PrintersView.vue'
+
+// lazy load views
+const MainLayout = () => import('@/layouts/MainLayout.vue')
+const HomeView = () => import('@/views/HomeView.vue')
+const LoginView = () => import('@/views/LoginView.vue')
+const NotFoundView = () => import('@/views/NotFoundView.vue')
+const AddIpView = () => import('@/views/AddIpView.vue')
+const EditIpView = () => import('@/views/EditIpView.vue')
+const MetadataView = () => import('@/views/MetadataView.vue')
+const PrintersView = () => import('@/views/PrintersView.vue')
+
+function decodeJwt(token) {
+  try {
+    const [, payload] = token.split('.')
+    // atob ne voli URL-safe base64 znakove
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const json = atob(b64)
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+function isTokenExpired(token) {
+  const p = decodeJwt(token)
+  if (!p || !p.exp) return true
+  // mala clock-skew tolerancija (5s)
+  return Date.now() > p.exp * 1000 - 5000
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,36 +34,31 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, title: 'Početna - NetDesk' },
       children: [
-        {
-          path: '',
-          name: 'home',
-          title: 'Početna',
-          component: HomeView,
-        },
+        { path: '', name: 'home', meta: { title: 'Početna - NetDesk' }, component: HomeView },
         {
           path: 'add',
           name: 'add-ip',
-          title: 'Dodaj IP',
+          meta: { title: 'Dodaj IP - NetDesk' },
           component: AddIpView,
         },
         {
           path: 'edit/:id',
           name: 'edit-ip',
-          title: 'Uredi IP',
+          meta: { title: 'Uredi IP - NetDesk' },
           component: EditIpView,
         },
         {
           path: 'metadata',
           name: 'metadata',
-          title: 'Metadata',
+          meta: { title: 'Metapodaci - NetDesk' },
           component: MetadataView,
         },
         {
           path: 'printers',
           name: 'printers',
-          title: 'Printers',
+          meta: { title: 'Štampači - NetDesk' },
           component: PrintersView,
         },
       ],
@@ -51,27 +66,17 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      title: 'Prijavi se',
+      meta: { guestOnly: true, title: 'Prijavi se - NetDesk' },
       component: LoginView,
-      meta: { guestOnly: true },
     },
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
+      meta: { title: '404 - NetDesk' },
       component: NotFoundView,
     },
   ],
 })
-
-function isTokenExpired(token) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const exp = payload.exp * 1000
-    return Date.now() > exp
-  } catch (e) {
-    return true
-  }
-}
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
@@ -79,7 +84,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth) {
     if (!token || isTokenExpired(token)) {
       localStorage.removeItem('token')
-      return next('/login')
+      const returnTo = encodeURIComponent(to.fullPath || '/')
+      return next(`/login?returnTo=${returnTo}`)
     }
   }
 
@@ -87,7 +93,12 @@ router.beforeEach((to, from, next) => {
     return next('/')
   }
 
-  return next()
+  next()
+})
+
+router.afterEach((to) => {
+  const title = to.meta?.title || 'NetDesk'
+  if (typeof document !== 'undefined') document.title = title
 })
 
 export default router

@@ -1,12 +1,18 @@
 import router from '@/router'
 
-function isTokenExpired(token) {
+function decodeJwt(token) {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return Date.now() > payload.exp * 1000
+    const [, payload] = token.split('.')
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(b64))
   } catch {
-    return true
+    return null
   }
+}
+function isTokenExpired(token) {
+  const p = decodeJwt(token)
+  if (!p?.exp) return true
+  return Date.now() > p.exp * 1000 - 5000
 }
 
 let redirectingToLogin = false
@@ -25,6 +31,8 @@ function safeRedirectToLogin() {
   }
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 export async function fetchWithAuth(url, options = {}) {
   const token = localStorage.getItem('token')
   const isFormData = options.body instanceof FormData
@@ -40,22 +48,12 @@ export async function fetchWithAuth(url, options = {}) {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
   }
 
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}${url}`, {
-      ...options,
-      headers,
-    })
+  const res = await fetch(`${API_BASE}${url}`, { ...options, headers })
 
-    if (res.status === 401) {
-      safeRedirectToLogin()
-      return Promise.reject(new Error('Unauthorized: 401 from API'))
-    }
-
-    if (res.status === 403) {
-    }
-
-    return res
-  } catch (err) {
-    return Promise.reject(err)
+  if (res.status === 401) {
+    safeRedirectToLogin()
+    throw new Error('Unauthorized (401)')
   }
+
+  return res
 }

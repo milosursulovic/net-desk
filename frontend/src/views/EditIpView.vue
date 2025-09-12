@@ -7,15 +7,17 @@
     <form @submit.prevent="handleUpdate" class="space-y-4">
       <div v-for="field in fields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
-          {{ getFieldIcon(field.name) }} {{ field.label }}
+          {{ field.icon }} {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
         <input
           :id="field.name"
-          v-model="form[field.name]"
+          v-model.trim="form[field.name]"
           type="text"
           class="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-          required
+          :required="field.name === 'ip'"
+          :class="field.name === 'ip' && ipError ? 'border-red-400' : ''"
         />
+        <p v-if="field.name === 'ip' && ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
 
       <div class="flex justify-between mt-6">
@@ -37,10 +39,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth'
-import { getFieldIcon } from '@/utils/icons.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,17 +61,22 @@ const form = ref({
 })
 
 const fields = [
-  { name: 'ip', label: 'IP Adresu' },
-  { name: 'computerName', label: 'Ime računara' },
-  { name: 'username', label: 'Korisničko ime' },
-  { name: 'fullName', label: 'Puno ime' },
-  { name: 'password', label: 'Lozinku' },
-  { name: 'rdp', label: 'RDP' },
-  { name: 'dnsLog', label: 'DNS Log' },
-  { name: 'anyDesk', label: 'AnyDesk' },
-  { name: 'system', label: 'Sistem' },
-  { name: 'department', label: 'Odeljenje' },
+  { name: 'ip', label: 'IP Adresa', icon: '🌐' },
+  { name: 'computerName', label: 'Ime računara', icon: '🖥️' },
+  { name: 'username', label: 'Korisničko ime', icon: '👤' },
+  { name: 'fullName', label: 'Puno ime', icon: '🙍‍♂️' },
+  { name: 'password', label: 'Lozinka', icon: '🔒' },
+  { name: 'rdp', label: 'RDP', icon: '🖧' },
+  { name: 'dnsLog', label: 'DNS Log', icon: '🌐' },
+  { name: 'anyDesk', label: 'AnyDesk', icon: '💻' },
+  { name: 'system', label: 'Sistem', icon: '🧩' },
+  { name: 'department', label: 'Odeljenje', icon: '🏢' },
 ]
+
+const ipError = computed(() => {
+  if (!form.value.ip) return 'IP je obavezan'
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(form.value.ip) ? null : 'Neispravna IPv4 adresa'
+})
 
 const fetchEntry = async () => {
   try {
@@ -87,6 +93,10 @@ const fetchEntry = async () => {
 }
 
 const handleUpdate = async () => {
+  if (ipError.value) {
+    error.value = ipError.value
+    return
+  }
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses/${route.params.id}`, {
       method: 'PUT',
@@ -94,7 +104,7 @@ const handleUpdate = async () => {
     })
 
     if (!res.ok) {
-      const err = await res.json()
+      const err = await res.json().catch(() => ({}))
       error.value = err.message || 'Izmena neuspešna'
       return
     }
@@ -108,8 +118,11 @@ const handleUpdate = async () => {
 
 const goBack = () => router.push('/')
 
-onMounted(() => {
-  document.title = `Uredi IP - NetDesk`
-  fetchEntry()
-})
+onMounted(fetchEntry)
 </script>
+
+<style scoped>
+.glass-container {
+  backdrop-filter: saturate(140%) blur(2px);
+}
+</style>

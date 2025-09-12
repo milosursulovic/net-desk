@@ -59,9 +59,7 @@
 
       <div class="w-full sm:w-auto flex items-center gap-2">
         <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
-          <option v-for="o in sortOptions" :key="o.value" :value="o.value">
-            {{ o.label }}
-          </option>
+          <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
 
         <button
@@ -82,7 +80,7 @@
           >
             ⬅️
           </button>
-          <span>📄 Strana {{ isThereAnyPages() }} / {{ totalPages }}</span>
+          <span>📄 Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
           <button
             @click="nextPage"
             :disabled="page * limit >= total"
@@ -201,6 +199,7 @@
       </article>
     </div>
 
+    <!-- Toast -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -212,6 +211,7 @@
       </transition>
     </teleport>
 
+    <!-- Slobodne IP adrese modal -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -267,6 +267,7 @@
       </transition>
     </teleport>
 
+    <!-- Metadata drawer -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -483,7 +484,6 @@
                       <div>{{ safe(meta.BIOS?.Version) }}</div>
                       <div class="text-gray-500">BIOS Release</div>
                       <div>{{ fmtDate(meta.BIOS?.ReleaseDate) }}</div>
-
                       <div class="text-gray-500">MB Proizvođač</div>
                       <div>{{ safe(meta.Motherboard?.Manufacturer) }}</div>
                       <div class="text-gray-500">MB Model</div>
@@ -500,6 +500,7 @@
       </transition>
     </teleport>
 
+    <!-- Printers drawer -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -643,25 +644,29 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+
+const router = useRouter()
+const route = useRoute()
 
 const entries = ref([])
 const total = ref(0)
 const totalPages = ref(0)
-const page = ref(parseInt(useRoute().query.page) || 1)
-const limit = ref(parseInt(useRoute().query.limit) || 10)
-const search = ref(useRoute().query.search || '')
-const sortBy = ref(useRoute().query.sortBy || 'ip')
-const sortOrder = ref(useRoute().query.sortOrder || 'asc')
+const page = ref(parseInt(route.query.page) || 1)
+const limit = ref(parseInt(route.query.limit) || 10)
+const search = ref(route.query.search || '')
+const sortBy = ref(route.query.sortBy || 'ip')
+const sortOrder = ref(route.query.sortOrder || 'asc')
+const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
+
 const showPasswords = ref(false)
 const copiedText = ref(null)
+
 const availableIps = ref([])
 const showingAvailableModal = ref(false)
 const ipSearch = ref('')
-const router = useRouter()
-const route = useRoute()
 
 const showMeta = ref(false)
 const metaLoading = ref(false)
@@ -697,9 +702,7 @@ watch([sortBy, sortOrder], () => {
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry._id}`)
 
-const isThereAnyPages = () => (totalPages.value === 0 ? '0' : page.value)
-
-const fetchData = async () => {
+async function fetchData() {
   const params = new URLSearchParams({
     page: page.value,
     limit: limit.value,
@@ -724,7 +727,6 @@ const deleteEntry = async (id) => {
   if (!confirm('Da li si siguran da želiš da obrišeš ovaj unos?')) return
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
   if (res.ok) fetchData()
-  else console.log('Neuspešno brisanje')
 }
 
 const handleFileUpload = async (e) => {
@@ -738,7 +740,6 @@ const handleFileUpload = async (e) => {
     body: formData,
   })
   if (res.ok) fetchData()
-  else console.log('Greška pri importu')
 }
 
 const showAvailableIps = async () => {
@@ -752,7 +753,6 @@ const showAvailableIps = async () => {
     showingAvailableModal.value = true
   }
 }
-
 const closeAvailableModal = () => {
   showingAvailableModal.value = false
   availableIps.value = []
@@ -770,15 +770,15 @@ const copyToClipboard = async (text, label = 'Kopirano!') => {
 
 const generateRdpFile = (entry) => {
   const rdpContent = `
-    full address:s:${entry.ip}
-    username:s:${entry.username}
-    prompt for credentials:i:1
-    authentication level:i:2
-    redirectclipboard:i:1
-    redirectprinters:i:0
-    redirectcomports:i:0
-    redirectsmartcards:i:0
-  `.trim()
+full address:s:${entry.ip}
+username:s:${entry.username || ''}
+prompt for credentials:i:1
+authentication level:i:2
+redirectclipboard:i:1
+redirectprinters:i:0
+redirectcomports:i:0
+redirectsmartcards:i:0
+`.trim()
 
   const blob = new Blob([rdpContent], { type: 'application/x-rdp' })
   const url = URL.createObjectURL(blob)
@@ -792,14 +792,10 @@ const generateRdpFile = (entry) => {
 }
 
 const nextPage = () => {
-  if (page.value * limit.value < total.value) {
-    page.value++
-  }
+  if (page.value * limit.value < total.value) page.value++
 }
 const prevPage = () => {
-  if (page.value > 1) {
-    page.value--
-  }
+  if (page.value > 1) page.value--
 }
 
 const exportToXlsx = async () => {
@@ -807,6 +803,7 @@ const exportToXlsx = async () => {
     const res = await fetchWithAuth(
       `/api/protected/ip-addresses/export-xlsx?search=${encodeURIComponent(search.value)}`
     )
+    if (!res.ok) throw new Error()
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -822,8 +819,7 @@ const exportToXlsx = async () => {
 const fmtDate = (d) => {
   if (!d) return '—'
   const dt = new Date(d)
-  if (isNaN(dt)) return '—'
-  return dt.toLocaleString()
+  return isNaN(dt) ? '—' : dt.toLocaleString()
 }
 const fmtGb = (n) => (n || n === 0 ? `${n} GB` : '—')
 const fmtMbps = (n) => (n || n === 0 ? `${n} Mbps` : '—')
@@ -849,7 +845,6 @@ const openMetadata = async (entry) => {
     metaLoading.value = false
   }
 }
-
 const closeMetadata = () => {
   showMeta.value = false
   meta.value = null
@@ -873,12 +868,7 @@ const openPrinters = async (entry) => {
     printersData.value = await res.json()
 
     const resAll = await fetchWithAuth('/api/protected/printers?limit=1000')
-    if (resAll.ok) {
-      const allData = await resAll.json()
-      printersAll.value = allData.items || []
-    } else {
-      printersAll.value = []
-    }
+    printersAll.value = resAll.ok ? (await resAll.json()).items || [] : []
   } catch (e) {
     console.error(e)
     printersError.value = 'Neuspešno učitavanje štampača.'
@@ -886,7 +876,6 @@ const openPrinters = async (entry) => {
     printersLoading.value = false
   }
 }
-
 const closePrinters = () => {
   showPrintersModal.value = false
   printersData.value = { hosted: [], connected: [] }
@@ -901,7 +890,6 @@ const connectPrinter = async (printerId) => {
   try {
     await fetchWithAuth(`/api/protected/printers/${printerId}/connect`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: printersEntry.value.ip }),
     })
     await openPrinters(printersEntry.value)
@@ -909,13 +897,11 @@ const connectPrinter = async (printerId) => {
     console.error(e)
   }
 }
-
 const disconnectPrinter = async (printerId) => {
   if (!printersEntry.value) return
   try {
     await fetchWithAuth(`/api/protected/printers/${printerId}/disconnect`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: printersEntry.value.ip }),
     })
     await openPrinters(printersEntry.value)
@@ -923,13 +909,11 @@ const disconnectPrinter = async (printerId) => {
     console.error(e)
   }
 }
-
 const setHostPrinter = async (printerId) => {
   if (!printersEntry.value) return
   try {
     await fetchWithAuth(`/api/protected/printers/${printerId}/set-host`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: printersEntry.value.ip }),
     })
     await openPrinters(printersEntry.value)
@@ -937,7 +921,6 @@ const setHostPrinter = async (printerId) => {
     console.error(e)
   }
 }
-
 const unsetHostPrinter = async (printerId) => {
   try {
     await fetchWithAuth(`/api/protected/printers/${printerId}/unset-host`, { method: 'POST' })
@@ -950,9 +933,7 @@ const unsetHostPrinter = async (printerId) => {
 const filteredAvailableIps = computed(() =>
   availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase()))
 )
-
 const printersAllFree = computed(() => printersAll.value.filter((p) => !p.hostComputer))
-
 const filteredPrintersAll = computed(() => {
   const base = printersAllFree.value
   if (!printersSelectSearch.value) return base
@@ -987,13 +968,7 @@ watch(
   { immediate: true }
 )
 
-const goToAddWithIp = (ip) => {
-  router.push({ path: '/add', query: { ip } })
-}
-
-onMounted(() => {
-  document.title = 'Početna - NetDesk'
-})
+const goToAddWithIp = (ip) => router.push({ path: '/add', query: { ip } })
 </script>
 
 <style scoped>
@@ -1005,7 +980,6 @@ onMounted(() => {
 .fade-leave-to {
   opacity: 0;
 }
-
 .glass-container {
   backdrop-filter: saturate(140%) blur(2px);
 }

@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-4">
+    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-semibold text-slate-800">🖨️ Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -7,17 +8,18 @@
           @click="openCreate"
           class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 inline-flex items-center gap-2"
         >
-          <span>➕</span> <span>Dodaj štampač</span>
+          <span>➕</span><span>Dodaj štampač</span>
         </button>
         <RouterLink
           to="/"
           class="bg-slate-700 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 inline-flex items-center gap-2"
         >
-          <span>🖥️</span> <span>IP adrese</span>
+          <span>🖥️</span><span>IP adrese</span>
         </RouterLink>
       </div>
     </div>
 
+    <!-- Filters / pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="relative w-full sm:w-[480px]">
         <input
@@ -26,6 +28,7 @@
           type="text"
           placeholder="🔎 Pretraga po nazivu, modelu, IP, serijskom..."
           class="w-full border border-gray-300 px-10 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          aria-label="Pretraga štampača"
         />
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔎</span>
         <button
@@ -40,8 +43,8 @@
 
       <div class="flex flex-col items-start sm:items-end gap-1">
         <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600">Po strani</label>
-          <select v-model.number="limit" class="border rounded px-2 py-1">
+          <label class="text-sm text-gray-600" for="pp">Po strani</label>
+          <select id="pp" v-model.number="limit" class="border rounded px-2 py-1">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
@@ -49,7 +52,7 @@
           </select>
           <button
             @click="prevPage"
-            :disabled="page === 1"
+            :disabled="page === 1 || loading"
             class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
             aria-label="Prethodna strana"
           >
@@ -60,7 +63,7 @@
           >
           <button
             @click="nextPage"
-            :disabled="page * limit >= total"
+            :disabled="page * limit >= total || loading"
             class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
             aria-label="Sledeća strana"
           >
@@ -71,6 +74,7 @@
       </div>
     </div>
 
+    <!-- Table -->
     <div class="rounded-xl shadow ring-1 ring-black/5 overflow-hidden bg-white">
       <div class="overflow-x-auto">
         <table class="min-w-full text-left">
@@ -115,8 +119,9 @@
                 <td class="p-3">
                   <span
                     class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 border"
-                    >{{ p.connectionType || '—' }}</span
                   >
+                    {{ p.connectionType || '—' }}
+                  </span>
                 </td>
                 <td class="p-3">
                   <div class="inline-flex items-center gap-2">
@@ -138,7 +143,7 @@
                   <span v-else>—</span>
                 </td>
                 <td class="p-3">
-                  <div v-if="p.connectedComputers && p.connectedComputers.length">
+                  <div v-if="p.connectedComputers?.length">
                     <ul class="list-disc list-inside space-y-1">
                       <li v-for="c in p.connectedComputers" :key="c._id">
                         {{ c.computerName || c.ip || '—' }}
@@ -159,6 +164,8 @@
                   </button>
                 </td>
               </tr>
+
+              <!-- Expanded row -->
               <tr
                 v-for="p in items"
                 :key="p._id + '-exp'"
@@ -167,6 +174,7 @@
               >
                 <td colspan="11" class="p-4">
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Connect -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🔗 Poveži računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -174,9 +182,10 @@
                       </div>
                       <div class="flex gap-2">
                         <input
-                          v-model="rowState[p._id].connectInput"
+                          v-model.trim="rowState[p._id].connectInput"
                           placeholder="npr. 10.230.62.15"
                           class="border px-2 py-1 rounded text-sm w-full"
+                          @keyup.enter="connectComputer(p)"
                         />
                         <button
                           @click="connectComputer(p)"
@@ -186,16 +195,19 @@
                         </button>
                       </div>
                     </div>
+
+                    <!-- Host -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧷 Postavi host</div>
                       <div class="text-xs text-gray-600 mb-1">
-                        Računar koji \"šeruje\" ovaj štampač
+                        Računar koji "šeruje" ovaj štampač
                       </div>
                       <div class="flex gap-2">
                         <input
-                          v-model="rowState[p._id].hostInput"
+                          v-model.trim="rowState[p._id].hostInput"
                           placeholder="IP ili _id"
                           class="border px-2 py-1 rounded text-sm w-full"
+                          @keyup.enter="setHost(p)"
                         />
                         <button
                           @click="setHost(p)"
@@ -211,6 +223,8 @@
                         </button>
                       </div>
                     </div>
+
+                    <!-- Disconnect -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧹 Otkači računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -218,9 +232,10 @@
                       </div>
                       <div class="flex gap-2">
                         <input
-                          v-model="rowState[p._id].disconnectInput"
+                          v-model.trim="rowState[p._id].disconnectInput"
                           placeholder="IP ili _id"
                           class="border px-2 py-1 rounded text-sm w-full"
+                          @keyup.enter="disconnectComputer(p)"
                         />
                         <button
                           @click="disconnectComputer(p)"
@@ -231,7 +246,8 @@
                       </div>
                     </div>
                   </div>
-                  <div class="mt-3" v-if="p.connectedComputers && p.connectedComputers.length">
+
+                  <div class="mt-3" v-if="p.connectedComputers?.length">
                     <div class="font-medium mb-2">🖥️ Povezani računari</div>
                     <ul class="list-disc list-inside space-y-1 text-sm">
                       <li v-for="c in p.connectedComputers" :key="c._id">
@@ -239,6 +255,7 @@
                       </li>
                     </ul>
                   </div>
+
                   <div class="mt-3 text-xs text-gray-600 flex flex-wrap gap-x-4">
                     <span>Ažurirano: {{ fmtDate(p.updatedAt) }}</span>
                     <span>Kreirano: {{ fmtDate(p.createdAt) }}</span>
@@ -251,6 +268,7 @@
       </div>
     </div>
 
+    <!-- Modal -->
     <transition name="fade">
       <div v-if="showModal" class="fixed inset-0 z-[60] flex" @click.self="closeModal">
         <div class="absolute inset-0 bg-black/40"></div>
@@ -272,38 +290,11 @@
 
           <div class="p-4 space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="text-sm text-gray-600">Naziv</label>
-                <input
-                  v-model.trim="form.name"
-                  class="w-full border px-3 py-2 rounded"
-                  placeholder="HP LaserJet 400"
-                />
-              </div>
-              <div>
-                <label class="text-sm text-gray-600">Proizvođač</label>
-                <input
-                  v-model.trim="form.manufacturer"
-                  class="w-full border px-3 py-2 rounded"
-                  placeholder="HP"
-                />
-              </div>
-              <div>
-                <label class="text-sm text-gray-600">Model</label>
-                <input
-                  v-model.trim="form.model"
-                  class="w-full border px-3 py-2 rounded"
-                  placeholder="M401dne"
-                />
-              </div>
-              <div>
-                <label class="text-sm text-gray-600">Serijski</label>
-                <input v-model.trim="form.serial" class="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label class="text-sm text-gray-600">Odeljenje</label>
-                <input v-model.trim="form.department" class="w-full border px-3 py-2 rounded" />
-              </div>
+              <FormInput v-model.trim="form.name" label="Naziv" placeholder="HP LaserJet 400" />
+              <FormInput v-model.trim="form.manufacturer" label="Proizvođač" placeholder="HP" />
+              <FormInput v-model.trim="form.model" label="Model" placeholder="M401dne" />
+              <FormInput v-model.trim="form.serial" label="Serijski" />
+              <FormInput v-model.trim="form.department" label="Odeljenje" />
               <div>
                 <label class="text-sm text-gray-600">Tip konekcije</label>
                 <select v-model="form.connectionType" class="w-full border px-3 py-2 rounded">
@@ -312,14 +303,7 @@
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div>
-                <label class="text-sm text-gray-600">IP</label>
-                <input
-                  v-model.trim="form.ip"
-                  class="w-full border px-3 py-2 rounded"
-                  placeholder="10.230.62.200"
-                />
-              </div>
+              <FormInput v-model.trim="form.ip" label="IP" placeholder="10.230.62.200" />
               <div class="flex items-center gap-2 mt-6">
                 <input
                   id="shared"
@@ -336,8 +320,9 @@
               <button
                 @click="save"
                 class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                :disabled="saving"
               >
-                💾 Sačuvaj
+                {{ saving ? 'Čuvam…' : '💾 Sačuvaj' }}
               </button>
             </div>
           </div>
@@ -349,6 +334,8 @@
       <div
         v-if="toast"
         class="fixed top-6 right-6 bg-gray-900 text-white px-4 py-2 rounded shadow-lg text-sm z-[999]"
+        role="status"
+        aria-live="polite"
       >
         {{ toast }}
       </div>
@@ -357,10 +344,30 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, defineComponent, h, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
+/* --------------------------- Small input component -------------------------- */
+const FormInput = defineComponent({
+  name: 'FormInput',
+  props: { modelValue: String, label: String, placeholder: String },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    return () =>
+      h('div', [
+        h('label', { class: 'text-sm text-gray-600' }, props.label),
+        h('input', {
+          value: props.modelValue,
+          placeholder: props.placeholder,
+          class: 'w-full border px-3 py-2 rounded',
+          onInput: (e) => emit('update:modelValue', e.target.value),
+        }),
+      ])
+  },
+})
+
+/* --------------------------------- State ---------------------------------- */
 const router = useRouter()
 const route = useRoute()
 const items = ref([])
@@ -371,10 +378,10 @@ const limit = ref(parseInt(route.query.limit) || 20)
 const search = ref(route.query.search || '')
 const searchInput = ref(search.value)
 const loading = ref(false)
+const saving = ref(false)
 
 const expanded = ref({})
 const rowState = ref({})
-
 const showModal = ref(false)
 const editId = ref(null)
 const form = ref({
@@ -389,22 +396,43 @@ const form = ref({
 })
 
 const toast = ref('')
+let searchT = null
+let inFlight = new AbortController()
+
+/* --------------------------------- Helpers -------------------------------- */
 const showToast = (msg) => {
   toast.value = `✅ ${msg}`
   setTimeout(() => (toast.value = ''), 2000)
 }
+const fmtDate = (d) => {
+  if (!d) return '—'
+  const dt = new Date(d)
+  return isNaN(dt) ? '—' : dt.toLocaleString()
+}
 
-const fetchData = async () => {
+/* ---------------------------------- Fetch --------------------------------- */
+async function fetchData() {
   loading.value = true
-  const params = new URLSearchParams({ page: page.value, limit: limit.value, search: search.value })
   try {
-    const res = await fetchWithAuth(`/api/protected/printers?${params.toString()}`)
+    const params = new URLSearchParams({
+      page: page.value,
+      limit: limit.value,
+      search: search.value,
+    })
+
+    inFlight.abort()
+    inFlight = new AbortController()
+    const res = await fetchWithAuth(`/api/protected/printers?${params.toString()}`, {
+      signal: inFlight.signal,
+    })
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const data = await res.json()
+
     items.value = data.items || []
     total.value = data.total || 0
     totalPages.value = data.totalPages || 0
 
+    // reset per-row ui state (but keep expand state if already open)
     const st = {}
     const ex = {}
     for (const p of items.value) {
@@ -420,13 +448,14 @@ const fetchData = async () => {
   }
 }
 
-const nextPage = () => {
+function nextPage() {
   if (page.value * limit.value < total.value) page.value++
 }
-const prevPage = () => {
+function prevPage() {
   if (page.value > 1) page.value--
 }
 
+/* --------------------------------- Watchers ------------------------------- */
 watch([page, limit, search], () => {
   router.push({ query: { page: page.value, limit: limit.value, search: search.value } })
 })
@@ -443,7 +472,7 @@ watch(
   { immediate: true }
 )
 
-let searchT = null
+/* --------------------------------- Search -------------------------------- */
 const onSearchInput = () => {
   clearTimeout(searchT)
   searchT = setTimeout(() => {
@@ -456,6 +485,7 @@ const clearSearch = () => {
   onSearchInput()
 }
 
+/* --------------------------------- CRUD ---------------------------------- */
 const openCreate = () => {
   editId.value = null
   form.value = {
@@ -488,7 +518,8 @@ const closeModal = () => {
   showModal.value = false
 }
 
-const save = async () => {
+async function save() {
+  saving.value = true
   try {
     const method = editId.value ? 'PUT' : 'POST'
     const url = editId.value ? `/api/protected/printers/${editId.value}` : '/api/protected/printers'
@@ -503,10 +534,12 @@ const save = async () => {
     showToast('Sačuvano')
   } catch (e) {
     console.error(e)
+  } finally {
+    saving.value = false
   }
 }
 
-const confirmDelete = async (p) => {
+async function confirmDelete(p) {
   if (!confirm(`Obrisati "${p.name || 'štampač'}"?`)) return
   try {
     const res = await fetchWithAuth(`/api/protected/printers/${p._id}`, { method: 'DELETE' })
@@ -518,11 +551,11 @@ const confirmDelete = async (p) => {
   }
 }
 
-const toggleRow = (id) => {
+function toggleRow(id) {
   expanded.value[id] = !expanded.value[id]
 }
 
-const connectComputer = async (p) => {
+async function connectComputer(p) {
   const v = rowState.value[p._id].connectInput.trim()
   if (!v) return
   try {
@@ -539,7 +572,7 @@ const connectComputer = async (p) => {
   }
 }
 
-const disconnectComputer = async (p) => {
+async function disconnectComputer(p) {
   const v = rowState.value[p._id].disconnectInput.trim()
   if (!v) return
   try {
@@ -556,7 +589,7 @@ const disconnectComputer = async (p) => {
   }
 }
 
-const setHost = async (p) => {
+async function setHost(p) {
   const v = rowState.value[p._id].hostInput.trim()
   if (!v) return
   try {
@@ -572,7 +605,7 @@ const setHost = async (p) => {
   }
 }
 
-const unsetHost = async (p) => {
+async function unsetHost(p) {
   try {
     await fetchWithAuth(`/api/protected/printers/${p._id}/unset-host`, { method: 'POST' })
     await fetchData()
@@ -582,22 +615,21 @@ const unsetHost = async (p) => {
   }
 }
 
-const copy = async (text) => {
+/* --------------------------------- Misc ---------------------------------- */
+async function copy(text) {
   try {
     await navigator.clipboard.writeText(text)
     showToast('IP kopiran')
   } catch {}
 }
 
-const fmtDate = (d) => {
-  if (!d) return '—'
-  const dt = new Date(d)
-  if (isNaN(dt)) return '—'
-  return dt.toLocaleString()
-}
-
 onMounted(() => {
   document.title = 'Štampači - NetDesk'
+})
+
+onBeforeUnmount(() => {
+  inFlight.abort()
+  clearTimeout(searchT)
 })
 </script>
 
