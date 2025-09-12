@@ -1,5 +1,6 @@
 <template>
   <div class="glass-container">
+    <!-- Header / Toolbar -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🖥️ IP Adrese</h1>
 
@@ -48,6 +49,7 @@
       </div>
     </div>
 
+    <!-- Search + pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <input
         v-model="search"
@@ -79,6 +81,7 @@
       </div>
     </div>
 
+    <!-- Lozinke toggle -->
     <button
       @click="showPasswords = !showPasswords"
       class="text-sm text-gray-700 underline hover:text-gray-900"
@@ -86,113 +89,111 @@
       {{ showPasswords ? '🔒 Sakrij lozinke' : '🔓 Prikaži lozinke' }}
     </button>
 
-    <div class="overflow-x-auto rounded-lg shadow mt-4">
-      <table class="min-w-full border border-gray-300 text-left bg-white bg-opacity-80">
-        <thead class="bg-gray-200 text-sm sm:text-base">
-          <tr>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('ip')">
-              🌐 IP adresa <span v-if="sortBy === 'ip'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('computerName')">
-              🖥️ Ime računara
-              <span v-if="sortBy === 'computerName'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('username')">
-              👤 Korisničko ime
-              <span v-if="sortBy === 'username'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('fullName')">
-              🙍‍♂️ Puno ime
-              <span v-if="sortBy === 'fullName'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 whitespace-nowrap">🔑 Lozinka</th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('rdp')">
-              🖧 RDP <span v-if="sortBy === 'rdp'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('dnsLog')">
-              🌐 DNS Log
-              <span v-if="sortBy === 'dnsLog'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('anyDesk')">
-              💻 AnyDesk
-              <span v-if="sortBy === 'anyDesk'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('system')">
-              🧩 Sistem
-              <span v-if="sortBy === 'system'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-            <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('department')">
-              🏢 Odeljenje
-              <span v-if="sortBy === 'department'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
-            </th>
-
-            <th class="p-2 whitespace-nowrap">⚙️ Akcije</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="entry in entries"
-            :key="entry._id"
-            class="border-t text-sm sm:text-base hover:bg-slate-50 transition"
-          >
-            <td class="p-2">
+    <!-- KARTICE -->
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <article
+        v-for="entry in entries"
+        :key="entry._id"
+        class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
+      >
+        <!-- Header kartice -->
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-sm text-slate-500">IP adresa</div>
+            <div class="text-lg font-semibold tracking-tight">
               {{ entry.ip }}
-              <button
-                @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
-                class="ml-2 text-blue-500 hover:underline text-xs"
-              >
-                📋
-              </button>
-            </td>
-            <td class="p-2">{{ entry.computerName }}</td>
-            <td class="p-2">{{ entry.username }}</td>
-            <td class="p-2">{{ entry.fullName }}</td>
-            <td class="p-2">
-              {{ showPasswords ? entry.password : '••••••' }}
-              <button
-                v-if="showPasswords"
-                @click="copyToClipboard(entry.password, 'Lozinka kopirana!')"
-                class="ml-2 text-blue-500 hover:underline text-xs"
-              >
-                📋
-              </button>
-            </td>
-            <td class="p-2">{{ entry.rdp }}</td>
-            <td class="p-2">
-              {{ entry.dnsLog || '—' }}
-            </td>
-            <td class="p-2">
-              {{ entry.anyDesk || '—' }}
-            </td>
-            <td class="p-2">
-              {{ entry.system || '—' }}
-            </td>
-            <td class="p-2">
-              {{ entry.department || '—' }}
-            </td>
-            <td class="p-2 space-x-2 whitespace-nowrap">
-              <button @click="editEntry(entry)" class="text-blue-600 hover:underline">
-                ✏️ Izmeni
-              </button>
-              <button @click="deleteEntry(entry._id)" class="text-red-600 hover:underline">
-                🗑️ Obriši
-              </button>
-              <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline">
-                🔗 RDP
-              </button>
-              <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline">
-                ℹ️ Meta
-              </button>
-              <button @click="openPrinters(entry)" class="text-amber-600 hover:underline">
-                🖨 Štampači
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+            <div class="mt-1 text-xs text-slate-500">
+              {{ entry.computerName || '—' }}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
+              v-if="entry.department"
+              title="Odeljenje"
+            >
+              🏢 {{ entry.department }}
+            </span>
+
+            <button
+              @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
+              class="text-blue-600 text-sm hover:underline"
+              title="Kopiraj IP"
+            >
+              📋
+            </button>
+          </div>
+        </div>
+
+        <!-- Telo kartice -->
+        <div class="mt-3 space-y-1.5 text-sm">
+          <div class="flex justify-between gap-3">
+            <span class="text-slate-500">👤 Korisničko ime</span>
+            <span class="font-medium truncate">{{ entry.username || '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-slate-500">🙍‍♂️ Puno ime</span>
+            <span class="font-medium truncate">{{ entry.fullName || '—' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-slate-500">🔑 Lozinka</span>
+            <span class="font-medium truncate">
+              {{ showPasswords ? entry.password || '—' : '••••••' }}
+            </span>
+            <button
+              v-if="showPasswords && entry.password"
+              @click="copyToClipboard(entry.password, 'Lozinka kopirana!')"
+              class="ml-2 text-blue-600 hover:underline text-xs"
+            >
+              📋
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">🖧 RDP</div>
+              <div class="text-sm font-medium break-all">{{ entry.rdp || '—' }}</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">🌐 DNS Log</div>
+              <div class="text-sm font-medium break-all">{{ entry.dnsLog || '—' }}</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">💻 AnyDesk</div>
+              <div class="text-sm font-medium break-all">{{ entry.anyDesk || '—' }}</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">🧩 Sistem</div>
+              <div class="text-sm font-medium break-all">{{ entry.system || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Akcije -->
+        <div class="mt-4 pt-3 border-t flex flex-wrap items-center gap-3">
+          <button @click="editEntry(entry)" class="text-blue-600 hover:underline text-sm">
+            ✏️ Izmeni
+          </button>
+          <button @click="deleteEntry(entry._id)" class="text-red-600 hover:underline text-sm">
+            🗑️ Obriši
+          </button>
+          <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline text-sm">
+            🔗 RDP
+          </button>
+          <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
+            ℹ️ Meta
+          </button>
+          <button @click="openPrinters(entry)" class="text-amber-600 hover:underline text-sm">
+            🖨 Štampači
+          </button>
+        </div>
+      </article>
     </div>
   </div>
 
+  <!-- Toast -->
   <transition name="fade">
     <div
       v-if="copiedText"
@@ -202,6 +203,7 @@
     </div>
   </transition>
 
+  <!-- Modal: Slobodne IP -->
   <transition name="fade">
     <div
       v-if="showingAvailableModal"
@@ -252,6 +254,7 @@
     </div>
   </transition>
 
+  <!-- Modal: Metapodaci -->
   <transition name="fade">
     <div v-if="showMeta" class="fixed inset-0 z-[60] flex" @click.self="closeMetadata">
       <div class="absolute inset-0 bg-black/40"></div>
@@ -461,6 +464,7 @@
     </div>
   </transition>
 
+  <!-- Modal: Štampači -->
   <transition name="fade">
     <div v-if="showPrintersModal" class="fixed inset-0 z-[70] flex" @click.self="closePrinters">
       <div class="absolute inset-0 bg-black/40"></div>
@@ -625,16 +629,9 @@ const printersAll = ref([])
 const printersSelectSearch = ref('')
 const selectedPrinterId = ref('')
 
+// Akcije rute
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry._id}`)
-
-const toggleSort = (column) => {
-  if (sortBy.value === column) sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  else {
-    sortBy.value = column
-    sortOrder.value = 'asc'
-  }
-}
 
 const isThereAnyPages = () => (totalPages.value === 0 ? '0' : page.value)
 
