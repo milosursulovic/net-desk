@@ -4,6 +4,7 @@ import fs from "fs";
 import XLSX from "xlsx";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
+import Printer from "../models/Printer.js";
 import { setMetadataForIp } from "../services/ipEntry.service.js";
 
 const router = express.Router();
@@ -61,7 +62,8 @@ router.get("/export-xlsx", async (req, res) => {
       anyDesk: e.anyDesk,
       system: e.system,
       department: e.department,
-      hasMetadata: (Boolean(e.metadata) || metaSet.has(String(e._id))) ? "DA" : "NE",
+      hasMetadata:
+        Boolean(e.metadata) || metaSet.has(String(e._id)) ? "DA" : "NE",
     }));
 
     // 4) XLSX
@@ -221,7 +223,7 @@ router.post("/", async (req, res) => {
     dnsLog,
     anyDesk,
     system,
-    department
+    department,
   } = req.body;
   if (!ip)
     return res.status(400).json({ message: "IP adresa je obavezno polje" });
@@ -237,7 +239,7 @@ router.post("/", async (req, res) => {
       dnsLog,
       anyDesk,
       system,
-      department
+      department,
     });
     await newEntry.save();
     res.status(201).json(newEntry);
@@ -308,6 +310,50 @@ router.patch("/:ip/metadata", async (req, res, next) => {
     res.json(meta);
   } catch (e) {
     next(e);
+  }
+});
+
+router.get("/:id/printers", async (req, res) => {
+  try {
+    const entry = await IpEntry.findById(req.params.id)
+      .populate({
+        path: "printersHosted",
+        select: "name manufacturer model serial ip shared",
+      })
+      .populate({
+        path: "printersConnected",
+        select: "name manufacturer model serial ip shared",
+      })
+      .lean();
+
+    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
+
+    res.json({
+      hosted: entry.printersHosted || [],
+      connected: entry.printersConnected || [],
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Greška na serveru" });
+  }
+});
+
+router.get("/by-ip/:ip/printers", async (req, res) => {
+  try {
+    const entry = await IpEntry.findOne({ ip: req.params.ip })
+      .populate("printersHosted", "name manufacturer model serial ip shared")
+      .populate("printersConnected", "name manufacturer model serial ip shared")
+      .lean();
+
+    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
+
+    res.json({
+      hosted: entry.printersHosted || [],
+      connected: entry.printersConnected || [],
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Greška na serveru" });
   }
 });
 

@@ -6,6 +6,7 @@ import AddIpView from '../views/AddIpView.vue'
 import EditIpView from '../views/EditIpView.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import MetadataView from '@/views/MetadataView.vue'
+import PrintersView from '@/views/PrintersView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +39,12 @@ const router = createRouter({
           name: 'metadata',
           title: 'Metadata',
           component: MetadataView,
+        },
+        {
+          path: 'printers',
+          name: 'printers',
+          title: 'Printers',
+          component: PrintersView,
         },
       ],
     },

@@ -32,5 +32,22 @@ ipEntrySchema.pre("save", function (next) {
   next();
 });
 
+ipEntrySchema.virtual("printersHosted", {
+  ref: "Printer",
+  localField: "_id",
+  foreignField: "hostComputer",
+  justOne: false,
+});
+
+ipEntrySchema.virtual("printersConnected", {
+  ref: "Printer",
+  localField: "_id",
+  foreignField: "connectedComputers",
+  justOne: false,
+});
+
+ipEntrySchema.set("toJSON", { virtuals: true });
+ipEntrySchema.set("toObject", { virtuals: true });
+
 const IpEntry = mongoose.model("IpEntry", ipEntrySchema);
 export default IpEntry;
