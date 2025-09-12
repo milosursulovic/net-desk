@@ -3,83 +3,38 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <h1 class="text-3xl font-bold text-slate-800">🧾 Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="refreshAll"
-          class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700"
-        >
+        <button @click="refreshAll" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700">
           🔄 Osveži
         </button>
-        <button
-          @click="exportXlsx"
-          class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
-        >
+        <button @click="exportXlsx" class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700">
           📤 Izvezi XLSX
         </button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Ukupno mašina"
-        :value="stats.totalWithMeta"
-        :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
-        icon="💻"
-      />
-      <KpiCard
-        title="Bez metapodataka"
-        :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
-        :sub="'od ' + totalIpEntries"
-        icon="🚫"
-      />
-      <KpiCard
-        title="Pros. RAM"
-        :value="fmtGb(stats.avgRamGb)"
-        :sub="'med.: ' + fmtGb(stats.medRamGb)"
-        icon="🧠"
-      />
-      <KpiCard
-        title="SSD/HDD"
-        :value="stats.ssdCount + ' / ' + stats.hddCount"
-        :sub="fmtTb(stats.totalStorageTb) + ' ukupno'"
-        icon="💽"
-      />
+      <KpiCard title="Ukupno mašina" :value="stats.totalWithMeta" :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
+        icon="💻" />
+      <KpiCard title="Bez metapodataka" :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
+        :sub="'od ' + totalIpEntries" icon="🚫" />
+      <KpiCard title="Pros. RAM" :value="fmtGb(stats.avgRamGb)" :sub="'med.: ' + fmtGb(stats.medRamGb)" icon="🧠" />
+      <KpiCard title="SSD/HDD" :value="stats.ssdCount + ' / ' + stats.hddCount"
+        :sub="fmtTb(stats.totalStorageTb) + ' ukupno'" icon="💽" />
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Jedinstvenih korisnika"
-        :value="stats.uniqueUsers"
-        :sub="'od ' + stats.totalWithMeta + ' mašina'"
-        icon="👤"
-      />
-      <KpiCard
-        title="Pros. # diskova"
-        :value="stats.avgDisks"
-        :sub="'med.: ' + stats.medDisks"
-        icon="🗄️"
-      />
-      <KpiCard
-        title="Pros. # NIC-ova"
-        :value="stats.avgNics"
-        :sub="'med.: ' + stats.medNics"
-        icon="🌐"
-      />
-      <KpiCard
-        title="Medijana starosti OS"
-        :value="stats.medOsAgeDays + ' dana'"
-        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
-        icon="⏳"
-      />
+      <KpiCard title="Jedinstvenih korisnika" :value="stats.uniqueUsers" :sub="'od ' + stats.totalWithMeta + ' mašina'"
+        icon="👤" />
+      <KpiCard title="Pros. # diskova" :value="stats.avgDisks" :sub="'med.: ' + stats.medDisks" icon="🗄️" />
+      <KpiCard title="Pros. # NIC-ova" :value="stats.avgNics" :sub="'med.: ' + stats.medNics" icon="🌐" />
+      <KpiCard title="Medijana starosti OS" :value="stats.medOsAgeDays + ' dana'"
+        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'" icon="⏳" />
     </div>
 
     <!-- NOVO: KPI za Lexar red-flag -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Lexar SSD (red-flag)"
-        :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
-        sub="problematični uređaji"
-        icon="🚩"
-      />
+      <KpiCard title="Lexar SSD (red-flag)" :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
+        sub="problematični uređaji" icon="🚩" />
     </div>
 
     <div class="grid grid-cols-1 xl-grid-cols-3 xl:grid-cols-3 gap-4">
@@ -110,12 +65,9 @@
               <div class="tabular-nums text-slate-600">{{ row.count }}</div>
             </div>
             <div class="w-full h-2 bg-slate-100 rounded">
-              <div
-                class="h-2 bg-blue-500 rounded"
-                :style="{
-                  width: ((row.count / (stats.totalWithMeta || 1)) * 100).toFixed(1) + '%',
-                }"
-              />
+              <div class="h-2 bg-blue-500 rounded" :style="{
+                width: ((row.count / (stats.totalWithMeta || 1)) * 100).toFixed(1) + '%',
+              }" />
             </div>
           </div>
         </div>
@@ -126,13 +78,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🏭 Proizvođači sistema (Top 6)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topManufacturers"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topManufacturers" :key="row.key" :label="row.key || '—'" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
       </div>
 
@@ -159,13 +106,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🌐 Brzine mreže (Top 5)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topNicSpeeds"
-            :key="row.key"
-            :label="fmtMbps(Number(row.key))"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topNicSpeeds" :key="row.key" :label="fmtMbps(Number(row.key))" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
       </div>
     </div>
@@ -174,13 +116,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🧮 CPU modeli (Top 5)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topCpuModels"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topCpuModels" :key="row.key" :label="row.key || '—'" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <InfoPill label="Pros. jezgra" :value="stats.avgCpuCores" />
@@ -202,52 +139,36 @@
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">🔍 Najmanje RAM-a (Top 10)</h2>
-        <DataTable
-          :rows="tables.lowRam"
-          :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.lowRam" :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']" />
       </div>
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">📅 Najstarija instalacija OS-a (Top 10)</h2>
-        <DataTable
-          :rows="tables.oldOs"
-          :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.oldOs" :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']" />
       </div>
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">🧱 Najveći ukupni storage (Top 10)</h2>
-        <DataTable
-          :rows="tables.topStorage"
-          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.topStorage"
+          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']" />
       </div>
     </div>
 
-    <!-- NOVO: Lexar red-flag tabela -->
     <div class="grid grid-cols-1 gap-4">
       <div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-red-700 mb-1">🚩 Lexar SSD detektovani (red-flag)</h2>
         <p class="text-sm text-slate-600 mb-3">
           Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
         </p>
-        <DataTable
-          :rows="
-            (displayTables.lexarFlag || []).map((r) => ({
-              ComputerName: r.ComputerName,
-              'Storage/Model': r.Storage?.Model,
-              'Storage/Serial': r.Storage?.Serial,
-              'Storage/SizeGB': r.Storage?.SizeGB,
-              CollectedAt: r.CollectedAt,
-            }))
-          "
-          :cols="[
-            'ComputerName',
-            'Storage/Model',
-            'Storage/Serial',
-            'Storage/SizeGB',
-            'CollectedAt',
-          ]"
-        />
+        <DataTable :rows="(displayTables.lexarFlag || []).map((r) => ({
+          ComputerName: r.ComputerName,
+          Storage: {
+            Model: r.Storage?.Model ?? r['Storage.Model'],
+            Serial: r.Storage?.Serial ?? r['Storage.Serial'],
+            SizeGB: r.Storage?.SizeGB ?? r['Storage.SizeGB'],
+          },
+          CollectedAt: r.CollectedAt,
+        }))
+          " :cols="['ComputerName', 'Storage/Model', 'Storage/Serial', 'Storage/SizeGB', 'CollectedAt']" />
+
       </div>
     </div>
   </div>
@@ -404,14 +325,14 @@ async function fetchStatsPreferServer() {
 
       if (Array.isArray(payload.meta)) return
     }
-  } catch {}
+  } catch { }
   try {
     const r1 = await fetchWithAuth('/api/protected/ip-addresses?limit=1&page=1')
     if (r1.ok) {
       const d = await r1.json()
       totalIpEntries.value = Number(d.total) || 0
     }
-  } catch {}
+  } catch { }
   try {
     let page = 1,
       all = []

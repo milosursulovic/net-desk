@@ -299,10 +299,12 @@ router.get("/stats", async (req, res) => {
         $project: {
           _id: 0,
           ComputerName: { $ifNull: ["$ComputerName", "—"] },
-          "Storage.Model": "$Storage.Model",
-          "Storage.Serial": "$Storage.Serial",
-          "Storage.SizeGB": { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
-          "Storage.MediaType": "$Storage.MediaType",
+          Storage: {
+            Model: "$Storage.Model",
+            Serial: "$Storage.Serial",
+            SizeGB: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
+            MediaType: "$Storage.MediaType",
+          },
           CollectedAt: "$CollectedAt",
         },
       },
