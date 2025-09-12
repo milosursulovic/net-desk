@@ -38,6 +38,13 @@
         >
           📊 Metapodaci
         </RouterLink>
+
+        <RouterLink
+          to="/printers"
+          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center"
+        >
+          🖨️ Štampači
+        </RouterLink>
       </div>
     </div>
 
@@ -883,10 +890,13 @@ const filteredAvailableIps = computed(() =>
   availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase()))
 )
 
+const printersAllFree = computed(() => printersAll.value.filter((p) => !p.hostComputer))
+
 const filteredPrintersAll = computed(() => {
-  if (!printersSelectSearch.value) return printersAll.value
+  const base = printersAllFree.value
+  if (!printersSelectSearch.value) return base
   const q = printersSelectSearch.value.toLowerCase()
-  return printersAll.value.filter((p) =>
+  return base.filter((p) =>
     [p.name, p.manufacturer, p.model, p.ip].filter(Boolean).join(' ').toLowerCase().includes(q)
   )
 })

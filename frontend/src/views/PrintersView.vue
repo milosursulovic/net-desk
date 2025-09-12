@@ -88,7 +88,7 @@
               <th class="p-3 font-medium">IP</th>
               <th class="p-3 font-medium">Deljen</th>
               <th class="p-3 font-medium">Host računar</th>
-              <th class="p-3 font-medium">Povezanih PC</th>
+              <th class="p-3 font-medium">Povezani PC</th>
               <th class="p-3 font-medium">Akcije</th>
             </tr>
           </thead>
@@ -141,7 +141,14 @@
                   <span v-else>—</span>
                 </td>
                 <td class="p-3">
-                  {{ (p.connectedComputers && p.connectedComputers.length) || 0 }}
+                  <div v-if="p.connectedComputers && p.connectedComputers.length">
+                    <ul class="list-disc list-inside space-y-1">
+                      <li v-for="c in p.connectedComputers" :key="c._id">
+                        {{ c.computerName || c.ip || '—' }}
+                      </li>
+                    </ul>
+                  </div>
+                  <div v-else>0</div>
                 </td>
                 <td class="p-3 whitespace-nowrap space-x-2">
                   <button @click="openEdit(p)" class="text-indigo-700 hover:underline">
@@ -163,6 +170,7 @@
               >
                 <td colspan="11" class="p-4">
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- connect/disconnect/host controls -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🔗 Poveži računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -182,7 +190,6 @@
                         </button>
                       </div>
                     </div>
-
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧷 Postavi host</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -208,7 +215,6 @@
                         </button>
                       </div>
                     </div>
-
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧹 Otkači računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -229,7 +235,15 @@
                       </div>
                     </div>
                   </div>
-
+                  <!-- list connected computers -->
+                  <div class="mt-3" v-if="p.connectedComputers && p.connectedComputers.length">
+                    <div class="font-medium mb-2">🖥️ Povezani računari</div>
+                    <ul class="list-disc list-inside space-y-1 text-sm">
+                      <li v-for="c in p.connectedComputers" :key="c._id">
+                        {{ c.computerName || '—' }} — {{ c.ip || '—' }}
+                      </li>
+                    </ul>
+                  </div>
                   <div class="mt-3 text-xs text-gray-600 flex flex-wrap gap-x-4">
                     <span>Ažurirano: {{ fmtDate(p.updatedAt) }}</span>
                     <span>Kreirano: {{ fmtDate(p.createdAt) }}</span>
