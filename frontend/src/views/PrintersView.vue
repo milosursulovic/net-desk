@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-4">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-semibold text-slate-800">🖨️ Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -19,7 +18,6 @@
       </div>
     </div>
 
-    <!-- Filters & Pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="relative w-full sm:w-[480px]">
         <input
@@ -73,7 +71,6 @@
       </div>
     </div>
 
-    <!-- Table Card -->
     <div class="rounded-xl shadow ring-1 ring-black/5 overflow-hidden bg-white">
       <div class="overflow-x-auto">
         <table class="min-w-full text-left">
@@ -170,7 +167,6 @@
               >
                 <td colspan="11" class="p-4">
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <!-- connect/disconnect/host controls -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🔗 Poveži računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -235,7 +231,6 @@
                       </div>
                     </div>
                   </div>
-                  <!-- list connected computers -->
                   <div class="mt-3" v-if="p.connectedComputers && p.connectedComputers.length">
                     <div class="font-medium mb-2">🖥️ Povezani računari</div>
                     <ul class="list-disc list-inside space-y-1 text-sm">
@@ -256,7 +251,6 @@
       </div>
     </div>
 
-    <!-- Create / Edit Modal -->
     <transition name="fade">
       <div v-if="showModal" class="fixed inset-0 z-[60] flex" @click.self="closeModal">
         <div class="absolute inset-0 bg-black/40"></div>
@@ -351,7 +345,6 @@
       </div>
     </transition>
 
-    <!-- Toast -->
     <transition name="fade">
       <div
         v-if="toast"
@@ -370,8 +363,6 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
 const router = useRouter()
 const route = useRoute()
-
-// State
 const items = ref([])
 const total = ref(0)
 const totalPages = ref(0)
@@ -403,7 +394,6 @@ const showToast = (msg) => {
   setTimeout(() => (toast.value = ''), 2000)
 }
 
-// Fetch
 const fetchData = async () => {
   loading.value = true
   const params = new URLSearchParams({ page: page.value, limit: limit.value, search: search.value })
@@ -437,7 +427,6 @@ const prevPage = () => {
   if (page.value > 1) page.value--
 }
 
-// URL sync
 watch([page, limit, search], () => {
   router.push({ query: { page: page.value, limit: limit.value, search: search.value } })
 })
@@ -454,7 +443,6 @@ watch(
   { immediate: true }
 )
 
-// Debounced search input (300ms)
 let searchT = null
 const onSearchInput = () => {
   clearTimeout(searchT)
@@ -468,7 +456,6 @@ const clearSearch = () => {
   onSearchInput()
 }
 
-// Modal handlers
 const openCreate = () => {
   editId.value = null
   form.value = {
@@ -535,7 +522,6 @@ const toggleRow = (id) => {
   expanded.value[id] = !expanded.value[id]
 }
 
-// Connect/Disconnect/Host actions
 const connectComputer = async (p) => {
   const v = rowState.value[p._id].connectInput.trim()
   if (!v) return

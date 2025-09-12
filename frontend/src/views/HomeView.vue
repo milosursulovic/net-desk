@@ -122,7 +122,7 @@
               <span v-if="sortBy === 'system'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
             <th class="p-2 cursor-pointer whitespace-nowrap" @click="toggleSort('department')">
-              🧩 Odeljenje
+              🏢 Odeljenje
               <span v-if="sortBy === 'department'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
             </th>
 

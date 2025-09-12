@@ -163,7 +163,7 @@ router.post("/:id/connect", async (req, res) => {
 
 router.post("/:id/disconnect", async (req, res) => {
   try {
-    const { computer } = req.body; // ip ili _id
+    const { computer } = req.body;
     const pc = await findIpEntryByIpOrId(computer);
     if (!pc) return res.status(404).json({ error: "Computer not found" });
 

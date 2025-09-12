@@ -9,6 +9,7 @@ export const getFieldIcon = (name) => {
     dnsLog: '🌐',
     anyDesk: '💻',
     system: '🧩',
+    department: '🏢',
   }
   return icons[name] || '📄'
 }
