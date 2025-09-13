@@ -116,7 +116,6 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">IP adresa</div>
-            <!-- Replace the plain IP text with a button/link -->
             <div class="text-lg font-semibold tracking-tight">
               <button
                 class="underline decoration-dotted hover:decoration-solid hover:text-blue-700"
@@ -139,6 +138,23 @@
               title="Odeljenje"
             >
               🏢 {{ entry.department }}
+            </span>
+
+            <!-- Online status pill -->
+            <span
+              class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+              :class="
+                entry.isOnline
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              "
+              :title="statusTooltip(entry)"
+            >
+              <span
+                class="h-2 w-2 rounded-full"
+                :class="entry.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"
+              ></span>
+              {{ entry.isOnline ? 'Online' : 'Offline' }}
             </span>
 
             <button
@@ -192,6 +208,12 @@
               <div class="text-sm font-medium break-all">{{ entry.system || '—' }}</div>
             </div>
           </div>
+        </div>
+
+        <!-- Mini status row -->
+        <div class="mt-2 text-[11px] text-slate-500">
+          ⏱️ Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
+          {{ fmtRelative(entry.lastStatusChange) }}
         </div>
 
         <div class="mt-4 pt-3 border-t flex flex-wrap items-center gap-3">
@@ -764,7 +786,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
@@ -805,7 +827,7 @@ const selectedPrinterId = ref('')
 
 // --- Domains drawer state ---
 const showDomains = ref(false)
-const domainsFor = ref(null) // { ip, _id, ... } of selected entry
+const domainsFor = ref(null)
 const domainsItems = ref([])
 const domainsTotal = ref(0)
 const domainsPage = ref(1)
@@ -957,6 +979,31 @@ const fmtGb = (n) => (n || n === 0 ? `${n} GB` : '—')
 const fmtMbps = (n) => (n || n === 0 ? `${n} Mbps` : '—')
 const safe = (v) => v ?? '—'
 
+/** Human-ish relative time */
+const fmtRelative = (d) => {
+  if (!d) return '—'
+  const t = new Date(d).getTime()
+  if (isNaN(t)) return '—'
+  const diff = Date.now() - t
+  const s = Math.floor(diff / 1000)
+  if (s < 45) return 'pre par sekundi'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `pre ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `pre ${h} h`
+  const days = Math.floor(h / 24)
+  return `pre ${days} d`
+}
+
+/** Tooltip text for the status pill */
+const statusTooltip = (e) => {
+  const onlineTxt = e.isOnline ? 'Online' : 'Offline'
+  const lc = e.lastChecked ? new Date(e.lastChecked).toLocaleString() : '—'
+  const lsc = e.lastStatusChange ? new Date(e.lastStatusChange).toLocaleString() : '—'
+  return `${onlineTxt}\nPoslednja provera: ${lc}\nPromena statusa: ${lsc}`
+}
+
+// ---- Metadata drawer ----
 const openMetadata = async (entry) => {
   metaLoading.value = true
   metaError.value = null
@@ -984,6 +1031,8 @@ const closeMetadata = () => {
   metaError.value = null
 }
 
+// ---- Printers drawer ----
+const showPrinters = () => (showPrintersModal.value = true)
 const openPrinters = async (entry) => {
   printersEntry.value = entry
   printersLoading.value = true
@@ -1075,29 +1124,27 @@ const filteredPrintersAll = computed(() => {
   )
 })
 
+// ---- Domains drawer ----
 const toggleDomainsSort = () => {
   domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
   fetchDomainsForIp()
 }
-
 const prevDomainsPage = () => {
   if (domainsPage.value > 1) {
     domainsPage.value--
     fetchDomainsForIp()
   }
 }
-
 const nextDomainsPage = () => {
   if (domainsPage.value * domainsLimit.value < domainsTotal.value) {
     domainsPage.value++
     fetchDomainsForIp()
   }
 }
-
 const openDomainsForIp = (entry) => {
   domainsFor.value = { ip: entry.ip, _id: entry._id }
   domainsPage.value = 1
-  domainsSearch.value = entry.ip // prefill search with ip so backend binds via IpEntry
+  domainsSearch.value = entry.ip
   showDomains.value = true
   fetchDomainsForIp()
 }
@@ -1108,7 +1155,6 @@ const closeDomains = () => {
   domainsTotal.value = 0
   domainsSearch.value = ''
 }
-
 async function fetchDomainsForIp() {
   try {
     const params = new URLSearchParams({
@@ -1118,14 +1164,12 @@ async function fetchDomainsForIp() {
       sortBy: domainsSortBy.value,
       sortOrder: domainsSortOrder.value,
     })
-    // If “blocked only”, hit /domains/blocked; otherwise /domains
     const path = domainsBlockedOnly.value
       ? '/api/protected/domains/blocked'
       : '/api/protected/domains'
     const res = await fetchWithAuth(`${path}?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    // API returns { data, total, page, limit }, and each row includes a flat .ip
     domainsItems.value = Array.isArray(data.data) ? data.data : []
     domainsTotal.value = data.total ?? 0
   } catch (e) {
@@ -1135,6 +1179,19 @@ async function fetchDomainsForIp() {
   }
 }
 
+// ---- Keep statuses fresh (sync with ping loop) ----
+const AUTO_REFRESH_SEC = 30
+let refreshTimer = null
+onMounted(() => {
+  refreshTimer = setInterval(() => {
+    fetchData()
+  }, AUTO_REFRESH_SEC * 1000)
+})
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+})
+
+// ---- Router sync ----
 watch([page, limit, search, sortBy, sortOrder], () => {
   router.push({
     query: {
@@ -1146,7 +1203,6 @@ watch([page, limit, search, sortBy, sortOrder], () => {
     },
   })
 })
-
 watch(
   () => route.query,
   (query) => {
