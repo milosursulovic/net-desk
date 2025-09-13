@@ -9,6 +9,7 @@ const AddIpView = () => import('@/views/AddIpView.vue')
 const EditIpView = () => import('@/views/EditIpView.vue')
 const MetadataView = () => import('@/views/MetadataView.vue')
 const PrintersView = () => import('@/views/PrintersView.vue')
+const DomainsView = () => import('@/views/DomainsView.vue')
 
 function decodeJwt(token) {
   try {
@@ -60,6 +61,12 @@ const router = createRouter({
           name: 'printers',
           meta: { title: 'Štampači - NetDesk' },
           component: PrintersView,
+        },
+        {
+          path: 'domains',
+          name: 'domains',
+          meta: { title: 'DNS logovi - NetDesk' },
+          component: DomainsView,
         },
       ],
     },

@@ -45,6 +45,13 @@
         >
           🖨️ Štampači
         </RouterLink>
+
+        <RouterLink
+          to="/domains"
+          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center"
+        >
+          🌐 DNS logovi
+        </RouterLink>
       </div>
     </div>
 
@@ -109,9 +116,17 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">IP adresa</div>
+            <!-- Replace the plain IP text with a button/link -->
             <div class="text-lg font-semibold tracking-tight">
-              {{ entry.ip }}
+              <button
+                class="underline decoration-dotted hover:decoration-solid hover:text-blue-700"
+                @click="openDomainsForIp(entry)"
+                :title="`Prikaži domene za ${entry.ip}`"
+              >
+                {{ entry.ip }}
+              </button>
             </div>
+
             <div class="mt-1 text-xs text-slate-500">
               {{ entry.computerName || '—' }}
             </div>
@@ -640,6 +655,111 @@
         </div>
       </transition>
     </teleport>
+
+    <!-- New: Domains drawer (per-IP) -->
+    <teleport to="body">
+      <transition name="fade">
+        <div
+          v-if="showDomains"
+          class="fixed inset-0 z-[9995] flex"
+          @click.self="closeDomains"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="absolute inset-0 bg-black/40"></div>
+
+          <div
+            class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto"
+          >
+            <div
+              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
+            >
+              <h3 class="text-lg font-semibold">
+                🌐 DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
+              </h3>
+              <button
+                @click="closeDomains"
+                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                aria-label="Zatvori"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div class="p-4 space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <input
+                  v-model="domainsSearch"
+                  @keyup.enter="fetchDomainsForIp()"
+                  placeholder="🔎 Pretraga domain/ip…"
+                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <div class="flex items-center gap-2">
+                  <select v-model="domainsSortBy" class="border px-2 py-2 rounded text-sm">
+                    <option value="timestamp">Vreme</option>
+                    <option value="name">Domain</option>
+                  </select>
+                  <button @click="toggleDomainsSort" class="px-3 py-2 border rounded text-sm">
+                    {{ domainsSortOrder === 'asc' ? '↑' : '↓' }}
+                  </button>
+                  <label class="inline-flex items-center text-sm gap-2">
+                    <input
+                      type="checkbox"
+                      v-model="domainsBlockedOnly"
+                      @change="fetchDomainsForIp()"
+                    />
+                    Samo blokirani
+                  </label>
+                </div>
+                <div class="sm:ml-auto text-sm text-gray-600">
+                  Prikazano {{ domainsItems.length }} / {{ domainsTotal }}
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <div
+                  v-for="d in domainsItems"
+                  :key="d._id"
+                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between"
+                >
+                  <div class="min-w-0">
+                    <div class="font-medium truncate">{{ d.name }}</div>
+                    <div class="text-xs text-gray-500">
+                      {{ new Date(d.timestamp).toLocaleString() }} •
+                      {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
+                    </div>
+                  </div>
+                  <div class="text-xs text-gray-600 shrink-0">
+                    IP: {{ d.ip || domainsFor?.ip || '—' }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between pt-2">
+                <div class="text-sm">Strana {{ domainsPage }}</div>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="px-2 py-1 bg-gray-200 rounded"
+                    :disabled="domainsPage <= 1"
+                    @click="prevDomainsPage"
+                  >
+                    ⬅️
+                  </button>
+
+                  <button
+                    class="px-2 py-1 bg-gray-200 rounded"
+                    :disabled="domainsPage * domainsLimit >= domainsTotal"
+                    @click="nextDomainsPage"
+                  >
+                    ➡️
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </main>
 </template>
 
@@ -682,6 +802,18 @@ const printersData = ref({ hosted: [], connected: [] })
 const printersAll = ref([])
 const printersSelectSearch = ref('')
 const selectedPrinterId = ref('')
+
+// --- Domains drawer state ---
+const showDomains = ref(false)
+const domainsFor = ref(null) // { ip, _id, ... } of selected entry
+const domainsItems = ref([])
+const domainsTotal = ref(0)
+const domainsPage = ref(1)
+const domainsLimit = ref(20)
+const domainsSearch = ref('')
+const domainsSortBy = ref('timestamp')
+const domainsSortOrder = ref('desc')
+const domainsBlockedOnly = ref(false)
 
 const sortOptions = [
   { value: 'ip', label: 'IP adresa' },
@@ -942,6 +1074,66 @@ const filteredPrintersAll = computed(() => {
     [p.name, p.manufacturer, p.model, p.ip].filter(Boolean).join(' ').toLowerCase().includes(q)
   )
 })
+
+const toggleDomainsSort = () => {
+  domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
+  fetchDomainsForIp()
+}
+
+const prevDomainsPage = () => {
+  if (domainsPage.value > 1) {
+    domainsPage.value--
+    fetchDomainsForIp()
+  }
+}
+
+const nextDomainsPage = () => {
+  if (domainsPage.value * domainsLimit.value < domainsTotal.value) {
+    domainsPage.value++
+    fetchDomainsForIp()
+  }
+}
+
+const openDomainsForIp = (entry) => {
+  domainsFor.value = { ip: entry.ip, _id: entry._id }
+  domainsPage.value = 1
+  domainsSearch.value = entry.ip // prefill search with ip so backend binds via IpEntry
+  showDomains.value = true
+  fetchDomainsForIp()
+}
+const closeDomains = () => {
+  showDomains.value = false
+  domainsFor.value = null
+  domainsItems.value = []
+  domainsTotal.value = 0
+  domainsSearch.value = ''
+}
+
+async function fetchDomainsForIp() {
+  try {
+    const params = new URLSearchParams({
+      page: String(domainsPage.value),
+      limit: String(domainsLimit.value),
+      search: domainsSearch.value || (domainsFor.value?.ip ?? ''),
+      sortBy: domainsSortBy.value,
+      sortOrder: domainsSortOrder.value,
+    })
+    // If “blocked only”, hit /domains/blocked; otherwise /domains
+    const path = domainsBlockedOnly.value
+      ? '/api/protected/domains/blocked'
+      : '/api/protected/domains'
+    const res = await fetchWithAuth(`${path}?${params.toString()}`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    // API returns { data, total, page, limit }, and each row includes a flat .ip
+    domainsItems.value = Array.isArray(data.data) ? data.data : []
+    domainsTotal.value = data.total ?? 0
+  } catch (e) {
+    console.error('Neuspešno učitavanje domena:', e)
+    domainsItems.value = []
+    domainsTotal.value = 0
+  }
+}
 
 watch([page, limit, search, sortBy, sortOrder], () => {
   router.push({
