@@ -4,7 +4,7 @@ import fs from "fs";
 import XLSX from "xlsx";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
-import { setMetadataForIp } from "../services/ipEntry.service.js";
+import { setMetadataForIp } from "../services/ipEntryService.js";
 import { isValidIPv4, ipToNumeric, numericToIp } from "../utils/ip.js";
 import { ah } from "../utils/asyncHandler.js";
 import { z } from "zod";
