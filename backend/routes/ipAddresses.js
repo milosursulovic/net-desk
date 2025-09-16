@@ -331,7 +331,7 @@ router.get(
     const [entries, total] = await Promise.all([
       IpEntry.find(query)
         .select(
-          "ip ipNumeric computerName username password fullName rdp dnsLog anyDesk system department metadata"
+          "ip ipNumeric computerName username password fullName rdp dnsLog anyDesk system department metadata isOnline"
         )
         .sort({ [safeSortBy]: sortDirection })
         .skip(skip)
