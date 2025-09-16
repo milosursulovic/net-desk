@@ -872,8 +872,6 @@ async function fetchData() {
     entries.value = data.entries
     total.value = data.total
     totalPages.value = data.totalPages
-
-    console.log(data.entries)
   } catch (err) {
     console.error('Neuspešno dohvatanje podataka')
   }

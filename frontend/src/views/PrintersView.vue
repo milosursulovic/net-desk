@@ -4,16 +4,12 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-semibold text-slate-800">🖨️ Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="openCreate"
-          class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 inline-flex items-center gap-2"
-        >
+        <button @click="openCreate"
+          class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 inline-flex items-center gap-2">
           <span>➕</span><span>Dodaj štampač</span>
         </button>
-        <RouterLink
-          to="/"
-          class="bg-slate-700 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 inline-flex items-center gap-2"
-        >
+        <RouterLink to="/"
+          class="bg-slate-700 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 inline-flex items-center gap-2">
           <span>🖥️</span><span>IP adrese</span>
         </RouterLink>
       </div>
@@ -22,21 +18,14 @@
     <!-- Filters / pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="relative w-full sm:w-[480px]">
-        <input
-          v-model="searchInput"
-          @input="onSearchInput"
-          type="text"
+        <input v-model="searchInput" @input="onSearchInput" type="text"
           placeholder="🔎 Pretraga po nazivu, modelu, IP, serijskom..."
           class="w-full border border-gray-300 px-10 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          aria-label="Pretraga štampača"
-        />
+          aria-label="Pretraga štampača" />
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔎</span>
-        <button
-          v-if="searchInput"
-          @click="clearSearch"
+        <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-          aria-label="Obriši pretragu"
-        >
+          aria-label="Obriši pretragu">
           ✖️
         </button>
       </div>
@@ -50,23 +39,13 @@
             <option :value="50">50</option>
             <option :value="100">100</option>
           </select>
-          <button
-            @click="prevPage"
-            :disabled="page === 1 || loading"
-            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
-            aria-label="Prethodna strana"
-          >
+          <button @click="prevPage" :disabled="page === 1 || loading"
+            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Prethodna strana">
             ⬅️
           </button>
-          <span class="text-sm"
-            >📄 Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}</span
-          >
-          <button
-            @click="nextPage"
-            :disabled="page * limit >= total || loading"
-            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
-            aria-label="Sledeća strana"
-          >
+          <span class="text-sm">📄 Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}</span>
+          <button @click="nextPage" :disabled="page * limit >= total || loading"
+            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Sledeća strana">
             ➡️
           </button>
         </div>
@@ -104,11 +83,7 @@
             </tr>
 
             <template v-else>
-              <tr
-                v-for="p in items"
-                :key="p._id"
-                class="border-t text-sm sm:text-base hover:bg-slate-50"
-              >
+              <tr v-for="p in items" :key="p._id" class="border-t text-sm sm:text-base hover:bg-slate-50">
                 <td class="p-3">
                   <div class="font-medium text-slate-800">{{ p.name || '—' }}</div>
                 </td>
@@ -117,41 +92,36 @@
                 <td class="p-3">{{ p.serial || '—' }}</td>
                 <td class="p-3">{{ p.department || '—' }}</td>
                 <td class="p-3">
-                  <span
-                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 border"
-                  >
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 border">
                     {{ p.connectionType || '—' }}
                   </span>
                 </td>
                 <td class="p-3">
                   <div class="inline-flex items-center gap-2">
                     <span>{{ p.ip || '—' }}</span>
-                    <button
-                      v-if="p.ip"
-                      @click="copy(p.ip)"
-                      class="text-xs text-indigo-700 hover:underline"
-                    >
+                    <button v-if="p.ip" @click="copy(p.ip)" class="text-xs text-indigo-700 hover:underline">
                       kopiraj
                     </button>
                   </div>
                 </td>
                 <td class="p-3">{{ p.shared ? 'DA' : 'NE' }}</td>
+
+                <!-- ✅ Host iz LIST rute (polje `host`) -->
                 <td class="p-3">
-                  <span v-if="p.hostComputer">{{
-                    p.hostComputer.computerName || p.hostComputer.ip
-                  }}</span>
+                  <span v-if="p.host">
+                    {{ p.host.computerName || p.host.ip }}
+                  </span>
                   <span v-else>—</span>
                 </td>
+
+                <!-- ✅ Broj povezanih iz LIST rute (polje `connectedCount`) -->
                 <td class="p-3">
-                  <div v-if="p.connectedComputers?.length">
-                    <ul class="list-disc list-inside space-y-1">
-                      <li v-for="c in p.connectedComputers" :key="c._id">
-                        {{ c.computerName || c.ip || '—' }}
-                      </li>
-                    </ul>
-                  </div>
-                  <div v-else>0</div>
+                  <button class="text-indigo-700 hover:underline" @click="toggleRow(p._id)"
+                    :title="expanded[p._id] ? 'Sakrij detalje' : 'Prikaži detalje'">
+                    {{ typeof p.connectedCount === 'number' ? p.connectedCount : 0 }}
+                  </button>
                 </td>
+
                 <td class="p-3 whitespace-nowrap space-x-2">
                   <button @click="openEdit(p)" class="text-indigo-700 hover:underline">
                     ✏️ Izmeni
@@ -166,12 +136,7 @@
               </tr>
 
               <!-- Expanded row -->
-              <tr
-                v-for="p in items"
-                :key="p._id + '-exp'"
-                v-show="expanded[p._id]"
-                class="bg-slate-50 border-t"
-              >
+              <tr v-for="p in items" :key="p._id + '-exp'" v-show="expanded[p._id]" class="bg-slate-50 border-t">
                 <td colspan="11" class="p-4">
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <!-- Connect -->
@@ -181,16 +146,10 @@
                         Unesi IP ili _id računara (IpEntry)
                       </div>
                       <div class="flex gap-2">
-                        <input
-                          v-model.trim="rowState[p._id].connectInput"
-                          placeholder="npr. 10.230.62.15"
-                          class="border px-2 py-1 rounded text-sm w-full"
-                          @keyup.enter="connectComputer(p)"
-                        />
-                        <button
-                          @click="connectComputer(p)"
-                          class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700"
-                        >
+                        <input v-model.trim="rowState[p._id].connectInput" placeholder="npr. 10.230.62.15"
+                          class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="connectComputer(p)" />
+                        <button @click="connectComputer(p)"
+                          class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700">
                           Poveži
                         </button>
                       </div>
@@ -203,22 +162,14 @@
                         Računar koji "šeruje" ovaj štampač
                       </div>
                       <div class="flex gap-2">
-                        <input
-                          v-model.trim="rowState[p._id].hostInput"
-                          placeholder="IP ili _id"
-                          class="border px-2 py-1 rounded text-sm w-full"
-                          @keyup.enter="setHost(p)"
-                        />
-                        <button
-                          @click="setHost(p)"
-                          class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-                        >
+                        <input v-model.trim="rowState[p._id].hostInput" placeholder="IP ili _id"
+                          class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="setHost(p)" />
+                        <button @click="setHost(p)"
+                          class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
                           Postavi
                         </button>
-                        <button
-                          @click="unsetHost(p)"
-                          class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
-                        >
+                        <button @click="unsetHost(p)"
+                          class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-800">
                           Skini
                         </button>
                       </div>
@@ -231,29 +182,46 @@
                         Skini jedan računar sa ovog štampača
                       </div>
                       <div class="flex gap-2">
-                        <input
-                          v-model.trim="rowState[p._id].disconnectInput"
-                          placeholder="IP ili _id"
-                          class="border px-2 py-1 rounded text-sm w-full"
-                          @keyup.enter="disconnectComputer(p)"
-                        />
-                        <button
-                          @click="disconnectComputer(p)"
-                          class="bg-amber-700 text-white px-3 py-1 rounded text-sm hover:bg-amber-800"
-                        >
+                        <input v-model.trim="rowState[p._id].disconnectInput" placeholder="IP ili _id"
+                          class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="disconnectComputer(p)" />
+                        <button @click="disconnectComputer(p)"
+                          class="bg-amber-700 text-white px-3 py-1 rounded text-sm hover:bg-amber-800">
                           Otkači
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div class="mt-3" v-if="p.connectedComputers?.length">
-                    <div class="font-medium mb-2">🖥️ Povezani računari</div>
-                    <ul class="list-disc list-inside space-y-1 text-sm">
-                      <li v-for="c in p.connectedComputers" :key="c._id">
-                        {{ c.computerName || '—' }} — {{ c.ip || '—' }}
-                      </li>
-                    </ul>
+                  <!-- ✅ Detalji: Host i povezani računari iz /:id -->
+                  <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <div class="font-medium mb-1">🧷 Host računar</div>
+                      <div v-if="rowState[p._id].loadingDetails" class="text-sm text-slate-500">
+                        Učitavanje…
+                      </div>
+                      <div v-else class="text-sm">
+                        <span v-if="p._details?.hostComputer">
+                          {{ p._details.hostComputer.computerName || p._details.hostComputer.ip || '—' }}
+                        </span>
+                        <span v-else>—</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="font-medium mb-1">🖥️ Povezani računari</div>
+                      <div v-if="rowState[p._id].loadingDetails" class="text-sm text-slate-500">
+                        Učitavanje detalja…
+                      </div>
+                      <template v-else>
+                        <ul v-if="p._details?.connectedComputers?.length"
+                          class="list-disc list-inside space-y-1 text-sm">
+                          <li v-for="c in p._details.connectedComputers" :key="c._id">
+                            {{ c.computerName || '—' }} — {{ c.ip || '—' }}
+                          </li>
+                        </ul>
+                        <div v-else class="text-sm text-slate-500">Nema povezanih računara</div>
+                      </template>
+                    </div>
                   </div>
 
                   <div class="mt-3 text-xs text-gray-600 flex flex-wrap gap-x-4">
@@ -273,17 +241,12 @@
       <div v-if="showModal" class="fixed inset-0 z-[60] flex" @click.self="closeModal">
         <div class="absolute inset-0 bg-black/40"></div>
         <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
-          <div
-            class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-          >
+          <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
             <h3 class="text-lg font-semibold">
               {{ editId ? '✏️ Izmena štampača' : '➕ Novi štampač' }}
             </h3>
-            <button
-              @click="closeModal"
-              class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-              aria-label="Zatvori modal"
-            >
+            <button @click="closeModal" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+              aria-label="Zatvori modal">
               &times;
             </button>
           </div>
@@ -305,23 +268,15 @@
               </div>
               <FormInput v-model.trim="form.ip" label="IP" placeholder="10.230.62.200" />
               <div class="flex items-center gap-2 mt-6">
-                <input
-                  id="shared"
-                  type="checkbox"
-                  v-model="form.shared"
-                  class="accent-indigo-600 scale-110"
-                />
+                <input id="shared" type="checkbox" v-model="form.shared" class="accent-indigo-600 scale-110" />
                 <label for="shared" class="text-sm">Deljen</label>
               </div>
             </div>
 
             <div class="flex gap-2 justify-end">
               <button @click="closeModal" class="px-4 py-2 rounded border">Otkaži</button>
-              <button
-                @click="save"
-                class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                :disabled="saving"
-              >
+              <button @click="save" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                :disabled="saving">
                 {{ saving ? 'Čuvam…' : '💾 Sačuvaj' }}
               </button>
             </div>
@@ -331,12 +286,8 @@
     </transition>
 
     <transition name="fade">
-      <div
-        v-if="toast"
-        class="fixed top-6 right-6 bg-gray-900 text-white px-4 py-2 rounded shadow-lg text-sm z-[999]"
-        role="status"
-        aria-live="polite"
-      >
+      <div v-if="toast" class="fixed top-6 right-6 bg-gray-900 text-white px-4 py-2 rounded shadow-lg text-sm z-[999]"
+        role="status" aria-live="polite">
         {{ toast }}
       </div>
     </transition>
@@ -409,6 +360,7 @@ const fmtDate = (d) => {
   const dt = new Date(d)
   return isNaN(dt) ? '—' : dt.toLocaleString()
 }
+const getItem = (id) => items.value.find((x) => x._id === id)
 
 /* ---------------------------------- Fetch --------------------------------- */
 async function fetchData() {
@@ -432,19 +384,42 @@ async function fetchData() {
     total.value = data.total || 0
     totalPages.value = data.totalPages || 0
 
-    // reset per-row ui state (but keep expand state if already open)
+    // reset per-row ui state (ali sačuvaj expand)
     const st = {}
     const ex = {}
     for (const p of items.value) {
-      st[p._id] = { connectInput: '', hostInput: '', disconnectInput: '' }
+      st[p._id] = { connectInput: '', hostInput: '', disconnectInput: '', loadingDetails: false }
       ex[p._id] = !!expanded.value[p._id]
     }
     rowState.value = st
     expanded.value = ex
+
+    // za već otvorene redove, lenjo povuci detalje
+    const openIds = Object.keys(ex).filter((k) => ex[k])
+    await Promise.all(openIds.map((id) => {
+      const p = getItem(id)
+      return p ? ensureDetails(p) : Promise.resolve()
+    }))
   } catch (e) {
     console.error('Neuspešno dohvatanje štampača', e)
   } finally {
     loading.value = false
+  }
+}
+
+async function ensureDetails(p) {
+  if (p._detailsLoaded) return
+  rowState.value[p._id].loadingDetails = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/printers/${p._id}`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const det = await res.json()
+    p._details = det
+    p._detailsLoaded = true
+  } catch (e) {
+    console.error('Neuspešno dohvatanje detalja', e)
+  } finally {
+    rowState.value[p._id].loadingDetails = false
   }
 }
 
@@ -551,10 +526,15 @@ async function confirmDelete(p) {
   }
 }
 
-function toggleRow(id) {
+async function toggleRow(id) {
   expanded.value[id] = !expanded.value[id]
+  if (expanded.value[id]) {
+    const p = getItem(id)
+    if (p) await ensureDetails(p)
+  }
 }
 
+/* --------- Akcije povezivanja: osveži detalje samo za taj red --------- */
 async function connectComputer(p) {
   const v = rowState.value[p._id].connectInput.trim()
   if (!v) return
@@ -564,9 +544,15 @@ async function connectComputer(p) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: v }),
     })
-    await fetchData()
-    showToast('Računar povezan')
     rowState.value[p._id].connectInput = ''
+    // Refreš liste (zbog connectedCount) i detalja
+    await fetchData()
+    const np = getItem(p._id)
+    if (np && expanded.value[p._id]) {
+      np._detailsLoaded = false
+      await ensureDetails(np)
+    }
+    showToast('Računar povezan')
   } catch (e) {
     console.error(e)
   }
@@ -581,9 +567,14 @@ async function disconnectComputer(p) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: v }),
     })
-    await fetchData()
-    showToast('Računar otkačen')
     rowState.value[p._id].disconnectInput = ''
+    await fetchData()
+    const np = getItem(p._id)
+    if (np && expanded.value[p._id]) {
+      np._detailsLoaded = false
+      await ensureDetails(np)
+    }
+    showToast('Računar otkačen')
   } catch (e) {
     console.error(e)
   }
@@ -599,6 +590,11 @@ async function setHost(p) {
       body: JSON.stringify({ computer: v }),
     })
     await fetchData()
+    const np = getItem(p._id)
+    if (np && expanded.value[p._id]) {
+      np._detailsLoaded = false
+      await ensureDetails(np)
+    }
     showToast('Host postavljen')
   } catch (e) {
     console.error(e)
@@ -609,6 +605,11 @@ async function unsetHost(p) {
   try {
     await fetchWithAuth(`/api/protected/printers/${p._id}/unset-host`, { method: 'POST' })
     await fetchData()
+    const np = getItem(p._id)
+    if (np && expanded.value[p._id]) {
+      np._detailsLoaded = false
+      await ensureDetails(np)
+    }
     showToast('Host uklonjen')
   } catch (e) {
     console.error(e)
@@ -620,7 +621,7 @@ async function copy(text) {
   try {
     await navigator.clipboard.writeText(text)
     showToast('IP kopiran')
-  } catch {}
+  } catch { }
 }
 
 onMounted(() => {
@@ -638,6 +639,7 @@ onBeforeUnmount(() => {
 .fade-leave-active {
   transition: opacity 0.15s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
