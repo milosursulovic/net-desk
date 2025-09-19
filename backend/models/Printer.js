@@ -48,7 +48,6 @@ printerSchema.pre("validate", function (next) {
   next();
 });
 
-/** Korisni indeksi za navigaciju **/
 printerSchema.index({ ipNumeric: 1, name: 1 });
 printerSchema.index({ hostComputer: 1 });
 printerSchema.index({ connectedComputers: 1 });

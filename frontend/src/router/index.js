@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// lazy load views
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
 const LoginView = () => import('@/views/LoginView.vue')
@@ -14,7 +13,6 @@ const DomainsView = () => import('@/views/DomainsView.vue')
 function decodeJwt(token) {
   try {
     const [, payload] = token.split('.')
-    // atob ne voli URL-safe base64 znakove
     const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
     const json = atob(b64)
     return JSON.parse(json)
@@ -25,7 +23,6 @@ function decodeJwt(token) {
 function isTokenExpired(token) {
   const p = decodeJwt(token)
   if (!p || !p.exp) return true
-  // mala clock-skew tolerancija (5s)
   return Date.now() > p.exp * 1000 - 5000
 }
 

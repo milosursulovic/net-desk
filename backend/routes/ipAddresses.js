@@ -12,10 +12,9 @@ import { z } from "zod";
 const router = express.Router();
 const upload = multer({
   dest: "uploads/",
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// ---- Brži search: prefiksi + *_lc polja (uz fallback na originalna) ----
 const buildFastSearch = (raw = "") => {
   const q = String(raw || "").trim();
   if (!q) return {};
@@ -23,14 +22,13 @@ const buildFastSearch = (raw = "") => {
   const terms = qLc.split(/\s+/).slice(0, 3);
 
   const orForTerm = (t) => {
-    const ipPrefix = t.replace(/\./g, "\\."); // npr. "10.230." → prefiks
+    const ipPrefix = t.replace(/\./g, "\\.");
     return {
       $or: [
         { ip: { $regex: `^${ipPrefix}` } },
         { computerName_lc: { $regex: `^${t}` } },
         { username_lc: { $regex: `^${t}` } },
         { department_lc: { $regex: `^${t}` } },
-        // fallback ako _lc polja još nisu popunjena za stare redove:
         { computerName: { $regex: `^${t}`, $options: "i" } },
         { username: { $regex: `^${t}`, $options: "i" } },
         { department: { $regex: `^${t}`, $options: "i" } },
@@ -41,7 +39,6 @@ const buildFastSearch = (raw = "") => {
   return { $and: terms.map(orForTerm) };
 };
 
-// Za staru kompatibilnost (npr. u export-xlsx gde je ok širi match)
 const getSearchQueryLegacy = (search = "") => ({
   $or: [
     { ip: { $regex: search, $options: "i" } },
@@ -56,7 +53,6 @@ const getSearchQueryLegacy = (search = "") => ({
   ],
 });
 
-// Schemas
 const UpsertIpSchema = z.object({
   ip: z.string().refine(isValidIPv4, "Neispravan IPv4"),
   computerName: z.string().optional(),
@@ -98,15 +94,13 @@ const RangeSchema = z.object({
   limit: z.coerce.number().min(1).max(1000).optional().default(256),
 });
 
-// Helpers
 function parseRangeFromEnv() {
   const str = process.env.AVAILABLE_RANGE || "";
   const [start, end] = str.split("-").map((s) => s?.trim());
   if (isValidIPv4(start) && isValidIPv4(end)) return { start, end };
-  return { start: "10.230.62.1", end: "10.230.63.254" };
+  return { start: process.env.AVAILABLE_RANGE_START, end: process.env.AVAILABLE_RANGE_END };
 }
 
-// ---- Export XLSX (bez password polja) ----
 router.get(
   "/export-xlsx",
   ah(async (req, res) => {
@@ -118,7 +112,6 @@ router.get(
       .sort({ ipNumeric: 1 })
       .lean();
 
-    // Napomena: oslanjamo se na ref polje `metadata` (često je dovoljno)
     const data = entries.map((e) => ({
       ip: e.ip,
       computerName: e.computerName,
@@ -150,7 +143,6 @@ router.get(
   })
 );
 
-// ---- Export CSV (streaming) ----
 router.get(
   "/export-csv",
   ah(async (req, res) => {
@@ -161,7 +153,6 @@ router.get(
     );
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
 
-    // Header
     res.write(
       "ip,computerName,ipNumeric,username,fullName,rdp,dnsLog,anyDesk,system,department,hasMetadata\n"
     );
@@ -188,7 +179,7 @@ router.get(
         e.department || "",
         e.metadata ? "DA" : "NE",
       ]
-        .map((v) => String(v).replace(/"/g, '""')) // escape quotes
+        .map((v) => String(v).replace(/"/g, '""'))
         .map((v) => `"${v}"`)
         .join(",");
       res.write(row + "\n");
@@ -197,7 +188,6 @@ router.get(
   })
 );
 
-// ---- Import (upsert, batch) ----
 router.post(
   "/import",
   upload.single("file"),
@@ -262,7 +252,6 @@ router.post(
   })
 );
 
-// ---- Available IPs (paginacija) ----
 router.get(
   "/available",
   ah(async (req, res) => {
@@ -288,7 +277,6 @@ router.get(
     const occupiedEntries = await IpEntry.find({}, "ipNumeric").lean();
     const occupiedSet = new Set(occupiedEntries.map((e) => e.ipNumeric));
 
-    // Paginacija: preskoči (page-1)*limit praznih, skupi `limit` praznih
     const skipVacant = (page - 1) * limit;
     const result = [];
     let vacantSeen = 0;
@@ -316,7 +304,6 @@ router.get(
   })
 );
 
-// ---- List (brži select + lean + fastSearch) ----
 router.get(
   "/",
   ah(async (req, res) => {
@@ -345,7 +332,6 @@ router.get(
   })
 );
 
-// ---- CRUD ----
 router.get(
   "/:id",
   ah(async (req, res) => {
@@ -386,7 +372,6 @@ router.delete(
   })
 );
 
-// ---- Metadata linkovi ----
 router.post(
   "/:ip/metadata",
   ah(async (req, res) => {
@@ -431,7 +416,6 @@ router.patch(
   })
 );
 
-// ---- Printers for entry ----
 router.get(
   "/:id/printers",
   ah(async (req, res) => {

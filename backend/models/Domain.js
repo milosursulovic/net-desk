@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const domainSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, index: true },
-    // Bound to IpEntry
     ipEntry: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "IpEntry",

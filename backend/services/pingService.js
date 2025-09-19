@@ -1,4 +1,3 @@
-// services/pingService.js
 import os from "os";
 import ping from "ping";
 import pLimit from "p-limit";
@@ -6,8 +5,8 @@ import IpEntry from "../models/IpEntry.js";
 
 export function startPingLoop(
   intervalSeconds = 30,
-  concurrency = 20, // malo niže je stabilnije
-  pingTimeoutSeconds = 2 // 2s je razumno za LAN
+  concurrency = 20,
+  pingTimeoutSeconds = 2
 ) {
   console.log(
     `🔁 Ping service every ${intervalSeconds}s, concurrency=${concurrency}, timeout=${pingTimeoutSeconds}s`
@@ -15,18 +14,16 @@ export function startPingLoop(
 
   const platform = os.platform();
 
-  // ⬇️ KLJUČNO: bez 'deadline' na Windows-u
   const pingOpts =
     platform === "win32"
       ? {
-          timeout: pingTimeoutSeconds, // sekunde (node-ping prevodi u -w ms)
+          timeout: pingTimeoutSeconds,
           min_reply: 1,
-          // extra: ["-4"] // opcionalno forsiraj IPv4
         }
       : {
           timeout: pingTimeoutSeconds,
           min_reply: 1,
-          deadline: pingTimeoutSeconds + 1, // ok za Linux/macOS
+          deadline: pingTimeoutSeconds + 1,
         };
 
   const limit = pLimit(concurrency);

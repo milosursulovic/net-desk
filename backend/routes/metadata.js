@@ -44,7 +44,6 @@ function median(nums) {
 }
 const round1 = (n) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : 0);
 
-// ---- List ----
 router.get(
   "/",
   ah(async (req, res) => {
@@ -67,7 +66,6 @@ router.get(
   })
 );
 
-// ---- Stats ----
 router.get(
   "/stats",
   ah(async (req, res) => {

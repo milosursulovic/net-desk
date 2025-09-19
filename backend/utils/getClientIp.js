@@ -8,7 +8,6 @@ export default function getClientIp(req) {
     ip = req.socket?.remoteAddress || req.ip || "";
   }
 
-  // Normalize IPv6-mapped IPv4, e.g. ::ffff:10.230.62.105 → 10.230.62.105
   if (ip.startsWith("::ffff:")) {
     ip = ip.substring(7);
   }

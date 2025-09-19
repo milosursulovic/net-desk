@@ -1,6 +1,5 @@
 <template>
   <div class="w-full px-4 sm:px-6 py-6 space-y-6">
-    <!-- Header + actions -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <h1 class="text-3xl font-bold text-slate-800">🧾 Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -21,7 +20,6 @@
       </div>
     </div>
 
-    <!-- KPI 1 -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         title="Ukupno mašina"
@@ -49,7 +47,6 @@
       />
     </div>
 
-    <!-- KPI 2 -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         title="Jedinstvenih korisnika"
@@ -77,7 +74,6 @@
       />
     </div>
 
-    <!-- Flags -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         title="Lexar SSD (red-flag)"
@@ -87,7 +83,6 @@
       />
     </div>
 
-    <!-- Coverage / freshness / OS top -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">📈 Pokrivenost metapodacima</h2>
@@ -128,7 +123,6 @@
       </div>
     </div>
 
-    <!-- Manufacturers / GPU / RAM / NIC speeds -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🏭 Proizvođači sistema (Top 6)</h2>
@@ -177,7 +171,6 @@
       </div>
     </div>
 
-    <!-- CPU / Disks per machine -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">🧮 CPU modeli (Top 5)</h2>
@@ -207,7 +200,6 @@
       </div>
     </div>
 
-    <!-- Tables -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">🔍 Najmanje RAM-a (Top 10)</h2>
@@ -234,7 +226,6 @@
       </div>
     </div>
 
-    <!-- Lexar flag table -->
     <div class="grid grid-cols-1">
       <div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-red-700 mb-1">🚩 Lexar SSD detektovani (red-flag)</h2>
@@ -272,7 +263,6 @@ import { ref, computed, onMounted, h, defineComponent, onBeforeUnmount } from 'v
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import * as XLSX from 'xlsx'
 
-/* -------------------------- Small UI atoms (inline) ------------------------- */
 const KpiCard = defineComponent({
   name: 'KpiCard',
   props: { title: String, value: [String, Number], sub: String, icon: String },
@@ -389,8 +379,7 @@ const DataTable = defineComponent({
   },
 })
 
-/* --------------------------------- State ---------------------------------- */
-const meta = ref([]) // fallback / lokalni skup
+const meta = ref([])
 const totalIpEntries = ref(0)
 const loading = ref(false)
 const serverTables = ref(null)
@@ -398,7 +387,6 @@ const serverFlags = ref(null)
 const displayTables = computed(() => serverTables.value || tables.value)
 let inFlight = new AbortController()
 
-/* ------------------------------- Fetch logic ------------------------------- */
 async function fetchStatsPreferServer() {
   try {
     const res = await fetchWithAuth('/api/protected/metadata/stats')
@@ -407,7 +395,6 @@ async function fetchStatsPreferServer() {
       if (payload?.tables) serverTables.value = payload.tables
       if (payload?.flags) serverFlags.value = payload.flags
 
-      // meta (server optionally returns sample/full meta)
       if (Array.isArray(payload.meta)) meta.value = payload.meta
 
       totalIpEntries.value =
@@ -416,13 +403,11 @@ async function fetchStatsPreferServer() {
         Number(totalIpEntries.value) ??
         0
 
-      if (Array.isArray(payload.meta)) return // imamo sve što nam treba
+      if (Array.isArray(payload.meta)) return
     }
   } catch {
-    // ignore, ide fallback
   }
 
-  // 1) ukupan broj IP unosa (za coverage)
   try {
     const r1 = await fetchWithAuth('/api/protected/ip-addresses?limit=1&page=1')
     if (r1.ok) {
@@ -431,7 +416,6 @@ async function fetchStatsPreferServer() {
     }
   } catch {}
 
-  // 2) kompletan meta skup (paged)
   try {
     let page = 1,
       all = []
@@ -455,7 +439,6 @@ async function fetchStatsPreferServer() {
       }
     }
     if (!all.length) {
-      // vrlo stari fallback iz IpEntry liste
       const r2 = await fetchWithAuth('/api/protected/ip-addresses?limit=10000&page=1')
       if (r2.ok) {
         const d2 = await r2.json()
@@ -471,7 +454,6 @@ async function fetchStatsPreferServer() {
 
 async function refreshAll() {
   loading.value = true
-  // cancel last request if any
   inFlight.abort()
   inFlight = new AbortController()
   serverTables.value = null
@@ -488,7 +470,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => inFlight.abort())
 
-/* ---------------------------- Computed statistics -------------------------- */
 const cpuNameOf = (x) =>
   x?.CPU?.Name ||
   x?.Processor?.Name ||
@@ -697,12 +678,9 @@ const tables = computed(() => {
     lowRam: lowRam || [],
     oldOs: oldOs || [],
     topStorage: topStorage || [],
-    // Lexar server-side tabele su pod serverTables.lexarFlag;
-    // ovde lokalno ne računamo radi performansi.
   }
 })
 
-/* --------------------------------- Utils ---------------------------------- */
 function sum(arr) {
   return arr.reduce((a, b) => a + (Number(b) || 0), 0)
 }

@@ -86,7 +86,6 @@
       </div>
     </div>
 
-    <!-- Reuse the same per-IP drawer component logic inline -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -233,7 +232,6 @@ const nextDomainsPage = () => {
   }
 }
 
-// Fetch all
 async function fetchAll() {
   const params = new URLSearchParams({
     page: String(page.value),
@@ -250,7 +248,6 @@ async function fetchAll() {
     return
   }
   const data = await res.json()
-  // API gives { data, total, page, limit } and each row includes .ip (flattened from ipEntry)
   items.value = data.data || []
   total.value = data.total || 0
 }
@@ -303,7 +300,6 @@ watch(
   { immediate: true }
 )
 
-// --- Per-IP drawer (same logic as in HomeView) ---
 const showDomains = ref(false)
 const domainsFor = ref(null)
 const domainsItems = ref([])

@@ -1,4 +1,3 @@
-// models/IpEntry.js
 import mongoose from "mongoose";
 import { ipToNumeric, isValidIPv4 } from "../utils/ip.js";
 
@@ -18,7 +17,7 @@ const ipEntrySchema = new mongoose.Schema(
     computerName: { type: String, index: true },
     username: String,
     fullName: String,
-    password: String, // ne izvoziti u XLSX
+    password: String,
     rdp: String,
     dnsLog: String,
     anyDesk: String,
@@ -32,7 +31,6 @@ const ipEntrySchema = new mongoose.Schema(
       sparse: true,
     },
 
-    // 👇 New: ping state lives here now
     isOnline: { type: Boolean, default: false, index: true },
     lastChecked: { type: Date, default: null },
     lastStatusChange: { type: Date, default: null },
@@ -40,7 +38,6 @@ const ipEntrySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/** Auto-calc ipNumeric on ip change */
 ipEntrySchema.pre("validate", function (next) {
   if (this.isModified("ip")) {
     if (!isValidIPv4(this.ip)) {
@@ -51,7 +48,6 @@ ipEntrySchema.pre("validate", function (next) {
   next();
 });
 
-/** Existing virtuals */
 ipEntrySchema.virtual("printersHosted", {
   ref: "Printer",
   localField: "_id",
@@ -68,11 +64,9 @@ ipEntrySchema.virtual("printersConnected", {
 ipEntrySchema.set("toJSON", { virtuals: true });
 ipEntrySchema.set("toObject", { virtuals: true });
 
-/** Helpful indexes */
 ipEntrySchema.index({ ipNumeric: 1 });
 ipEntrySchema.index({ department: 1 });
 ipEntrySchema.index({ computerName: 1 });
-// Optional: fast “recently changed online devices”
 ipEntrySchema.index({ isOnline: 1, lastStatusChange: -1 });
 
 const IpEntry = mongoose.model("IpEntry", ipEntrySchema);

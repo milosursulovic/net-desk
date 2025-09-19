@@ -6,7 +6,6 @@ import { ah } from "../utils/asyncHandler.js";
 
 const router = express.Router();
 
-// Brži search: prefiksi i *_lc fallback
 const buildPrinterSearch = (raw = "") => {
   const q = String(raw || "").trim();
   if (!q) return {};
@@ -24,7 +23,6 @@ const buildPrinterSearch = (raw = "") => {
   };
 };
 
-// LIST — lagani prikaz: host minimalno, broj konekcija umesto popisa
 router.get(
   "/",
   ah(async (req, res) => {
@@ -65,7 +63,7 @@ router.get(
             connectedCount: { $size: { $ifNull: ["$connectedComputers", []] } },
           },
         },
-        { $project: { /* sakrij listu radi brzine */ connectedComputers: 0 } },
+        { $project: { connectedComputers: 0 } },
       ]),
       Printer.aggregate([{ $match: match }, { $count: "total" }]),
     ]);
@@ -81,7 +79,6 @@ router.get(
   })
 );
 
-// DETAIL — pune populate liste
 router.get(
   "/:id",
   ah(async (req, res) => {

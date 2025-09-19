@@ -140,7 +140,6 @@
               🏢 {{ entry.department }}
             </span>
 
-            <!-- Online status pill -->
             <span
               class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
               :class="
@@ -210,7 +209,6 @@
           </div>
         </div>
 
-        <!-- Mini status row -->
         <div class="mt-2 text-[11px] text-slate-500">
           ⏱️ Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
           {{ fmtRelative(entry.lastStatusChange) }}
@@ -236,7 +234,6 @@
       </article>
     </div>
 
-    <!-- Toast -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -248,7 +245,6 @@
       </transition>
     </teleport>
 
-    <!-- Slobodne IP adrese modal -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -304,7 +300,6 @@
       </transition>
     </teleport>
 
-    <!-- Metadata drawer -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -537,7 +532,6 @@
       </transition>
     </teleport>
 
-    <!-- Printers drawer -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -678,7 +672,6 @@
       </transition>
     </teleport>
 
-    <!-- New: Domains drawer (per-IP) -->
     <teleport to="body">
       <transition name="fade">
         <div
@@ -825,7 +818,6 @@ const printersAll = ref([])
 const printersSelectSearch = ref('')
 const selectedPrinterId = ref('')
 
-// --- Domains drawer state ---
 const showDomains = ref(false)
 const domainsFor = ref(null)
 const domainsItems = ref([])
@@ -979,7 +971,6 @@ const fmtGb = (n) => (n || n === 0 ? `${n} GB` : '—')
 const fmtMbps = (n) => (n || n === 0 ? `${n} Mbps` : '—')
 const safe = (v) => v ?? '—'
 
-/** Human-ish relative time */
 const fmtRelative = (d) => {
   if (!d) return '—'
   const t = new Date(d).getTime()
@@ -995,7 +986,6 @@ const fmtRelative = (d) => {
   return `pre ${days} d`
 }
 
-/** Tooltip text for the status pill */
 const statusTooltip = (e) => {
   const onlineTxt = e.isOnline ? 'Online' : 'Offline'
   const lc = e.lastChecked ? new Date(e.lastChecked).toLocaleString() : '—'
@@ -1003,7 +993,6 @@ const statusTooltip = (e) => {
   return `${onlineTxt}\nPoslednja provera: ${lc}\nPromena statusa: ${lsc}`
 }
 
-// ---- Metadata drawer ----
 const openMetadata = async (entry) => {
   metaLoading.value = true
   metaError.value = null
@@ -1031,8 +1020,6 @@ const closeMetadata = () => {
   metaError.value = null
 }
 
-// ---- Printers drawer ----
-const showPrinters = () => (showPrintersModal.value = true)
 const openPrinters = async (entry) => {
   printersEntry.value = entry
   printersLoading.value = true
@@ -1124,7 +1111,6 @@ const filteredPrintersAll = computed(() => {
   )
 })
 
-// ---- Domains drawer ----
 const toggleDomainsSort = () => {
   domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
   fetchDomainsForIp()
@@ -1179,7 +1165,6 @@ async function fetchDomainsForIp() {
   }
 }
 
-// ---- Keep statuses fresh (sync with ping loop) ----
 const AUTO_REFRESH_SEC = 30
 let refreshTimer = null
 onMounted(() => {
@@ -1191,7 +1176,6 @@ onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
 })
 
-// ---- Router sync ----
 watch([page, limit, search, sortBy, sortOrder], () => {
   router.push({
     query: {

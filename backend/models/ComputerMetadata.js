@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-/** Helpers **/
 const parseWmiOrIso = (val) => {
   if (val == null || val === "") return val;
   if (val instanceof Date) return val;
@@ -72,7 +71,6 @@ const normalizeCpu = (v) => {
   return out;
 };
 
-/** Sub-schemes **/
 const osSchema = new mongoose.Schema(
   {
     Caption: String,
@@ -165,7 +163,6 @@ const nicSchema = new mongoose.Schema(
   { _id: false }
 );
 
-/** Main schema **/
 const computerMetadataSchema = new mongoose.Schema(
   {
     ipEntry: {
@@ -197,7 +194,6 @@ const computerMetadataSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/** Update shape fixer for CPU **/
 function fixCpuShapeInUpdate(update) {
   if (!update || typeof update !== "object") return;
 
@@ -225,7 +221,6 @@ for (const op of ["findOneAndUpdate", "updateOne", "updateMany"]) {
   });
 }
 
-/** Useful indexes for agregacije/filtriranje **/
 computerMetadataSchema.index({ "OS.InstallDate": 1 });
 computerMetadataSchema.index({ "System.TotalRAM_GB": 1 });
 computerMetadataSchema.index({ "NICs.SpeedMbps": 1 });

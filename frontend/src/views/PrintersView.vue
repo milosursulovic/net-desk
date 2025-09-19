@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-4">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-semibold text-slate-800">🖨️ Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -15,7 +14,6 @@
       </div>
     </div>
 
-    <!-- Filters / pagination -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="relative w-full sm:w-[480px]">
         <input v-model="searchInput" @input="onSearchInput" type="text"
@@ -53,7 +51,6 @@
       </div>
     </div>
 
-    <!-- Table -->
     <div class="rounded-xl shadow ring-1 ring-black/5 overflow-hidden bg-white">
       <div class="overflow-x-auto">
         <table class="min-w-full text-left">
@@ -106,7 +103,6 @@
                 </td>
                 <td class="p-3">{{ p.shared ? 'DA' : 'NE' }}</td>
 
-                <!-- ✅ Host iz LIST rute (polje `host`) -->
                 <td class="p-3">
                   <span v-if="p.host">
                     {{ p.host.computerName || p.host.ip }}
@@ -114,7 +110,6 @@
                   <span v-else>—</span>
                 </td>
 
-                <!-- ✅ Broj povezanih iz LIST rute (polje `connectedCount`) -->
                 <td class="p-3">
                   <button class="text-indigo-700 hover:underline" @click="toggleRow(p._id)"
                     :title="expanded[p._id] ? 'Sakrij detalje' : 'Prikaži detalje'">
@@ -135,11 +130,9 @@
                 </td>
               </tr>
 
-              <!-- Expanded row -->
               <tr v-for="p in items" :key="p._id + '-exp'" v-show="expanded[p._id]" class="bg-slate-50 border-t">
                 <td colspan="11" class="p-4">
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <!-- Connect -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🔗 Poveži računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -155,7 +148,6 @@
                       </div>
                     </div>
 
-                    <!-- Host -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧷 Postavi host</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -175,7 +167,6 @@
                       </div>
                     </div>
 
-                    <!-- Disconnect -->
                     <div class="border rounded-lg p-3 bg-white">
                       <div class="font-medium mb-2">🧹 Otkači računar</div>
                       <div class="text-xs text-gray-600 mb-1">
@@ -192,7 +183,6 @@
                     </div>
                   </div>
 
-                  <!-- ✅ Detalji: Host i povezani računari iz /:id -->
                   <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <div class="font-medium mb-1">🧷 Host računar</div>
@@ -236,7 +226,6 @@
       </div>
     </div>
 
-    <!-- Modal -->
     <transition name="fade">
       <div v-if="showModal" class="fixed inset-0 z-[60] flex" @click.self="closeModal">
         <div class="absolute inset-0 bg-black/40"></div>
@@ -299,7 +288,6 @@ import { ref, watch, onMounted, defineComponent, h, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
-/* --------------------------- Small input component -------------------------- */
 const FormInput = defineComponent({
   name: 'FormInput',
   props: { modelValue: String, label: String, placeholder: String },
@@ -318,7 +306,6 @@ const FormInput = defineComponent({
   },
 })
 
-/* --------------------------------- State ---------------------------------- */
 const router = useRouter()
 const route = useRoute()
 const items = ref([])
@@ -350,7 +337,6 @@ const toast = ref('')
 let searchT = null
 let inFlight = new AbortController()
 
-/* --------------------------------- Helpers -------------------------------- */
 const showToast = (msg) => {
   toast.value = `✅ ${msg}`
   setTimeout(() => (toast.value = ''), 2000)
@@ -362,7 +348,6 @@ const fmtDate = (d) => {
 }
 const getItem = (id) => items.value.find((x) => x._id === id)
 
-/* ---------------------------------- Fetch --------------------------------- */
 async function fetchData() {
   loading.value = true
   try {
@@ -384,7 +369,6 @@ async function fetchData() {
     total.value = data.total || 0
     totalPages.value = data.totalPages || 0
 
-    // reset per-row ui state (ali sačuvaj expand)
     const st = {}
     const ex = {}
     for (const p of items.value) {
@@ -394,7 +378,6 @@ async function fetchData() {
     rowState.value = st
     expanded.value = ex
 
-    // za već otvorene redove, lenjo povuci detalje
     const openIds = Object.keys(ex).filter((k) => ex[k])
     await Promise.all(openIds.map((id) => {
       const p = getItem(id)
@@ -430,7 +413,6 @@ function prevPage() {
   if (page.value > 1) page.value--
 }
 
-/* --------------------------------- Watchers ------------------------------- */
 watch([page, limit, search], () => {
   router.push({ query: { page: page.value, limit: limit.value, search: search.value } })
 })
@@ -447,7 +429,6 @@ watch(
   { immediate: true }
 )
 
-/* --------------------------------- Search -------------------------------- */
 const onSearchInput = () => {
   clearTimeout(searchT)
   searchT = setTimeout(() => {
@@ -460,7 +441,6 @@ const clearSearch = () => {
   onSearchInput()
 }
 
-/* --------------------------------- CRUD ---------------------------------- */
 const openCreate = () => {
   editId.value = null
   form.value = {
@@ -534,7 +514,6 @@ async function toggleRow(id) {
   }
 }
 
-/* --------- Akcije povezivanja: osveži detalje samo za taj red --------- */
 async function connectComputer(p) {
   const v = rowState.value[p._id].connectInput.trim()
   if (!v) return
@@ -545,7 +524,6 @@ async function connectComputer(p) {
       body: JSON.stringify({ computer: v }),
     })
     rowState.value[p._id].connectInput = ''
-    // Refreš liste (zbog connectedCount) i detalja
     await fetchData()
     const np = getItem(p._id)
     if (np && expanded.value[p._id]) {
@@ -616,7 +594,6 @@ async function unsetHost(p) {
   }
 }
 
-/* --------------------------------- Misc ---------------------------------- */
 async function copy(text) {
   try {
     await navigator.clipboard.writeText(text)
