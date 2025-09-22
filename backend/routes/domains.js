@@ -15,14 +15,20 @@ const blockedKeywords = loadBlockedKeywords();
 function parseListQuery(req) {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const limit = Math.max(parseInt(req.query.limit, 10) || 20, 1);
-  const sortBy = req.query.sortBy || "timestamp";
+
+  const SORT_FIELDS = new Set(["timestamp", "name"]);
+  const sortByRaw = req.query.sortBy || "timestamp";
+  const sortBy = SORT_FIELDS.has(sortByRaw) ? sortByRaw : "timestamp";
+
   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
   const rawSearch = (req.query.search || "").trim();
 
   const sort = { [sortBy]: sortOrder };
   const nameRegex = rawSearch ? new RegExp(escapeRegex(rawSearch), "i") : null;
 
-  return { page, limit, sort, rawSearch, nameRegex };
+  const category = req.query.category === "blocked" ? "blocked" : undefined;
+
+  return { page, limit, sort, rawSearch, nameRegex, category };
 }
 
 const LIST_PROJECTION = { name: 1, timestamp: 1, category: 1, ipEntry: 1 };
@@ -33,8 +39,8 @@ const POPULATE_IPENTRY = {
 
 async function buildDomainQueryFromSearch({ nameRegex, rawSearch }) {
   const query = {};
-
   const ipEntryIds = [];
+
   if (rawSearch) {
     const ipRegex = new RegExp(escapeRegex(rawSearch), "i");
 
@@ -67,8 +73,13 @@ function mapWithIpVirtual(rows) {
 
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const { page, limit, sort, rawSearch, nameRegex } = parseListQuery(req);
-    const query = await buildDomainQueryFromSearch({ nameRegex, rawSearch });
+    const { page, limit, sort, rawSearch, nameRegex, category } =
+      parseListQuery(req);
+    const baseQuery = await buildDomainQueryFromSearch({
+      nameRegex,
+      rawSearch,
+    });
+    const query = category ? { ...baseQuery, category } : baseQuery;
 
     const [rows, total] = await Promise.all([
       Domain.find(query, LIST_PROJECTION)
@@ -87,6 +98,7 @@ router.get("/", authenticateToken, async (req, res) => {
       limit,
     });
   } catch (err) {
+    console.error("GET /api/domains error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -117,6 +129,7 @@ router.get("/blocked", authenticateToken, async (req, res) => {
       limit,
     });
   } catch (err) {
+    console.error("GET /api/domains/blocked error:", err);
     res.status(500).json({ error: "Failed to fetch blocked domains" });
   }
 });
@@ -176,14 +189,19 @@ router.post("/", async (req, res) => {
       blocked: blockedCount,
     });
   } catch (err) {
+    console.error("POST /api/domains error:", err);
     res.status(500).json({ error: "Failed to insert domains" });
   }
 });
 
 router.get("/export", authenticateToken, async (req, res) => {
   try {
-    const { rawSearch, nameRegex } = parseListQuery(req);
-    const query = await buildDomainQueryFromSearch({ nameRegex, rawSearch });
+    const { rawSearch, nameRegex, category } = parseListQuery(req);
+    const baseQuery = await buildDomainQueryFromSearch({
+      nameRegex,
+      rawSearch,
+    });
+    const query = category ? { ...baseQuery, category } : baseQuery;
 
     const rows = await Domain.find(query, LIST_PROJECTION)
       .sort({ timestamp: -1 })

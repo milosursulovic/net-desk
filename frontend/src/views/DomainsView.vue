@@ -6,20 +6,16 @@
     </div>
 
     <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-      <input
-        v-model="search"
-        @keyup.enter="reload()"
-        type="text"
-        placeholder="🔎 Pretraga (domain ili IP)…"
-        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-[340px] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <input v-model="search" @input="debouncedReload" type="text" placeholder="🔎 Pretraga (domain ili IP)…"
+        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-[340px] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+
       <label class="inline-flex items-center text-sm gap-2">
-        <input type="checkbox" v-model="blockedOnly" @change="reload()" />
+        <input type="checkbox" v-model="blockedOnly" @change="reload" />
         Samo blokirani
       </label>
 
       <div class="flex items-center gap-2">
-        <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
+        <select v-model="sortBy" @change="reload" class="border px-2 py-2 rounded text-sm">
           <option value="timestamp">Vreme</option>
           <option value="name">Domain</option>
         </select>
@@ -28,58 +24,53 @@
         </button>
       </div>
 
-      <div class="sm:ml-auto flex items-center gap-2">
-        <button
-          @click="prevPage"
-          :disabled="page === 1"
-          class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-          ⬅️
-        </button>
-        <span class="text-sm">Strana {{ page }}</span>
-        <button
-          @click="nextPage"
-          :disabled="page * limit >= total"
-          class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
-        >
-          ➡️
-        </button>
+      <div class="sm:ml-auto flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
+            title="Prethodna strana">
+            ⬅️
+          </button>
+          <span class="text-sm">Strana {{ page }}</span>
+          <button @click="nextPage" :disabled="page * limit >= total"
+            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" title="Sledeća strana">
+            ➡️
+          </button>
+        </div>
+
+        <div class="sm:ml-2 flex items-center gap-2">
+          <label class="text-sm text-gray-600">Po strani</label>
+          <select v-model.number="limit" @change="reload" class="border px-2 py-1 rounded text-sm">
+            <option :value="12">12</option>
+            <option :value="24">24</option>
+            <option :value="48">48</option>
+            <option :value="96">96</option>
+          </select>
+        </div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-      <div
-        v-for="d in items"
-        :key="d._id"
-        class="rounded-lg border bg-white/90 p-3 shadow-sm hover:shadow transition"
-      >
+      <div v-for="d in items" :key="d._id" class="rounded-lg border bg-white/90 p-3 shadow-sm hover:shadow transition">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="text-sm text-slate-500">Domain</div>
             <div class="font-semibold truncate">{{ d.name }}</div>
             <div class="mt-1 text-xs text-gray-500">
-              {{ new Date(d.timestamp).toLocaleString() }}
+              {{ new Date(d.timestamp).toLocaleString('sr-RS') }}
             </div>
           </div>
-          <span
-            :class="
-              d.category === 'blocked'
-                ? 'bg-red-50 text-red-700 border-red-200'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            "
-            class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs shrink-0"
-          >
+          <span :class="d.category === 'blocked'
+              ? 'bg-red-50 text-red-700 border-red-200'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            " class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs shrink-0">
             {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
           </span>
         </div>
 
         <div class="mt-3 text-sm">
           <span class="text-slate-500">IP:</span>
-          <button
-            class="ml-1 underline decoration-dotted hover:text-blue-700"
-            @click="openPerIp(d.ip)"
-            :title="`Prikaži domene za ${d.ip}`"
-          >
+          <button class="ml-1 underline decoration-dotted hover:text-blue-700" @click="openPerIp(d.ip)"
+            :title="`Prikaži domene za ${d.ip}`">
             {{ d.ip || '—' }}
           </button>
         </div>
@@ -88,41 +79,25 @@
 
     <teleport to="body">
       <transition name="fade">
-        <div
-          v-if="showDomains"
-          class="fixed inset-0 z-[9995] flex"
-          @click.self="closeDomains"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div v-if="showDomains" class="fixed inset-0 z-[9995] flex" @click.self="closeDomains" role="dialog"
+          aria-modal="true">
           <div class="absolute inset-0 bg-black/40"></div>
-          <div
-            class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto"
-          >
-            <div
-              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-            >
+          <div class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto">
+            <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
               <h3 class="text-lg font-semibold">
                 🌐 DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
               </h3>
-              <button
-                @click="closeDomains"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-              >
+              <button @click="closeDomains" class="text-gray-500 hover:text-red-600 text-2xl leading-none">
                 &times;
               </button>
             </div>
 
             <div class="p-4 space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  v-model="domainsSearch"
-                  @keyup.enter="fetchDomainsForIp()"
-                  placeholder="🔎 Pretraga domain/ip…"
-                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                <input v-model="domainsSearch" @keyup.enter="fetchDomainsForIp" placeholder="🔎 Pretraga domain/ip…"
+                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <div class="flex items-center gap-2">
-                  <select v-model="domainsSortBy" class="border px-2 py-2 rounded text-sm">
+                  <select v-model="domainsSortBy" @change="fetchDomainsForIp" class="border px-2 py-2 rounded text-sm">
                     <option value="timestamp">Vreme</option>
                     <option value="name">Domain</option>
                   </select>
@@ -131,11 +106,7 @@
                   </button>
 
                   <label class="inline-flex items-center text-sm gap-2">
-                    <input
-                      type="checkbox"
-                      v-model="domainsBlockedOnly"
-                      @change="fetchDomainsForIp()"
-                    />
+                    <input type="checkbox" v-model="domainsBlockedOnly" @change="fetchDomainsForIp" />
                     Samo blokirani
                   </label>
                 </div>
@@ -145,15 +116,12 @@
               </div>
 
               <div class="space-y-2">
-                <div
-                  v-for="d in domainsItems"
-                  :key="d._id"
-                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between"
-                >
+                <div v-for="d in domainsItems" :key="d._id"
+                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between">
                   <div class="min-w-0">
                     <div class="font-medium truncate">{{ d.name }}</div>
                     <div class="text-xs text-gray-500">
-                      {{ new Date(d.timestamp).toLocaleString() }} •
+                      {{ new Date(d.timestamp).toLocaleString('sr-RS') }} •
                       {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
                     </div>
                   </div>
@@ -166,21 +134,10 @@
               <div class="flex items-center justify-between pt-2">
                 <div class="text-sm">Strana {{ domainsPage }}</div>
                 <div class="flex items-center gap-2">
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage <= 1"
-                    @click="prevDomainsPage"
-                  >
-                    ⬅️
-                  </button>
-
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage * domainsLimit >= domainsTotal"
-                    @click="nextDomainsPage"
-                  >
-                    ➡️
-                  </button>
+                  <button class="px-2 py-1 bg-gray-200 rounded" :disabled="domainsPage <= 1"
+                    @click="prevDomainsPage">⬅️</button>
+                  <button class="px-2 py-1 bg-gray-200 rounded" :disabled="domainsPage * domainsLimit >= domainsTotal"
+                    @click="nextDomainsPage">➡️</button>
                 </div>
               </div>
             </div>
@@ -208,28 +165,31 @@ const sortBy = ref(route.query.sortBy || 'timestamp')
 const sortOrder = ref(route.query.sortOrder || 'desc')
 const blockedOnly = ref(route.query.blockedOnly === '1')
 
+function debounce(fn, ms = 300) {
+  let t
+  return (...args) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), ms)
+  }
+}
+const debouncedReload = debounce(() => reload(), 350)
+
 const toggleSortOrder = () => {
-  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  sortOrder.value = (sortOrder.value === 'asc' ? 'desc' : 'asc')
   reload()
 }
 
-const toggleDomainsSort = () => {
-  domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
-  fetchDomainsForIp()
-}
-
-const prevDomainsPage = () => {
-  if (domainsPage.value > 1) {
-    domainsPage.value--
-    fetchDomainsForIp()
-  }
-}
-
-const nextDomainsPage = () => {
-  if (domainsPage.value * domainsLimit.value < domainsTotal.value) {
-    domainsPage.value++
-    fetchDomainsForIp()
-  }
+function pushState() {
+  router.replace({
+    query: {
+      page: String(page.value),
+      limit: String(limit.value),
+      search: search.value || undefined,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value,
+      blockedOnly: blockedOnly.value ? '1' : undefined,
+    },
+  })
 }
 
 async function fetchAll() {
@@ -256,19 +216,6 @@ function reload() {
   page.value = 1
   pushState()
   fetchAll()
-}
-
-function pushState() {
-  router.replace({
-    query: {
-      page: page.value,
-      limit: limit.value,
-      search: search.value || undefined,
-      sortBy: sortBy.value,
-      sortOrder: sortOrder.value,
-      blockedOnly: blockedOnly.value ? '1' : undefined,
-    },
-  })
 }
 
 function nextPage() {
@@ -311,6 +258,24 @@ const domainsSortBy = ref('timestamp')
 const domainsSortOrder = ref('desc')
 const domainsBlockedOnly = ref(false)
 
+const toggleDomainsSort = () => {
+  domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
+  fetchDomainsForIp()
+}
+
+const prevDomainsPage = () => {
+  if (domainsPage.value > 1) {
+    domainsPage.value--
+    fetchDomainsForIp()
+  }
+}
+const nextDomainsPage = () => {
+  if (domainsPage.value * domainsLimit.value < domainsTotal.value) {
+    domainsPage.value++
+    fetchDomainsForIp()
+  }
+}
+
 const openPerIp = (ip) => {
   domainsFor.value = { ip }
   domainsPage.value = 1
@@ -335,9 +300,7 @@ async function fetchDomainsForIp() {
       sortBy: domainsSortBy.value,
       sortOrder: domainsSortOrder.value,
     })
-    const path = domainsBlockedOnly.value
-      ? '/api/domains/blocked'
-      : '/api/domains'
+    const path = domainsBlockedOnly.value ? '/api/domains/blocked' : '/api/domains'
     const res = await fetchWithAuth(`${path}?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -355,10 +318,12 @@ async function fetchDomainsForIp() {
 .glass-container {
   backdrop-filter: saturate(140%) blur(2px);
 }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
