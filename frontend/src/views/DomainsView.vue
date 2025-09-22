@@ -240,7 +240,7 @@ async function fetchAll() {
     sortBy: sortBy.value,
     sortOrder: sortOrder.value,
   })
-  const base = blockedOnly.value ? '/api/protected/domains/blocked' : '/api/protected/domains'
+  const base = blockedOnly.value ? '/api/domains/blocked' : '/api/domains'
   const res = await fetchWithAuth(`${base}?${params.toString()}`)
   if (!res.ok) {
     items.value = []
@@ -336,8 +336,8 @@ async function fetchDomainsForIp() {
       sortOrder: domainsSortOrder.value,
     })
     const path = domainsBlockedOnly.value
-      ? '/api/protected/domains/blocked'
-      : '/api/protected/domains'
+      ? '/api/domains/blocked'
+      : '/api/domains'
     const res = await fetchWithAuth(`${path}?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()

@@ -912,8 +912,8 @@ async function fetchDomainsForIp() {
       sortOrder: domainsSortOrder.value,
     })
     const path = domainsBlockedOnly.value
-      ? '/api/protected/domains/blocked'
-      : '/api/protected/domains'
+      ? '/api/domains/blocked'
+      : '/api/domains'
     const res = await fetchWithAuth(`${path}?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
