@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/auth.js";
 import protectedRoutes from "./routes/protected.js";
+import domainsRoutes from "./routes/domains.js";
 import { authenticateToken } from "./middlewares/auth.js";
 import { startPingLoop } from "./services/pingService.js";
 
@@ -99,6 +100,7 @@ app.get("/ready", (_req, res) =>
 
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", authenticateToken, protectedRoutes);
+app.use("/api/domains", domainsRoutes);
 
 app.use((req, res, next) => {
   if (req.path === "/health" || req.path === "/ready") return next();
