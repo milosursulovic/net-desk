@@ -6,7 +6,6 @@ import fs from "fs";
 import https from "https";
 import helmet from "helmet";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/auth.js";
 import protectedRoutes from "./routes/protected.js";
@@ -51,7 +50,8 @@ const sslOptions = {
 };
 
 const app = express();
-app.set("trust proxy", 1);
+
+app.set("trust proxy", true);
 
 app.use(
   helmet({
@@ -74,22 +74,6 @@ app.use(
 );
 
 app.use(express.json({ limit: "2mb" }));
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/", apiLimiter);
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/auth/", authLimiter);
 
 let isDbReady = false;
 
@@ -141,7 +125,6 @@ const shutdown = async (signal) => {
   console.log(`🛑 Received ${signal}. Shutting down...`);
 
   await new Promise((resolve) => server.close(resolve));
-
   await mongoose.connection.close(false);
 
   console.log("✅ Shutdown complete");
