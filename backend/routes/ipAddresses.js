@@ -1,9 +1,9 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
 import XLSX from "xlsx";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
+import Printer from "../models/Printer.js";
 import { setMetadataForIp } from "../services/ipEntryService.js";
 import { isValidIPv4, ipToNumeric, numericToIp } from "../utils/ip.js";
 import { ah } from "../utils/asyncHandler.js";
@@ -98,13 +98,81 @@ function parseRangeFromEnv() {
   const str = process.env.AVAILABLE_RANGE || "";
   const [start, end] = str.split("-").map((s) => s?.trim());
   if (isValidIPv4(start) && isValidIPv4(end)) return { start, end };
-  return { start: process.env.AVAILABLE_RANGE_START, end: process.env.AVAILABLE_RANGE_END };
+  return {
+    start: process.env.AVAILABLE_RANGE_START,
+    end: process.env.AVAILABLE_RANGE_END,
+  };
+}
+
+function labelPrinter(p) {
+  const parts = [];
+  if (p.name) parts.push(p.name);
+  const mm = [p.manufacturer, p.model].filter(Boolean).join(" ");
+  if (mm) parts.push(mm);
+  if (p.serial) parts.push(`#${p.serial}`);
+  if (p.ip) parts.push(`@ ${p.ip}`);
+  return parts.join(" · ");
+}
+
+async function buildPrintersMap(entries) {
+  const ipNums = entries.map((e) => e.ipNumeric).filter(Boolean);
+  const ids = entries.map((e) => e._id);
+
+  const printers = await Printer.find({
+    $or: [
+      { ipNumeric: { $in: ipNums } },
+      { hostComputer: { $in: ids } },
+      { connectedComputers: { $in: ids } },
+    ],
+  })
+    .select(
+      "name manufacturer model serial ip hostComputer connectedComputers ipNumeric"
+    )
+    .lean();
+
+  const byIpNum = new Map();
+  const byHost = new Map();
+  const byConnected = new Map();
+
+  for (const p of printers) {
+    if (p.ipNumeric != null) {
+      if (!byIpNum.has(p.ipNumeric)) byIpNum.set(p.ipNumeric, []);
+      byIpNum.get(p.ipNumeric).push(p);
+    }
+    if (p.hostComputer) {
+      const k = String(p.hostComputer);
+      if (!byHost.has(k)) byHost.set(k, []);
+      byHost.get(k).push(p);
+    }
+    if (Array.isArray(p.connectedComputers)) {
+      for (const cid of p.connectedComputers) {
+        const k = String(cid);
+        if (!byConnected.has(k)) byConnected.set(k, []);
+        byConnected.get(k).push(p);
+      }
+    }
+  }
+
+  const out = new Map();
+  for (const e of entries) {
+    const kId = String(e._id);
+    const set = new Map();
+    const fromIp = byIpNum.get(e.ipNumeric) || [];
+    const fromHost = byHost.get(kId) || [];
+    const fromConn = byConnected.get(kId) || [];
+    for (const p of [...fromIp, ...fromHost, ...fromConn])
+      set.set(String(p._id), p);
+    const label = Array.from(set.values()).map(labelPrinter).join("\n");
+    out.set(kId, label);
+  }
+  return out;
 }
 
 router.get(
   "/export-xlsx",
   ah(async (req, res) => {
     const search = String(req.query.search || "");
+
     const entries = await IpEntry.find(getSearchQueryLegacy(search))
       .select(
         "ip computerName ipNumeric username fullName rdp dnsLog anyDesk system department metadata"
@@ -112,25 +180,60 @@ router.get(
       .sort({ ipNumeric: 1 })
       .lean();
 
-    const data = entries.map((e) => ({
+    const printersMap = await buildPrintersMap(entries);
+
+    const rows = entries.map((e) => ({
       ip: e.ip,
-      computerName: e.computerName,
-      ipNumeric: e.ipNumeric,
-      username: e.username,
-      fullName: e.fullName,
-      rdp: e.rdp,
-      dnsLog: e.dnsLog,
-      anyDesk: e.anyDesk,
-      system: e.system,
-      department: e.department,
+      computerName: e.computerName || "",
+      ipNumeric: e.ipNumeric ?? "",
+      username: e.username || "",
+      fullName: e.fullName || "",
+      rdp: e.rdp || "",
+      dnsLog: e.dnsLog || "",
+      anyDesk: e.anyDesk || "",
+      system: e.system || "",
+      department: e.department || "",
       hasMetadata: e.metadata ? "DA" : "NE",
+      printers: printersMap.get(String(e._id)) || "",
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "IP-Entries");
+    const ws = XLSX.utils.json_to_sheet(rows, {
+      header: [
+        "ip",
+        "computerName",
+        "ipNumeric",
+        "username",
+        "fullName",
+        "rdp",
+        "dnsLog",
+        "anyDesk",
+        "system",
+        "department",
+        "hasMetadata",
+        "printers",
+      ],
+      skipHeader: false,
+    });
 
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    ws["!cols"] = [
+      { wch: 14 },
+      { wch: 24 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 45 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "IP-Entries");
+
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     res.setHeader(
       "Content-Disposition",
       'attachment; filename="ip-entries.xlsx"'
@@ -147,6 +250,16 @@ router.get(
   "/export-csv",
   ah(async (req, res) => {
     const search = String(req.query.search || "");
+
+    const entries = await IpEntry.find(getSearchQueryLegacy(search))
+      .select(
+        "ip computerName ipNumeric username fullName rdp dnsLog anyDesk system department metadata"
+      )
+      .sort({ ipNumeric: 1 })
+      .lean();
+
+    const printersMap = await buildPrintersMap(entries);
+
     res.setHeader(
       "Content-Disposition",
       'attachment; filename="ip-entries.csv"'
@@ -154,18 +267,10 @@ router.get(
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
 
     res.write(
-      "ip,computerName,ipNumeric,username,fullName,rdp,dnsLog,anyDesk,system,department,hasMetadata\n"
+      "ip,computerName,ipNumeric,username,fullName,rdp,dnsLog,anyDesk,system,department,hasMetadata,printers\n"
     );
 
-    const cursor = IpEntry.find(getSearchQueryLegacy(search))
-      .select(
-        "ip computerName ipNumeric username fullName rdp dnsLog anyDesk system department metadata"
-      )
-      .sort({ ipNumeric: 1 })
-      .lean()
-      .cursor();
-
-    for await (const e of cursor) {
+    for (const e of entries) {
       const row = [
         e.ip,
         e.computerName || "",
@@ -178,6 +283,7 @@ router.get(
         e.system || "",
         e.department || "",
         e.metadata ? "DA" : "NE",
+        printersMap.get(String(e._id)) || "",
       ]
         .map((v) => String(v).replace(/"/g, '""'))
         .map((v) => `"${v}"`)
@@ -185,70 +291,6 @@ router.get(
       res.write(row + "\n");
     }
     res.end();
-  })
-);
-
-router.post(
-  "/import",
-  upload.single("file"),
-  ah(async (req, res) => {
-    const filePath = req.file?.path;
-    const ext = req.file?.originalname?.split(".").pop().toLowerCase();
-
-    if (!filePath || !ext)
-      return res.status(400).json({ message: "Nevažeći fajl" });
-    if (ext !== "xlsx")
-      return res.status(400).json({ message: "Nepodržan format fajla" });
-
-    try {
-      const workbook = XLSX.readFile(filePath);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-
-      const docs = rows
-        .map((row) => {
-          const ip = row.ip?.toString().trim();
-          if (!ip || !isValidIPv4(ip)) return null;
-          return {
-            ip,
-            computerName: row.computerName?.toString().trim() || "",
-            ipNumeric: row.ipNumeric || ipToNumeric(ip),
-            username: row.username?.toString().trim() || "",
-            fullName: row.fullName?.toString().trim() || "",
-            password: row.password?.toString().trim() || "",
-            rdp: row.rdp?.toString().trim() || "",
-            dnsLog: row.dnsLog?.toString().trim() || "",
-            anyDesk: row.anyDesk?.toString().trim() || "",
-            system: row.system?.toString().trim() || "",
-            department: row.department?.toString().trim() || "",
-          };
-        })
-        .filter(Boolean);
-
-      let upserted = 0,
-        modified = 0,
-        matched = 0;
-
-      const BATCH = 2000;
-      for (let i = 0; i < docs.length; i += BATCH) {
-        const chunk = docs.slice(i, i + BATCH);
-        const bulk = chunk.map((doc) => ({
-          updateOne: {
-            filter: { ip: doc.ip },
-            update: { $set: doc },
-            upsert: true,
-          },
-        }));
-        const r = await IpEntry.bulkWrite(bulk, { ordered: false });
-        upserted += r.upsertedCount || 0;
-        modified += r.modifiedCount || 0;
-        matched += r.matchedCount || 0;
-      }
-
-      res.json({ message: "Import uspešan", upserted, modified, matched });
-    } finally {
-      if (filePath) fs.unlink(filePath, () => {});
-    }
   })
 );
 
