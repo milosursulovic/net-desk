@@ -26,11 +26,16 @@ const buildPrinterSearch = (raw = "") => {
 router.get(
   "/",
   ah(async (req, res) => {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 50));
-    const skip = (page - 1) * limit;
+    const rawPage = parseInt(req.query.page);
+    const rawLimit = parseInt(req.query.limit);
     const search = String(req.query.search || "");
 
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+    const limit = Number.isFinite(rawLimit)
+      ? Math.min(1000, Math.max(1, rawLimit))
+      : 50;
+
+    const skip = (page - 1) * limit;
     const match = buildPrinterSearch(search);
 
     const [items, totalArr] = await Promise.all([
@@ -73,6 +78,7 @@ router.get(
       items,
       page,
       limit,
+      search,
       total,
       totalPages: Math.ceil(total / limit),
     });

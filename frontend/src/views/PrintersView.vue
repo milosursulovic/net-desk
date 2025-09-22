@@ -41,7 +41,9 @@
             class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Prethodna strana">
             ⬅️
           </button>
-          <span class="text-sm">📄 Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}</span>
+          <span class="text-sm">
+            📄 Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
+          </span>
           <button @click="nextPage" :disabled="page * limit >= total || loading"
             class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Sledeća strana">
             ➡️
@@ -351,8 +353,23 @@ async function fetchData() {
     const data = await res.json()
 
     items.value = data.items || []
-    total.value = data.total || 0
-    totalPages.value = data.totalPages || 0
+    total.value = data.total ?? 0
+    totalPages.value = data.totalPages ?? 0
+
+    const appliedPage = parseInt(data.page) || 1
+    const appliedLimit = parseInt(data.limit) || limit.value
+    let changed = false
+    if (appliedPage !== page.value) { page.value = appliedPage; changed = true }
+    if (appliedLimit !== limit.value) { limit.value = appliedLimit; changed = true }
+
+    if (
+      changed ||
+      route.query.page !== String(page.value) ||
+      route.query.limit !== String(limit.value) ||
+      (route.query.search || '') !== (search.value || '')
+    ) {
+      router.replace({ query: { page: page.value, limit: limit.value, search: search.value || undefined } })
+    }
 
     if (toolsOpen.value && toolsPrinter.value) {
       const np = getItem(toolsPrinter.value._id)
@@ -400,7 +417,7 @@ function prevPage() {
 }
 
 watch([page, limit, search], () => {
-  router.push({ query: { page: page.value, limit: limit.value, search: search.value } })
+  router.push({ query: { page: page.value, limit: limit.value, search: search.value || undefined } })
 })
 
 watch(
