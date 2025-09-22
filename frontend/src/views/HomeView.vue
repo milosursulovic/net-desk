@@ -227,9 +227,6 @@
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
             ℹ️ Meta
           </button>
-          <button @click="openPrinters(entry)" class="text-amber-600 hover:underline text-sm">
-            🖨 Štampači
-          </button>
         </div>
       </article>
     </div>
@@ -535,146 +532,6 @@
     <teleport to="body">
       <transition name="fade">
         <div
-          v-if="showPrintersModal"
-          class="fixed inset-0 z-[9996] flex"
-          @click.self="closePrinters"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div class="absolute inset-0 bg-black/40"></div>
-
-          <div
-            class="relative ml-auto h-full w-full sm:w-[560px] bg-white shadow-xl overflow-y-auto"
-          >
-            <div
-              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-            >
-              <h3 class="text-lg font-semibold">
-                🖨 Štampači — {{ printersEntry?.computerName || printersEntry?.ip || 'Nepoznato' }}
-              </h3>
-              <button
-                @click="closePrinters"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                aria-label="Zatvori"
-              >
-                &times;
-              </button>
-            </div>
-
-            <div class="p-4 space-y-6">
-              <div v-if="printersLoading" class="text-gray-600">Učitavanje…</div>
-              <div v-else-if="printersError" class="text-red-600">{{ printersError }}</div>
-
-              <template v-else>
-                <div class="rounded-lg border p-3 bg-slate-50">
-                  <div class="text-sm font-medium mb-2">
-                    Brzo povezivanje ovog računara na štampač
-                  </div>
-                  <div class="flex gap-2 items-center flex-wrap">
-                    <input
-                      v-model="printersSelectSearch"
-                      placeholder="🔎 Pretraga štampača..."
-                      class="border px-2 py-1 rounded text-sm w-full sm:w-auto"
-                    />
-                    <select
-                      v-model="selectedPrinterId"
-                      class="border px-2 py-1 rounded text-sm w-full sm:w-auto min-w-[220px]"
-                    >
-                      <option disabled value="">— odaberi štampač —</option>
-                      <option v-for="p in filteredPrintersAll" :key="p._id" :value="p._id">
-                        {{ p.name || '—' }} ({{ p.ip || 'no-ip' }})
-                      </option>
-                    </select>
-                    <button
-                      @click="selectedPrinterId && connectPrinter(selectedPrinterId)"
-                      class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
-                      :disabled="!selectedPrinterId || !printersEntry"
-                    >
-                      🔗 Poveži
-                    </button>
-                    <RouterLink to="/printers" class="text-sm text-indigo-600 hover:underline"
-                      >📃 Lista svih štampača</RouterLink
-                    >
-                  </div>
-                </div>
-
-                <section class="rounded-lg border p-4">
-                  <div class="flex items-center justify-between mb-2">
-                    <h4 class="font-semibold">🧷 Hostovani (USB + share na ovom računaru)</h4>
-                  </div>
-
-                  <div v-if="printersData.hosted.length" class="space-y-2">
-                    <div
-                      v-for="p in printersData.hosted"
-                      :key="p._id"
-                      class="border rounded p-3 bg-slate-50"
-                    >
-                      <div class="font-medium flex items-center justify-between">
-                        <span>{{ p.name || '—' }}</span>
-                        <div class="flex gap-2">
-                          <button
-                            @click="unsetHostPrinter(p._id)"
-                            class="text-sm text-red-600 hover:underline"
-                          >
-                            Ukloni host
-                          </button>
-                        </div>
-                      </div>
-                      <div class="text-sm text-gray-600">
-                        {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
-                      </div>
-                      <div class="text-sm">IP: {{ p.ip || '—' }}</div>
-                      <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
-                    </div>
-                  </div>
-                  <div v-else class="text-sm text-gray-500">Nema hostovanih štampača.</div>
-                </section>
-
-                <section class="rounded-lg border p-4">
-                  <h4 class="font-semibold mb-2">🔗 Povezani (instalirani na ovom računaru)</h4>
-
-                  <div v-if="printersData.connected.length" class="space-y-2">
-                    <div
-                      v-for="p in printersData.connected"
-                      :key="p._id"
-                      class="border rounded p-3 bg-white"
-                    >
-                      <div class="font-medium flex items-center justify-between">
-                        <span>{{ p.name || '—' }}</span>
-                        <div class="flex gap-2">
-                          <button
-                            @click="disconnectPrinter(p._id)"
-                            class="text-sm text-amber-700 hover:underline"
-                          >
-                            Otkači
-                          </button>
-                          <button
-                            @click="setHostPrinter(p._id)"
-                            class="text-sm text-indigo-700 hover:underline"
-                          >
-                            Postavi host
-                          </button>
-                        </div>
-                      </div>
-                      <div class="text-sm text-gray-600">
-                        {{ [p.manufacturer, p.model].filter(Boolean).join(' · ') || '—' }}
-                      </div>
-                      <div class="text-sm">IP: {{ p.ip || '—' }}</div>
-                      <div class="text-xs text-gray-500">Shared: {{ p.shared ? 'DA' : 'NE' }}</div>
-                    </div>
-                  </div>
-                  <div v-else class="text-sm text-gray-500">Nema povezanih štampača.</div>
-                </section>
-              </template>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
-
-    <teleport to="body">
-      <transition name="fade">
-        <div
           v-if="showDomains"
           class="fixed inset-0 z-[9995] flex"
           @click.self="closeDomains"
@@ -808,15 +665,6 @@ const metaLoading = ref(false)
 const metaError = ref(null)
 const metaEntry = ref(null)
 const meta = ref(null)
-
-const showPrintersModal = ref(false)
-const printersLoading = ref(false)
-const printersError = ref(null)
-const printersEntry = ref(null)
-const printersData = ref({ hosted: [], connected: [] })
-const printersAll = ref([])
-const printersSelectSearch = ref('')
-const selectedPrinterId = ref('')
 
 const showDomains = ref(false)
 const domainsFor = ref(null)
@@ -1020,96 +868,9 @@ const closeMetadata = () => {
   metaError.value = null
 }
 
-const openPrinters = async (entry) => {
-  printersEntry.value = entry
-  printersLoading.value = true
-  printersError.value = null
-  printersData.value = { hosted: [], connected: [] }
-  selectedPrinterId.value = ''
-  showPrintersModal.value = true
-
-  try {
-    const res = await fetchWithAuth(
-      `/api/protected/ip-addresses/by-ip/${encodeURIComponent(entry.ip)}/printers`
-    )
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    printersData.value = await res.json()
-
-    const resAll = await fetchWithAuth('/api/protected/printers?limit=1000')
-    printersAll.value = resAll.ok ? (await resAll.json()).items || [] : []
-  } catch (e) {
-    console.error(e)
-    printersError.value = 'Neuspešno učitavanje štampača.'
-  } finally {
-    printersLoading.value = false
-  }
-}
-const closePrinters = () => {
-  showPrintersModal.value = false
-  printersData.value = { hosted: [], connected: [] }
-  printersEntry.value = null
-  printersError.value = null
-  selectedPrinterId.value = ''
-  printersSelectSearch.value = ''
-}
-
-const connectPrinter = async (printerId) => {
-  if (!printersEntry.value) return
-  try {
-    await fetchWithAuth(`/api/protected/printers/${printerId}/connect`, {
-      method: 'POST',
-      body: JSON.stringify({ computer: printersEntry.value.ip }),
-    })
-    await openPrinters(printersEntry.value)
-  } catch (e) {
-    console.error(e)
-  }
-}
-const disconnectPrinter = async (printerId) => {
-  if (!printersEntry.value) return
-  try {
-    await fetchWithAuth(`/api/protected/printers/${printerId}/disconnect`, {
-      method: 'POST',
-      body: JSON.stringify({ computer: printersEntry.value.ip }),
-    })
-    await openPrinters(printersEntry.value)
-  } catch (e) {
-    console.error(e)
-  }
-}
-const setHostPrinter = async (printerId) => {
-  if (!printersEntry.value) return
-  try {
-    await fetchWithAuth(`/api/protected/printers/${printerId}/set-host`, {
-      method: 'POST',
-      body: JSON.stringify({ computer: printersEntry.value.ip }),
-    })
-    await openPrinters(printersEntry.value)
-  } catch (e) {
-    console.error(e)
-  }
-}
-const unsetHostPrinter = async (printerId) => {
-  try {
-    await fetchWithAuth(`/api/protected/printers/${printerId}/unset-host`, { method: 'POST' })
-    await openPrinters(printersEntry.value)
-  } catch (e) {
-    console.error(e)
-  }
-}
-
 const filteredAvailableIps = computed(() =>
   availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase()))
 )
-const printersAllFree = computed(() => printersAll.value.filter((p) => !p.hostComputer))
-const filteredPrintersAll = computed(() => {
-  const base = printersAllFree.value
-  if (!printersSelectSearch.value) return base
-  const q = printersSelectSearch.value.toLowerCase()
-  return base.filter((p) =>
-    [p.name, p.manufacturer, p.model, p.ip].filter(Boolean).join(' ').toLowerCase().includes(q)
-  )
-})
 
 const toggleDomainsSort = () => {
   domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
