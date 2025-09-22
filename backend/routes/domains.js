@@ -31,13 +31,11 @@ const POPULATE_IPENTRY = {
   select: "ip ipNumeric computerName department",
 };
 
-/** Build a domain Mongo query by optional name regex + optional ipEntry ids derived from search */
 async function buildDomainQueryFromSearch({ nameRegex, rawSearch }) {
   const query = {};
 
   const ipEntryIds = [];
   if (rawSearch) {
-    // If search looks like IPv4, search IpEntry by exact/regex; else allow partial regex on ip too
     const ipRegex = new RegExp(escapeRegex(rawSearch), "i");
 
     const ipMatches = await IpEntry.find(
@@ -53,7 +51,7 @@ async function buildDomainQueryFromSearch({ nameRegex, rawSearch }) {
       query.$or = [];
       if (nameRegex) query.$or.push({ name: { $regex: nameRegex } });
       if (ipEntryIds.length) query.$or.push({ ipEntry: { $in: ipEntryIds } });
-      if (!query.$or.length) delete query.$or; // safety
+      if (!query.$or.length) delete query.$or;
     }
   }
 
@@ -61,16 +59,12 @@ async function buildDomainQueryFromSearch({ nameRegex, rawSearch }) {
 }
 
 function mapWithIpVirtual(rows) {
-  // Project a flat ip so the UI can keep using data.ip
   return rows.map((r) => ({
     ...r,
     ip: r.ipEntry?.ip || "",
   }));
 }
 
-/* =========================
-   GET /domains
-   ========================= */
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const { page, limit, sort, rawSearch, nameRegex } = parseListQuery(req);
@@ -97,9 +91,6 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-/* =========================
-   GET /domains/blocked
-   ========================= */
 router.get("/blocked", authenticateToken, async (req, res) => {
   try {
     const { page, limit, sort, rawSearch, nameRegex } = parseListQuery(req);
@@ -130,11 +121,6 @@ router.get("/blocked", authenticateToken, async (req, res) => {
   }
 });
 
-/* =========================
-   POST /domains
-   Accepts an array of domain names.
-   Each inserted Domain must bind ipEntry to the caller's IP in IpEntry.
-   ========================= */
 router.post("/", async (req, res) => {
   try {
     const domains = req.body;
@@ -158,7 +144,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Normalize input (trim + dedupe)
     const uniqueNames = [
       ...new Set(
         domains
@@ -195,9 +180,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-/* =========================
-   GET /domains/export
-   ========================= */
 router.get("/export", authenticateToken, async (req, res) => {
   try {
     const { rawSearch, nameRegex } = parseListQuery(req);
