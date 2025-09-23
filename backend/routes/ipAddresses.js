@@ -85,6 +85,7 @@ const ListSchema = z.object({
     .optional()
     .default("ip"),
   sortOrder: z.enum(["asc", "desc"]).optional().default("asc"),
+  status: z.enum(["all", "online", "offline"]).optional().default("all"),
 });
 
 const RangeSchema = z.object({
@@ -350,15 +351,24 @@ router.get(
   "/",
   ah(async (req, res) => {
     const parsed = ListSchema.parse(req.query);
-    const { search, page, limit, sortBy, sortOrder } = parsed;
+    const { search, page, limit, sortBy, sortOrder, status } = parsed;
 
-    const query = buildFastSearch(search || "");
+    const baseQuery = buildFastSearch(search || "");
+    const statusCond =
+      status === "online"
+        ? { isOnline: true }
+        : status === "offline"
+        ? { isOnline: false }
+        : {};
+
+    const listQuery = { ...baseQuery, ...statusCond };
+
     let safeSortBy = sortBy === "ip" ? "ipNumeric" : sortBy;
     const sortDirection = sortOrder === "desc" ? -1 : 1;
     const skip = (page - 1) * limit;
 
-    const [entries, total] = await Promise.all([
-      IpEntry.find(query)
+    const [entries, total, onlineCount, offlineCount] = await Promise.all([
+      IpEntry.find(listQuery)
         .select(
           "ip ipNumeric computerName username password fullName rdp dnsLog anyDesk system department metadata isOnline lastChecked lastStatusChange"
         )
@@ -366,11 +376,21 @@ router.get(
         .skip(skip)
         .limit(limit)
         .lean(),
-      IpEntry.countDocuments(query),
+      IpEntry.countDocuments(listQuery),
+      IpEntry.countDocuments({ ...baseQuery, isOnline: true }),
+      IpEntry.countDocuments({ ...baseQuery, isOnline: false }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    res.json({ entries, total, totalPages, page, limit });
+    const totalPages = Math.ceil(total / limit) || 0;
+
+    res.json({
+      entries,
+      total,
+      totalPages,
+      page,
+      limit,
+      counts: { online: onlineCount, offline: offlineCount },
+    });
   })
 );
 

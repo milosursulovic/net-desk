@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
       <input
         v-model="search"
         @input="page = 1"
@@ -65,6 +65,12 @@
       />
 
       <div class="w-full sm:w-auto flex items-center gap-2">
+        <select v-model="status" class="border px-2 py-2 rounded text-sm" :title="'Filter statusa'">
+          <option value="all">Svi</option>
+          <option value="online">Samo online</option>
+          <option value="offline">Samo offline</option>
+        </select>
+
         <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
@@ -79,6 +85,14 @@
       </div>
 
       <div class="flex flex-col items-start sm:items-end gap-1">
+        <div class="flex items-center gap-3 text-sm">
+          <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online: {{ counts.online }}
+          </span>
+          <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-rose-50 text-rose-700 border-rose-200">
+            <span class="h-2 w-2 rounded-full bg-rose-500"></span> Offline: {{ counts.offline }}
+          </span>
+        </div>
         <div class="flex items-center gap-2">
           <button
             @click="prevPage"
@@ -96,7 +110,7 @@
             ➡️
           </button>
         </div>
-        <p class="text-sm text-gray-600">Ukupno {{ entries.length }} od {{ total }} unosa</p>
+        <p class="text-sm text-gray-600">Prikazano {{ entries.length }} od {{ total }} unosa</p>
       </div>
     </div>
 
@@ -651,6 +665,8 @@ const limit = ref(parseInt(route.query.limit) || 10)
 const search = ref(route.query.search || '')
 const sortBy = ref(route.query.sortBy || 'ip')
 const sortOrder = ref(route.query.sortOrder || 'asc')
+const status = ref(route.query.status || 'all')
+const counts = ref({ online: 0, offline: 0 })
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 
 const showPasswords = ref(false)
@@ -689,7 +705,7 @@ const sortOptions = [
   { value: 'system', label: 'Sistem' },
 ]
 
-watch([sortBy, sortOrder], () => {
+watch([sortBy, sortOrder, status], () => {
   page.value = 1
 })
 
@@ -703,6 +719,7 @@ async function fetchData() {
     search: search.value,
     sortBy: sortBy.value,
     sortOrder: sortOrder.value,
+    status: status.value,
   })
 
   try {
@@ -712,6 +729,7 @@ async function fetchData() {
     entries.value = data.entries
     total.value = data.total
     totalPages.value = data.totalPages
+    counts.value = data.counts || { online: 0, offline: 0 }
   } catch (err) {
     console.error('Neuspešno dohvatanje podataka')
   }
@@ -911,9 +929,7 @@ async function fetchDomainsForIp() {
       sortBy: domainsSortBy.value,
       sortOrder: domainsSortOrder.value,
     })
-    const path = domainsBlockedOnly.value
-      ? '/api/domains/blocked'
-      : '/api/domains'
+    const path = domainsBlockedOnly.value ? '/api/domains/blocked' : '/api/domains'
     const res = await fetchWithAuth(`${path}?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -937,7 +953,7 @@ onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
 })
 
-watch([page, limit, search, sortBy, sortOrder], () => {
+watch([page, limit, search, sortBy, sortOrder, status], () => {
   router.push({
     query: {
       page: page.value,
@@ -945,6 +961,7 @@ watch([page, limit, search, sortBy, sortOrder], () => {
       search: search.value,
       sortBy: sortBy.value,
       sortOrder: sortOrder.value,
+      status: status.value,
     },
   })
 })
@@ -956,6 +973,7 @@ watch(
     search.value = query.search || ''
     sortBy.value = query.sortBy || 'ip'
     sortOrder.value = query.sortOrder || 'asc'
+    status.value = ['all', 'online', 'offline'].includes(query.status) ? query.status : 'all'
     fetchData()
   },
   { immediate: true }
