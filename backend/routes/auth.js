@@ -48,4 +48,28 @@ router.post("/login", loginLimiter, async (req, res) => {
   }
 });
 
+router.get("/me", (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const [type, token] = auth.split(" ");
+    if (type !== "Bearer" || !token) {
+      return res.status(401).json({ message: "Nedostaje token" });
+    }
+    if (!process.env.JWT_SECRET) {
+      console.error("❌ JWT_SECRET nije postavljen");
+      return res.status(500).json({ message: "Konfiguraciona greška" });
+    }
+    const payload = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
+    return res.json({
+      userId: payload.userId,
+      username: payload.username,
+      role: payload.role || "user",
+    });
+  } catch (e) {
+    return res.status(401).json({ message: "Nevažeći ili istekao token" });
+  }
+});
+
 export default router;

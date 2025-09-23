@@ -3,7 +3,13 @@
     <header class="bg-white/90 shadow p-4 sticky top-0 z-50">
       <div class="w-full flex justify-between items-center px-4">
         <Logo />
-        <LogoutButton />
+
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-gray-700 font-medium" title="Prijavljen korisnik">
+            👤 {{ currentUser?.username || 'Nepoznat' }}
+          </span>
+          <LogoutButton />
+        </div>
       </div>
     </header>
 
@@ -19,10 +25,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Logo from '@/components/Logo.vue'
 import LogoutButton from '@/components/LogoutButton.vue'
+import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
 const appVersion = import.meta.env.VITE_APP_VERSION
 const year = computed(() => new Date().getFullYear())
+
+const currentUser = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetchWithAuth('/api/auth/me')
+    if (res.ok) currentUser.value = await res.json()
+  } catch (err) {
+    console.error('Greška pri učitavanju korisnika', err)
+  }
+})
 </script>
