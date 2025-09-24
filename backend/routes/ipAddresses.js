@@ -170,6 +170,79 @@ async function buildPrintersMap(entries) {
 }
 
 router.get(
+  "/duplicates",
+  ah(async (req, res) => {
+    const parsed = ListSchema.parse(req.query);
+    const { search, status } = parsed;
+
+    const baseQuery = buildFastSearch(search || "");
+    const statusCond =
+      status === "online"
+        ? { isOnline: true }
+        : status === "offline"
+        ? { isOnline: false }
+        : {};
+
+    const match = { ...baseQuery, ...statusCond };
+
+    const pipeline = [
+      { $match: match },
+
+      {
+        $addFields: {
+          _compKey: {
+            $toLower: {
+              $trim: { input: { $ifNull: ["$computerName", ""] } }
+            }
+          }
+        }
+      },
+
+      { $match: { _compKey: { $type: "string", $ne: "" } } },
+
+      {
+        $group: {
+          _id: "$_compKey",
+          name: { $first: "$computerName" },
+          count: { $sum: 1 },
+          items: {
+            $push: {
+              _id: "$_id",
+              ip: "$ip",
+              computerName: "$computerName",
+              username: "$username",
+              department: "$department",
+              updatedAt: "$updatedAt",
+            }
+          }
+        }
+      },
+
+      { $match: { count: { $gt: 1 } } },
+
+      { $sort: { count: -1, name: 1 } },
+
+      {
+        $project: {
+          _id: 0,
+          key: "$_compKey",
+          name: 1,
+          count: 1,
+          items: 1
+        }
+      }
+    ];
+
+    const dupes = await IpEntry.aggregate(pipeline);
+    res.json({
+      totalDuplicateGroups: dupes.length,
+      totalDuplicateRows: dupes.reduce((acc, g) => acc + g.count, 0),
+      groups: dupes
+    });
+  })
+);
+
+router.get(
   "/export-xlsx",
   ah(async (req, res) => {
     const search = String(req.query.search || "");

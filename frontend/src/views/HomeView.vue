@@ -4,65 +4,44 @@
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🖥️ IP Adrese</h1>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="addEntry"
-          class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
-        >
+        <button @click="addEntry" class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">
           ➕ Dodaj
         </button>
 
-        <button
-          @click="exportToXlsx"
-          class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700"
-        >
+        <button @click="exportToXlsx" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">
           📤 Izvezi XLSX
         </button>
 
         <label
-          class="inline-flex items-center bg-yellow-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-yellow-600 shadow"
-        >
+          class="inline-flex items-center bg-yellow-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-yellow-600 shadow">
           <input type="file" @change="handleFileUpload" accept=".csv, .xlsx" class="hidden" />
           📥 Uvezi
         </label>
 
-        <button
-          @click="showAvailableIps"
-          class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700"
-        >
+        <button @click="showAvailableIps" class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
           📡 Slobodne IP adrese
         </button>
 
-        <RouterLink
-          to="/metadata"
-          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center"
-        >
+        <RouterLink to="/metadata"
+          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
           📊 Metapodaci
         </RouterLink>
 
-        <RouterLink
-          to="/printers"
-          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center"
-        >
+        <RouterLink to="/printers"
+          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
           🖨️ Štampači
         </RouterLink>
 
-        <RouterLink
-          to="/domains"
-          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center"
-        >
+        <RouterLink to="/domains"
+          class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
           🌐 DNS logovi
         </RouterLink>
       </div>
     </div>
 
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-      <input
-        v-model="search"
-        @input="page = 1"
-        type="text"
-        placeholder="🔎 Pretraga..."
-        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <input v-model="search" @input="page = 1" type="text" placeholder="🔎 Pretraga..."
+        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
 
       <div class="w-full sm:w-auto flex items-center gap-2">
         <select v-model="status" class="border px-2 py-2 rounded text-sm" :title="'Filter statusa'">
@@ -75,38 +54,30 @@
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
 
-        <button
-          @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-3 py-2 border rounded text-sm"
-          :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'"
-        >
+        <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'" class="px-3 py-2 border rounded text-sm"
+          :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'">
           {{ sortOrder === 'asc' ? '↑ Rastuće' : '↓ Opadajuće' }}
         </button>
       </div>
 
       <div class="flex flex-col items-start sm:items-end gap-1">
         <div class="flex items-center gap-3 text-sm">
-          <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+          <span
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
             <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online: {{ counts.online }}
           </span>
-          <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-rose-50 text-rose-700 border-rose-200">
+          <span
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-rose-50 text-rose-700 border-rose-200">
             <span class="h-2 w-2 rounded-full bg-rose-500"></span> Offline: {{ counts.offline }}
           </span>
         </div>
         <div class="flex items-center gap-2">
-          <button
-            @click="prevPage"
-            :disabled="page === 1"
-            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
+          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
             ⬅️
           </button>
           <span>📄 Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
-          <button
-            @click="nextPage"
-            :disabled="page * limit >= total"
-            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
+          <button @click="nextPage" :disabled="page * limit >= total"
+            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
             ➡️
           </button>
         </div>
@@ -114,28 +85,35 @@
       </div>
     </div>
 
-    <button
-      @click="showPasswords = !showPasswords"
-      class="text-sm text-gray-700 underline hover:text-gray-900"
-    >
+    <div v-if="duplicateTotalGroups > 0"
+      class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 flex items-start justify-between gap-3"
+      role="alert">
+      <div class="text-sm">
+        ⚠️ Pronađeno je
+        <b>{{ duplicateTotalGroups }}</b> duplih imena računara
+        (ukupno <b>{{ duplicateTotalRows }}</b> zapisa).
+      </div>
+      <div class="shrink-0">
+        <button @click="showDupesModal = true"
+          class="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700">
+          Pogledaj detalje
+        </button>
+      </div>
+    </div>
+
+    <button @click="showPasswords = !showPasswords" class="text-sm text-gray-700 underline hover:text-gray-900">
       {{ showPasswords ? '🔒 Sakrij lozinke' : '🔓 Prikaži lozinke' }}
     </button>
 
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      <article
-        v-for="entry in entries"
-        :key="entry._id"
-        class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
-      >
+      <article v-for="entry in entries" :key="entry._id"
+        class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">IP adresa</div>
             <div class="text-lg font-semibold tracking-tight">
-              <button
-                class="underline decoration-dotted hover:decoration-solid hover:text-blue-700"
-                @click="openDomainsForIp(entry)"
-                :title="`Prikaži domene za ${entry.ip}`"
-              >
+              <button class="underline decoration-dotted hover:decoration-solid hover:text-blue-700"
+                @click="openDomainsForIp(entry)" :title="`Prikaži domene za ${entry.ip}`">
                 {{ entry.ip }}
               </button>
             </div>
@@ -146,35 +124,23 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <span
-              v-if="entry.department"
+            <span v-if="entry.department"
               class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
-              title="Odeljenje"
-            >
+              title="Odeljenje">
               🏢 {{ entry.department }}
             </span>
 
-            <span
-              class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
-              :class="
-                entry.isOnline
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              "
-              :title="statusTooltip(entry)"
-            >
-              <span
-                class="h-2 w-2 rounded-full"
-                :class="entry.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"
-              ></span>
+            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs" :class="entry.isOnline
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border-rose-200'
+              " :title="statusTooltip(entry)">
+              <span class="h-2 w-2 rounded-full"
+                :class="entry.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"></span>
               {{ entry.isOnline ? 'Online' : 'Offline' }}
             </span>
 
-            <button
-              @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
-              class="text-blue-600 text-sm hover:underline"
-              title="Kopiraj IP"
-            >
+            <button @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
+              class="text-blue-600 text-sm hover:underline" title="Kopiraj IP">
               📋
             </button>
           </div>
@@ -194,11 +160,8 @@
             <span class="font-medium truncate">
               {{ showPasswords ? entry.password || '—' : '••••••' }}
             </span>
-            <button
-              v-if="showPasswords && entry.password"
-              @click="copyToClipboard(entry.password, 'Lozinka kopirana!')"
-              class="ml-2 text-blue-600 hover:underline text-xs"
-            >
+            <button v-if="showPasswords && entry.password" @click="copyToClipboard(entry.password, 'Lozinka kopirana!')"
+              class="ml-2 text-blue-600 hover:underline text-xs">
               📋
             </button>
           </div>
@@ -247,10 +210,8 @@
 
     <teleport to="body">
       <transition name="fade">
-        <div
-          v-if="copiedText"
-          class="fixed top-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-[9999]"
-        >
+        <div v-if="copiedText"
+          class="fixed top-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-[9999]">
           {{ copiedText }}
         </div>
       </transition>
@@ -258,48 +219,30 @@
 
     <teleport to="body">
       <transition name="fade">
-        <div
-          v-if="showingAvailableModal"
-          class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50"
-          @click.self="closeAvailableModal"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div v-if="showingAvailableModal" class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50"
+          @click.self="closeAvailableModal" role="dialog" aria-modal="true">
           <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg">
             <div class="mb-4">
               <div class="flex justify-between items-center mb-2">
                 <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   📡 Slobodne IP adrese
                 </h2>
-                <button
-                  @click="closeAvailableModal"
-                  class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                  aria-label="Zatvori"
-                >
+                <button @click="closeAvailableModal" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                  aria-label="Zatvori">
                   &times;
                 </button>
               </div>
-              <input
-                v-model="ipSearch"
-                type="text"
-                placeholder="🔍 Pretraga IP adresa..."
-                class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
+              <input v-model="ipSearch" type="text" placeholder="🔍 Pretraga IP adresa..."
+                class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
 
             <div v-if="availableIps.length > 0">
               <ul class="space-y-2 max-h-60 overflow-y-auto">
-                <li
-                  v-for="(ip, index) in filteredAvailableIps"
-                  :key="index"
-                  @click="goToAddWithIp(ip)"
-                  class="p-2 bg-slate-100 rounded hover:bg-slate-200 transition flex justify-between items-center cursor-pointer"
-                >
+                <li v-for="(ip, index) in filteredAvailableIps" :key="index" @click="goToAddWithIp(ip)"
+                  class="p-2 bg-slate-100 rounded hover:bg-slate-200 transition flex justify-between items-center cursor-pointer">
                   <span>{{ ip }}</span>
-                  <button
-                    @click.stop="copyToClipboard(ip, `IP ${ip} kopiran!`)"
-                    class="text-blue-500 text-sm hover:underline"
-                  >
+                  <button @click.stop="copyToClipboard(ip, `IP ${ip} kopiran!`)"
+                    class="text-blue-500 text-sm hover:underline">
                     📋 Kopiraj
                   </button>
                 </li>
@@ -313,29 +256,17 @@
 
     <teleport to="body">
       <transition name="fade">
-        <div
-          v-if="showMeta"
-          class="fixed inset-0 z-[9997] flex"
-          @click.self="closeMetadata"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div v-if="showMeta" class="fixed inset-0 z-[9997] flex" @click.self="closeMetadata" role="dialog"
+          aria-modal="true">
           <div class="absolute inset-0 bg-black/40"></div>
 
-          <div
-            class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto"
-          >
-            <div
-              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-            >
+          <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
+            <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
               <h3 class="text-lg font-semibold">
                 🧾 Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
               </h3>
-              <button
-                @click="closeMetadata"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                aria-label="Zatvori"
-              >
+              <button @click="closeMetadata" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                aria-label="Zatvori">
                 &times;
               </button>
             </div>
@@ -413,11 +344,7 @@
                       🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
                     </h4>
                     <div v-if="meta.RAMModules?.length" class="space-y-2">
-                      <div
-                        v-for="(r, idx) in meta.RAMModules"
-                        :key="idx"
-                        class="border rounded p-3 bg-white"
-                      >
+                      <div v-for="(r, idx) in meta.RAMModules" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
                           <span class="text-gray-500">Slot:</span> {{ safe(r.Slot) }}
                         </div>
@@ -445,11 +372,7 @@
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
                     <div v-if="meta.Storage?.length" class="space-y-2">
-                      <div
-                        v-for="(s, idx) in meta.Storage"
-                        :key="idx"
-                        class="border rounded p-3 bg-white"
-                      >
+                      <div v-for="(s, idx) in meta.Storage" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
                           <span class="text-gray-500">Model:</span> {{ safe(s.Model) }}
                         </div>
@@ -476,11 +399,7 @@
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
                     <div v-if="meta.GPUs?.length" class="space-y-2">
-                      <div
-                        v-for="(g, idx) in meta.GPUs"
-                        :key="idx"
-                        class="border rounded p-3 bg-white"
-                      >
+                      <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
                           <span class="text-gray-500">Naziv:</span> {{ safe(g.Name) }}
                         </div>
@@ -499,11 +418,7 @@
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
                     <div v-if="meta.NICs?.length" class="space-y-2">
-                      <div
-                        v-for="(n, idx) in meta.NICs"
-                        :key="idx"
-                        class="border rounded p-3 bg-white"
-                      >
+                      <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
                           <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
                         </div>
@@ -545,41 +460,25 @@
 
     <teleport to="body">
       <transition name="fade">
-        <div
-          v-if="showDomains"
-          class="fixed inset-0 z-[9995] flex"
-          @click.self="closeDomains"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div v-if="showDomains" class="fixed inset-0 z-[9995] flex" @click.self="closeDomains" role="dialog"
+          aria-modal="true">
           <div class="absolute inset-0 bg-black/40"></div>
 
-          <div
-            class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto"
-          >
-            <div
-              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-            >
+          <div class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto">
+            <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
               <h3 class="text-lg font-semibold">
                 🌐 DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
               </h3>
-              <button
-                @click="closeDomains"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                aria-label="Zatvori"
-              >
+              <button @click="closeDomains" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                aria-label="Zatvori">
                 &times;
               </button>
             </div>
 
             <div class="p-4 space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  v-model="domainsSearch"
-                  @keyup.enter="fetchDomainsForIp()"
-                  placeholder="🔎 Pretraga domain/ip…"
-                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                <input v-model="domainsSearch" @keyup.enter="fetchDomainsForIp()" placeholder="🔎 Pretraga domain/ip…"
+                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <div class="flex items-center gap-2">
                   <select v-model="domainsSortBy" class="border px-2 py-2 rounded text-sm">
                     <option value="timestamp">Vreme</option>
@@ -589,11 +488,7 @@
                     {{ domainsSortOrder === 'asc' ? '↑' : '↓' }}
                   </button>
                   <label class="inline-flex items-center text-sm gap-2">
-                    <input
-                      type="checkbox"
-                      v-model="domainsBlockedOnly"
-                      @change="fetchDomainsForIp()"
-                    />
+                    <input type="checkbox" v-model="domainsBlockedOnly" @change="fetchDomainsForIp()" />
                     Samo blokirani
                   </label>
                 </div>
@@ -603,11 +498,8 @@
               </div>
 
               <div class="space-y-2">
-                <div
-                  v-for="d in domainsItems"
-                  :key="d._id"
-                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between"
-                >
+                <div v-for="d in domainsItems" :key="d._id"
+                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between">
                   <div class="min-w-0">
                     <div class="font-medium truncate">{{ d.name }}</div>
                     <div class="text-xs text-gray-500">
@@ -624,19 +516,12 @@
               <div class="flex items-center justify-between pt-2">
                 <div class="text-sm">Strana {{ domainsPage }}</div>
                 <div class="flex items-center gap-2">
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage <= 1"
-                    @click="prevDomainsPage"
-                  >
+                  <button class="px-2 py-1 bg-gray-200 rounded" :disabled="domainsPage <= 1" @click="prevDomainsPage">
                     ⬅️
                   </button>
 
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage * domainsLimit >= domainsTotal"
-                    @click="nextDomainsPage"
-                  >
+                  <button class="px-2 py-1 bg-gray-200 rounded" :disabled="domainsPage * domainsLimit >= domainsTotal"
+                    @click="nextDomainsPage">
                     ➡️
                   </button>
                 </div>
@@ -646,6 +531,74 @@
         </div>
       </transition>
     </teleport>
+
+    <teleport to="body">
+      <transition name="fade">
+        <div v-if="showDupesModal" class="fixed inset-0 z-[9996] flex items-center justify-center bg-black/50"
+          @click.self="showDupesModal = false" role="dialog" aria-modal="true">
+          <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold">⚠️ Duplirana imena računara</h2>
+              <button @click="showDupesModal = false" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                aria-label="Zatvori">&times;</button>
+            </div>
+
+            <div v-if="duplicateGroups.length === 0" class="text-gray-600">
+              Nema duplih imena u trenutnom prikazu.
+            </div>
+
+            <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto">
+              <div v-for="g in duplicateGroups" :key="g.key || g.name" class="rounded border bg-slate-50 p-3">
+                <div class="flex items-center justify-between">
+                  <div class="font-medium">
+                    🖥️ {{ g.name }} <span class="text-xs text-slate-500">({{ g.count }} kom)</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700" @click="
+                      () => {
+                        search = g.name;
+                        page = 1;
+                        showDupesModal = false;
+                      }
+                    " title="Filtriraj na ovo ime (search)">
+                      Filtriraj
+                    </button>
+                    <button class="text-xs px-2 py-1 rounded border"
+                      @click="copyToClipboard(g.name, `Ime '${g.name}' kopirano!`)">
+                      📋 Kopiraj ime
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div v-for="it in g.items" :key="it._id"
+                    class="bg-white rounded border p-2 text-sm flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-medium truncate">{{ it.ip }}</div>
+                      <div class="text-xs text-slate-500 truncate">
+                        {{ it.username || '—' }} · {{ it.department || '—' }}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button class="text-xs text-blue-600 hover:underline" @click="router.push(`/edit/${it._id}`)"
+                        title="Otvori za izmenu">✏️ Izmeni</button>
+                      <button class="text-xs" @click="copyToClipboard(it.ip, `IP ${it.ip} kopiran!`)"
+                        title="Kopiraj IP">📋</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="duplicateGroups.length" class="mt-3 text-xs text-slate-500">
+              Savet: U idealnom slučaju svaka mašina ima jedinstveno ime (npr. standardizovan
+              prefiks i inventarski broj). Ove grupe pomažu da brzo uočite konfliktne nazive.
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
   </main>
 </template>
 
@@ -942,12 +895,39 @@ async function fetchDomainsForIp() {
   }
 }
 
+const duplicateGroups = ref([])
+const duplicateTotalGroups = ref(0)
+const duplicateTotalRows = ref(0)
+const showDupesModal = ref(false)
+
+async function fetchDuplicateNames() {
+  try {
+    const params = new URLSearchParams({
+      search: search.value,
+      status: status.value,
+    })
+    const res = await fetchWithAuth(`/api/protected/ip-addresses/duplicates?${params.toString()}`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    duplicateGroups.value = Array.isArray(data.groups) ? data.groups : []
+    duplicateTotalGroups.value = data.totalDuplicateGroups || 0
+    duplicateTotalRows.value = data.totalDuplicateRows || 0
+  } catch (e) {
+    console.error('Neuspešno dohvatanje duplikata:', e)
+    duplicateGroups.value = []
+    duplicateTotalGroups.value = 0
+    duplicateTotalRows.value = 0
+  }
+}
+
+
 const AUTO_REFRESH_SEC = 30
 let refreshTimer = null
 onMounted(() => {
   refreshTimer = setInterval(() => {
     fetchData()
   }, AUTO_REFRESH_SEC * 1000)
+  fetchDuplicateNames()
 })
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
@@ -987,10 +967,12 @@ const goToAddWithIp = (ip) => router.push({ path: '/add', query: { ip } })
 .fade-leave-active {
   transition: opacity 0.15s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
+
 .glass-container {
   backdrop-filter: saturate(140%) blur(2px);
 }
