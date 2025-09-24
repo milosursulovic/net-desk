@@ -204,6 +204,9 @@
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
             ℹ️ Meta
           </button>
+          <button @click="openPortScan(entry)" class="text-teal-600 hover:underline text-sm">
+            🛰️ Port scan
+          </button>
         </div>
       </article>
     </div>
@@ -599,6 +602,83 @@
       </transition>
     </teleport>
 
+    <teleport to="body">
+      <transition name="fade">
+        <div v-if="showPortScan" class="fixed inset-0 z-[9996] flex" @click.self="closePortScan" role="dialog"
+          aria-modal="true">
+          <div class="absolute inset-0 bg-black/40"></div>
+
+          <div class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto">
+            <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold">🛰️ Port scan — {{ portScanTarget?.ip }}</h3>
+              <button @click="closePortScan" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                aria-label="Zatvori">&times;</button>
+            </div>
+
+            <div class="p-4 space-y-4">
+              <div class="rounded border p-3 bg-slate-50">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <div>
+                    <label class="text-xs text-slate-500">Custom portovi (npr: 22,80,443 ili 20-25,80)</label>
+                    <input v-model="portScanPorts"
+                      class="w-full border px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      placeholder="prazno = podrazumevana lista" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-slate-500">Timeout po portu (ms)</label>
+                    <input v-model.number="portScanTimeoutMs" type="number" min="200" max="5000"
+                      class="w-full border px-3 py-2 rounded shadow-sm" />
+                  </div>
+                  <div class="flex gap-2">
+                    <button @click="runPortScan" :disabled="portScanLoading"
+                      class="px-4 py-2 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
+                      ▶️ Pokreni sken
+                    </button>
+                    <button v-if="portScanResult"
+                      @click="copyToClipboard(JSON.stringify(portScanResult.open, null, 2), 'Rezultat kopiran!')"
+                      class="px-3 py-2 rounded border">
+                      📋 Kopiraj JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="portScanLoading" class="text-gray-600">Skeniram…</div>
+              <div v-else-if="portScanError" class="text-red-600">{{ portScanError }}</div>
+
+              <div v-else-if="portScanResult">
+                <div class="text-sm text-slate-600 mb-2">
+                  Otvoreni: <b>{{ portScanResult.openCount }}</b> / Skenirano: {{ portScanResult.scanned }}
+                </div>
+
+                <div v-if="portScanResult.openCount === 0" class="text-gray-600">
+                  Nije pronađen nijedan otvoren TCP port (za zadate uslove).
+                </div>
+
+                <div v-else class="space-y-2">
+                  <div v-for="p in portScanResult.open" :key="p.port" class="rounded border p-3 bg-white">
+                    <div class="flex items-center justify-between">
+                      <div class="font-medium">Port {{ p.port }} / {{ p.protocol?.toUpperCase() || 'TCP' }}</div>
+                      <div class="text-xs text-slate-500">~{{ p.rttMs }} ms</div>
+                    </div>
+                    <div class="text-sm">
+                      <div><span class="text-slate-500">Servis:</span> {{ p.serviceHint || 'nepoznat' }}</div>
+                      <div v-if="p.banner"><span class="text-slate-500">Baner:</span> <code
+                          class="text-xs break-all">{{ p.banner }}</code></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-xs text-slate-500">
+                Napomena: Ovo je brzi TCP connect sken (ne radi UDP). Neki servisi ne šalju baner iako je port otvoren.
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
   </main>
 </template>
 
@@ -920,6 +1000,54 @@ async function fetchDuplicateNames() {
   }
 }
 
+const showPortScan = ref(false)
+const portScanTarget = ref(null)
+const portScanLoading = ref(false)
+const portScanError = ref(null)
+const portScanResult = ref(null)
+const portScanPorts = ref('')
+const portScanTimeoutMs = ref(100)
+
+function openPortScan(entry) {
+  portScanTarget.value = entry
+  portScanResult.value = null
+  portScanError.value = null
+  portScanPorts.value = ''
+  showPortScan.value = true
+}
+
+function closePortScan() {
+  showPortScan.value = false
+  portScanTarget.value = null
+  portScanResult.value = null
+  portScanError.value = null
+}
+
+async function runPortScan() {
+  if (!portScanTarget.value) return
+  portScanLoading.value = true
+  portScanError.value = null
+  portScanResult.value = null
+  try {
+    const params = new URLSearchParams({
+      ip: portScanTarget.value.ip,
+      timeoutMs: String(portScanTimeoutMs.value || 1200),
+    })
+    if (portScanPorts.value.trim()) params.set('ports', portScanPorts.value.trim())
+
+    const res = await fetchWithAuth(`/api/protected/ip-addresses/scan-ports?${params.toString()}`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error || `HTTP ${res.status}`)
+    }
+    const data = await res.json()
+    portScanResult.value = data
+  } catch (e) {
+    portScanError.value = e?.message || 'Greška pri skeniranju'
+  } finally {
+    portScanLoading.value = false
+  }
+}
 
 const AUTO_REFRESH_SEC = 30
 let refreshTimer = null

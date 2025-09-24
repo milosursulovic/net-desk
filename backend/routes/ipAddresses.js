@@ -8,6 +8,179 @@ import { setMetadataForIp } from "../services/ipEntryService.js";
 import { isValidIPv4, ipToNumeric, numericToIp } from "../utils/ip.js";
 import { ah } from "../utils/asyncHandler.js";
 import { z } from "zod";
+import net from "net";
+import tls from "tls";
+
+const PRIVATE_V4 =
+  /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/;
+const isPrivateIPv4 = (ip) => PRIVATE_V4.test(ip);
+
+async function probeTCP(ip, port, timeoutMs = 100) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const socket = new net.Socket();
+    let settled = false;
+    let banner = "";
+    let proto = "tcp";
+
+    const finish = (ok, extra = {}) => {
+      if (settled) return;
+      settled = true;
+      try {
+        socket.destroy();
+      } catch {}
+      const out = {
+        ip,
+        port,
+        open: !!ok,
+        rttMs: Date.now() - start,
+        protocol: proto,
+        serviceHint: null,
+        banner: banner ? String(banner).slice(0, 800) : null,
+        ...extra,
+      };
+      console.log(
+        `[port-scan] result ${ip}:${port} open=${out.open} rtt=${out.rttMs} hint=${out.serviceHint}`
+      );
+      resolve(out);
+    };
+
+    socket.setTimeout(timeoutMs);
+
+    socket.once("error", (err) => {
+      console.log(
+        `[port-scan] error ${ip}:${port} ->`,
+        err?.code || err?.message || err
+      );
+      finish(false, { error: err?.code || String(err) });
+    });
+
+    socket.once("timeout", () => {
+      console.log(`[port-scan] timeout ${ip}:${port}`);
+      finish(false, { timeout: true });
+    });
+
+    socket.once("connect", () => {
+      console.log(`[port-scan] connected ${ip}:${port}`);
+      try {
+        socket.setTimeout(600);
+        socket.once("data", (buf) => {
+          banner += buf.toString();
+          finish(true);
+        });
+
+        if ([443, 8443, 9443, 6443].includes(port)) {
+          proto = "tls";
+          try {
+            const tlsSock = tls.connect({
+              socket,
+              servername: ip,
+              rejectUnauthorized: false,
+            });
+            tlsSock.setTimeout(1800);
+            tlsSock.once("secureConnect", () => {
+              const cert = tlsSock.getPeerCertificate?.() || {};
+              banner = `TLS:${tlsSock.getProtocol() || "?"} · CN=${
+                cert.subject?.CN || "?"
+              }`;
+              finish(true);
+            });
+            tlsSock.once("error", (e) => {
+              console.log(
+                `[port-scan] tls error ${ip}:${port} ->`,
+                e?.message || e
+              );
+              finish(true);
+            });
+            tlsSock.once("timeout", () => finish(true));
+            return;
+          } catch (e) {
+            console.log(`[port-scan] tls wrap exception ${ip}:${port}`, e);
+            finish(true);
+            return;
+          }
+        }
+
+        if ([80, 8080, 8000, 8888].includes(port)) {
+          socket.write(`HEAD / HTTP/1.0\r\nHost: ${ip}\r\n\r\n`);
+          setTimeout(() => finish(true), 500);
+          return;
+        }
+
+        if (port === 6379) {
+          socket.write("*1\r\n$4\r\nPING\r\n");
+          setTimeout(() => finish(true), 300);
+          return;
+        }
+
+        setTimeout(() => finish(true), 500);
+      } catch (e) {
+        console.log(`[port-scan] connect-handler-ex ${ip}:${port}`, e);
+        finish(true);
+      }
+    });
+
+    try {
+      socket.connect(port, ip);
+    } catch (e) {
+      console.log(`[port-scan] connect-ex ${ip}:${port}`, e);
+      finish(false, { error: String(e) });
+    }
+  });
+}
+
+function parsePorts(str) {
+  if (!str || String(str).trim() === "") {
+    const full = [];
+    for (let p = 1; p <= 65535; p++) full.push(p);
+    return full;
+  }
+
+  const out = new Set();
+  for (const seg of String(str)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    if (seg.includes("-")) {
+      const parts = seg.split("-").map((x) => parseInt(x.trim(), 10));
+      if (
+        parts.length === 2 &&
+        Number.isInteger(parts[0]) &&
+        Number.isInteger(parts[1])
+      ) {
+        const a = Math.max(1, Math.min(65535, parts[0]));
+        const b = Math.max(1, Math.min(65535, parts[1]));
+        const lo = Math.min(a, b);
+        const hi = Math.max(a, b);
+        for (let p = lo; p <= hi; p++) out.add(p);
+      }
+    } else {
+      const p = parseInt(seg, 10);
+      if (Number.isInteger(p) && p >= 1 && p <= 65535) out.add(p);
+    }
+  }
+  const arr = Array.from(out).sort((x, y) => x - y);
+  return arr.length
+    ? arr
+    : (function () {
+        const full = [];
+        for (let p = 1; p <= 65535; p++) full.push(p);
+        return full;
+      })();
+}
+
+const ScanSchema = z.object({
+  ip: z.string().refine(isValidIPv4, { message: "Neispravan IPv4" }),
+  ports: z.string().optional(),
+  timeoutMs: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .max(20000)
+    .optional()
+    .default(100),
+  concurrency: z.coerce.number().int().min(1).max(1024).optional().default(64),
+});
 
 const router = express.Router();
 const upload = multer({
@@ -170,6 +343,58 @@ async function buildPrintersMap(entries) {
 }
 
 router.get(
+  "/scan-ports",
+  ah(async (req, res) => {
+    const q = ScanSchema.safeParse(req.query);
+    if (!q.success) return res.status(400).json({ error: q.error.issues });
+
+    const { ip, ports, timeoutMs, concurrency } = q.data;
+
+    if (!isPrivateIPv4(ip)) {
+      return res.status(400).json({
+        error:
+          "Skeniranje dozvoljeno samo za privatne IPv4 adrese (bez javnog skeniranja).",
+      });
+    }
+
+    const portList = parsePorts(ports);
+    const queue = [...portList];
+    const results = [];
+    let running = 0;
+
+    await new Promise((resolve) => {
+      const kick = () => {
+        if (!queue.length && running === 0) return resolve();
+        while (running < concurrency && queue.length) {
+          const port = queue.shift();
+          running++;
+          probeTCP(ip, port, timeoutMs)
+            .then((r) => results.push(r))
+            .catch((err) => {
+              console.log("[port-scan] probe error", err);
+              results.push({ ip, port, open: false, error: String(err) });
+            })
+            .finally(() => {
+              running--;
+              kick();
+            });
+        }
+      };
+      kick();
+    });
+
+    const open = results.filter((r) => r.open).sort((a, b) => a.port - b.port);
+    res.json({
+      ip,
+      scanned: results.length,
+      openCount: open.length,
+      open,
+      raw: results,
+    });
+  })
+);
+
+router.get(
   "/duplicates",
   ah(async (req, res) => {
     const parsed = ListSchema.parse(req.query);
@@ -192,10 +417,10 @@ router.get(
         $addFields: {
           _compKey: {
             $toLower: {
-              $trim: { input: { $ifNull: ["$computerName", ""] } }
-            }
-          }
-        }
+              $trim: { input: { $ifNull: ["$computerName", ""] } },
+            },
+          },
+        },
       },
 
       { $match: { _compKey: { $type: "string", $ne: "" } } },
@@ -213,9 +438,9 @@ router.get(
               username: "$username",
               department: "$department",
               updatedAt: "$updatedAt",
-            }
-          }
-        }
+            },
+          },
+        },
       },
 
       { $match: { count: { $gt: 1 } } },
@@ -228,16 +453,16 @@ router.get(
           key: "$_compKey",
           name: 1,
           count: 1,
-          items: 1
-        }
-      }
+          items: 1,
+        },
+      },
     ];
 
     const dupes = await IpEntry.aggregate(pipeline);
     res.json({
       totalDuplicateGroups: dupes.length,
       totalDuplicateRows: dupes.reduce((acc, g) => acc + g.count, 0),
-      groups: dupes
+      groups: dupes,
     });
   })
 );
