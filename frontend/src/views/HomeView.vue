@@ -18,7 +18,8 @@
           📥 Uvezi
         </label>
 
-        <button @click="showAvailableIps" class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
+        <button type="button" @click="showAvailableIps"
+          class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
           📡 Slobodne IP adrese
         </button>
 
@@ -788,16 +789,22 @@ const handleFileUpload = async (e) => {
 }
 
 const showAvailableIps = async () => {
+  showingAvailableModal.value = true
+  availableIps.value = []
+
   try {
     const res = await fetchWithAuth('/api/protected/ip-addresses/available')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    availableIps.value = data.available
-  } catch {
+    if (!showingAvailableModal.value) return
+    availableIps.value = Array.isArray(data.available) ? data.available : []
+  } catch (e) {
+    console.error('Greška pri dohvatanju slobodnih IP adresa:', e)
+    if (!showingAvailableModal.value) return
     availableIps.value = []
-  } finally {
-    showingAvailableModal.value = true
   }
 }
+
 const closeAvailableModal = () => {
   showingAvailableModal.value = false
   availableIps.value = []
