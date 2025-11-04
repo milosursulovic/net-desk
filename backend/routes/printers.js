@@ -3,6 +3,7 @@ import Printer from "../models/Printer.js";
 import IpEntry from "../models/IpEntry.js";
 import mongoose from "mongoose";
 import { ah } from "../utils/asyncHandler.js";
+import XLSX from "xlsx";
 
 const router = express.Router();
 
@@ -33,6 +34,133 @@ async function findIpEntryByIpOrId(ipOrId) {
 function hasAnyConnected(p) {
   return (p?.connectedComputers?.length ?? 0) > 0;
 }
+
+router.get(
+  "/export-xlsx",
+  ah(async (req, res) => {
+    const search = String(req.query.search || "");
+    const match = buildPrinterSearch(search);
+
+    const data = await Printer.aggregate([
+      { $match: match },
+      { $sort: { ipNumeric: 1, name: 1 } },
+      {
+        $lookup: {
+          from: "ipentries",
+          localField: "hostComputer",
+          foreignField: "_id",
+          as: "host",
+          pipeline: [
+            {
+              $project: { ip: 1, computerName: 1, username: 1, department: 1 },
+            },
+          ],
+        },
+      },
+      { $addFields: { host: { $first: "$host" } } },
+      {
+        $lookup: {
+          from: "ipentries",
+          localField: "connectedComputers",
+          foreignField: "_id",
+          as: "connected",
+          pipeline: [
+            {
+              $project: { ip: 1, computerName: 1, username: 1, department: 1 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const printerRows = data.map((p) => ({
+      Name: p.name || "",
+      Manufacturer: p.manufacturer || "",
+      Model: p.model || "",
+      Serial: p.serial || "",
+      Department: p.department || "",
+      ConnectionType: p.connectionType || "",
+      IP: p.ip || "",
+      Shared: !!p.shared,
+      Host_ComputerName: p.host?.computerName || "",
+      Host_IP: p.host?.ip || "",
+      ConnectedCount: Array.isArray(p.connected) ? p.connected.length : 0,
+      ConnectedList:
+        Array.isArray(p.connected) && p.connected.length
+          ? p.connected
+              .map(
+                (c) =>
+                  `${c.computerName || ""}${c.computerName && c.ip ? " " : ""}${
+                    c.ip ? `(${c.ip})` : ""
+                  }`
+              )
+              .join(", ")
+          : "",
+      UpdatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : "",
+      CreatedAt: p.createdAt ? new Date(p.createdAt).toISOString() : "",
+    }));
+
+    const connectionRows = [];
+    for (const p of data) {
+      if (p.host) {
+        connectionRows.push({
+          PrinterName: p.name || "",
+          PrinterIP: p.ip || "",
+          Role: "HOST",
+          ComputerName: p.host.computerName || "",
+          ComputerIP: p.host.ip || "",
+          Department: p.host.department || "",
+        });
+      }
+      if (Array.isArray(p.connected)) {
+        for (const c of p.connected) {
+          connectionRows.push({
+            PrinterName: p.name || "",
+            PrinterIP: p.ip || "",
+            Role: "CONNECTED",
+            ComputerName: c.computerName || "",
+            ComputerIP: c.ip || "",
+            Department: c.department || "",
+          });
+        }
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    const ws1 = XLSX.utils.json_to_sheet(printerRows);
+    autosizeSheet(ws1, Object.keys(printerRows[0] || {}));
+    XLSX.utils.book_append_sheet(wb, ws1, "Printers");
+
+    const ws2 = XLSX.utils.json_to_sheet(connectionRows);
+    autosizeSheet(
+      ws2,
+      Object.keys(
+        connectionRows[0] || {
+          PrinterName: "",
+          PrinterIP: "",
+          Role: "",
+          ComputerName: "",
+          ComputerIP: "",
+          Department: "",
+        }
+      )
+    );
+    XLSX.utils.book_append_sheet(wb, ws2, "Connections");
+
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const filename = `NetDesk_Printers_${dateStamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buf);
+  })
+);
 
 router.get(
   "/",
@@ -223,5 +351,23 @@ router.post(
     res.json(p);
   })
 );
+
+function autosizeSheet(worksheet, headerKeys) {
+  if (!worksheet || !headerKeys || headerKeys.length === 0) return;
+  const colWidths = headerKeys.map((h) => (h ? String(h).length : 10));
+
+  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1");
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    let max = colWidths[C - range.s.c] || 10;
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+      if (!cell || !cell.v) continue;
+      const len = String(cell.v).length;
+      if (len > max) max = len;
+    }
+    colWidths[C - range.s.c] = Math.min(Math.max(max + 2, 10), 60);
+  }
+  worksheet["!cols"] = colWidths.map((wch) => ({ wch }));
+}
 
 export default router;
