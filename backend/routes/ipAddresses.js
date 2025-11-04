@@ -288,60 +288,6 @@ function labelPrinter(p) {
   return parts.join(" · ");
 }
 
-async function buildPrintersMap(entries) {
-  const ipNums = entries.map((e) => e.ipNumeric).filter(Boolean);
-  const ids = entries.map((e) => e._id);
-
-  const printers = await Printer.find({
-    $or: [
-      { ipNumeric: { $in: ipNums } },
-      { hostComputer: { $in: ids } },
-      { connectedComputers: { $in: ids } },
-    ],
-  })
-    .select(
-      "name manufacturer model serial ip hostComputer connectedComputers ipNumeric"
-    )
-    .lean();
-
-  const byIpNum = new Map();
-  const byHost = new Map();
-  const byConnected = new Map();
-
-  for (const p of printers) {
-    if (p.ipNumeric != null) {
-      if (!byIpNum.has(p.ipNumeric)) byIpNum.set(p.ipNumeric, []);
-      byIpNum.get(p.ipNumeric).push(p);
-    }
-    if (p.hostComputer) {
-      const k = String(p.hostComputer);
-      if (!byHost.has(k)) byHost.set(k, []);
-      byHost.get(k).push(p);
-    }
-    if (Array.isArray(p.connectedComputers)) {
-      for (const cid of p.connectedComputers) {
-        const k = String(cid);
-        if (!byConnected.has(k)) byConnected.set(k, []);
-        byConnected.get(k).push(p);
-      }
-    }
-  }
-
-  const out = new Map();
-  for (const e of entries) {
-    const kId = String(e._id);
-    const set = new Map();
-    const fromIp = byIpNum.get(e.ipNumeric) || [];
-    const fromHost = byHost.get(kId) || [];
-    const fromConn = byConnected.get(kId) || [];
-    for (const p of [...fromIp, ...fromHost, ...fromConn])
-      set.set(String(p._id), p);
-    const label = Array.from(set.values()).map(labelPrinter).join("\n");
-    out.set(kId, label);
-  }
-  return out;
-}
-
 router.get(
   "/scan-ports",
   ah(async (req, res) => {
@@ -479,8 +425,6 @@ router.get(
       .sort({ ipNumeric: 1 })
       .lean();
 
-    const printersMap = await buildPrintersMap(entries);
-
     const rows = entries.map((e) => ({
       ip: e.ip,
       computerName: e.computerName || "",
@@ -493,7 +437,6 @@ router.get(
       system: e.system || "",
       department: e.department || "",
       hasMetadata: e.metadata ? "DA" : "NE",
-      printers: printersMap.get(String(e._id)) || "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows, {
@@ -509,7 +452,6 @@ router.get(
         "system",
         "department",
         "hasMetadata",
-        "printers",
       ],
       skipHeader: false,
     });
@@ -526,7 +468,6 @@ router.get(
       { wch: 14 },
       { wch: 16 },
       { wch: 12 },
-      { wch: 45 },
     ];
 
     const wb = XLSX.utils.book_new();
@@ -542,54 +483,6 @@ router.get(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.send(buffer);
-  })
-);
-
-router.get(
-  "/export-csv",
-  ah(async (req, res) => {
-    const search = String(req.query.search || "");
-
-    const entries = await IpEntry.find(getSearchQueryLegacy(search))
-      .select(
-        "ip computerName ipNumeric username fullName rdp dnsLog anyDesk system department metadata"
-      )
-      .sort({ ipNumeric: 1 })
-      .lean();
-
-    const printersMap = await buildPrintersMap(entries);
-
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="ip-entries.csv"'
-    );
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-
-    res.write(
-      "ip,computerName,ipNumeric,username,fullName,rdp,dnsLog,anyDesk,system,department,hasMetadata,printers\n"
-    );
-
-    for (const e of entries) {
-      const row = [
-        e.ip,
-        e.computerName || "",
-        e.ipNumeric ?? "",
-        e.username || "",
-        e.fullName || "",
-        e.rdp || "",
-        e.dnsLog || "",
-        e.anyDesk || "",
-        e.system || "",
-        e.department || "",
-        e.metadata ? "DA" : "NE",
-        printersMap.get(String(e._id)) || "",
-      ]
-        .map((v) => String(v).replace(/"/g, '""'))
-        .map((v) => `"${v}"`)
-        .join(",");
-      res.write(row + "\n");
-    }
-    res.end();
   })
 );
 
