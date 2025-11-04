@@ -23,6 +23,17 @@ const buildPrinterSearch = (raw = "") => {
   };
 };
 
+async function findIpEntryByIpOrId(ipOrId) {
+  if (!ipOrId) return null;
+  const conds = [{ ip: ipOrId }];
+  if (mongoose.isValidObjectId(ipOrId)) conds.push({ _id: ipOrId });
+  return IpEntry.findOne({ $or: conds }).lean();
+}
+
+function hasAnyConnected(p) {
+  return (p?.connectedComputers?.length ?? 0) > 0;
+}
+
 router.get(
   "/",
   ah(async (req, res) => {
@@ -102,7 +113,7 @@ router.post(
   ah(async (req, res) => {
     const p = new Printer(req.body);
     await p.save();
-    res.status(201).json(p);
+    res.status(201).json(p.toObject());
   })
 );
 
@@ -126,13 +137,6 @@ router.delete(
   })
 );
 
-async function findIpEntryByIpOrId(ipOrId) {
-  if (!ipOrId) return null;
-  const conds = [{ ip: ipOrId }];
-  if (mongoose.isValidObjectId(ipOrId)) conds.push({ _id: ipOrId });
-  return IpEntry.findOne({ $or: conds }).lean();
-}
-
 router.post(
   "/:id/set-host",
   ah(async (req, res) => {
@@ -143,9 +147,10 @@ router.post(
 
     const p = await Printer.findByIdAndUpdate(
       req.params.id,
-      { hostComputer: host._id, shared: true },
+      { hostComputer: host._id },
       { new: true }
     ).lean();
+
     if (!p) return res.status(404).json({ error: "Printer not found" });
     res.json(p);
   })
@@ -173,9 +178,13 @@ router.post(
 
     const p = await Printer.findByIdAndUpdate(
       req.params.id,
-      { $addToSet: { connectedComputers: pc._id } },
+      { $addToSet: { connectedComputers: pc._id }, $set: { shared: true } },
       { new: true }
-    ).lean();
+    )
+      .populate("hostComputer", "ip computerName username department")
+      .populate("connectedComputers", "ip computerName username department")
+      .lean();
+
     if (!p) return res.status(404).json({ error: "Printer not found" });
     res.json(p);
   })
@@ -188,12 +197,29 @@ router.post(
     const pc = await findIpEntryByIpOrId(computer);
     if (!pc) return res.status(404).json({ error: "Computer not found" });
 
-    const p = await Printer.findByIdAndUpdate(
+    let p = await Printer.findByIdAndUpdate(
       req.params.id,
       { $pull: { connectedComputers: pc._id } },
       { new: true }
-    ).lean();
+    )
+      .populate("hostComputer", "ip computerName username department")
+      .populate("connectedComputers", "ip computerName username department")
+      .lean();
+
     if (!p) return res.status(404).json({ error: "Printer not found" });
+
+    const shouldShare = hasAnyConnected(p);
+    if (p.shared !== shouldShare) {
+      p = await Printer.findByIdAndUpdate(
+        req.params.id,
+        { $set: { shared: shouldShare } },
+        { new: true }
+      )
+        .populate("hostComputer", "ip computerName username department")
+        .populate("connectedComputers", "ip computerName username department")
+        .lean();
+    }
+
     res.json(p);
   })
 );
