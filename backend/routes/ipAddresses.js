@@ -3,7 +3,6 @@ import multer from "multer";
 import XLSX from "xlsx";
 import IpEntry from "../models/IpEntry.js";
 import ComputerMetadata from "../models/ComputerMetadata.js";
-import Printer from "../models/Printer.js";
 import { setMetadataForIp } from "../services/ipEntryService.js";
 import { isValidIPv4, ipToNumeric, numericToIp } from "../utils/ip.js";
 import { ah } from "../utils/asyncHandler.js";
@@ -183,10 +182,6 @@ const ScanSchema = z.object({
 });
 
 const router = express.Router();
-const upload = multer({
-  dest: "uploads/",
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
 
 const buildFastSearch = (raw = "") => {
   const q = String(raw || "").trim();
@@ -276,16 +271,6 @@ function parseRangeFromEnv() {
     start: process.env.AVAILABLE_RANGE_START,
     end: process.env.AVAILABLE_RANGE_END,
   };
-}
-
-function labelPrinter(p) {
-  const parts = [];
-  if (p.name) parts.push(p.name);
-  const mm = [p.manufacturer, p.model].filter(Boolean).join(" ");
-  if (mm) parts.push(mm);
-  if (p.serial) parts.push(`#${p.serial}`);
-  if (p.ip) parts.push(`@ ${p.ip}`);
-  return parts.join(" · ");
 }
 
 router.get(
@@ -666,50 +651,6 @@ router.patch(
 
     if (!meta) return res.status(404).json({ error: "Metadata not found" });
     res.json(meta);
-  })
-);
-
-router.get(
-  "/:id/printers",
-  ah(async (req, res) => {
-    const entry = await IpEntry.findById(req.params.id)
-      .populate({
-        path: "printersHosted",
-        select: "name manufacturer model serial ip shared",
-      })
-      .populate({
-        path: "printersConnected",
-        select: "name manufacturer model serial ip shared",
-      })
-      .lean();
-
-    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
-
-    res.json({
-      hosted: entry.printersHosted || [],
-      connected: entry.printersConnected || [],
-    });
-  })
-);
-
-router.get(
-  "/by-ip/:ip/printers",
-  ah(async (req, res) => {
-    const ip = req.params.ip;
-    if (!isValidIPv4(ip))
-      return res.status(400).json({ message: "Neispravan IP" });
-
-    const entry = await IpEntry.findOne({ ip })
-      .populate("printersHosted", "name manufacturer model serial ip shared")
-      .populate("printersConnected", "name manufacturer model serial ip shared")
-      .lean();
-
-    if (!entry) return res.status(404).json({ message: "Unos nije pronađen" });
-
-    res.json({
-      hosted: entry.printersHosted || [],
-      connected: entry.printersConnected || [],
-    });
   })
 );
 

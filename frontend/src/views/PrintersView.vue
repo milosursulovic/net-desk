@@ -13,7 +13,7 @@
           @click="exportXlsx"
           class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700 inline-flex items-center gap-2"
         >
-          <span>📤</span><span>Export XLSX</span>
+          <span>📤</span><span>Izvezi XLSX</span>
         </button>
 
         <RouterLink

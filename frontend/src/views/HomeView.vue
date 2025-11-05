@@ -12,12 +12,6 @@
           📤 Izvezi XLSX
         </button>
 
-        <label
-          class="inline-flex items-center bg-yellow-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-yellow-600 shadow">
-          <input type="file" @change="handleFileUpload" accept=".csv, .xlsx" class="hidden" />
-          📥 Uvezi
-        </label>
-
         <button type="button" @click="showAvailableIps"
           class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
           📡 Slobodne IP adrese
@@ -772,19 +766,6 @@ async function fetchData() {
 const deleteEntry = async (id) => {
   if (!confirm('Da li si siguran da želiš da obrišeš ovaj unos?')) return
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
-  if (res.ok) fetchData()
-}
-
-const handleFileUpload = async (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-  const formData = new FormData()
-  formData.append('file', file)
-
-  const res = await fetchWithAuth('/api/protected/ip-addresses/import', {
-    method: 'POST',
-    body: formData,
-  })
   if (res.ok) fetchData()
 }
 
