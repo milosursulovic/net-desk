@@ -6,7 +6,7 @@
 
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-700 font-medium" title="Prijavljen korisnik">
-            👤 {{ currentUser?.username || 'Nepoznat' }}
+            {{ currentUser?.username || 'Nepoznat' }}
           </span>
           <LogoutButton />
         </div>

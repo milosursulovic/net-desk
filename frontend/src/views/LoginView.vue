@@ -22,7 +22,7 @@
               placeholder="Unesite korisničko ime"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 pl-10"
             />
-            <span class="absolute left-3 top-2.5 text-gray-400">👤</span>
+            
           </div>
         </div>
 
@@ -37,7 +37,6 @@
               placeholder="Unesite lozinku"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 pl-10"
             />
-            <span class="absolute left-3 top-2.5 text-gray-400">🔒</span>
           </div>
         </div>
 
@@ -45,7 +44,7 @@
           type="submit"
           class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow"
         >
-          🔑 Prijavi se
+          Prijavi se
         </button>
 
         <p v-if="errorMessage" class="text-red-500 text-sm text-center mt-2 animate-pulse">

@@ -11,7 +11,7 @@
       class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 transition"
       aria-label="Vrati se na početnu"
     >
-      ⬅️ Vrati se na početnu
+      Vrati se na početnu
     </router-link>
 
     <p class="text-center text-xs text-slate-500 mt-6">Verzija: {{ appVersion }}</p>

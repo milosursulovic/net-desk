@@ -1,21 +1,21 @@
 <template>
   <div class="w-full px-4 sm:px-6 py-6 space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <h1 class="text-3xl font-bold text-slate-800">🧾 Metapodaci — Analitika</h1>
+      <h1 class="text-3xl font-bold text-slate-800">Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
         <button
           @click="refreshAll"
           class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700"
           :disabled="loading"
         >
-          🔄 {{ loading ? 'Učitavam…' : 'Osveži' }}
+          {{ loading ? 'Učitavam…' : 'Osveži' }}
         </button>
         <button
           @click="exportXlsx"
           class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
           :disabled="!meta.length || loading"
         >
-          📤 Izvezi XLSX
+          Izvezi XLSX
         </button>
       </div>
     </div>
@@ -25,25 +25,21 @@
         title="Ukupno mašina"
         :value="stats.totalWithMeta"
         :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
-        icon="💻"
       />
       <KpiCard
         title="Bez metapodataka"
         :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
         :sub="'od ' + totalIpEntries"
-        icon="🚫"
       />
       <KpiCard
         title="Pros. RAM"
         :value="fmtGb(stats.avgRamGb)"
         :sub="'med.: ' + fmtGb(stats.medRamGb)"
-        icon="🧠"
       />
       <KpiCard
         title="SSD/HDD"
         :value="stats.ssdCount + ' / ' + stats.hddCount"
         :sub="fmtTb(stats.totalStorageTb) + ' ukupno'"
-        icon="💽"
       />
     </div>
 
@@ -52,25 +48,21 @@
         title="Jedinstvenih korisnika"
         :value="stats.uniqueUsers"
         :sub="'od ' + stats.totalWithMeta + ' mašina'"
-        icon="👤"
       />
       <KpiCard
         title="Pros. # diskova"
         :value="stats.avgDisks"
         :sub="'med.: ' + stats.medDisks"
-        icon="🗄️"
       />
       <KpiCard
         title="Pros. # NIC-ova"
         :value="stats.avgNics"
         :sub="'med.: ' + stats.medNics"
-        icon="🌐"
       />
       <KpiCard
         title="Medijana starosti OS"
         :value="stats.medOsAgeDays + ' dana'"
         :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
-        icon="⏳"
       />
     </div>
 
@@ -79,13 +71,12 @@
         title="Lexar SSD (red-flag)"
         :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
         sub="problematični uređaji"
-        icon="🚩"
       />
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">📈 Pokrivenost metapodacima</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Pokrivenost metapodacima</h2>
         <div class="space-y-2">
           <div class="text-sm text-slate-600">
             {{ stats.totalWithMeta }} / {{ totalIpEntries }} mašina sa metapodacima
@@ -97,13 +88,13 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">⏱️ Svežina prikupljanja</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Svežina prikupljanja</h2>
         <div class="text-sm text-slate-600 mb-2">Broj mašina po danu (poslednjih 14 dana)</div>
         <Sparkline :series="recencySeries" :max="maxOf(recencySeries)" />
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🪟 Distribucija OS verzija (Top 5)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Distribucija OS verzija (Top 5)</h2>
         <div class="space-y-2">
           <div v-for="row in topOs" :key="row.key" class="text-sm">
             <div class="flex items-center justify-between">
@@ -125,7 +116,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🏭 Proizvođači sistema (Top 6)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Proizvođači sistema (Top 6)</h2>
         <div class="space-y-2">
           <BarRow
             v-for="row in topManufacturers"
@@ -138,7 +129,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🎮 GPU prisutnost</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">GPU prisutnost</h2>
         <div class="grid grid-cols-2 gap-3">
           <InfoPill label="Sa dedikovanom GPU" :value="stats.withGpu" />
           <InfoPill label="Bez GPU / iGPU samo" :value="stats.withoutGpu" />
@@ -148,7 +139,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🧩 RAM raspodela</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">RAM raspodela</h2>
         <div class="grid grid-cols-2 gap-3">
           <InfoPill label="≤ 8 GB" :value="bucketRam.le8" />
           <InfoPill label="16 GB" :value="bucketRam.eq16" />
@@ -158,7 +149,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🌐 Brzine mreže (Top 5)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Brzine mreže (Top 5)</h2>
         <div class="space-y-2">
           <BarRow
             v-for="row in topNicSpeeds"
@@ -173,7 +164,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">🧮 CPU modeli (Top 5)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">CPU modeli (Top 5)</h2>
         <div class="space-y-2">
           <BarRow
             v-for="row in topCpuModels"
@@ -191,7 +182,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">💾 Broj diskova po mašini</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Broj diskova po mašini</h2>
         <div class="space-y-2">
           <BarRow label="1 disk" :value="diskBuckets.eq1" :total="stats.totalWithMeta" />
           <BarRow label="2 diska" :value="diskBuckets.eq2" :total="stats.totalWithMeta" />
@@ -202,7 +193,7 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-slate-800 mb-3">🔍 Najmanje RAM-a (Top 10)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Najmanje RAM-a (Top 10)</h2>
         <DataTable
           :rows="tables.lowRam"
           :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']"
@@ -210,7 +201,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-slate-800 mb-3">📅 Najstarija instalacija OS-a (Top 10)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Najstarija instalacija OS-a (Top 10)</h2>
         <DataTable
           :rows="tables.oldOs"
           :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
@@ -218,7 +209,7 @@
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
-        <h2 class="font-semibold text-slate-800 mb-3">🧱 Najveći ukupni storage (Top 10)</h2>
+        <h2 class="font-semibold text-slate-800 mb-3">Najveći ukupni storage (Top 10)</h2>
         <DataTable
           :rows="tables.topStorage"
           :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
@@ -228,7 +219,7 @@
 
     <div class="grid grid-cols-1">
       <div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-red-700 mb-1">🚩 Lexar SSD detektovani (red-flag)</h2>
+        <h2 class="font-semibold text-red-700 mb-1">Lexar SSD detektovani (red-flag)</h2>
         <p class="text-sm text-slate-600 mb-3">
           Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
         </p>

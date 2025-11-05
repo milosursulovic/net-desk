@@ -1,7 +1,7 @@
 <template>
   <div class="glass-container p-4 space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🌐 DNS logovi</h1>
+      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">DNS logovi</h1>
       <div class="text-sm text-gray-600">Prikazano {{ items.length }} / {{ total }}</div>
     </div>
 
@@ -63,7 +63,7 @@
               ? 'bg-red-50 text-red-700 border-red-200'
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             " class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs shrink-0">
-            {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
+            {{ d.category === 'blocked' ? 'blocked' : 'normal' }}
           </span>
         </div>
 
@@ -94,7 +94,7 @@
 
             <div class="p-4 space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input v-model="domainsSearch" @keyup.enter="fetchDomainsForIp" placeholder="🔎 Pretraga domain/ip…"
+                <input v-model="domainsSearch" @keyup.enter="fetchDomainsForIp" placeholder="Pretraga domain/ip…"
                   class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <div class="flex items-center gap-2">
                   <select v-model="domainsSortBy" @change="fetchDomainsForIp" class="border px-2 py-2 rounded text-sm">
@@ -122,7 +122,7 @@
                     <div class="font-medium truncate">{{ d.name }}</div>
                     <div class="text-xs text-gray-500">
                       {{ new Date(d.timestamp).toLocaleString('sr-RS') }} •
-                      {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
+                      {{ d.category === 'blocked' ? 'blocked' : 'normal' }}
                     </div>
                   </div>
                   <div class="text-xs text-gray-600 shrink-0">

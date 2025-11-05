@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">➕ Dodaj novu IP adresu</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Dodaj novu IP adresu</h1>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
       <div>
@@ -15,7 +15,7 @@
             required
             :class="ipError ? 'border-red-400' : ''"
           />
-          <span class="absolute left-3 top-2.5 text-gray-400">🌐</span>
+          
         </div>
         <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
@@ -32,9 +32,7 @@
             :placeholder="`Unesite ${field.label.toLowerCase()}`"
             class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
           />
-          <span class="absolute left-3 top-2.5 text-gray-400">
-            {{ field.icon }}
-          </span>
+          
         </div>
       </div>
 
@@ -44,13 +42,13 @@
           @click="goBack"
           class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg"
         >
-          ◀️ Poništi
+          Poništi
         </button>
         <button
           type="submit"
           class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow"
         >
-          ✅ Dodaj
+          Dodaj
         </button>
       </div>
     </form>
@@ -82,15 +80,15 @@ const form = ref({
 })
 
 const optionalFields = [
-  { name: 'computerName', label: 'Ime računara', icon: '🖥️' },
-  { name: 'username', label: 'Korisničko ime', icon: '👤' },
-  { name: 'fullName', label: 'Puno ime', icon: '🙍‍♂️' },
-  { name: 'password', label: 'Lozinka', icon: '🔒' },
-  { name: 'rdp', label: 'RDP', icon: '🖧' },
-  { name: 'dnsLog', label: 'DNS Log', icon: '🌐' },
-  { name: 'anyDesk', label: 'AnyDesk', icon: '💻' },
-  { name: 'system', label: 'Sistem', icon: '🧩' },
-  { name: 'department', label: 'Odeljenje', icon: '🏢' },
+  { name: 'computerName', label: 'Ime računara' },
+  { name: 'username', label: 'Korisničko ime' },
+  { name: 'fullName', label: 'Puno ime' },
+  { name: 'password', label: 'Lozinka' },
+  { name: 'rdp', label: 'RDP' },
+  { name: 'dnsLog', label: 'DNS Log' },
+  { name: 'anyDesk', label: 'AnyDesk' },
+  { name: 'system', label: 'Sistem' },
+  { name: 'department', label: 'Odeljenje' },
 ]
 
 const ipError = computed(() => {

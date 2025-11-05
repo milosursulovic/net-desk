@@ -1,27 +1,20 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-semibold text-slate-800">🖨️ Štampači</h1>
+      <h1 class="text-2xl font-semibold text-slate-800">Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
         <button
           @click="openCreate"
           class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 inline-flex items-center gap-2"
         >
-          <span>➕</span><span>Dodaj štampač</span>
+          <span>Dodaj štampač</span>
         </button>
         <button
           @click="exportXlsx"
           class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700 inline-flex items-center gap-2"
         >
-          <span>📤</span><span>Izvezi XLSX</span>
+          <span>Izvezi XLSX</span>
         </button>
-
-        <RouterLink
-          to="/"
-          class="bg-slate-700 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-800 inline-flex items-center gap-2"
-        >
-          <span>🖥️</span><span>IP adrese</span>
-        </RouterLink>
       </div>
     </div>
 
@@ -35,7 +28,6 @@
           class="w-full border border-gray-300 px-10 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
           aria-label="Pretraga štampača"
         />
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔎</span>
         <button
           v-if="searchInput"
           @click="clearSearch"
@@ -64,7 +56,7 @@
             ⬅️
           </button>
           <span class="text-sm">
-            📄 Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
+            Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
           </span>
           <button
             @click="nextPage"
@@ -128,16 +120,16 @@
                 <span
                   v-if="p.department"
                   class="inline-flex items-center px-2 py-0.5 rounded-full border bg-slate-50"
-                  >🏢 {{ p.department }}</span
+                  >{{ p.department }}</span
                 >
               </div>
             </div>
             <div class="shrink-0 flex gap-2">
               <button @click="openEdit(p)" class="text-indigo-700 hover:underline text-sm">
-                ✏️ Izmeni
+                Izmeni
               </button>
               <button @click="confirmDelete(p)" class="text-rose-700 hover:underline text-sm">
-                🗑️ Obriši
+                Obriši
               </button>
             </div>
           </div>
@@ -193,7 +185,7 @@
             class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
           >
             <h3 class="text-lg font-semibold">
-              {{ editId ? '✏️ Izmena štampača' : '➕ Novi štampač' }}
+              {{ editId ? 'Izmena štampača' : 'Novi štampač' }}
             </h3>
             <button
               @click="closeModal"
@@ -238,7 +230,7 @@
                 class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
                 :disabled="saving"
               >
-                {{ saving ? 'Čuvam…' : '💾 Sačuvaj' }}
+                {{ saving ? 'Čuvam…' : 'Sačuvaj' }}
               </button>
             </div>
           </div>
@@ -254,7 +246,7 @@
             class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
           >
             <h3 class="text-lg font-semibold">
-              🔧 Povezivanje — {{ toolsPrinter?.name || '—' }}
+              Povezivanje — {{ toolsPrinter?.name || '—' }}
               <span v-if="toolsPrinter?.ip" class="ml-2 text-sm text-slate-500"
                 >({{ toolsPrinter.ip }})</span
               >
@@ -271,7 +263,7 @@
           <div class="p-4 space-y-4">
             <div class="grid grid-cols-1 gap-3">
               <div class="border rounded-lg p-3 bg-slate-50">
-                <div class="font-medium mb-2">🔗 Poveži računar</div>
+                <div class="font-medium mb-2">Poveži računar</div>
                 <div class="text-xs text-gray-600 mb-1">Unesi IP ili _id računara (IpEntry)</div>
                 <div class="flex gap-2">
                   <input
@@ -290,7 +282,7 @@
               </div>
 
               <div class="border rounded-lg p-3 bg-slate-50">
-                <div class="font-medium mb-2">🧷 Postavi host</div>
+                <div class="font-medium mb-2">Postavi host</div>
                 <div class="text-xs text-gray-600 mb-1">Računar koji "šeruje" ovaj štampač</div>
                 <div class="flex gap-2">
                   <input
@@ -315,7 +307,7 @@
               </div>
 
               <div class="border rounded-lg p-3 bg-slate-50">
-                <div class="font-medium mb-2">🧹 Otkači računar</div>
+                <div class="font-medium mb-2">Otkači računar</div>
                 <div class="text-xs text-gray-600 mb-1">Skini jedan računar sa ovog štampača</div>
                 <div class="flex gap-2">
                   <input
@@ -336,7 +328,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <div class="font-medium mb-1">🧷 Host računar</div>
+                <div class="font-medium mb-1">Host računar</div>
                 <div v-if="toolsLoadingDetails" class="text-sm text-slate-500">Učitavanje…</div>
                 <div v-else class="text-sm">
                   <span v-if="toolsDetails?.hostComputer">
@@ -349,7 +341,7 @@
               </div>
 
               <div>
-                <div class="font-medium mb-1">🖥️ Povezani računari</div>
+                <div class="font-medium mb-1">Povezani računari</div>
                 <div v-if="toolsLoadingDetails" class="text-sm text-slate-500">
                   Učitavanje detalja…
                 </div>

@@ -2,12 +2,12 @@
   <div
     class="glass-container bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-lg max-w-4xl mx-auto"
   >
-    <h1 class="text-2xl font-bold mb-6 text-gray-800">✏️ Izmeni IP Unos</h1>
+    <h1 class="text-2xl font-bold mb-6 text-gray-800">Izmeni IP Unos</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
       <div v-for="field in fields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
-          {{ field.icon }} {{ field.label }} <span v-if="field.name === 'ip'">*</span>
+          {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
         <input
           :id="field.name"
@@ -26,10 +26,10 @@
           @click="goBack"
           class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
         >
-          ⬅️ Poništi
+          Poništi
         </button>
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          💾 Sačuvaj izmene
+          Sačuvaj izmene
         </button>
       </div>
 
@@ -61,16 +61,16 @@ const form = ref({
 })
 
 const fields = [
-  { name: 'ip', label: 'IP Adresa', icon: '🌐' },
-  { name: 'computerName', label: 'Ime računara', icon: '🖥️' },
-  { name: 'username', label: 'Korisničko ime', icon: '👤' },
-  { name: 'fullName', label: 'Puno ime', icon: '🙍‍♂️' },
-  { name: 'password', label: 'Lozinka', icon: '🔒' },
-  { name: 'rdp', label: 'RDP', icon: '🖧' },
-  { name: 'dnsLog', label: 'DNS Log', icon: '🌐' },
-  { name: 'anyDesk', label: 'AnyDesk', icon: '💻' },
-  { name: 'system', label: 'Sistem', icon: '🧩' },
-  { name: 'department', label: 'Odeljenje', icon: '🏢' },
+  { name: 'ip', label: 'IP Adresa' },
+  { name: 'computerName', label: 'Ime računara' },
+  { name: 'username', label: 'Korisničko ime' },
+  { name: 'fullName', label: 'Puno ime' },
+  { name: 'password', label: 'Lozinka' },
+  { name: 'rdp', label: 'RDP' },
+  { name: 'dnsLog', label: 'DNS Log' },
+  { name: 'anyDesk', label: 'AnyDesk' },
+  { name: 'system', label: 'Sistem' },
+  { name: 'department', label: 'Odeljenje' },
 ]
 
 const ipError = computed(() => {

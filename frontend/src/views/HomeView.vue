@@ -1,41 +1,41 @@
 <template>
   <main class="glass-container relative">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">🖥️ IP Adrese</h1>
+      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">IP Adrese</h1>
 
       <div class="flex flex-wrap items-center gap-2">
         <button @click="addEntry" class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">
-          ➕ Dodaj
+          Dodaj
         </button>
 
         <button @click="exportToXlsx" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">
-          📤 Izvezi XLSX
+          Izvezi XLSX
         </button>
 
         <button type="button" @click="showAvailableIps"
           class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
-          📡 Slobodne IP adrese
+          Slobodne IP adrese
         </button>
 
         <RouterLink to="/metadata"
           class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
-          📊 Metapodaci
+          Metapodaci
         </RouterLink>
 
         <RouterLink to="/printers"
           class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
-          🖨️ Štampači
+          Štampači
         </RouterLink>
 
         <RouterLink to="/domains"
           class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
-          🌐 DNS logovi
+          DNS logovi
         </RouterLink>
       </div>
     </div>
 
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-      <input v-model="search" @input="page = 1" type="text" placeholder="🔎 Pretraga..."
+      <input v-model="search" @input="page = 1" type="text" placeholder="Pretraga..."
         class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
 
       <div class="w-full sm:w-auto flex items-center gap-2">
@@ -70,7 +70,7 @@
           <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
             ⬅️
           </button>
-          <span>📄 Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
+          <span>Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
           <button @click="nextPage" :disabled="page * limit >= total"
             class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
             ➡️
@@ -84,7 +84,7 @@
       class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 flex items-start justify-between gap-3"
       role="alert">
       <div class="text-sm">
-        ⚠️ Pronađeno je
+        Pronađeno je
         <b>{{ duplicateTotalGroups }}</b> duplih imena računara
         (ukupno <b>{{ duplicateTotalRows }}</b> zapisa).
       </div>
@@ -97,7 +97,7 @@
     </div>
 
     <button @click="showPasswords = !showPasswords" class="text-sm text-gray-700 underline hover:text-gray-900">
-      {{ showPasswords ? '🔒 Sakrij lozinke' : '🔓 Prikaži lozinke' }}
+      {{ showPasswords ? 'Sakrij lozinke' : 'Prikaži lozinke' }}
     </button>
 
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -122,7 +122,7 @@
             <span v-if="entry.department"
               class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
               title="Odeljenje">
-              🏢 {{ entry.department }}
+              {{ entry.department }}
             </span>
 
             <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs" :class="entry.isOnline
@@ -143,15 +143,15 @@
 
         <div class="mt-3 space-y-1.5 text-sm">
           <div class="flex justify-between gap-3">
-            <span class="text-slate-500">👤 Korisničko ime</span>
+            <span class="text-slate-500">Korisničko ime</span>
             <span class="font-medium truncate">{{ entry.username || '—' }}</span>
           </div>
           <div class="flex justify-between gap-3">
-            <span class="text-slate-500">🙍‍♂️ Puno ime</span>
+            <span class="text-slate-500">Puno ime</span>
             <span class="font-medium truncate">{{ entry.fullName || '—' }}</span>
           </div>
           <div class="flex items-center justify-between gap-3">
-            <span class="text-slate-500">🔑 Lozinka</span>
+            <span class="text-slate-500">Lozinka</span>
             <span class="font-medium truncate">
               {{ showPasswords ? entry.password || '—' : '••••••' }}
             </span>
@@ -163,44 +163,44 @@
 
           <div class="grid grid-cols-2 gap-2 pt-2">
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">🖧 RDP</div>
+              <div class="text-xs text-slate-500">RDP</div>
               <div class="text-sm font-medium break-all">{{ entry.rdp || '—' }}</div>
             </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">🌐 DNS Log</div>
+              <div class="text-xs text-slate-500">DNS Log</div>
               <div class="text-sm font-medium break-all">{{ entry.dnsLog || '—' }}</div>
             </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">💻 AnyDesk</div>
+              <div class="text-xs text-slate-500">AnyDesk</div>
               <div class="text-sm font-medium break-all">{{ entry.anyDesk || '—' }}</div>
             </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">🧩 Sistem</div>
+              <div class="text-xs text-slate-500">Sistem</div>
               <div class="text-sm font-medium break-all">{{ entry.system || '—' }}</div>
             </div>
           </div>
         </div>
 
         <div class="mt-2 text-[11px] text-slate-500">
-          ⏱️ Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
+          Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
           {{ fmtRelative(entry.lastStatusChange) }}
         </div>
 
         <div class="mt-4 pt-3 border-t flex flex-wrap items-center gap-3">
           <button @click="editEntry(entry)" class="text-blue-600 hover:underline text-sm">
-            ✏️ Izmeni
+            Izmeni
           </button>
           <button @click="deleteEntry(entry._id)" class="text-red-600 hover:underline text-sm">
-            🗑️ Obriši
+            Obriši
           </button>
           <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline text-sm">
-            🔗 RDP
+            RDP
           </button>
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
-            ℹ️ Meta
+            Meta
           </button>
           <button @click="openPortScan(entry)" class="text-teal-600 hover:underline text-sm">
-            🛰️ Port scan
+            Port scan
           </button>
         </div>
       </article>
@@ -223,14 +223,14 @@
             <div class="mb-4">
               <div class="flex justify-between items-center mb-2">
                 <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  📡 Slobodne IP adrese
+                  Slobodne IP adrese
                 </h2>
                 <button @click="closeAvailableModal" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
                   aria-label="Zatvori">
                   &times;
                 </button>
               </div>
-              <input v-model="ipSearch" type="text" placeholder="🔍 Pretraga IP adresa..."
+              <input v-model="ipSearch" type="text" placeholder="Pretraga IP adresa..."
                 class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
 
@@ -261,7 +261,7 @@
           <div class="relative ml-auto h-full w-full sm:w-[640px] bg-white shadow-xl overflow-y-auto">
             <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
               <h3 class="text-lg font-semibold">
-                🧾 Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
+                Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
               </h3>
               <button @click="closeMetadata" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori">
@@ -296,7 +296,7 @@
 
                 <div class="grid grid-cols-1 gap-4">
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">🪟 Operativni sistem</h4>
+                    <h4 class="font-semibold mb-2">Operativni sistem</h4>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div class="text-gray-500">Caption</div>
                       <div>{{ safe(meta.OS?.Caption) }}</div>
@@ -310,7 +310,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">💻 Sistem</h4>
+                    <h4 class="font-semibold mb-2">Sistem</h4>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div class="text-gray-500">Proizvođač</div>
                       <div>{{ safe(meta.System?.Manufacturer) }}</div>
@@ -322,7 +322,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">🧠 CPU</h4>
+                    <h4 class="font-semibold mb-2">CPU</h4>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div class="text-gray-500">Naziv</div>
                       <div>{{ safe(meta.CPU?.Name) }}</div>
@@ -339,7 +339,7 @@
 
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">
-                      🧩 RAM moduli ({{ meta.RAMModules?.length || 0 }})
+                      RAM moduli ({{ meta.RAMModules?.length || 0 }})
                     </h4>
                     <div v-if="meta.RAMModules?.length" class="space-y-2">
                       <div v-for="(r, idx) in meta.RAMModules" :key="idx" class="border rounded p-3 bg-white">
@@ -368,7 +368,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">💽 Diskovi ({{ meta.Storage?.length || 0 }})</h4>
+                    <h4 class="font-semibold mb-2"> Diskovi ({{ meta.Storage?.length || 0 }})</h4>
                     <div v-if="meta.Storage?.length" class="space-y-2">
                       <div v-for="(s, idx) in meta.Storage" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
@@ -395,7 +395,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">🎮 GPU ({{ meta.GPUs?.length || 0 }})</h4>
+                    <h4 class="font-semibold mb-2">GPU ({{ meta.GPUs?.length || 0 }})</h4>
                     <div v-if="meta.GPUs?.length" class="space-y-2">
                       <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
@@ -414,7 +414,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">🌐 Mreža ({{ meta.NICs?.length || 0 }})</h4>
+                    <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
                     <div v-if="meta.NICs?.length" class="space-y-2">
                       <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded p-3 bg-white">
                         <div class="text-sm">
@@ -432,7 +432,7 @@
                   </section>
 
                   <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">🧬 BIOS / Matična</h4>
+                    <h4 class="font-semibold mb-2">BIOS / Matična</h4>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div class="text-gray-500">BIOS Vendor</div>
                       <div>{{ safe(meta.BIOS?.Vendor) }}</div>
@@ -465,7 +465,7 @@
           <div class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto">
             <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
               <h3 class="text-lg font-semibold">
-                🌐 DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
+                DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
               </h3>
               <button @click="closeDomains" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori">
@@ -502,7 +502,7 @@
                     <div class="font-medium truncate">{{ d.name }}</div>
                     <div class="text-xs text-gray-500">
                       {{ new Date(d.timestamp).toLocaleString() }} •
-                      {{ d.category === 'blocked' ? '🚫 blocked' : '✅ normal' }}
+                      {{ d.category === 'blocked' ? 'blocked' : 'normal' }}
                     </div>
                   </div>
                   <div class="text-xs text-gray-600 shrink-0">
@@ -536,7 +536,7 @@
           @click.self="showDupesModal = false" role="dialog" aria-modal="true">
           <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl">
             <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold">⚠️ Duplirana imena računara</h2>
+              <h2 class="text-lg font-semibold">Duplirana imena računara</h2>
               <button @click="showDupesModal = false" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori">&times;</button>
             </div>
@@ -549,7 +549,7 @@
               <div v-for="g in duplicateGroups" :key="g.key || g.name" class="rounded border bg-slate-50 p-3">
                 <div class="flex items-center justify-between">
                   <div class="font-medium">
-                    🖥️ {{ g.name }} <span class="text-xs text-slate-500">({{ g.count }} kom)</span>
+                    {{ g.name }} <span class="text-xs text-slate-500">({{ g.count }} kom)</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <button class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700" @click="
@@ -563,7 +563,7 @@
                     </button>
                     <button class="text-xs px-2 py-1 rounded border"
                       @click="copyToClipboard(g.name, `Ime '${g.name}' kopirano!`)">
-                      📋 Kopiraj ime
+                      Kopiraj ime
                     </button>
                   </div>
                 </div>
@@ -579,7 +579,7 @@
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                       <button class="text-xs text-blue-600 hover:underline" @click="router.push(`/edit/${it._id}`)"
-                        title="Otvori za izmenu">✏️ Izmeni</button>
+                        title="Otvori za izmenu">Izmeni</button>
                       <button class="text-xs" @click="copyToClipboard(it.ip, `IP ${it.ip} kopiran!`)"
                         title="Kopiraj IP">📋</button>
                     </div>
@@ -605,7 +605,7 @@
 
           <div class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto">
             <div class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between">
-              <h3 class="text-lg font-semibold">🛰️ Port scan — {{ portScanTarget?.ip }}</h3>
+              <h3 class="text-lg font-semibold">Port scan — {{ portScanTarget?.ip }}</h3>
               <button @click="closePortScan" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori">&times;</button>
             </div>
@@ -627,12 +627,12 @@
                   <div class="flex gap-2">
                     <button @click="runPortScan" :disabled="portScanLoading"
                       class="px-4 py-2 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
-                      ▶️ Pokreni sken
+                      Pokreni sken
                     </button>
                     <button v-if="portScanResult"
                       @click="copyToClipboard(JSON.stringify(portScanResult.open, null, 2), 'Rezultat kopiran!')"
                       class="px-3 py-2 rounded border">
-                      📋 Kopiraj JSON
+                      Kopiraj JSON
                     </button>
                   </div>
                 </div>
