@@ -12,11 +12,6 @@
           Izvezi XLSX
         </button>
 
-        <button type="button" @click="showAvailableIps"
-          class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700">
-          Slobodne IP adrese
-        </button>
-
         <RouterLink to="/metadata"
           class="bg-slate-700 text-white px-4 py-2 rounded shadow hover:bg-slate-800 inline-flex items-center">
           Metapodaci
@@ -211,43 +206,6 @@
         <div v-if="copiedText"
           class="fixed top-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-[9999]">
           {{ copiedText }}
-        </div>
-      </transition>
-    </teleport>
-
-    <teleport to="body">
-      <transition name="fade">
-        <div v-if="showingAvailableModal" class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50"
-          @click.self="closeAvailableModal" role="dialog" aria-modal="true">
-          <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg">
-            <div class="mb-4">
-              <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  Slobodne IP adrese
-                </h2>
-                <button @click="closeAvailableModal" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                  aria-label="Zatvori">
-                  &times;
-                </button>
-              </div>
-              <input v-model="ipSearch" type="text" placeholder="Pretraga IP adresa..."
-                class="w-full border border-gray-300 px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-
-            <div v-if="availableIps.length > 0">
-              <ul class="space-y-2 max-h-60 overflow-y-auto">
-                <li v-for="(ip, index) in filteredAvailableIps" :key="index" @click="goToAddWithIp(ip)"
-                  class="p-2 bg-slate-100 rounded hover:bg-slate-200 transition flex justify-between items-center cursor-pointer">
-                  <span>{{ ip }}</span>
-                  <button @click.stop="copyToClipboard(ip, `IP ${ip} kopiran!`)"
-                    class="text-blue-500 text-sm hover:underline">
-                    📋 Kopiraj
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div v-else class="text-gray-500 text-center">Nema slobodnih IP adresa.</div>
-          </div>
         </div>
       </transition>
     </teleport>
@@ -700,10 +658,6 @@ const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.v
 const showPasswords = ref(false)
 const copiedText = ref(null)
 
-const availableIps = ref([])
-const showingAvailableModal = ref(false)
-const ipSearch = ref('')
-
 const showMeta = ref(false)
 const metaLoading = ref(false)
 const metaError = ref(null)
@@ -767,28 +721,6 @@ const deleteEntry = async (id) => {
   if (!confirm('Da li si siguran da želiš da obrišeš ovaj unos?')) return
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
   if (res.ok) fetchData()
-}
-
-const showAvailableIps = async () => {
-  showingAvailableModal.value = true
-  availableIps.value = []
-
-  try {
-    const res = await fetchWithAuth('/api/protected/ip-addresses/available')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    if (!showingAvailableModal.value) return
-    availableIps.value = Array.isArray(data.available) ? data.available : []
-  } catch (e) {
-    console.error('Greška pri dohvatanju slobodnih IP adresa:', e)
-    if (!showingAvailableModal.value) return
-    availableIps.value = []
-  }
-}
-
-const closeAvailableModal = () => {
-  showingAvailableModal.value = false
-  availableIps.value = []
 }
 
 const copyToClipboard = async (text, label = 'Kopirano!') => {
@@ -906,10 +838,6 @@ const closeMetadata = () => {
   metaEntry.value = null
   metaError.value = null
 }
-
-const filteredAvailableIps = computed(() =>
-  availableIps.value.filter((ip) => ip.toLowerCase().includes(ipSearch.value.toLowerCase()))
-)
 
 const toggleDomainsSort = () => {
   domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'

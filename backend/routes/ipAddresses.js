@@ -263,16 +263,6 @@ const RangeSchema = z.object({
   limit: z.coerce.number().min(1).max(1000).optional().default(256),
 });
 
-function parseRangeFromEnv() {
-  const str = process.env.AVAILABLE_RANGE || "";
-  const [start, end] = str.split("-").map((s) => s?.trim());
-  if (isValidIPv4(start) && isValidIPv4(end)) return { start, end };
-  return {
-    start: process.env.AVAILABLE_RANGE_START,
-    end: process.env.AVAILABLE_RANGE_END,
-  };
-}
-
 router.get(
   "/scan-ports",
   ah(async (req, res) => {
@@ -468,58 +458,6 @@ router.get(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.send(buffer);
-  })
-);
-
-router.get(
-  "/available",
-  ah(async (req, res) => {
-    const q = RangeSchema.safeParse({
-      start: req.query.start,
-      end: req.query.end,
-      page: req.query.page,
-      limit: req.query.limit,
-    });
-
-    const base = q.success ? q.data : {};
-    const envRange = parseRangeFromEnv();
-    const start = isValidIPv4(base.start) ? base.start : envRange.start;
-    const end = isValidIPv4(base.end) ? base.end : envRange.end;
-    const page = base.page || 1;
-    const limit = base.limit || 256;
-
-    const startNum = ipToNumeric(start);
-    const endNum = ipToNumeric(end);
-    if (startNum > endNum)
-      return res.status(400).json({ message: "Nevažeći opseg" });
-
-    const occupiedEntries = await IpEntry.find({}, "ipNumeric").lean();
-    const occupiedSet = new Set(occupiedEntries.map((e) => e.ipNumeric));
-
-    const skipVacant = (page - 1) * limit;
-    const result = [];
-    let vacantSeen = 0;
-    let totalAvailable = 0;
-
-    for (let i = startNum; i <= endNum; i++) {
-      if (!occupiedSet.has(i)) {
-        totalAvailable++;
-        if (vacantSeen >= skipVacant && result.length < limit) {
-          result.push(numericToIp(i));
-        }
-        vacantSeen++;
-        if (result.length >= limit) continue;
-      }
-    }
-
-    res.json({
-      range: { start, end },
-      page,
-      limit,
-      totalAvailable,
-      totalPages: Math.max(1, Math.ceil(totalAvailable / limit)),
-      available: result,
-    });
   })
 );
 
