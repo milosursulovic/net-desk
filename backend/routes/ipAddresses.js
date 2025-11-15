@@ -403,7 +403,6 @@ router.get(
     const rows = entries.map((e) => ({
       ip: e.ip,
       computerName: e.computerName || "",
-      ipNumeric: e.ipNumeric ?? "",
       username: e.username || "",
       fullName: e.fullName || "",
       rdp: e.rdp || "",
@@ -418,7 +417,6 @@ router.get(
       header: [
         "ip",
         "computerName",
-        "ipNumeric",
         "username",
         "fullName",
         "rdp",
@@ -433,7 +431,6 @@ router.get(
 
     ws["!cols"] = [
       { wch: 14 },
-      { wch: 24 },
       { wch: 12 },
       { wch: 18 },
       { wch: 22 },
