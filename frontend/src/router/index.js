@@ -69,7 +69,7 @@ const router = createRouter({
         {
           path: 'inventory',
           name: 'inventory',
-          meta: { title: 'DNS logovi - NetDesk' },
+          meta: { title: 'Inventar hardvera - NetDesk' },
           component: InventoryView,
         },
       ],
