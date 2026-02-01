@@ -54,7 +54,6 @@ const form = ref({
   fullName: '',
   password: '',
   rdp: '',
-  dnsLog: '',
   anyDesk: '',
   system: '',
   department: '',
@@ -67,8 +66,7 @@ const fields = [
   { name: 'fullName', label: 'Puno ime' },
   { name: 'password', label: 'Lozinka' },
   { name: 'rdp', label: 'RDP' },
-  { name: 'dnsLog', label: 'DNS Log' },
-  { name: 'anyDesk', label: 'AnyDesk' },
+  { name: 'rdpApp', label: 'RDP App' },
   { name: 'system', label: 'Sistem' },
   { name: 'department', label: 'Odeljenje' },
 ]

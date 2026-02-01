@@ -38,13 +38,6 @@
         >
           Inventar
         </RouterLink>
-
-        <RouterLink
-          to="/domains"
-          class="bg-rose-600 text-white px-4 py-2 rounded-md shadow hover:bg-rose-700 inline-flex items-center font-medium transition"
-        >
-          DNS logovi
-        </RouterLink>
       </div>
     </div>
 
@@ -142,20 +135,14 @@
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <article
         v-for="entry in entries"
-        :key="entry._id"
+        :key="entry.id"
         class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
       >
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">IP adresa</div>
             <div class="text-lg font-semibold tracking-tight">
-              <button
-                class="underline decoration-dotted hover:decoration-solid hover:text-blue-700"
-                @click="openDomainsForIp(entry)"
-                :title="`Prikaži domene za ${entry.ip}`"
-              >
                 {{ entry.ip }}
-              </button>
             </div>
 
             <div class="mt-1 text-xs text-slate-500">
@@ -227,12 +214,8 @@
               <div class="text-sm font-medium break-all">{{ entry.rdp || '—' }}</div>
             </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">DNS Log</div>
-              <div class="text-sm font-medium break-all">{{ entry.dnsLog || '—' }}</div>
-            </div>
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">AnyDesk</div>
-              <div class="text-sm font-medium break-all">{{ entry.anyDesk || '—' }}</div>
+              <div class="text-xs text-slate-500">RDP App</div>
+              <div class="text-sm font-medium break-all">{{ entry.rdpApp || '—' }}</div>
             </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
               <div class="text-xs text-slate-500">Sistem</div>
@@ -250,7 +233,7 @@
           <button @click="editEntry(entry)" class="text-blue-600 hover:underline text-sm">
             Izmeni
           </button>
-          <button @click="deleteEntry(entry._id)" class="text-red-600 hover:underline text-sm">
+          <button @click="deleteEntry(entry.id)" class="text-red-600 hover:underline text-sm">
             Obriši
           </button>
           <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline text-sm">
@@ -462,27 +445,27 @@
                     <div v-else class="text-sm text-gray-500">Nema podataka.</div>
                   </section>
 
-                  <section class="rounded-lg border p-4">
-                    <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
-                    <div v-if="meta.NICs?.length" class="space-y-2">
-                      <div
-                        v-for="(n, idx) in meta.NICs"
-                        :key="idx"
-                        class="border rounded p-3 bg-white"
-                      >
-                        <div class="text-sm">
-                          <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
-                        </div>
-                        <div class="text-sm">
-                          <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
-                        </div>
-                        <div class="text-sm">
-                          <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                    <section class="rounded-lg border p-4">
+                      <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
+                      <div v-if="meta.NICs?.length" class="space-y-2">
+                        <div
+                          v-for="(n, idx) in meta.NICs"
+                          :key="idx"
+                          class="border rounded p-3 bg-white"
+                        >
+                          <div class="text-sm">
+                            <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
+                          </div>
+                          <div class="text-sm">
+                            <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
+                          </div>
+                          <div class="text-sm">
+                            <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-                  </section>
+                      <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                    </section>
 
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">BIOS / Matična</h4>
@@ -501,110 +484,6 @@
                       <div>{{ safe(meta.Motherboard?.Serial) }}</div>
                     </div>
                   </section>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
-
-    <teleport to="body">
-      <transition name="fade">
-        <div
-          v-if="showDomains"
-          class="fixed inset-0 z-[9995] flex"
-          @click.self="closeDomains"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div class="absolute inset-0 bg-black/40"></div>
-
-          <div
-            class="relative ml-auto h-full w-full sm:w-[720px] bg-white shadow-xl overflow-y-auto"
-          >
-            <div
-              class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b p-4 flex items-center justify-between"
-            >
-              <h3 class="text-lg font-semibold">
-                DNS logovi — {{ domainsFor?.ip || 'Nepoznato' }}
-              </h3>
-              <button
-                @click="closeDomains"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
-                aria-label="Zatvori"
-              >
-                &times;
-              </button>
-            </div>
-
-            <div class="p-4 space-y-4">
-              <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  v-model="domainsSearch"
-                  @keyup.enter="fetchDomainsForIp()"
-                  placeholder="🔎 Pretraga domain/ip…"
-                  class="border px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <div class="flex items-center gap-2">
-                  <select v-model="domainsSortBy" class="border px-2 py-2 rounded text-sm">
-                    <option value="timestamp">Vreme</option>
-                    <option value="name">Domain</option>
-                  </select>
-                  <button @click="toggleDomainsSort" class="px-3 py-2 border rounded text-sm">
-                    {{ domainsSortOrder === 'asc' ? '↑' : '↓' }}
-                  </button>
-                  <label class="inline-flex items-center text-sm gap-2">
-                    <input
-                      type="checkbox"
-                      v-model="domainsBlockedOnly"
-                      @change="fetchDomainsForIp()"
-                    />
-                    Samo blokirani
-                  </label>
-                </div>
-                <div class="sm:ml-auto text-sm text-gray-600">
-                  Prikazano {{ domainsItems.length }} / {{ domainsTotal }}
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <div
-                  v-for="d in domainsItems"
-                  :key="d._id"
-                  class="border rounded-lg p-3 bg-slate-50 flex items-center justify-between"
-                >
-                  <div class="min-w-0">
-                    <div class="font-medium truncate">{{ d.name }}</div>
-                    <div class="text-xs text-gray-500">
-                      {{ new Date(d.timestamp).toLocaleString() }} •
-                      {{ d.category === 'blocked' ? 'blocked' : 'normal' }}
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-600 shrink-0">
-                    IP: {{ d.ip || domainsFor?.ip || '—' }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between pt-2">
-                <div class="text-sm">Strana {{ domainsPage }}</div>
-                <div class="flex items-center gap-2">
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage <= 1"
-                    @click="prevDomainsPage"
-                  >
-                    ⬅️
-                  </button>
-
-                  <button
-                    class="px-2 py-1 bg-gray-200 rounded"
-                    :disabled="domainsPage * domainsLimit >= domainsTotal"
-                    @click="nextDomainsPage"
-                  >
-                    ➡️
-                  </button>
                 </div>
               </div>
             </div>
@@ -674,7 +553,7 @@
                 <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div
                     v-for="it in g.items"
-                    :key="it._id"
+                    :key="it.id"
                     class="bg-white rounded border p-2 text-sm flex items-center justify-between gap-2"
                   >
                     <div class="min-w-0">
@@ -686,7 +565,7 @@
                     <div class="flex items-center gap-2 shrink-0">
                       <button
                         class="text-xs text-blue-600 hover:underline"
-                        @click="router.push(`/edit/${it._id}`)"
+                        @click="router.push(`/edit/${it.id}`)"
                         title="Otvori za izmenu"
                       >
                         Izmeni
@@ -867,17 +746,6 @@ const metaError = ref(null)
 const metaEntry = ref(null)
 const meta = ref(null)
 
-const showDomains = ref(false)
-const domainsFor = ref(null)
-const domainsItems = ref([])
-const domainsTotal = ref(0)
-const domainsPage = ref(1)
-const domainsLimit = ref(20)
-const domainsSearch = ref('')
-const domainsSortBy = ref('timestamp')
-const domainsSortOrder = ref('desc')
-const domainsBlockedOnly = ref(false)
-
 const sortOptions = [
   { value: 'ip', label: 'IP adresa' },
   { value: 'computerName', label: 'Ime računara' },
@@ -885,8 +753,7 @@ const sortOptions = [
   { value: 'fullName', label: 'Puno ime' },
   { value: 'department', label: 'Odeljenje' },
   { value: 'rdp', label: 'RDP' },
-  { value: 'dnsLog', label: 'DNS Log' },
-  { value: 'anyDesk', label: 'AnyDesk' },
+  { value: 'rdpApp', label: 'RDP App' },
   { value: 'system', label: 'Sistem' },
 ]
 
@@ -895,7 +762,7 @@ watch([sortBy, sortOrder, status], () => {
 })
 
 const addEntry = () => router.push('/add')
-const editEntry = (entry) => router.push(`/edit/${entry._id}`)
+const editEntry = (entry) => router.push(`/edit/${entry.id}`)
 
 async function fetchData() {
   const params = new URLSearchParams({
@@ -1040,58 +907,6 @@ const closeMetadata = () => {
   meta.value = null
   metaEntry.value = null
   metaError.value = null
-}
-
-const toggleDomainsSort = () => {
-  domainsSortOrder.value = domainsSortOrder.value === 'asc' ? 'desc' : 'asc'
-  fetchDomainsForIp()
-}
-const prevDomainsPage = () => {
-  if (domainsPage.value > 1) {
-    domainsPage.value--
-    fetchDomainsForIp()
-  }
-}
-const nextDomainsPage = () => {
-  if (domainsPage.value * domainsLimit.value < domainsTotal.value) {
-    domainsPage.value++
-    fetchDomainsForIp()
-  }
-}
-const openDomainsForIp = (entry) => {
-  domainsFor.value = { ip: entry.ip, _id: entry._id }
-  domainsPage.value = 1
-  domainsSearch.value = entry.ip
-  showDomains.value = true
-  fetchDomainsForIp()
-}
-const closeDomains = () => {
-  showDomains.value = false
-  domainsFor.value = null
-  domainsItems.value = []
-  domainsTotal.value = 0
-  domainsSearch.value = ''
-}
-async function fetchDomainsForIp() {
-  try {
-    const params = new URLSearchParams({
-      page: String(domainsPage.value),
-      limit: String(domainsLimit.value),
-      search: domainsSearch.value || (domainsFor.value?.ip ?? ''),
-      sortBy: domainsSortBy.value,
-      sortOrder: domainsSortOrder.value,
-    })
-    const path = domainsBlockedOnly.value ? '/api/domains/blocked' : '/api/domains'
-    const res = await fetchWithAuth(`${path}?${params.toString()}`)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    domainsItems.value = Array.isArray(data.data) ? data.data : []
-    domainsTotal.value = data.total ?? 0
-  } catch (e) {
-    console.error('Neuspešno učitavanje domena:', e)
-    domainsItems.value = []
-    domainsTotal.value = 0
-  }
 }
 
 const duplicateGroups = ref([])

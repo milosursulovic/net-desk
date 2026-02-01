@@ -1,40 +1,8 @@
 import express from "express";
-import IpEntry from "../models/IpEntry.js";
-import ComputerMetadata from "../models/ComputerMetadata.js";
+import { pool } from "../index.js";
 import { ah } from "../utils/asyncHandler.js";
 
 const router = express.Router();
-
-const META_PROJECTION = {
-  ComputerName: 1,
-  UserName: 1,
-  CollectedAt: 1,
-  OS: { Caption: 1, Version: 1, Build: 1, InstallDate: 1 },
-  System: { Manufacturer: 1, Model: 1, TotalRAM_GB: 1 },
-  CPU: { Name: 1, Cores: 1, LogicalCPUs: 1, MaxClockMHz: 1 },
-  RAMModules: {
-    CapacityGB: 1,
-    Slot: 1,
-    Manufacturer: 1,
-    PartNumber: 1,
-    Serial: 1,
-    SpeedMTps: 1,
-    FormFactor: 1,
-  },
-  Storage: {
-    Model: 1,
-    Serial: 1,
-    Firmware: 1,
-    SizeGB: 1,
-    MediaType: 1,
-    BusType: 1,
-    DeviceID: 1,
-  },
-  GPUs: { Name: 1, DriverVers: 1, VRAM_GB: 1 },
-  NICs: { Name: 1, MAC: 1, SpeedMbps: 1 },
-  createdAt: 1,
-  updatedAt: 1,
-};
 
 function median(nums) {
   if (!nums.length) return 0;
@@ -44,24 +12,192 @@ function median(nums) {
 }
 const round1 = (n) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : 0);
 
+function toInt(v, def = null) {
+  const n = Number.parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : def;
+}
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+async function loadMetadataById(metadataId) {
+  const [[meta]] = await pool.execute(
+    `
+    SELECT
+      id,
+      ip_entry_id AS ipEntryId,
+      collected_at AS CollectedAt,
+      computer_name AS ComputerName,
+      user_name AS UserName,
+
+      os_caption AS osCaption,
+      os_version AS osVersion,
+      os_build AS osBuild,
+      os_install_date AS osInstallDate,
+
+      system_manufacturer AS systemManufacturer,
+      system_model AS systemModel,
+      system_total_ram_gb AS systemTotalRamGb,
+
+      mb_manufacturer AS mbManufacturer,
+      mb_product AS mbProduct,
+      mb_serial AS mbSerial,
+
+      bios_vendor AS biosVendor,
+      bios_version AS biosVersion,
+      bios_release_date AS biosReleaseDate,
+
+      cpu_name AS cpuName,
+      cpu_cores AS cpuCores,
+      cpu_logical_cpus AS cpuLogicalCpus,
+      cpu_max_clock_mhz AS cpuMaxClockMHz,
+      cpu_socket AS cpuSocket,
+
+      psu AS PSU,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM computer_metadata
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [metadataId]
+  );
+
+  if (!meta) return null;
+
+  const [ram] = await pool.execute(
+    `SELECT
+        slot AS Slot,
+        manufacturer AS Manufacturer,
+        part_number AS PartNumber,
+        serial AS Serial,
+        capacity_gb AS CapacityGB,
+        speed_mtps AS SpeedMTps,
+        form_factor AS FormFactor
+     FROM computer_metadata_ram_modules
+     WHERE metadata_id = ?`,
+    [metadataId]
+  );
+
+  const [storage] = await pool.execute(
+    `SELECT
+        model AS Model,
+        serial AS Serial,
+        firmware AS Firmware,
+        size_gb AS SizeGB,
+        media_type AS MediaType,
+        bus_type AS BusType,
+        device_id AS DeviceID
+     FROM computer_metadata_storage
+     WHERE metadata_id = ?`,
+    [metadataId]
+  );
+
+  const [gpus] = await pool.execute(
+    `SELECT
+        name AS Name,
+        driver_vers AS DriverVers,
+        vram_gb AS VRAM_GB
+     FROM computer_metadata_gpus
+     WHERE metadata_id = ?`,
+    [metadataId]
+  );
+
+  const [nics] = await pool.execute(
+    `SELECT
+        name AS Name,
+        mac AS MAC,
+        speed_mbps AS SpeedMbps
+     FROM computer_metadata_nics
+     WHERE metadata_id = ?`,
+    [metadataId]
+  );
+
+  return {
+    _sqlId: meta.id,
+    ipEntry: meta.ipEntryId,
+    ComputerName: meta.ComputerName ?? null,
+    UserName: meta.UserName ?? null,
+    CollectedAt: meta.CollectedAt ?? null,
+
+    OS: {
+      Caption: meta.osCaption ?? null,
+      Version: meta.osVersion ?? null,
+      Build: meta.osBuild ?? null,
+      InstallDate: meta.osInstallDate ?? null,
+    },
+    System: {
+      Manufacturer: meta.systemManufacturer ?? null,
+      Model: meta.systemModel ?? null,
+      TotalRAM_GB: meta.systemTotalRamGb ?? null,
+    },
+    Motherboard: {
+      Manufacturer: meta.mbManufacturer ?? null,
+      Product: meta.mbProduct ?? null,
+      Serial: meta.mbSerial ?? null,
+    },
+    BIOS: {
+      Vendor: meta.biosVendor ?? null,
+      Version: meta.biosVersion ?? null,
+      ReleaseDate: meta.biosReleaseDate ?? null,
+    },
+    CPU: {
+      Name: meta.cpuName ?? null,
+      Cores: meta.cpuCores ?? null,
+      LogicalCPUs: meta.cpuLogicalCpus ?? null,
+      MaxClockMHz: meta.cpuMaxClockMHz ?? null,
+      Socket: meta.cpuSocket ?? null,
+    },
+
+    RAMModules: ram || [],
+    Storage: storage || [],
+    GPUs: gpus || [],
+    NICs: nics || [],
+
+    PSU: meta.PSU ?? null,
+    createdAt: meta.createdAt,
+    updatedAt: meta.updatedAt,
+  };
+}
+
+async function loadMetadataPage(offset, limit) {
+  const [baseRows] = await pool.execute(
+    `
+    SELECT id
+    FROM computer_metadata
+    ORDER BY id DESC
+    LIMIT ? OFFSET ?
+    `,
+    [limit, offset]
+  );
+
+  const items = [];
+  for (const r of baseRows) {
+    const obj = await loadMetadataById(r.id);
+    if (obj) items.push(obj);
+  }
+  return items;
+}
+
 router.get(
   "/",
   ah(async (req, res) => {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 50));
-    const skip = (page - 1) * limit;
+    const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+    const limit = clamp(toInt(req.query.limit, 50), 1, 1000);
+    const offset = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
-      ComputerMetadata.find({}, META_PROJECTION).skip(skip).limit(limit).lean(),
-      ComputerMetadata.estimatedDocumentCount(),
-    ]);
+    const [[{ total }]] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM computer_metadata`
+    );
+
+    const items = await loadMetadataPage(offset, limit);
 
     res.json({
       items,
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     });
   })
 );
@@ -72,282 +208,205 @@ router.get(
     const includeMeta =
       String(req.query.includeMeta || "").toLowerCase() === "true";
 
-    const [totalIpEntries, totalWithMeta] = await Promise.all([
-      IpEntry.estimatedDocumentCount(),
-      ComputerMetadata.estimatedDocumentCount(),
-    ]);
-
-    const ramAgg = await ComputerMetadata.aggregate(
-      [
-        {
-          $addFields: {
-            ramTotal: {
-              $ifNull: [
-                "$System.TotalRAM_GB",
-                { $sum: "$RAMModules.CapacityGB" },
-              ],
-            },
-          },
-        },
-        { $project: { ramTotal: { $ifNull: ["$ramTotal", 0] } } },
-      ],
-      { allowDiskUse: true }
+    const [[{ totalIpEntries }]] = await pool.execute(
+      `SELECT COUNT(*) AS totalIpEntries FROM ip_entries`
+    );
+    const [[{ totalWithMeta }]] = await pool.execute(
+      `SELECT COUNT(*) AS totalWithMeta FROM computer_metadata`
     );
 
-    const ramTotals = ramAgg.map((x) => Number(x.ramTotal) || 0);
+    const [ramRows] = await pool.execute(
+      `
+      SELECT
+        cm.id,
+        COALESCE(
+          cm.system_total_ram_gb,
+          (
+            SELECT COALESCE(SUM(rm.capacity_gb), 0)
+            FROM computer_metadata_ram_modules rm
+            WHERE rm.metadata_id = cm.id
+          )
+        ) AS ramTotal
+      FROM computer_metadata cm
+      `
+    );
+
+    const ramTotals = ramRows.map((x) => Number(x.ramTotal) || 0);
     const avgRam = ramTotals.length
       ? ramTotals.reduce((a, b) => a + b, 0) / ramTotals.length
       : 0;
     const medRam = median(ramTotals);
     const maxRam = ramTotals.length ? Math.max(...ramTotals) : 0;
 
-    const storageAgg = await ComputerMetadata.aggregate(
-      [
-        { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
-        {
-          $group: {
-            _id: null,
-            totalGb: {
-              $sum: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
-            },
-            ssdCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $regexMatch: {
-                      input: { $toUpper: "$Storage.MediaType" },
-                      regex: /SSD/,
-                    },
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-            hddCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $regexMatch: {
-                      input: { $toUpper: "$Storage.MediaType" },
-                      regex: /HDD/,
-                    },
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-          },
-        },
-      ],
-      { allowDiskUse: true }
+    const [storageAggRows] = await pool.execute(
+      `
+      SELECT
+        SUM(COALESCE(s.size_gb, 0)) AS totalGb,
+        SUM(CASE WHEN UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%' THEN 1 ELSE 0 END) AS ssdCount,
+        SUM(CASE WHEN UPPER(COALESCE(s.media_type,'')) LIKE '%HDD%' THEN 1 ELSE 0 END) AS hddCount
+      FROM computer_metadata_storage s
+      `
     );
-    const storage = storageAgg[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
+    const storage = storageAggRows?.[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
 
-    const [withGpu, vramAgg] = await Promise.all([
-      ComputerMetadata.countDocuments({ "GPUs.0": { $exists: true } }),
-      ComputerMetadata.aggregate(
-        [
-          { $unwind: { path: "$GPUs", preserveNullAndEmptyArrays: false } },
-          {
-            $group: {
-              _id: null,
-              avgVramGb: {
-                $avg: { $toDouble: { $ifNull: ["$GPUs.VRAM_GB", 0] } },
-              },
-            },
-          },
-        ],
-        { allowDiskUse: true }
-      ),
-    ]);
-    const avgVramGb = vramAgg[0]?.avgVramGb || 0;
-
-    const osTop = await ComputerMetadata.aggregate(
-      [
-        {
-          $project: {
-            key: {
-              $trim: {
-                input: {
-                  $concat: [
-                    { $ifNull: ["$OS.Caption", ""] },
-                    " ",
-                    { $ifNull: ["$OS.Version", ""] },
-                  ],
-                },
-              },
-            },
-          },
-        },
-        { $group: { _id: "$key", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-        { $project: { _id: 0, key: "$_id", count: 1 } },
-      ],
-      { allowDiskUse: true }
+    const [[{ withGpu }]] = await pool.execute(
+      `SELECT COUNT(DISTINCT metadata_id) AS withGpu FROM computer_metadata_gpus`
+    );
+    const [[{ avgVramGb }]] = await pool.execute(
+      `SELECT AVG(COALESCE(vram_gb, 0)) AS avgVramGb FROM computer_metadata_gpus`
     );
 
-    const manufacturersTop = await ComputerMetadata.aggregate(
-      [
-        {
-          $project: {
-            key: {
-              $ifNull: ["$System.Manufacturer", "$Motherboard.Manufacturer"],
-            },
-          },
-        },
-        { $group: { _id: "$key", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 6 },
-        { $project: { _id: 0, key: "$_id", count: 1 } },
-      ],
-      { allowDiskUse: true }
+    const [osTop] = await pool.execute(
+      `
+      SELECT
+        TRIM(CONCAT(COALESCE(os_caption,''), ' ', COALESCE(os_version,''))) AS \`key\`,
+        COUNT(*) AS count
+      FROM computer_metadata
+      GROUP BY \`key\`
+      ORDER BY count DESC
+      LIMIT 5
+      `
     );
 
-    const nicTop = await ComputerMetadata.aggregate(
-      [
-        { $unwind: { path: "$NICs", preserveNullAndEmptyArrays: false } },
-        {
-          $project: {
-            speed: { $toDouble: { $ifNull: ["$NICs.SpeedMbps", 0] } },
-          },
-        },
-        {
-          $project: {
-            speedNorm: {
-              $cond: [
-                {
-                  $and: [{ $gte: ["$speed", 950] }, { $lte: ["$speed", 1100] }],
-                },
-                1000,
-                "$speed",
-              ],
-            },
-          },
-        },
-        { $group: { _id: "$speedNorm", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-        { $project: { _id: 0, key: { $toString: "$_id" }, count: 1 } },
-      ],
-      { allowDiskUse: true }
+    const [manufacturersTop] = await pool.execute(
+      `
+      SELECT
+        COALESCE(NULLIF(system_manufacturer,''), NULLIF(mb_manufacturer,''), NULL) AS \`key\`,
+        COUNT(*) AS count
+      FROM computer_metadata
+      GROUP BY \`key\`
+      ORDER BY count DESC
+      LIMIT 6
+      `
     );
+
+    const [nicTopRaw] = await pool.execute(
+      `
+      SELECT
+        CASE
+          WHEN COALESCE(speed_mbps,0) >= 950 AND COALESCE(speed_mbps,0) <= 1100 THEN 1000
+          ELSE COALESCE(speed_mbps,0)
+        END AS speedNorm,
+        COUNT(*) AS count
+      FROM computer_metadata_nics
+      GROUP BY speedNorm
+      ORDER BY count DESC
+      LIMIT 5
+      `
+    );
+    const nicTop = nicTopRaw.map((r) => ({
+      key: String(r.speedNorm),
+      count: r.count,
+    }));
 
     const now = new Date();
     const start = new Date(now.getTime() - 13 * 24 * 3600 * 1000);
-    const recencyAgg = await ComputerMetadata.aggregate(
-      [
-        { $match: { CollectedAt: { $gte: start } } },
-        {
-          $group: {
-            _id: { $dateTrunc: { date: "$CollectedAt", unit: "day" } },
-            count: { $sum: 1 },
-          },
-        },
-        { $project: { _id: 0, day: "$_id", count: 1 } },
-        { $sort: { day: 1 } },
-      ],
-      { allowDiskUse: true }
+
+    const [recencyAgg] = await pool.execute(
+      `
+      SELECT DATE(collected_at) AS day, COUNT(*) AS count
+      FROM computer_metadata
+      WHERE collected_at >= ?
+      GROUP BY DATE(collected_at)
+      ORDER BY day ASC
+      `,
+      [start]
     );
+
     const recencyMap = new Map(
-      recencyAgg.map((d) => [new Date(d.day).toDateString(), d.count])
+      recencyAgg.map((d) => [new Date(d.day).toDateString(), Number(d.count) || 0])
     );
     const recencySeries = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - (13 - i)
-      );
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (13 - i));
       return recencyMap.get(d.toDateString()) || 0;
     });
 
-    const lowRamRows = await ComputerMetadata.aggregate(
-      [
-        {
-          $addFields: {
-            TotalRAM_GB_calc: {
-              $ifNull: [
-                "$System.TotalRAM_GB",
-                { $sum: "$RAMModules.CapacityGB" },
-              ],
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            ComputerName: { $ifNull: ["$ComputerName", "—"] },
-            "OS.Caption": "$OS.Caption",
-            CollectedAt: "$CollectedAt",
-            TotalRAM_GB: { $ifNull: ["$TotalRAM_GB_calc", 0] },
-          },
-        },
-        { $sort: { TotalRAM_GB: 1 } },
-        { $limit: 10 },
-      ],
-      { allowDiskUse: true }
+    const [lowRamRows] = await pool.execute(
+      `
+      SELECT
+        COALESCE(cm.computer_name, '—') AS ComputerName,
+        cm.os_caption AS osCaption,
+        cm.collected_at AS CollectedAt,
+        COALESCE(
+          cm.system_total_ram_gb,
+          (
+            SELECT COALESCE(SUM(rm.capacity_gb), 0)
+            FROM computer_metadata_ram_modules rm
+            WHERE rm.metadata_id = cm.id
+          )
+        ) AS TotalRAM_GB
+      FROM computer_metadata cm
+      ORDER BY TotalRAM_GB ASC
+      LIMIT 10
+      `
     );
 
-    const oldOsRows = await ComputerMetadata.aggregate(
-      [
-        {
-          $project: {
-            _id: 0,
-            ComputerName: { $ifNull: ["$ComputerName", "—"] },
-            "OS.Caption": "$OS.Caption",
-            "OS.InstallDate": "$OS.InstallDate",
-            CollectedAt: "$CollectedAt",
-          },
-        },
-        { $match: { "OS.InstallDate": { $ne: null } } },
-        { $sort: { "OS.InstallDate": 1 } },
-        { $limit: 10 },
-      ],
-      { allowDiskUse: true }
+    const lowRam = lowRamRows.map((r) => ({
+      ComputerName: r.ComputerName,
+      "OS.Caption": r.osCaption ?? null,
+      CollectedAt: r.CollectedAt ?? null,
+      TotalRAM_GB: Number(r.TotalRAM_GB) || 0,
+    }));
+
+    const [oldOsRows] = await pool.execute(
+      `
+      SELECT
+        COALESCE(computer_name, '—') AS ComputerName,
+        os_caption AS osCaption,
+        os_install_date AS osInstallDate,
+        collected_at AS CollectedAt
+      FROM computer_metadata
+      WHERE os_install_date IS NOT NULL
+      ORDER BY os_install_date ASC
+      LIMIT 10
+      `
     );
 
-    const lexarFlagRows = await ComputerMetadata.aggregate(
-      [
-        { $unwind: { path: "$Storage", preserveNullAndEmptyArrays: false } },
-        {
-          $addFields: {
-            _mediaTypeUpper: {
-              $toUpper: { $ifNull: ["$Storage.MediaType", ""] },
-            },
-            _model: { $ifNull: ["$Storage.Model", ""] },
-          },
-        },
-        {
-          $match: {
-            _model: { $regex: /lexar/i },
-            _mediaTypeUpper: { $regex: /SSD/ },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            ComputerName: { $ifNull: ["$ComputerName", "—"] },
-            Storage: {
-              Model: "$Storage.Model",
-              Serial: "$Storage.Serial",
-              SizeGB: { $toDouble: { $ifNull: ["$Storage.SizeGB", 0] } },
-              MediaType: "$Storage.MediaType",
-            },
-            CollectedAt: "$CollectedAt",
-          },
-        },
-        { $sort: { ComputerName: 1 } },
-      ],
-      { allowDiskUse: true }
+    const oldOs = oldOsRows.map((r) => ({
+      ComputerName: r.ComputerName,
+      "OS.Caption": r.osCaption ?? null,
+      "OS.InstallDate": r.osInstallDate ?? null,
+      CollectedAt: r.CollectedAt ?? null,
+    }));
+
+    const [lexarFlagRows] = await pool.execute(
+      `
+      SELECT
+        COALESCE(cm.computer_name, '—') AS ComputerName,
+        s.model AS Model,
+        s.serial AS Serial,
+        COALESCE(s.size_gb, 0) AS SizeGB,
+        s.media_type AS MediaType,
+        cm.collected_at AS CollectedAt
+      FROM computer_metadata_storage s
+      JOIN computer_metadata cm ON cm.id = s.metadata_id
+      WHERE s.model LIKE '%lexar%' AND UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%'
+      ORDER BY ComputerName ASC
+      `
     );
+
+    const lexarFlag = lexarFlagRows.map((r) => ({
+      ComputerName: r.ComputerName,
+      Storage: {
+        Model: r.Model ?? null,
+        Serial: r.Serial ?? null,
+        SizeGB: Number(r.SizeGB) || 0,
+        MediaType: r.MediaType ?? null,
+      },
+      CollectedAt: r.CollectedAt ?? null,
+    }));
 
     let meta = undefined;
     if (includeMeta) {
-      meta = await ComputerMetadata.find({}, META_PROJECTION)
-        .limit(10000)
-        .lean();
+      const [ids] = await pool.execute(
+        `SELECT id FROM computer_metadata ORDER BY id DESC LIMIT 10000`
+      );
+      const out = [];
+      for (const r of ids) {
+        const obj = await loadMetadataById(r.id);
+        if (obj) out.push(obj);
+      }
+      meta = out;
     }
 
     res.json({
@@ -356,30 +415,33 @@ router.get(
         avgRamGb: round1(avgRam),
         medRamGb: round1(medRam),
         maxRamGb: round1(maxRam),
-        ssdCount: storage.ssdCount || 0,
-        hddCount: storage.hddCount || 0,
-        totalStorageTb: round1((storage.totalGb || 0) / 1024),
-        withGpu,
-        withoutGpu: Math.max(totalWithMeta - withGpu, 0),
-        avgVramGb: round1(avgVramGb),
+        ssdCount: Number(storage.ssdCount) || 0,
+        hddCount: Number(storage.hddCount) || 0,
+        totalStorageTb: round1((Number(storage.totalGb) || 0) / 1024),
+        withGpu: Number(withGpu) || 0,
+        withoutGpu: Math.max(totalWithMeta - (Number(withGpu) || 0), 0),
+        avgVramGb: round1(Number(avgVramGb) || 0),
         coveragePct: totalIpEntries
           ? Math.round((totalWithMeta / totalIpEntries) * 100)
           : 100,
       },
       cover: { totalIpEntries, totalWithMeta },
-      topOs: osTop,
-      topManufacturers: manufacturersTop,
+      topOs: osTop.map((x) => ({ key: x.key, count: x.count })),
+      topManufacturers: manufacturersTop
+        .filter((x) => x.key != null && String(x.key).trim() !== "")
+        .map((x) => ({ key: x.key, count: x.count })),
       topNicSpeeds: nicTop,
       recencySeries,
       tables: {
-        lowRam: lowRamRows,
-        oldOs: oldOsRows,
-        lexarFlag: lexarFlagRows,
+        lowRam,
+        oldOs,
+        lexarFlag,
       },
-      flags: { lexarCount: lexarFlagRows.length },
+      flags: { lexarCount: lexarFlag.length },
       meta,
     });
   })
 );
 
 export default router;
+

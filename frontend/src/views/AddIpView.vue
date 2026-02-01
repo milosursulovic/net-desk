@@ -15,7 +15,7 @@
             required
             :class="ipError ? 'border-red-400' : ''"
           />
-          
+
         </div>
         <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
@@ -32,7 +32,7 @@
             :placeholder="`Unesite ${field.label.toLowerCase()}`"
             class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
           />
-          
+
         </div>
       </div>
 
@@ -73,8 +73,7 @@ const form = ref({
   fullName: '',
   password: '',
   rdp: '',
-  dnsLog: '',
-  anyDesk: '',
+  rdpApp: '',
   system: '',
   department: '',
 })
@@ -85,8 +84,7 @@ const optionalFields = [
   { name: 'fullName', label: 'Puno ime' },
   { name: 'password', label: 'Lozinka' },
   { name: 'rdp', label: 'RDP' },
-  { name: 'dnsLog', label: 'DNS Log' },
-  { name: 'anyDesk', label: 'AnyDesk' },
+  { name: 'rdpApp', label: 'RDP App' },
   { name: 'system', label: 'Sistem' },
   { name: 'department', label: 'Odeljenje' },
 ]

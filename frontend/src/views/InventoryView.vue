@@ -91,7 +91,7 @@
     <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <article
         v-for="item in entries"
-        :key="item._id"
+        :key="item.id"
         class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
       >
         <div class="flex items-start justify-between gap-3">
@@ -398,19 +398,27 @@ async function fetchData() {
   const params = new URLSearchParams({
     page: String(page.value),
     limit: String(limit.value),
-    search: search.value,
-    type: filterType.value,
-    sortBy: sortBy.value,
-    sortOrder: sortOrder.value,
+    search: search.value || '',
+    type: filterType.value || 'all',
+    sortBy: sortBy.value || 'createdAt',
+    sortOrder: sortOrder.value || 'desc',
   })
 
   try {
     const res = await fetchWithAuth(`/api/protected/inventory?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
+
     entries.value = data.entries || []
-    total.value = data.total || 0
-    totalPages.value = data.totalPages || 0
+    total.value = data.total ?? 0
+    totalPages.value = data.totalPages ?? 0
+
+    // ✅ prihvati safePage sa backend-a
+    const safePage = parseInt(data.page) || 1
+    if (safePage !== page.value) page.value = safePage
+
+    const appliedLimit = parseInt(data.limit) || limit.value
+    if (appliedLimit !== limit.value) limit.value = appliedLimit
   } catch (e) {
     console.error('Neuspešno dohvatanje inventara:', e)
     entries.value = []
@@ -456,7 +464,7 @@ const copyToClipboard = async (text, label = 'Kopirano!') => {
 const showForm = ref(false)
 const formMode = ref('create')
 const form = ref({
-  _id: null,
+  id: null,
   type: '',
   manufacturer: '',
   model: '',
@@ -471,7 +479,7 @@ const form = ref({
 
 const resetForm = () => {
   form.value = {
-    _id: null,
+    id: null,
     type: '',
     manufacturer: '',
     model: '',
@@ -494,7 +502,7 @@ const openAddModal = () => {
 const openEditModal = (item) => {
   formMode.value = 'edit'
   form.value = {
-    _id: item._id,
+    id: item.id,
     type: item.type || '',
     manufacturer: item.manufacturer || '',
     model: item.model || '',
@@ -541,7 +549,7 @@ const saveItem = async () => {
         body: JSON.stringify(payload),
       })
     } else {
-      res = await fetchWithAuth(`/api/protected/inventory/${form.value._id}`, {
+      res = await fetchWithAuth(`/api/protected/inventory/${form.value.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -563,11 +571,8 @@ const saveItem = async () => {
 
 const confirmDelete = async (item) => {
   if (!confirm(`Da li želiš da obrišeš ${item.model || 'ovu stavku'} iz inventara?`)) return
-
   try {
-    const res = await fetchWithAuth(`/api/protected/inventory/${item._id}`, {
-      method: 'DELETE',
-    })
+    const res = await fetchWithAuth(`/api/protected/inventory/${item.id}`, { method: 'DELETE' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error || `HTTP ${res.status}`)
@@ -583,10 +588,8 @@ const exportToXlsx = async () => {
   try {
     const res = await fetchWithAuth(`/api/protected/inventory/export`)
     if (!res.ok) throw new Error()
-
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
-
     const a = document.createElement('a')
     a.href = url
     a.download = 'inventar.xlsx'
@@ -597,46 +600,54 @@ const exportToXlsx = async () => {
   }
 }
 
-watch([page, limit, search, filterType, sortBy, sortOrder], () => {
-  router.push({
-    query: {
-      page: page.value,
-      limit: limit.value,
-      search: search.value,
-      type: filterType.value,
-      sortBy: sortBy.value,
-      sortOrder: sortOrder.value,
-    },
-  })
+watch([limit, search, filterType, sortBy, sortOrder], () => {
+  page.value = 1
 })
 
 watch(
   () => route.query,
-  (query) => {
-    page.value = parseInt(query.page) || 1
-    limit.value = parseInt(query.limit) || 12
-    search.value = query.search || ''
-    filterType.value = query.type || 'all'
-    sortBy.value = query.sortBy || 'createdAt'
-    sortOrder.value = query.sortOrder || 'desc'
+  (q) => {
+    const qp = parseInt(q.page) || 1
+    const ql = parseInt(q.limit) || 12
+    const qs = q.search || ''
+    const qt = q.type || 'all'
+    const qsb = q.sortBy || 'createdAt'
+    const qso = q.sortOrder || 'desc'
+
+    if (page.value !== qp) page.value = qp
+    if (limit.value !== ql) limit.value = ql
+    if (search.value !== qs) search.value = qs
+    if (filterType.value !== qt) filterType.value = qt
+    if (sortBy.value !== qsb) sortBy.value = qsb
+    if (sortOrder.value !== qso) sortOrder.value = qso
+
     fetchData()
   },
   { immediate: true }
 )
+
+watch([page, limit, search, filterType, sortBy, sortOrder], () => {
+  const nextQuery = {
+    page: String(page.value),
+    limit: String(limit.value),
+    search: search.value ? String(search.value) : undefined,
+    type: filterType.value || 'all',
+    sortBy: sortBy.value || 'createdAt',
+    sortOrder: sortOrder.value || 'desc',
+  }
+
+  if (
+    (route.query.page || '1') === nextQuery.page &&
+    (route.query.limit || '12') === nextQuery.limit &&
+    (route.query.search || '') === (nextQuery.search || '') &&
+    (route.query.type || 'all') === nextQuery.type &&
+    (route.query.sortBy || 'createdAt') === nextQuery.sortBy &&
+    (route.query.sortOrder || 'desc') === nextQuery.sortOrder
+  ) {
+    return
+  }
+
+  router.replace({ query: nextQuery })
+})
 </script>
 
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.glass-container {
-  backdrop-filter: saturate(140%) blur(2px);
-}
-</style>

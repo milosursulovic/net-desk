@@ -1,12 +1,57 @@
 import express from "express";
-import InventoryItem from "../models/InventoryItem.js";
 import ExcelJS from "exceljs";
+import { pool } from "../index.js";
 
 const router = express.Router();
 
-router.get("/export", async (req, res) => {
+router.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
+function toInt(v, def = null) {
+  const n = Number.parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : def;
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function emptyToNull(s) {
+  if (s == null) return null;
+  const t = String(s).trim();
+  return t === "" ? null : t;
+}
+
+const SORT_FIELDS = {
+  type: "type",
+  manufacturer: "manufacturer",
+  model: "model",
+  location: "location",
+  createdAt: "created_at",
+};
+
+const ALLOWED_STATUS = new Set(["available", "in-use", "reserved", "faulty"]);
+function normalizeStatus(s) {
+  const v = (s ?? "").toString().trim();
+  return ALLOWED_STATUS.has(v) ? v : "available";
+}
+
+router.get("/export", async (_req, res) => {
   try {
-    const items = await InventoryItem.find().lean();
+    const [items] = await pool.execute(
+      `SELECT
+         id, type, manufacturer, model,
+         serial_number AS serialNumber,
+         quantity, status,
+         capacity, speed, socket, location, notes,
+         created_at AS createdAt, updated_at AS updatedAt
+       FROM inventory_items
+       ORDER BY created_at DESC`
+    );
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Inventar");
@@ -17,6 +62,7 @@ router.get("/export", async (req, res) => {
       { header: "Model", key: "model", width: 28 },
       { header: "Serijski broj", key: "serialNumber", width: 25 },
       { header: "Količina", key: "quantity", width: 10 },
+      { header: "Status", key: "status", width: 14 },
       { header: "Kapacitet", key: "capacity", width: 12 },
       { header: "Brzina", key: "speed", width: 15 },
       { header: "Socket/Konektor", key: "socket", width: 18 },
@@ -43,88 +89,106 @@ router.get("/export", async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error(err);
+    console.error("Error exporting inventory:", err);
     res.status(500).json({ error: "Greška pri eksportu" });
   }
 });
 
 router.get("/", async (req, res) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 100);
+    const rawPage = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+    const limit = clamp(toInt(req.query.limit, 12), 1, 100);
 
-    const { search = "", type = "all" } = req.query;
-    const sortBy = req.query.sortBy || "createdAt";
-    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const search = (req.query.search ?? "").toString().trim();
+    const type = (req.query.type ?? "all").toString().trim();
 
-    const query = {};
+    const sortBy = (req.query.sortBy ?? "createdAt").toString();
+    const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
+    const sortKey = SORT_FIELDS[sortBy] || "created_at";
+
+    const where = [];
+    const params = [];
 
     if (type && type !== "all") {
-      query.type = type;
+      where.push("type = ?");
+      params.push(type);
     }
 
-    if (search && search.trim() !== "") {
-      const term = search.trim();
-      const regex = new RegExp(term, "i");
-      query.$or = [
-        { manufacturer: regex },
-        { model: regex },
-        { serialNumber: regex },
-        { location: regex },
-        { notes: regex },
-        { capacity: regex },
-        { speed: regex },
-        { socket: regex },
-      ];
+    if (search !== "") {
+      const like = `%${search}%`;
+      where.push(`(
+        manufacturer LIKE ? OR
+        model LIKE ? OR
+        serial_number LIKE ? OR
+        location LIKE ? OR
+        notes LIKE ? OR
+        capacity LIKE ? OR
+        speed LIKE ? OR
+        socket LIKE ?
+      )`);
+      params.push(like, like, like, like, like, like, like, like);
     }
 
-    const sortFields = {
-      type: "type",
-      manufacturer: "manufacturer",
-      model: "model",
-      location: "location",
-      createdAt: "createdAt",
-    };
-    const sortKey = sortFields[sortBy] || "createdAt";
-    const sort = { [sortKey]: sortOrder };
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-    const [entries, total, countsAgg] = await Promise.all([
-      InventoryItem.find(query)
-        .sort(sort)
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean(),
-      InventoryItem.countDocuments(query),
-      InventoryItem.aggregate([
-        {
-          $group: {
-            _id: "$status",
-            totalQty: { $sum: { $ifNull: ["$quantity", 1] } },
-          },
-        },
-      ]),
+    const sqlCount = `
+      SELECT COUNT(*) AS total
+      FROM inventory_items
+      ${whereSql}
+    `;
+
+    const sqlCounts = `
+      SELECT status, SUM(COALESCE(quantity, 1)) AS totalQty
+      FROM inventory_items
+      ${whereSql}
+      GROUP BY status
+    `;
+
+     const [[countRows], [countsRows]] = await Promise.all([
+      pool.execute(sqlCount, params),
+      pool.execute(sqlCounts, params),
     ]);
 
-    const counts = {
-      available: 0,
-      inUse: 0,
-      reserved: 0,
-      faulty: 0,
-    };
-
-    for (const c of countsAgg) {
-      if (c._id === "available") counts.available = c.totalQty;
-      if (c._id === "in-use") counts.inUse = c.totalQty;
-      if (c._id === "reserved") counts.reserved = c.totalQty;
-      if (c._id === "faulty") counts.faulty = c.totalQty;
-    }
-
+    const total = Number(countRows?.[0]?.total ?? 0);
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
+    const safePage = totalPages === 0 ? 1 : clamp(rawPage, 1, totalPages);
+    const offset = (safePage - 1) * limit;
+
+    const sqlEntries = `
+      SELECT
+        id, type, manufacturer, model,
+        serial_number AS serialNumber,
+        quantity, status,
+        capacity, speed, socket, location, notes,
+        created_at AS createdAt, updated_at AS updatedAt
+      FROM inventory_items
+      ${whereSql}
+      ORDER BY ${sortKey} ${sortOrder}
+      LIMIT ? OFFSET ?
+    `;
+
+    const [entries] = await pool.execute(sqlEntries, [...params, limit, offset]);
+
+    const counts = { available: 0, inUse: 0, reserved: 0, faulty: 0 };
+    for (const c of countsRows || []) {
+      const qty = Number(c.totalQty) || 0;
+      if (c.status === "available") counts.available = qty;
+      if (c.status === "in-use") counts.inUse = qty;
+      if (c.status === "reserved") counts.reserved = qty;
+      if (c.status === "faulty") counts.faulty = qty;
+    }
 
     res.json({
       entries,
       total,
       totalPages,
+      page: safePage,
+      limit,
+      search,
+      type,
+      sortBy,
+      sortOrder: sortOrder.toLowerCase(),
       counts,
     });
   } catch (err) {
@@ -135,8 +199,25 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const item = await InventoryItem.findById(req.params.id).lean();
+    const id = toInt(req.params.id);
+    if (!id) return res.status(400).json({ error: "Neispravan ID." });
+
+    const [rows] = await pool.execute(
+      `SELECT
+         id, type, manufacturer, model,
+         serial_number AS serialNumber,
+         quantity, status,
+         capacity, speed, socket, location, notes,
+         created_at AS createdAt, updated_at AS updatedAt
+       FROM inventory_items
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    const item = rows?.[0];
     if (!item) return res.status(404).json({ error: "Stavka nije pronađena." });
+
     res.json(item);
   } catch (err) {
     console.error("Error fetching inventory item:", err);
@@ -148,24 +229,53 @@ router.post("/", async (req, res) => {
   try {
     const payload = req.body || {};
 
-    if (!payload.type || !payload.model) {
+    const type = emptyToNull(payload.type);
+    const model = emptyToNull(payload.model);
+    if (!type || !model) {
       return res.status(400).json({ error: "Tip opreme i model su obavezni." });
     }
 
-    const item = await InventoryItem.create({
-      type: payload.type,
-      manufacturer: payload.manufacturer,
-      model: payload.model,
-      serialNumber: payload.serialNumber,
-      quantity: payload.quantity ?? 1,
-      capacity: payload.capacity,
-      speed: payload.speed,
-      socket: payload.socket,
-      location: payload.location,
-      notes: payload.notes,
-    });
+    const quantityRaw = Number(payload.quantity);
+    const quantity =
+      Number.isFinite(quantityRaw) && quantityRaw >= 1 ? quantityRaw : 1;
 
-    res.status(201).json(item);
+    const status = normalizeStatus(payload.status);
+
+    const [result] = await pool.execute(
+      `INSERT INTO inventory_items
+        (type, manufacturer, model, serial_number, quantity, status, capacity, speed, socket, location, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        type,
+        emptyToNull(payload.manufacturer),
+        model,
+        emptyToNull(payload.serialNumber),
+        quantity,
+        status,
+        emptyToNull(payload.capacity),
+        emptyToNull(payload.speed),
+        emptyToNull(payload.socket),
+        emptyToNull(payload.location),
+        emptyToNull(payload.notes),
+      ]
+    );
+
+    const id = result.insertId;
+
+    const [rows] = await pool.execute(
+      `SELECT
+         id, type, manufacturer, model,
+         serial_number AS serialNumber,
+         quantity, status,
+         capacity, speed, socket, location, notes,
+         created_at AS createdAt, updated_at AS updatedAt
+       FROM inventory_items
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    res.status(201).json(rows?.[0]);
   } catch (err) {
     console.error("Error creating inventory item:", err);
     res.status(500).json({ error: "Greška pri kreiranju stavke." });
@@ -174,29 +284,70 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
+    const id = toInt(req.params.id);
+    if (!id) return res.status(400).json({ error: "Neispravan ID." });
+
     const payload = req.body || {};
+    const type = emptyToNull(payload.type);
+    const model = emptyToNull(payload.model);
+    if (!type || !model) {
+      return res.status(400).json({ error: "Tip opreme i model su obavezni." });
+    }
 
-    const update = {
-      type: payload.type,
-      manufacturer: payload.manufacturer,
-      model: payload.model,
-      serialNumber: payload.serialNumber,
-      quantity: payload.quantity ?? 1,
-      capacity: payload.capacity,
-      speed: payload.speed,
-      socket: payload.socket,
-      location: payload.location,
-      notes: payload.notes,
-    };
+    const quantityRaw = Number(payload.quantity);
+    const quantity =
+      Number.isFinite(quantityRaw) && quantityRaw >= 1 ? quantityRaw : 1;
 
-    const item = await InventoryItem.findByIdAndUpdate(req.params.id, update, {
-      new: true,
-      runValidators: true,
-    }).lean();
+    const status = normalizeStatus(payload.status);
 
-    if (!item) return res.status(404).json({ error: "Stavka nije pronađena." });
+    const [result] = await pool.execute(
+      `UPDATE inventory_items SET
+         type = ?,
+         manufacturer = ?,
+         model = ?,
+         serial_number = ?,
+         quantity = ?,
+         status = ?,
+         capacity = ?,
+         speed = ?,
+         socket = ?,
+         location = ?,
+         notes = ?
+       WHERE id = ?`,
+      [
+        type,
+        emptyToNull(payload.manufacturer),
+        model,
+        emptyToNull(payload.serialNumber),
+        quantity,
+        status,
+        emptyToNull(payload.capacity),
+        emptyToNull(payload.speed),
+        emptyToNull(payload.socket),
+        emptyToNull(payload.location),
+        emptyToNull(payload.notes),
+        id,
+      ]
+    );
 
-    res.json(item);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Stavka nije pronađena." });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT
+         id, type, manufacturer, model,
+         serial_number AS serialNumber,
+         quantity, status,
+         capacity, speed, socket, location, notes,
+         created_at AS createdAt, updated_at AS updatedAt
+       FROM inventory_items
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    res.json(rows?.[0]);
   } catch (err) {
     console.error("Error updating inventory item:", err);
     res.status(500).json({ error: "Greška pri izmeni stavke." });
@@ -205,8 +356,18 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const item = await InventoryItem.findByIdAndDelete(req.params.id).lean();
-    if (!item) return res.status(404).json({ error: "Stavka nije pronađena." });
+    const id = toInt(req.params.id);
+    if (!id) return res.status(400).json({ error: "Neispravan ID." });
+
+    const [result] = await pool.execute(
+      `DELETE FROM inventory_items WHERE id = ?`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Stavka nije pronađena." });
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error("Error deleting inventory item:", err);
@@ -215,3 +376,4 @@ router.delete("/:id", async (req, res) => {
 });
 
 export default router;
+

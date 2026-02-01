@@ -1,15 +1,14 @@
 import express from "express";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
 import cors from "cors";
 import fs from "fs";
 import https from "https";
 import helmet from "helmet";
 import morgan from "morgan";
+import mysql from "mysql2/promise";
 
 import authRoutes from "./routes/auth.js";
 import protectedRoutes from "./routes/protected.js";
-import domainsRoutes from "./routes/domains.js";
 import { authenticateToken } from "./middlewares/auth.js";
 import { startPingLoop } from "./services/pingService.js";
 
@@ -27,17 +26,15 @@ const requireEnv = (key, fallback = undefined) => {
 const IS_PROD = process.env.NODE_ENV === "production";
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT ?? 5138);
-const MONGO_URI = requireEnv("MONGO_URI");
+
 const SSL_KEY = requireEnv("SSL_KEY");
 const SSL_CERT = requireEnv("SSL_CERT");
 
-const parseAllowedOrigins = (val) => {
-  if (!val || val.trim() === "") return !IS_PROD ? true : [];
-  return val
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-};
+const DB_HOST = requireEnv("DB_HOST");
+const DB_PORT = Number(process.env.DB_PORT ?? 3306);
+const DB_USER = requireEnv("DB_USER");
+const DB_PASS = requireEnv("DB_PASS");
+const DB_NAME = requireEnv("DB_NAME");
 
 if (!fs.existsSync(SSL_KEY) || !fs.existsSync(SSL_CERT)) {
   console.error("❌ SSL files don't exist at provided paths");
@@ -50,7 +47,6 @@ const sslOptions = {
 };
 
 const app = express();
-
 app.set("trust proxy", true);
 
 app.use(
@@ -66,16 +62,49 @@ app.use(
   })
 );
 
+const allowedOrigins = (() => {
+  const v = process.env.CORS_ALLOWED_ORIGINS || "";
+  return v
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+})();
+
 app.use(
   cors({
-    origin: parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+
+      if (!IS_PROD && allowedOrigins.length === 0) return cb(null, true);
+
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+
+      return cb(new Error("Not allowed by CORS: " + origin));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+app.options(/.*/, cors());
 app.use(express.json({ limit: "2mb" }));
 
 let isDbReady = false;
+
+const pool = mysql.createPool({
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASS,
+  database: DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  charset: "utf8mb4_general_ci",
+});
+
+export { pool };
 
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 app.get("/ready", (_req, res) =>
@@ -84,7 +113,6 @@ app.get("/ready", (_req, res) =>
 
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", authenticateToken, protectedRoutes);
-app.use("/api/domains", domainsRoutes);
 
 app.use((req, res, next) => {
   if (req.path === "/health" || req.path === "/ready") return next();
@@ -93,26 +121,29 @@ app.use((req, res, next) => {
 
 app.use((err, _req, res, _next) => {
   console.error("❌ Unhandled error:", err);
-  res
-    .status(err.status || 500)
-    .json({ message: err.message || "Greška na serveru" });
+  res.status(err.status || 500).json({ message: err.message || "Greška na serveru" });
 });
 
 const server = https.createServer(sslOptions, app);
 
-const connectMongo = async () => {
+const connectMySql = async () => {
   try {
-    await mongoose.connect(MONGO_URI, { autoIndex: true });
+    const conn = await pool.getConnection();
+    try {
+      await conn.query("SELECT 1");
+    } finally {
+      conn.release();
+    }
     isDbReady = true;
-    console.log("✅ MongoDB connected");
+    console.log("✅ MySQL connected");
   } catch (err) {
-    console.error("❌ MongoDB connection error:", err);
+    console.error("❌ MySQL connection error:", err?.message || err);
     process.exit(1);
   }
 };
 
 const start = async () => {
-  await connectMongo();
+  await connectMySql();
 
   server.listen(PORT, HOST, () => {
     console.log(`🚀 Express HTTPS server running at https://${HOST}:${PORT}`);
@@ -125,7 +156,12 @@ const shutdown = async (signal) => {
   console.log(`🛑 Received ${signal}. Shutting down...`);
 
   await new Promise((resolve) => server.close(resolve));
-  await mongoose.connection.close(false);
+
+  try {
+    await pool.end();
+  } catch (e) {
+    console.error("❌ Error closing MySQL pool:", e?.message || e);
+  }
 
   console.log("✅ Shutdown complete");
   process.exit(0);
@@ -144,3 +180,4 @@ process.on("unhandledRejection", (reason) => {
 });
 
 start();
+

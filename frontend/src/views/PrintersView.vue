@@ -95,7 +95,7 @@
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           v-for="p in items"
-          :key="p._id"
+          :key="p.id"
           class="bg-white rounded-2xl shadow ring-1 ring-black/5 p-4 flex flex-col"
         >
           <div class="flex items-start justify-between gap-3">
@@ -264,7 +264,7 @@
             <div class="grid grid-cols-1 gap-3">
               <div class="border rounded-lg p-3 bg-slate-50">
                 <div class="font-medium mb-2">Poveži računar</div>
-                <div class="text-xs text-gray-600 mb-1">Unesi IP ili _id računara (IpEntry)</div>
+                <div class="text-xs text-gray-600 mb-1">Unesi IP ili id računara (IpEntry)</div>
                 <div class="flex gap-2">
                   <input
                     v-model.trim="toolsForm.connectInput"
@@ -287,7 +287,7 @@
                 <div class="flex gap-2">
                   <input
                     v-model.trim="toolsForm.hostInput"
-                    placeholder="IP ili _id"
+                    placeholder="IP ili id"
                     class="border px-2 py-1 rounded text-sm w-full"
                     @keyup.enter="setHostFromTools"
                   />
@@ -312,7 +312,7 @@
                 <div class="flex gap-2">
                   <input
                     v-model.trim="toolsForm.disconnectInput"
-                    placeholder="IP ili _id"
+                    placeholder="IP ili id"
                     class="border px-2 py-1 rounded text-sm w-full"
                     @keyup.enter="disconnectComputerFromTools"
                   />
@@ -350,7 +350,7 @@
                     v-if="toolsDetails?.connectedComputers?.length"
                     class="list-disc list-inside space-y-1 text-sm"
                   >
-                    <li v-for="c in toolsDetails.connectedComputers" :key="c._id">
+                    <li v-for="c in toolsDetails.connectedComputers" :key="c.id">
                       {{ c.computerName || '—' }} — {{ c.ip || '—' }}
                     </li>
                   </ul>
@@ -444,7 +444,7 @@ const fmtDate = (d) => {
   const dt = new Date(d)
   return isNaN(dt) ? '—' : dt.toLocaleString('sr-RS')
 }
-const getItem = (id) => items.value.find((x) => x._id === id)
+const getItem = (id) => items.value.find((x) => x.id === id)
 
 const toolsOpen = ref(false)
 const toolsPrinter = ref(null)
@@ -498,7 +498,7 @@ async function fetchData() {
     }
 
     if (toolsOpen.value && toolsPrinter.value) {
-      const np = getItem(toolsPrinter.value._id)
+      const np = getItem(toolsPrinter.value.id)
       if (np) toolsPrinter.value = np
     }
   } catch (e) {
@@ -511,7 +511,7 @@ async function fetchData() {
 async function loadToolsDetails(p) {
   toolsLoadingDetails.value = true
   try {
-    const res = await fetchWithAuth(`/api/protected/printers/${p._id}`)
+    const res = await fetchWithAuth(`/api/protected/printers/${p.id}`)
     if (!res.ok) throw new Error('HTTP ' + res.status)
     toolsDetails.value = await res.json()
   } catch (e) {
@@ -588,7 +588,7 @@ const openCreate = () => {
 }
 
 const openEdit = (p) => {
-  editId.value = p._id
+  editId.value = p.id
   form.value = {
     name: p.name || '',
     manufacturer: p.manufacturer || '',
@@ -630,7 +630,7 @@ async function save() {
 async function confirmDelete(p) {
   if (!confirm(`Obrisati "${p.name || 'štampač'}"?`)) return
   try {
-    const res = await fetchWithAuth(`/api/protected/printers/${p._id}`, { method: 'DELETE' })
+    const res = await fetchWithAuth(`/api/protected/printers/${p.id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('HTTP ' + res.status)
     await fetchData()
     showToast('Obrisano')
@@ -644,14 +644,14 @@ async function connectComputerFromTools() {
   const v = toolsForm.value.connectInput.trim()
   if (!p || !v) return
   try {
-    await fetchWithAuth(`/api/protected/printers/${p._id}/connect`, {
+    await fetchWithAuth(`/api/protected/printers/${p.id}/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: v }),
     })
     toolsForm.value.connectInput = ''
     await fetchData()
-    const np = getItem(p._id)
+    const np = getItem(p.id)
     if (np) toolsPrinter.value = np
     await loadToolsDetails(np || p)
     showToast('Računar povezan')
@@ -665,14 +665,14 @@ async function disconnectComputerFromTools() {
   const v = toolsForm.value.disconnectInput.trim()
   if (!p || !v) return
   try {
-    await fetchWithAuth(`/api/protected/printers/${p._id}/disconnect`, {
+    await fetchWithAuth(`/api/protected/printers/${p.id}/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: v }),
     })
     toolsForm.value.disconnectInput = ''
     await fetchData()
-    const np = getItem(p._id)
+    const np = getItem(p.id)
     if (np) toolsPrinter.value = np
     await loadToolsDetails(np || p)
     showToast('Računar otkačen')
@@ -686,14 +686,14 @@ async function setHostFromTools() {
   const v = toolsForm.value.hostInput.trim()
   if (!p || !v) return
   try {
-    await fetchWithAuth(`/api/protected/printers/${p._id}/set-host`, {
+    await fetchWithAuth(`/api/protected/printers/${p.id}/set-host`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ computer: v }),
     })
     toolsForm.value.hostInput = ''
     await fetchData()
-    const np = getItem(p._id)
+    const np = getItem(p.id)
     if (np) toolsPrinter.value = np
     await loadToolsDetails(np || p)
     showToast('Host postavljen')
@@ -706,9 +706,9 @@ async function unsetHostFromTools() {
   const p = toolsPrinter.value
   if (!p) return
   try {
-    await fetchWithAuth(`/api/protected/printers/${p._id}/unset-host`, { method: 'POST' })
+    await fetchWithAuth(`/api/protected/printers/${p.id}/unset-host`, { method: 'POST' })
     await fetchData()
-    const np = getItem(p._id)
+    const np = getItem(p.id)
     if (np) toolsPrinter.value = np
     await loadToolsDetails(np || p)
     showToast('Host uklonjen')
