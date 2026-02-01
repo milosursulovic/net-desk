@@ -194,7 +194,7 @@ function buildLegacySearchSql(search = "") {
     full_name LIKE ? OR
     rdp LIKE ? OR
     rdp_app LIKE ? OR
-    system LIKE ? OR
+    os LIKE ? OR
     department LIKE ? OR
     heliant_installed ?
   )`;
@@ -209,7 +209,7 @@ const UpsertIpSchema = z.object({
   password: z.string().nullable().optional(),
   rdp: z.string().nullable().optional(),
   rdpApp: z.string().nullable().optional(),
-  system: z.string().nullable().optional(),
+  os: z.string().nullable().optional(),
   department: z.string().nullable().optional(),
   heliantInstalled: z.string().nullable().optional()
 });
@@ -226,7 +226,7 @@ const ListSchema = z.object({
       "fullName",
       "rdp",
       "rdpApp",
-      "system",
+      "os",
       "department",
       "heliantInstalled"
     ])
@@ -377,7 +377,7 @@ router.get(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         metadata_id AS metadataId,
         heliant_installed AS heliantInstalled
@@ -395,7 +395,7 @@ router.get(
       fullName: e.fullName || "",
       rdp: e.rdp || "",
       rdpApp: e.rdpApp || "",
-      system: e.system || "",
+      os: e.os || "",
       department: e.department || "",
       hasMetadata: e.metadataId ? "DA" : "NE",
       heliantInstalled: e.heliantInstalled || ""
@@ -409,7 +409,7 @@ router.get(
         "fullName",
         "rdp",
         "rdpApp",
-        "system",
+        "os",
         "department",
         "hasMetadata",
         "heliantInstalled"
@@ -479,7 +479,7 @@ router.get(
       fullName: "full_name",
       rdp: "rdp",
       rdpApp: "rdp_app",
-      system: "system",
+      os: "os",
       department: "department",
       heliantInstalled: "heliant_installed"
     };
@@ -506,7 +506,7 @@ router.get(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         metadata_id AS metadata,
         is_online AS isOnline,
@@ -592,7 +592,7 @@ router.get(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         metadata_id AS metadata,
         is_online AS isOnline,
@@ -625,7 +625,7 @@ router.post(
     const [result] = await pool.execute(
       `
       INSERT INTO ip_entries
-        (ip, ip_numeric, computer_name, username, full_name, password, rdp, rdp_app, system, department, heliant_installed)
+        (ip, ip_numeric, computer_name, username, full_name, password, rdp, rdp_app, os, department, heliant_installed)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
@@ -637,7 +637,7 @@ router.post(
         emptyToNull(parsed.password),
         emptyToNull(parsed.rdp),
         emptyToNull(parsed.rdpApp),
-        emptyToNull(parsed.system),
+        emptyToNull(parsed.os),
         emptyToNull(parsed.department),
         emptyToNull(parsed.heliantInstalled),
       ]
@@ -655,7 +655,7 @@ router.post(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         metadata_id AS metadata,
         is_online AS isOnline,
@@ -700,7 +700,7 @@ router.put(
     if (parsed.password !== undefined) { sets.push("password = ?"); params.push(emptyToNull(parsed.password)); }
     if (parsed.rdp !== undefined) { sets.push("rdp = ?"); params.push(emptyToNull(parsed.rdp)); }
     if (parsed.rdpApp !== undefined) { sets.push("rdp_app = ?"); params.push(emptyToNull(parsed.rdpApp)); }
-    if (parsed.system !== undefined) { sets.push("system = ?"); params.push(emptyToNull(parsed.system)); }
+    if (parsed.os !== undefined) { sets.push("os = ?"); params.push(emptyToNull(parsed.os)); }
     if (parsed.department !== undefined) { sets.push("department = ?"); params.push(emptyToNull(parsed.department)); }
     if (parsed.heliantInstalled !== undefined) { sets.push("heliant_installed = ?"); params.push(emptyToNull(parsed.heliantInstalled)); }
 
@@ -731,7 +731,7 @@ router.put(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         metadata_id AS metadata,
         is_online AS isOnline,
@@ -1194,7 +1194,7 @@ router.get(
         full_name AS fullName,
         rdp,
         rdp_app AS rdpApp,
-        system,
+        os,
         department,
         is_online AS isOnline,
         last_checked AS lastChecked,
