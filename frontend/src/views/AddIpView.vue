@@ -74,7 +74,7 @@ const form = ref({
   password: '',
   rdp: '',
   rdpApp: '',
-  system: '',
+  os: '',
   heliantInstalled: '',
   department: '',
 })
@@ -86,7 +86,7 @@ const optionalFields = [
   { name: 'password', label: 'Lozinka' },
   { name: 'rdp', label: 'RDP' },
   { name: 'rdpApp', label: 'RDP App' },
-  { name: 'system', label: 'Sistem' },
+  { name: 'os', label: 'Sistem' },
   { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
 ]
