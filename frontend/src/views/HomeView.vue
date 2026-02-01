@@ -221,6 +221,10 @@
               <div class="text-xs text-slate-500">Sistem</div>
               <div class="text-sm font-medium break-all">{{ entry.system || '—' }}</div>
             </div>
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">Heliant Instaliran?</div>
+              <div class="text-sm font-medium break-all">{{ entry.heliantInstalled || '—' }}</div>
+            </div>
           </div>
         </div>
 

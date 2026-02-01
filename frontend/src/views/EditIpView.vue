@@ -57,6 +57,7 @@ const form = ref({
   anyDesk: '',
   system: '',
   department: '',
+  heliantInstalled: ''
 })
 
 const fields = [
@@ -68,6 +69,7 @@ const fields = [
   { name: 'rdp', label: 'RDP' },
   { name: 'rdpApp', label: 'RDP App' },
   { name: 'system', label: 'Sistem' },
+  { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
 ]
 

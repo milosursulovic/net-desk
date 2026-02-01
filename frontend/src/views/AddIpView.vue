@@ -29,7 +29,7 @@
             :id="field.name"
             v-model.trim="form[field.name]"
             type="text"
-            :placeholder="`Unesite ${field.label.toLowerCase()}`"
+            :placeholder="`${field.label}`"
             class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
           />
 
@@ -75,6 +75,7 @@ const form = ref({
   rdp: '',
   rdpApp: '',
   system: '',
+  heliantInstalled: '',
   department: '',
 })
 
@@ -86,6 +87,7 @@ const optionalFields = [
   { name: 'rdp', label: 'RDP' },
   { name: 'rdpApp', label: 'RDP App' },
   { name: 'system', label: 'Sistem' },
+  { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
 ]
 

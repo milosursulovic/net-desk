@@ -195,21 +195,23 @@ function buildLegacySearchSql(search = "") {
     rdp LIKE ? OR
     rdp_app LIKE ? OR
     system LIKE ? OR
-    department LIKE ?
+    department LIKE ? OR
+    heliant_installed ?
   )`;
   return { where, params: [like, like, like, like, like, like, like, like, like] };
 }
 
 const UpsertIpSchema = z.object({
   ip: z.string().refine(isValidIPv4, "Neispravan IPv4"),
-  computerName: z.string().optional(),
-  username: z.string().optional(),
-  fullName: z.string().optional(),
-  password: z.string().optional(),
-  rdp: z.string().optional(),
-  rdpApp: z.string().optional(),
-  system: z.string().optional(),
-  department: z.string().optional(),
+  computerName: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  fullName: z.string().nullable().optional(),
+  password: z.string().nullable().optional(),
+  rdp: z.string().nullable().optional(),
+  rdpApp: z.string().nullable().optional(),
+  system: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  heliantInstalled: z.string().nullable().optional()
 });
 
 const ListSchema = z.object({
@@ -226,6 +228,7 @@ const ListSchema = z.object({
       "rdpApp",
       "system",
       "department",
+      "heliantInstalled"
     ])
     .optional()
     .default("ip"),
@@ -329,7 +332,8 @@ router.get(
           computer_name AS computerName,
           username,
           department,
-          updated_at AS updatedAt
+          updated_at AS updatedAt,
+          heliant_installed as heliantInstalled
         FROM ip_entries
         WHERE LOWER(TRIM(computer_name)) = ?
         ORDER BY ip_numeric ASC
@@ -375,7 +379,8 @@ router.get(
         rdp_app AS rdpApp,
         system,
         department,
-        metadata_id AS metadataId
+        metadata_id AS metadataId,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       ${whereSql}
       ORDER BY ip_numeric ASC
@@ -393,6 +398,7 @@ router.get(
       system: e.system || "",
       department: e.department || "",
       hasMetadata: e.metadataId ? "DA" : "NE",
+      heliantInstalled: e.heliantInstalled || ""
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows, {
@@ -406,6 +412,7 @@ router.get(
         "system",
         "department",
         "hasMetadata",
+        "heliantInstalled"
       ],
       skipHeader: false,
     });
@@ -421,6 +428,7 @@ router.get(
       { wch: 14 },
       { wch: 16 },
       { wch: 12 },
+      { wch: 16 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -473,6 +481,7 @@ router.get(
       rdpApp: "rdp_app",
       system: "system",
       department: "department",
+      heliantInstalled: "heliant_installed"
     };
 
     const safeSort = sortMap[sortBy] || "ip_numeric";
@@ -502,7 +511,8 @@ router.get(
         metadata_id AS metadata,
         is_online AS isOnline,
         last_checked AS lastChecked,
-        last_status_change AS lastStatusChange
+        last_status_change AS lastStatusChange,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       ${whereListSql}
       ORDER BY ${safeSort} ${dir}
@@ -589,7 +599,8 @@ router.get(
         last_checked AS lastChecked,
         last_status_change AS lastStatusChange,
         created_at AS createdAt,
-        updated_at AS updatedAt
+        updated_at AS updatedAt,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       WHERE id = ?
       LIMIT 1
@@ -614,8 +625,8 @@ router.post(
     const [result] = await pool.execute(
       `
       INSERT INTO ip_entries
-        (ip, ip_numeric, computer_name, username, full_name, password, rdp, rdp_app, system, department)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (ip, ip_numeric, computer_name, username, full_name, password, rdp, rdp_app, system, department, heliant_installed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         ip,
@@ -628,6 +639,7 @@ router.post(
         emptyToNull(parsed.rdpApp),
         emptyToNull(parsed.system),
         emptyToNull(parsed.department),
+        emptyToNull(parsed.heliantInstalled),
       ]
     );
 
@@ -650,7 +662,8 @@ router.post(
         last_checked AS lastChecked,
         last_status_change AS lastStatusChange,
         created_at AS createdAt,
-        updated_at AS updatedAt
+        updated_at AS updatedAt,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       WHERE id = ?
       LIMIT 1
@@ -689,6 +702,7 @@ router.put(
     if (parsed.rdpApp !== undefined) { sets.push("rdp_app = ?"); params.push(emptyToNull(parsed.rdpApp)); }
     if (parsed.system !== undefined) { sets.push("system = ?"); params.push(emptyToNull(parsed.system)); }
     if (parsed.department !== undefined) { sets.push("department = ?"); params.push(emptyToNull(parsed.department)); }
+    if (parsed.heliantInstalled !== undefined) { sets.push("heliant_installed = ?"); params.push(emptyToNull(parsed.heliantInstalled)); }
 
     if (!sets.length) {
       return res.status(400).json({ message: "Nema polja za izmenu" });
@@ -724,7 +738,8 @@ router.put(
         last_checked AS lastChecked,
         last_status_change AS lastStatusChange,
         created_at AS createdAt,
-        updated_at AS updatedAt
+        updated_at AS updatedAt,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       WHERE id = ?
       LIMIT 1
@@ -1183,7 +1198,8 @@ router.get(
         department,
         is_online AS isOnline,
         last_checked AS lastChecked,
-        last_status_change AS lastStatusChange
+        last_status_change AS lastStatusChange,
+        heliant_installed AS heliantInstalled
       FROM ip_entries
       WHERE id = ?
       `,
