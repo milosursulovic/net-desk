@@ -1,7 +1,7 @@
 import os from "os";
 import ping from "ping";
 import pLimit from "p-limit";
-import { pool } from "../index.js";
+import { pool } from "../db/pool.js";
 
 export function startPingLoop(
   intervalSeconds = 30,

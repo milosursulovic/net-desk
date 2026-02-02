@@ -2,14 +2,10 @@
   "name": "net-desk",
   "version": "1.0.5",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index",
-    "dev": "nodemon index",
-    "migrate": "node ./database/migrations.js",
-    "seed:user": "node ./database/seeders/seedUser.js",
-    "seed:ip": "node ./database/seeders/seedIpAddresses.js",
-    "seed:inventory": "node ./database/seeders/seedInventory.js",
+    "start": "node server",
+    "dev": "nodemon server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -34,6 +30,12 @@
     "zod": "^4.1.8"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-sonarjs": "^3.0.6",
+    "globals": "^17.3.0",
+    "nodemon": "^3.1.10",
+    "ts-api-utils": "^2.4.0"
   }
 }

@@ -1,5 +1,20 @@
 import { pool } from "../index.js"; 
-import { ipToNumeric, isValidIPv4 } from "../utils/ip.js";
+
+function isValidIPv4(ip) {
+  if (typeof ip !== "string") return false;
+  const parts = ip.trim().split(".");
+  if (parts.length !== 4) return false;
+  return parts.every(
+    (p) => /^\d+$/.test(p) && Number(p) >= 0 && Number(p) <= 255
+  );
+}
+
+function ipToNumeric(ip) {
+  if (!isValidIPv4(ip)) throw new Error(`Invalid IPv4: ${ip}`);
+  return (
+    ip.split(".").reduce((acc, octet) => (acc << 8) + Number(octet), 0) >>> 0
+  );
+}
 
 function asDateOrNull(v) {
   if (v == null || v === "") return null;
@@ -17,7 +32,6 @@ function asNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 function pick(obj, path, def = null) {
-  // path: "OS.Caption"
   if (!obj || typeof obj !== "object") return def;
   const parts = String(path).split(".");
   let cur = obj;

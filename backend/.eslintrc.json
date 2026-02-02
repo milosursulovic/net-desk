@@ -1,0 +1,10 @@
+{
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "build/",
+    "coverage/",
+    ".git/",
+    "*.min.js"
+  ]
+}
