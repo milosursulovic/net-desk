@@ -383,7 +383,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, defineComponent, h } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
 const FormInput = defineComponent({

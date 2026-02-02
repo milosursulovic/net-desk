@@ -142,7 +142,7 @@
           <div>
             <div class="text-sm text-slate-500">IP adresa</div>
             <div class="text-lg font-semibold tracking-tight">
-                {{ entry.ip }}
+              {{ entry.ip }}
             </div>
 
             <div class="mt-1 text-xs text-slate-500">
@@ -449,27 +449,27 @@
                     <div v-else class="text-sm text-gray-500">Nema podataka.</div>
                   </section>
 
-                    <section class="rounded-lg border p-4">
-                      <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
-                      <div v-if="meta.NICs?.length" class="space-y-2">
-                        <div
-                          v-for="(n, idx) in meta.NICs"
-                          :key="idx"
-                          class="border rounded p-3 bg-white"
-                        >
-                          <div class="text-sm">
-                            <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
-                          </div>
-                          <div class="text-sm">
-                            <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
-                          </div>
-                          <div class="text-sm">
-                            <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
-                          </div>
+                  <section class="rounded-lg border p-4">
+                    <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
+                    <div v-if="meta.NICs?.length" class="space-y-2">
+                      <div
+                        v-for="(n, idx) in meta.NICs"
+                        :key="idx"
+                        class="border rounded p-3 bg-white"
+                      >
+                        <div class="text-sm">
+                          <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
+                        </div>
+                        <div class="text-sm">
+                          <span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}
+                        </div>
+                        <div class="text-sm">
+                          <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
                         </div>
                       </div>
-                      <div v-else class="text-sm text-gray-500">Nema podataka.</div>
-                    </section>
+                    </div>
+                    <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+                  </section>
 
                   <section class="rounded-lg border p-4">
                     <h4 class="font-semibold mb-2">BIOS / Matična</h4>
@@ -1024,8 +1024,6 @@ watch(
   },
   { immediate: true }
 )
-
-const goToAddWithIp = (ip) => router.push({ path: '/add', query: { ip } })
 </script>
 
 <style scoped>
