@@ -1,16 +1,16 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
-    exportXlsxPrintersController,
-    listPrintersController,
-    getPrinterController,
-    createPrinterController,
-    updatePrinterController,
-    deletePrinterController,
-    setHostController,
-    unsetHostController,
-    connectController,
-    disconnectController,
+  exportXlsxPrintersController,
+  listPrintersController,
+  getPrinterController,
+  createPrinterController,
+  updatePrinterController,
+  deletePrinterController,
+  setHostController,
+  unsetHostController,
+  connectController,
+  disconnectController,
 } from "../controllers/printers.controller.js";
 
 const router = express.Router();

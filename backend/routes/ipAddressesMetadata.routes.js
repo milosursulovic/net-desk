@@ -1,6 +1,10 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { getMetadataByIpController, upsertMetadataByIpController, patchMetadataByIpController } from "../controllers/ipAddressesMetadata.controller.js";
+import {
+  getMetadataByIpController,
+  upsertMetadataByIpController,
+  patchMetadataByIpController,
+} from "../controllers/ipAddressesMetadata.controller.js";
 
 const router = express.Router();
 

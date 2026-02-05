@@ -8,32 +8,34 @@ import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 
 export const createApp = () => {
-    const app = express();
-    app.set("trust proxy", true);
+  const app = express();
+  app.set("trust proxy", true);
 
-    app.use(
-        helmet({
-            crossOriginResourcePolicy: false,
-            hsts: IS_PROD,
-        })
-    );
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false,
+      hsts: IS_PROD,
+    }),
+  );
 
-    setupLogger(app);
-    setupCors(app);
+  setupLogger(app);
+  setupCors(app);
 
-    app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "2mb" }));
 
-    app.get("/health", (_req, res) => res.status(200).send("ok"));
+  app.get("/health", (_req, res) => res.status(200).send("ok"));
 
-    app.locals.isDbReady = false;
-    app.get("/ready", (_req, res) =>
-        app.locals.isDbReady ? res.status(200).send("ready") : res.status(503).send("not ready")
-    );
+  app.locals.isDbReady = false;
+  app.get("/ready", (_req, res) =>
+    app.locals.isDbReady
+      ? res.status(200).send("ready")
+      : res.status(503).send("not ready"),
+  );
 
-    app.use(routes);
+  app.use(routes);
 
-    app.use(notFound);
-    app.use(errorHandler);
+  app.use(notFound);
+  app.use(errorHandler);
 
-    return app;
+  return app;
 };

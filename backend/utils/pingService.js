@@ -6,10 +6,10 @@ import { pool } from "../db/pool.js";
 export function startPingLoop(
   intervalSeconds = 30,
   concurrency = 20,
-  pingTimeoutSeconds = 2
+  pingTimeoutSeconds = 2,
 ) {
   console.log(
-    `🔁 Ping service every ${intervalSeconds}s, concurrency=${concurrency}, timeout=${pingTimeoutSeconds}s`
+    `🔁 Ping service every ${intervalSeconds}s, concurrency=${concurrency}, timeout=${pingTimeoutSeconds}s`,
   );
 
   const platform = os.platform();
@@ -17,7 +17,11 @@ export function startPingLoop(
   const pingOpts =
     platform === "win32"
       ? { timeout: pingTimeoutSeconds, min_reply: 1 }
-      : { timeout: pingTimeoutSeconds, min_reply: 1, deadline: pingTimeoutSeconds + 1 };
+      : {
+          timeout: pingTimeoutSeconds,
+          min_reply: 1,
+          deadline: pingTimeoutSeconds + 1,
+        };
 
   const limit = pLimit(concurrency);
   let stopped = false;
@@ -37,7 +41,7 @@ export function startPingLoop(
           computer_name AS computerName,
           is_online AS isOnline
         FROM ip_entries
-        `
+        `,
       );
 
       const results = await Promise.all(
@@ -54,9 +58,14 @@ export function startPingLoop(
               };
             } catch (err) {
               if (errorLogBudget-- > 0) {
-                console.error(`❌ ping error for ${e.ip}:`, err?.message || err);
+                console.error(
+                  `❌ ping error for ${e.ip}:`,
+                  err?.message || err,
+                );
                 if (errorLogBudget === 0) {
-                  console.error("🔕 Further ping errors will be suppressed this run.");
+                  console.error(
+                    "🔕 Further ping errors will be suppressed this run.",
+                  );
                 }
               }
               return {
@@ -67,8 +76,8 @@ export function startPingLoop(
                 alive: false,
               };
             }
-          })
-        )
+          }),
+        ),
       );
 
       const changed = [];
@@ -77,7 +86,9 @@ export function startPingLoop(
       for (const r of results) {
         const isChanged = r.prev !== r.alive;
         if (isChanged) {
-          console.log(`📡 ${r.name} (${r.ip}) → ${r.alive ? "Online" : "Offline"} (changed)`);
+          console.log(
+            `📡 ${r.name} (${r.ip}) → ${r.alive ? "Online" : "Offline"} (changed)`,
+          );
           changed.push(r);
         } else {
           unchanged.push(r);
@@ -113,7 +124,7 @@ export function startPingLoop(
           SET last_status_change = ?
           WHERE id IN (${idsChanged.map(() => "?").join(",")})
           `,
-          [now, ...idsChanged]
+          [now, ...idsChanged],
         );
       }
     } catch (err) {
@@ -136,4 +147,3 @@ export function startPingLoop(
     },
   };
 }
-

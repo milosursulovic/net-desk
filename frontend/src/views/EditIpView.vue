@@ -9,7 +9,18 @@
         <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
+
+        <textarea
+          v-if="field.name === 'description'"
+          :id="field.name"
+          v-model.trim="form[field.name]"
+          rows="6"
+          placeholder="Unesi opis..."
+          class="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm resize-y"
+        />
+
         <input
+          v-else
           :id="field.name"
           v-model.trim="form[field.name]"
           type="text"
@@ -17,7 +28,10 @@
           :required="field.name === 'ip'"
           :class="field.name === 'ip' && ipError ? 'border-red-400' : ''"
         />
-        <p v-if="field.name === 'ip' && ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
+
+        <p v-if="field.name === 'ip' && ipError" class="text-xs text-red-600 mt-1">
+          {{ ipError }}
+        </p>
       </div>
 
       <div class="flex justify-between mt-6">
@@ -57,7 +71,8 @@ const form = ref({
   anyDesk: '',
   os: '',
   department: '',
-  heliantInstalled: ''
+  heliantInstalled: '',
+  description: '',
 })
 
 const fields = [
@@ -71,6 +86,7 @@ const fields = [
   { name: 'os', label: 'Sistem' },
   { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
+  { name: 'description', label: 'Opis' },
 ]
 
 const ipError = computed(() => {

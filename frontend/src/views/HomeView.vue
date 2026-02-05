@@ -228,6 +228,27 @@
           </div>
         </div>
 
+        <!-- ✅ OPIS / DESCRIPTION -->
+        <div v-if="entry.description" class="mt-3 rounded-lg bg-slate-50 px-3 py-2">
+          <div class="text-xs text-slate-500 mb-1">Opis</div>
+
+          <p
+            class="text-sm text-slate-800 whitespace-pre-wrap break-words"
+            :class="expandedDesc[entry.id] ? '' : 'line-clamp-3'"
+          >
+            {{ entry.description }}
+          </p>
+
+          <button
+            v-if="entry.description.length > 140"
+            @click="toggleDesc(entry.id)"
+            class="mt-1 text-xs text-blue-600 hover:underline"
+            type="button"
+          >
+            {{ expandedDesc[entry.id] ? 'Sakrij' : 'Prikaži više' }}
+          </button>
+        </div>
+
         <div class="mt-2 text-[11px] text-slate-500">
           Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
           {{ fmtRelative(entry.lastStatusChange) }}
@@ -750,6 +771,8 @@ const metaError = ref(null)
 const metaEntry = ref(null)
 const meta = ref(null)
 
+const expandedDesc = ref({}) // ✅ novo: state za expand opisa
+
 const sortOptions = [
   { value: 'ip', label: 'IP adresa' },
   { value: 'computerName', label: 'Ime računara' },
@@ -767,6 +790,10 @@ watch([sortBy, sortOrder, status], () => {
 
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry.id}`)
+
+const toggleDesc = (id) => {
+  expandedDesc.value[id] = !expandedDesc.value[id]
+}
 
 async function fetchData() {
   const params = new URLSearchParams({
@@ -786,6 +813,11 @@ async function fetchData() {
     total.value = data.total
     totalPages.value = data.totalPages
     counts.value = data.counts || { online: 0, offline: 0 }
+
+    // ✅ opcionalno: očisti expand state za obrisane/skrivene entry-je
+    const next = {}
+    for (const e of entries.value) next[e.id] = !!expandedDesc.value[e.id]
+    expandedDesc.value = next
   } catch (err) {
     console.error('Neuspešno dohvatanje podataka')
   }
@@ -1039,5 +1071,13 @@ watch(
 
 .glass-container {
   backdrop-filter: saturate(140%) blur(2px);
+}
+
+/* ✅ fallback ako nemaš tailwind line-clamp plugin */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

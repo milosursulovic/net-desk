@@ -2,12 +2,12 @@ import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
 import {
-    exportInventoryController,
-    getInventoryItemController,
-    listInventoryController,
-    createInventoryItemController,
-    updateInventoryItemController,
-    deleteInventoryItemController,
+  exportInventoryController,
+  getInventoryItemController,
+  listInventoryController,
+  createInventoryItemController,
+  updateInventoryItemController,
+  deleteInventoryItemController,
 } from "../controllers/inventory.controller.js";
 
 const router = express.Router();

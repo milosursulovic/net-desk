@@ -1,11 +1,11 @@
-import { pool } from "../index.js"; 
+import { pool } from "../index.js";
 
 function isValidIPv4(ip) {
   if (typeof ip !== "string") return false;
   const parts = ip.trim().split(".");
   if (parts.length !== 4) return false;
   return parts.every(
-    (p) => /^\d+$/.test(p) && Number(p) >= 0 && Number(p) <= 255
+    (p) => /^\d+$/.test(p) && Number(p) >= 0 && Number(p) <= 255,
   );
 }
 
@@ -68,7 +68,7 @@ async function getIpEntryById(conn, id) {
     WHERE id = ?
     LIMIT 1
     `,
-    [id]
+    [id],
   );
   return row || null;
 }
@@ -113,7 +113,7 @@ async function getMetadataByIpEntryId(conn, ipEntryId) {
     WHERE ip_entry_id = ?
     LIMIT 1
     `,
-    [ipEntryId]
+    [ipEntryId],
   );
 
   if (!meta) return null;
@@ -129,7 +129,7 @@ async function getMetadataByIpEntryId(conn, ipEntryId) {
         form_factor AS FormFactor
      FROM computer_metadata_ram_modules
      WHERE metadata_id = ?`,
-    [meta.id]
+    [meta.id],
   );
 
   const [storage] = await conn.execute(
@@ -143,7 +143,7 @@ async function getMetadataByIpEntryId(conn, ipEntryId) {
         device_id AS DeviceID
      FROM computer_metadata_storage
      WHERE metadata_id = ?`,
-    [meta.id]
+    [meta.id],
   );
 
   const [gpus] = await conn.execute(
@@ -153,7 +153,7 @@ async function getMetadataByIpEntryId(conn, ipEntryId) {
         vram_gb AS VRAM_GB
      FROM computer_metadata_gpus
      WHERE metadata_id = ?`,
-    [meta.id]
+    [meta.id],
   );
 
   const [nics] = await conn.execute(
@@ -163,7 +163,7 @@ async function getMetadataByIpEntryId(conn, ipEntryId) {
         speed_mbps AS SpeedMbps
      FROM computer_metadata_nics
      WHERE metadata_id = ?`,
-    [meta.id]
+    [meta.id],
   );
 
   return {
@@ -232,12 +232,12 @@ export async function setMetadataForIp(ip, metadataPayload) {
       ON DUPLICATE KEY UPDATE
         ip_numeric = VALUES(ip_numeric)
       `,
-      [ip, ipNumeric]
+      [ip, ipNumeric],
     );
 
     const [[ipEntryRow]] = await conn.execute(
       `SELECT id, metadata_id AS metadataId FROM ip_entries WHERE ip = ? LIMIT 1`,
-      [ip]
+      [ip],
     );
     if (!ipEntryRow) throw new Error("Failed to load ip_entries row");
 
@@ -264,7 +264,9 @@ export async function setMetadataForIp(ip, metadataPayload) {
 
       bios_vendor: asStr(pick(metadataPayload, "BIOS.Vendor")),
       bios_version: asStr(pick(metadataPayload, "BIOS.Version")),
-      bios_release_date: asDateOrNull(pick(metadataPayload, "BIOS.ReleaseDate")),
+      bios_release_date: asDateOrNull(
+        pick(metadataPayload, "BIOS.ReleaseDate"),
+      ),
 
       cpu_name: asStr(pick(metadataPayload, "CPU.Name")),
       cpu_cores: asNum(pick(metadataPayload, "CPU.Cores")),
@@ -346,36 +348,36 @@ export async function setMetadataForIp(ip, metadataPayload) {
         cm.cpu_socket,
 
         cm.psu,
-      ]
+      ],
     );
 
     const [[metaRow]] = await conn.execute(
       `SELECT id FROM computer_metadata WHERE ip_entry_id = ? LIMIT 1`,
-      [ipEntryId]
+      [ipEntryId],
     );
     if (!metaRow) throw new Error("Failed to load computer_metadata row");
     const metadataId = metaRow.id;
 
-    await conn.execute(
-      `UPDATE ip_entries SET metadata_id = ? WHERE id = ?`,
-      [metadataId, ipEntryId]
-    );
+    await conn.execute(`UPDATE ip_entries SET metadata_id = ? WHERE id = ?`, [
+      metadataId,
+      ipEntryId,
+    ]);
 
     await conn.execute(
       `DELETE FROM computer_metadata_ram_modules WHERE metadata_id = ?`,
-      [metadataId]
+      [metadataId],
     );
     await conn.execute(
       `DELETE FROM computer_metadata_storage WHERE metadata_id = ?`,
-      [metadataId]
+      [metadataId],
     );
     await conn.execute(
       `DELETE FROM computer_metadata_gpus WHERE metadata_id = ?`,
-      [metadataId]
+      [metadataId],
     );
     await conn.execute(
       `DELETE FROM computer_metadata_nics WHERE metadata_id = ?`,
-      [metadataId]
+      [metadataId],
     );
 
     const ramModules = Array.isArray(metadataPayload?.RAMModules)
@@ -398,7 +400,7 @@ export async function setMetadataForIp(ip, metadataPayload) {
           asNum(r?.CapacityGB),
           asNum(r?.SpeedMTps),
           asStr(r?.FormFactor),
-        ]
+        ],
       );
     }
 
@@ -422,11 +424,13 @@ export async function setMetadataForIp(ip, metadataPayload) {
           asStr(s?.MediaType),
           asStr(s?.BusType),
           asStr(s?.DeviceID),
-        ]
+        ],
       );
     }
 
-    const gpus = Array.isArray(metadataPayload?.GPUs) ? metadataPayload.GPUs : [];
+    const gpus = Array.isArray(metadataPayload?.GPUs)
+      ? metadataPayload.GPUs
+      : [];
     for (const g of gpus) {
       await conn.execute(
         `
@@ -435,11 +439,13 @@ export async function setMetadataForIp(ip, metadataPayload) {
         VALUES
           (?, ?, ?, ?)
         `,
-        [metadataId, asStr(g?.Name), asStr(g?.DriverVers), asNum(g?.VRAM_GB)]
+        [metadataId, asStr(g?.Name), asStr(g?.DriverVers), asNum(g?.VRAM_GB)],
       );
     }
 
-    const nics = Array.isArray(metadataPayload?.NICs) ? metadataPayload.NICs : [];
+    const nics = Array.isArray(metadataPayload?.NICs)
+      ? metadataPayload.NICs
+      : [];
     for (const n of nics) {
       await conn.execute(
         `
@@ -448,7 +454,7 @@ export async function setMetadataForIp(ip, metadataPayload) {
         VALUES
           (?, ?, ?, ?)
         `,
-        [metadataId, asStr(n?.Name), asStr(n?.MAC), asNum(n?.SpeedMbps)]
+        [metadataId, asStr(n?.Name), asStr(n?.MAC), asNum(n?.SpeedMbps)],
       );
     }
 
@@ -467,4 +473,3 @@ export async function setMetadataForIp(ip, metadataPayload) {
     conn.release();
   }
 }
-

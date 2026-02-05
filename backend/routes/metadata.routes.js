@@ -1,6 +1,9 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { listMetadataController, statsController } from "../controllers/metadata.controller.js";
+import {
+  listMetadataController,
+  statsController,
+} from "../controllers/metadata.controller.js";
 
 const router = express.Router();
 

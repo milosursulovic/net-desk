@@ -1,14 +1,14 @@
 import { pool } from "../db/pool.js";
 
 function buildPrintersWhere(search = "") {
-    const q = String(search || "").trim();
-    if (!q) return { where: "1=1", params: [] };
+  const q = String(search || "").trim();
+  if (!q) return { where: "1=1", params: [] };
 
-    const like = `%${q}%`;
-    const ipPrefix = `${q}%`;
+  const like = `%${q}%`;
+  const ipPrefix = `${q}%`;
 
-    return {
-        where: `
+  return {
+    where: `
       (
         p.ip LIKE ?
         OR p.name LIKE ?
@@ -18,13 +18,13 @@ function buildPrintersWhere(search = "") {
         OR p.department LIKE ?
       )
     `,
-        params: [ipPrefix, like, like, like, like, like],
-    };
+    params: [ipPrefix, like, like, like, like, like],
+  };
 }
 
 export async function getPrinterById(printerId) {
-    const [[p]] = await pool.execute(
-        `
+  const [[p]] = await pool.execute(
+    `
     SELECT
       p.id,
       p.name,
@@ -43,24 +43,24 @@ export async function getPrinterById(printerId) {
     WHERE p.id = ?
     LIMIT 1
     `,
-        [printerId]
-    );
-    if (!p) return null;
+    [printerId],
+  );
+  if (!p) return null;
 
-    let host = null;
-    if (p.hostComputerId) {
-        const [[h]] = await pool.execute(
-            `SELECT id, ip, computer_name AS computerName, username, department
+  let host = null;
+  if (p.hostComputerId) {
+    const [[h]] = await pool.execute(
+      `SELECT id, ip, computer_name AS computerName, username, department
        FROM ip_entries
        WHERE id = ?
        LIMIT 1`,
-            [p.hostComputerId]
-        );
-        host = h || null;
-    }
+      [p.hostComputerId],
+    );
+    host = h || null;
+  }
 
-    const [connected] = await pool.execute(
-        `
+  const [connected] = await pool.execute(
+    `
     SELECT
       ie.id,
       ie.ip,
@@ -72,29 +72,29 @@ export async function getPrinterById(printerId) {
     WHERE pc.printer_id = ?
     ORDER BY ie.ip_numeric ASC
     `,
-        [printerId]
-    );
+    [printerId],
+  );
 
-    return {
-        ...p,
-        hostComputer: host,
-        connectedComputers: connected || [],
-        connectedCount: (connected || []).length,
-    };
+  return {
+    ...p,
+    hostComputer: host,
+    connectedComputers: connected || [],
+    connectedCount: (connected || []).length,
+  };
 }
 
 export async function listPrinters({ page, limit, search }) {
-    const { where, params } = buildPrintersWhere(search);
+  const { where, params } = buildPrintersWhere(search);
 
-    const [[{ total }]] = await pool.execute(
-        `SELECT COUNT(*) AS total FROM printers p WHERE ${where}`,
-        params
-    );
+  const [[{ total }]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM printers p WHERE ${where}`,
+    params,
+  );
 
-    const offset = (page - 1) * limit;
+  const offset = (page - 1) * limit;
 
-    const [items] = await pool.execute(
-        `
+  const [items] = await pool.execute(
+    `
     SELECT
       p.id,
       p.name,
@@ -126,119 +126,124 @@ export async function listPrinters({ page, limit, search }) {
     ORDER BY p.ip_numeric ASC, p.name ASC
     LIMIT ? OFFSET ?
     `,
-        [...params, limit, offset]
-    );
+    [...params, limit, offset],
+  );
 
-    const mapped = items.map((p) => ({
-        ...p,
-        host: p.hostId
-            ? {
-                id: p.hostId,
-                ip: p.hostIp,
-                computerName: p.hostComputerName,
-                username: p.hostUsername,
-                department: p.hostDepartment,
-            }
-            : null,
-    }));
+  const mapped = items.map((p) => ({
+    ...p,
+    host: p.hostId
+      ? {
+          id: p.hostId,
+          ip: p.hostIp,
+          computerName: p.hostComputerName,
+          username: p.hostUsername,
+          department: p.hostDepartment,
+        }
+      : null,
+  }));
 
-    for (const it of mapped) {
-        delete it.hostId;
-        delete it.hostIp;
-        delete it.hostComputerName;
-        delete it.hostUsername;
-        delete it.hostDepartment;
-    }
+  for (const it of mapped) {
+    delete it.hostId;
+    delete it.hostIp;
+    delete it.hostComputerName;
+    delete it.hostUsername;
+    delete it.hostDepartment;
+  }
 
-    return {
-        items: mapped,
-        total: Number(total) || 0,
-    };
+  return {
+    items: mapped,
+    total: Number(total) || 0,
+  };
 }
 
 export async function insertPrinter(row) {
-    const [r] = await pool.execute(
-        `
+  const [r] = await pool.execute(
+    `
     INSERT INTO printers
       (name, manufacturer, model, serial, department, connection_type, ip, ip_numeric, shared, host_computer_id)
     VALUES
       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
-        [
-            row.name,
-            row.manufacturer,
-            row.model,
-            row.serial,
-            row.department,
-            row.connectionType,
-            row.ip,
-            row.ipNumeric,
-            row.shared,
-            row.hostComputerId,
-        ]
-    );
-    return r.insertId;
+    [
+      row.name,
+      row.manufacturer,
+      row.model,
+      row.serial,
+      row.department,
+      row.connectionType,
+      row.ip,
+      row.ipNumeric,
+      row.shared,
+      row.hostComputerId,
+    ],
+  );
+  return r.insertId;
 }
 
 export async function updatePrinterFields(id, fieldsSql, params) {
-    const [r] = await pool.execute(
-        `UPDATE printers SET ${fieldsSql} WHERE id = ?`,
-        [...params, id]
-    );
-    return r.affectedRows;
+  const [r] = await pool.execute(
+    `UPDATE printers SET ${fieldsSql} WHERE id = ?`,
+    [...params, id],
+  );
+  return r.affectedRows;
 }
 
 export async function deletePrinter(id) {
-    const [r] = await pool.execute(`DELETE FROM printers WHERE id = ?`, [id]);
-    return r.affectedRows;
+  const [r] = await pool.execute(`DELETE FROM printers WHERE id = ?`, [id]);
+  return r.affectedRows;
 }
 
 export async function setPrinterHost(id, hostComputerId) {
-    const [r] = await pool.execute(
-        `UPDATE printers SET host_computer_id = ? WHERE id = ?`,
-        [hostComputerId, id]
-    );
-    return r.affectedRows;
+  const [r] = await pool.execute(
+    `UPDATE printers SET host_computer_id = ? WHERE id = ?`,
+    [hostComputerId, id],
+  );
+  return r.affectedRows;
 }
 
 export async function unsetPrinterHost(id) {
-    const [r] = await pool.execute(
-        `UPDATE printers SET host_computer_id = NULL WHERE id = ?`,
-        [id]
-    );
-    return r.affectedRows;
+  const [r] = await pool.execute(
+    `UPDATE printers SET host_computer_id = NULL WHERE id = ?`,
+    [id],
+  );
+  return r.affectedRows;
 }
 
 export async function connectPrinterComputer(printerId, ipEntryId) {
-    await pool.execute(
-        `INSERT IGNORE INTO printer_connected_computers (printer_id, ip_entry_id) VALUES (?, ?)`,
-        [printerId, ipEntryId]
-    );
-    await pool.execute(`UPDATE printers SET shared = 1 WHERE id = ?`, [printerId]);
+  await pool.execute(
+    `INSERT IGNORE INTO printer_connected_computers (printer_id, ip_entry_id) VALUES (?, ?)`,
+    [printerId, ipEntryId],
+  );
+  await pool.execute(`UPDATE printers SET shared = 1 WHERE id = ?`, [
+    printerId,
+  ]);
 }
 
 export async function disconnectPrinterComputer(printerId, ipEntryId) {
-    await pool.execute(
-        `DELETE FROM printer_connected_computers WHERE printer_id = ? AND ip_entry_id = ?`,
-        [printerId, ipEntryId]
-    );
+  await pool.execute(
+    `DELETE FROM printer_connected_computers WHERE printer_id = ? AND ip_entry_id = ?`,
+    [printerId, ipEntryId],
+  );
 }
 
 export async function updateSharedFromConnections(printerId) {
-    const [[{ cnt }]] = await pool.execute(
-        `SELECT COUNT(*) AS cnt FROM printer_connected_computers WHERE printer_id = ?`,
-        [printerId]
-    );
-    const shared = Number(cnt) > 0 ? 1 : 0;
-    await pool.execute(`UPDATE printers SET shared = ? WHERE id = ?`, [shared, printerId]);
-    return shared;
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM printer_connected_computers WHERE printer_id = ?`,
+    [printerId],
+  );
+  const shared = Number(cnt) > 0 ? 1 : 0;
+  await pool.execute(`UPDATE printers SET shared = ? WHERE id = ?`, [
+    shared,
+    printerId,
+  ]);
+  return shared;
 }
 
 export async function exportPrintersData(search) {
-    const { where, params } = buildPrintersWhere(search);
+  const { where, params } = buildPrintersWhere(search);
 
-    const [printers] = await pool.execute(
-        `
+  const [printers] = await pool.execute(
+    `
     SELECT
       p.id,
       p.name,
@@ -259,11 +264,11 @@ export async function exportPrintersData(search) {
     WHERE ${where}
     ORDER BY p.ip_numeric ASC, p.name ASC
     `,
-        params
-    );
+    params,
+  );
 
-    const [connections] = await pool.execute(
-        `
+  const [connections] = await pool.execute(
+    `
     SELECT
       p.name AS PrinterName,
       p.ip AS PrinterIP,
@@ -291,11 +296,11 @@ export async function exportPrintersData(search) {
 
     ORDER BY PrinterName ASC, Role ASC, ComputerName ASC
     `,
-        [...params, ...params]
-    );
+    [...params, ...params],
+  );
 
-    const [connAgg] = await pool.execute(
-        `
+  const [connAgg] = await pool.execute(
+    `
     SELECT
       pc.printer_id AS printerId,
       COUNT(*) AS connectedCount,
@@ -311,8 +316,12 @@ export async function exportPrintersData(search) {
     FROM printer_connected_computers pc
     JOIN ip_entries ie ON ie.id = pc.ip_entry_id
     GROUP BY pc.printer_id
-    `
-    );
+    `,
+  );
 
-    return { printers: printers || [], connections: connections || [], connAgg: connAgg || [] };
+  return {
+    printers: printers || [],
+    connections: connections || [],
+    connAgg: connAgg || [],
+  };
 }

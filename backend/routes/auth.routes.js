@@ -1,7 +1,10 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { loginController, meController } from "../controllers/auth.controller.js";
+import {
+  loginController,
+  meController,
+} from "../controllers/auth.controller.js";
 
 const router = express.Router();
 

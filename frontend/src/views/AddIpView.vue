@@ -15,7 +15,6 @@
             required
             :class="ipError ? 'border-red-400' : ''"
           />
-
         </div>
         <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
@@ -24,15 +23,25 @@
         <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
           {{ field.label }}
         </label>
+
         <div class="relative">
+          <textarea
+            v-if="field.name === 'description'"
+            :id="field.name"
+            v-model.trim="form[field.name]"
+            rows="6"
+            placeholder="Opis..."
+            class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          />
+
           <input
+            v-else
             :id="field.name"
             v-model.trim="form[field.name]"
             type="text"
             :placeholder="`${field.label}`"
             class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
           />
-
         </div>
       </div>
 
@@ -77,6 +86,7 @@ const form = ref({
   os: '',
   heliantInstalled: '',
   department: '',
+  description: '',
 })
 
 const optionalFields = [
@@ -89,6 +99,7 @@ const optionalFields = [
   { name: 'os', label: 'Sistem' },
   { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
+  { name: 'description', label: 'Opis' },
 ]
 
 const ipError = computed(() => {

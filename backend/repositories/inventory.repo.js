@@ -1,22 +1,22 @@
 import { pool } from "../db/pool.js";
 
 export async function inventoryExportAll() {
-    const [items] = await pool.execute(
-        `SELECT
+  const [items] = await pool.execute(
+    `SELECT
        id, type, manufacturer, model,
        serial_number AS serialNumber,
        quantity, status,
        capacity, speed, socket, location, notes,
        created_at AS createdAt, updated_at AS updatedAt
      FROM inventory_items
-     ORDER BY created_at DESC`
-    );
-    return items || [];
+     ORDER BY created_at DESC`,
+  );
+  return items || [];
 }
 
 export async function inventoryFindById(id) {
-    const [rows] = await pool.execute(
-        `SELECT
+  const [rows] = await pool.execute(
+    `SELECT
        id, type, manufacturer, model,
        serial_number AS serialNumber,
        quantity, status,
@@ -25,9 +25,9 @@ export async function inventoryFindById(id) {
      FROM inventory_items
      WHERE id = ?
      LIMIT 1`,
-        [id]
-    );
-    return rows?.[0] || null;
+    [id],
+  );
+  return rows?.[0] || null;
 }
 
 export async function inventoryListWithCounts({
@@ -74,30 +74,30 @@ export async function inventoryListWithCounts({
 }
 
 export async function inventoryInsert(payload) {
-    const [result] = await pool.execute(
-        `INSERT INTO inventory_items
+  const [result] = await pool.execute(
+    `INSERT INTO inventory_items
       (type, manufacturer, model, serial_number, quantity, status, capacity, speed, socket, location, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-            payload.type,
-            payload.manufacturer,
-            payload.model,
-            payload.serialNumber,
-            payload.quantity,
-            payload.status,
-            payload.capacity,
-            payload.speed,
-            payload.socket,
-            payload.location,
-            payload.notes,
-        ]
-    );
-    return result.insertId;
+    [
+      payload.type,
+      payload.manufacturer,
+      payload.model,
+      payload.serialNumber,
+      payload.quantity,
+      payload.status,
+      payload.capacity,
+      payload.speed,
+      payload.socket,
+      payload.location,
+      payload.notes,
+    ],
+  );
+  return result.insertId;
 }
 
 export async function inventoryUpdate(id, payload) {
-    const [result] = await pool.execute(
-        `UPDATE inventory_items SET
+  const [result] = await pool.execute(
+    `UPDATE inventory_items SET
        type = ?,
        manufacturer = ?,
        model = ?,
@@ -110,25 +110,28 @@ export async function inventoryUpdate(id, payload) {
        location = ?,
        notes = ?
      WHERE id = ?`,
-        [
-            payload.type,
-            payload.manufacturer,
-            payload.model,
-            payload.serialNumber,
-            payload.quantity,
-            payload.status,
-            payload.capacity,
-            payload.speed,
-            payload.socket,
-            payload.location,
-            payload.notes,
-            id,
-        ]
-    );
-    return result.affectedRows;
+    [
+      payload.type,
+      payload.manufacturer,
+      payload.model,
+      payload.serialNumber,
+      payload.quantity,
+      payload.status,
+      payload.capacity,
+      payload.speed,
+      payload.socket,
+      payload.location,
+      payload.notes,
+      id,
+    ],
+  );
+  return result.affectedRows;
 }
 
 export async function inventoryDelete(id) {
-    const [result] = await pool.execute(`DELETE FROM inventory_items WHERE id = ?`, [id]);
-    return result.affectedRows;
+  const [result] = await pool.execute(
+    `DELETE FROM inventory_items WHERE id = ?`,
+    [id],
+  );
+  return result.affectedRows;
 }
