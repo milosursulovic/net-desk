@@ -94,10 +94,6 @@
       </div>
     </div>
 
-    <button @click="showPasswords = !showPasswords" class="text-sm text-gray-700 underline hover:text-gray-900">
-      {{ showPasswords ? 'Sakrij lozinke' : 'Prikaži lozinke' }}
-    </button>
-
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <article v-for="entry in entries" :key="entry.id"
         class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col">
@@ -137,30 +133,7 @@
         </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
-          <div class="flex justify-between gap-3">
-            <span class="text-slate-500">Korisničko ime</span>
-            <span class="font-medium truncate">{{ entry.username || '—' }}</span>
-          </div>
-          <div class="flex justify-between gap-3">
-            <span class="text-slate-500">Puno ime</span>
-            <span class="font-medium truncate">{{ entry.fullName || '—' }}</span>
-          </div>
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-slate-500">Lozinka</span>
-            <span class="font-medium truncate">
-              {{ showPasswords ? entry.password || '—' : '••••••' }}
-            </span>
-            <button v-if="showPasswords && entry.password" @click="copyToClipboard(entry.password, 'Lozinka kopirana!')"
-              class="ml-2 text-blue-600 hover:underline text-xs">
-              📋
-            </button>
-          </div>
-
           <div class="grid grid-cols-2 gap-2 pt-2">
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">RDP</div>
-              <div class="text-sm font-medium break-all">{{ entry.rdp || '—' }}</div>
-            </div>
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
               <div class="text-xs text-slate-500">RDP App</div>
               <div class="text-sm font-medium break-all">{{ entry.rdpApp || '—' }}</div>
@@ -168,10 +141,6 @@
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
               <div class="text-xs text-slate-500">Sistem</div>
               <div class="text-sm font-medium break-all">{{ entry.os || '—' }}</div>
-            </div>
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">Heliant Instaliran?</div>
-              <div class="text-sm font-medium break-all">{{ entry.heliantInstalled || '—' }}</div>
             </div>
           </div>
         </div>
@@ -202,9 +171,6 @@
           </button>
           <button @click="deleteEntry(entry.id)" class="text-red-600 hover:underline text-sm">
             Obriši
-          </button>
-          <button @click="generateRdpFile(entry)" class="text-green-600 hover:underline text-sm">
-            RDP
           </button>
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
             Meta
@@ -450,7 +416,7 @@
                     <div class="min-w-0">
                       <div class="font-medium truncate">{{ it.ip }}</div>
                       <div class="text-xs text-slate-500 truncate">
-                        {{ it.username || '—' }} · {{ it.department || '—' }}
+                        {{ it.department || '—' }}
                       </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
@@ -577,7 +543,6 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate, fmtRelative, fmtGb, fmtMbps, safe } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
-import { downloadRdpFile } from '@/utils/rdp.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
@@ -610,8 +575,6 @@ const totalPages = ref(0)
 const counts = ref({ online: 0, offline: 0 })
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 
-const showPasswords = ref(false)
-
 const showMeta = ref(false)
 const metaLoading = ref(false)
 const metaError = ref(null)
@@ -623,10 +586,7 @@ const expandedDesc = ref({}) // ✅ novo: state za expand opisa
 const sortOptions = [
   { value: 'ip', label: 'IP adresa' },
   { value: 'computerName', label: 'Ime računara' },
-  { value: 'username', label: 'Korisničko ime' },
-  { value: 'fullName', label: 'Puno ime' },
   { value: 'department', label: 'Odeljenje' },
-  { value: 'rdp', label: 'RDP' },
   { value: 'rdpApp', label: 'RDP App' },
   { value: 'os', label: 'Sistem' },
 ]
@@ -671,8 +631,6 @@ const deleteEntry = async (id) => {
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
   if (res.ok) fetchData()
 }
-
-const generateRdpFile = downloadRdpFile
 
 const exportToXlsx = async () => {
   try {

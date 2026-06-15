@@ -3,13 +3,8 @@ export const IPV4_REGEX = /^\d{1,3}(\.\d{1,3}){3}$/
 export const IP_ENTRY_DEFAULTS = {
   ip: '',
   computerName: '',
-  username: '',
-  fullName: '',
-  password: '',
-  rdp: '',
   rdpApp: '',
   os: '',
-  heliantInstalled: '',
   department: '',
   description: '',
 }
@@ -17,13 +12,8 @@ export const IP_ENTRY_DEFAULTS = {
 export const IP_ENTRY_FIELDS = [
   { name: 'ip', label: 'IP Adresa', required: true },
   { name: 'computerName', label: 'Ime računara' },
-  { name: 'username', label: 'Korisničko ime' },
-  { name: 'fullName', label: 'Puno ime' },
-  { name: 'password', label: 'Lozinka' },
-  { name: 'rdp', label: 'RDP' },
   { name: 'rdpApp', label: 'RDP App' },
   { name: 'os', label: 'Sistem' },
-  { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
   { name: 'department', label: 'Odeljenje' },
   { name: 'description', label: 'Opis' },
 ]
