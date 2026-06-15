@@ -18,20 +18,17 @@
     </main>
 
     <footer class="w-full text-center text-sm text-gray-500 py-4 border-t">
-      <div>&copy; {{ year }} Informacioni sistem Opšte bolnice Bor</div>
-      <div class="mt-1 text-xs text-gray-400">Verzija: {{ appVersion }}</div>
+      <AppFooter />
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import Logo from '@/components/Logo.vue'
 import LogoutButton from '@/components/LogoutButton.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
-
-const appVersion = import.meta.env.VITE_APP_VERSION
-const year = computed(() => new Date().getFullYear())
 
 const currentUser = ref(null)
 

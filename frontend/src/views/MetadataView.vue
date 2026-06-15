@@ -3,75 +3,38 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <h1 class="text-3xl font-bold text-slate-800">Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="refreshAll"
-          class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700"
-          :disabled="loading"
-        >
+        <button @click="refreshAll" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700"
+          :disabled="loading">
           {{ loading ? 'Učitavam…' : 'Osveži' }}
         </button>
-        <button
-          @click="exportXlsx"
-          class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
-          :disabled="!meta.length || loading"
-        >
+        <button @click="exportXlsx" class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
+          :disabled="!meta.length || loading">
           Izvezi XLSX
         </button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Ukupno mašina"
-        :value="stats.totalWithMeta"
-        :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
-      />
-      <KpiCard
-        title="Bez metapodataka"
-        :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
-        :sub="'od ' + totalIpEntries"
-      />
-      <KpiCard
-        title="Pros. RAM"
-        :value="fmtGb(stats.avgRamGb)"
-        :sub="'med.: ' + fmtGb(stats.medRamGb)"
-      />
-      <KpiCard
-        title="SSD/HDD"
-        :value="stats.ssdCount + ' / ' + stats.hddCount"
-        :sub="fmtTb(stats.totalStorageTb) + ' ukupno'"
-      />
+      <KpiCard title="Ukupno mašina" :value="stats.totalWithMeta" :sub="fmtPct(stats.coveragePct) + ' pokrivenost'" />
+      <KpiCard title="Bez metapodataka" :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
+        :sub="'od ' + totalIpEntries" />
+      <KpiCard title="Pros. RAM" :value="fmtGb(stats.avgRamGb)" :sub="'med.: ' + fmtGb(stats.medRamGb)" />
+      <KpiCard title="SSD/HDD" :value="stats.ssdCount + ' / ' + stats.hddCount"
+        :sub="fmtTb(stats.totalStorageTb) + ' ukupno'" />
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Jedinstvenih korisnika"
-        :value="stats.uniqueUsers"
-        :sub="'od ' + stats.totalWithMeta + ' mašina'"
-      />
-      <KpiCard
-        title="Pros. # diskova"
-        :value="stats.avgDisks"
-        :sub="'med.: ' + stats.medDisks"
-      />
-      <KpiCard
-        title="Pros. # NIC-ova"
-        :value="stats.avgNics"
-        :sub="'med.: ' + stats.medNics"
-      />
-      <KpiCard
-        title="Medijana starosti OS"
-        :value="stats.medOsAgeDays + ' dana'"
-        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
-      />
+      <KpiCard title="Jedinstvenih korisnika" :value="stats.uniqueUsers"
+        :sub="'od ' + stats.totalWithMeta + ' mašina'" />
+      <KpiCard title="Pros. # diskova" :value="stats.avgDisks" :sub="'med.: ' + stats.medDisks" />
+      <KpiCard title="Pros. # NIC-ova" :value="stats.avgNics" :sub="'med.: ' + stats.medNics" />
+      <KpiCard title="Medijana starosti OS" :value="stats.medOsAgeDays + ' dana'"
+        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'" />
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Lexar SSD (red-flag)"
-        :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
-        sub="problematični uređaji"
-      />
+      <KpiCard title="Lexar SSD (red-flag)" :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
+        sub="problematični uređaji" />
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -102,12 +65,9 @@
               <div class="tabular-nums text-slate-600">{{ row.count }}</div>
             </div>
             <div class="w-full h-2 bg-slate-100 rounded">
-              <div
-                class="h-2 bg-blue-500 rounded"
-                :style="{
-                  width: ((row.count / (stats.totalWithMeta || 1)) * 100).toFixed(1) + '%',
-                }"
-              />
+              <div class="h-2 bg-blue-500 rounded" :style="{
+                width: ((row.count / (stats.totalWithMeta || 1)) * 100).toFixed(1) + '%',
+              }" />
             </div>
           </div>
         </div>
@@ -118,13 +78,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Proizvođači sistema (Top 6)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topManufacturers"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topManufacturers" :key="row.key" :label="row.key || '—'" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
       </div>
 
@@ -151,13 +106,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Brzine mreže (Top 5)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topNicSpeeds"
-            :key="row.key"
-            :label="fmtMbps(Number(row.key))"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topNicSpeeds" :key="row.key" :label="fmtMbps(Number(row.key))" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
       </div>
     </div>
@@ -166,13 +116,8 @@
       <div class="rounded-2xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">CPU modeli (Top 5)</h2>
         <div class="space-y-2">
-          <BarRow
-            v-for="row in topCpuModels"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+          <BarRow v-for="row in topCpuModels" :key="row.key" :label="row.key || '—'" :value="row.count"
+            :total="stats.totalWithMeta" />
         </div>
         <div class="grid grid-cols-3 gap-3 mt-3">
           <InfoPill label="Pros. jezgra" :value="stats.avgCpuCores" />
@@ -194,26 +139,18 @@
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">Najmanje RAM-a (Top 10)</h2>
-        <DataTable
-          :rows="tables.lowRam"
-          :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.lowRam" :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']" />
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">Najstarija instalacija OS-a (Top 10)</h2>
-        <DataTable
-          :rows="tables.oldOs"
-          :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.oldOs" :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']" />
       </div>
 
       <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
         <h2 class="font-semibold text-slate-800 mb-3">Najveći ukupni storage (Top 10)</h2>
-        <DataTable
-          :rows="tables.topStorage"
-          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
-        />
+        <DataTable :rows="tables.topStorage"
+          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']" />
       </div>
     </div>
 
@@ -224,26 +161,22 @@
           Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
         </p>
 
-        <DataTable
-          :rows="
-            (displayTables.lexarFlag || []).map((r) => ({
-              ComputerName: r.ComputerName,
-              Storage: {
-                Model: r.Storage?.Model ?? r['Storage.Model'],
-                Serial: r.Storage?.Serial ?? r['Storage.Serial'],
-                SizeGB: r.Storage?.SizeGB ?? r['Storage.SizeGB'],
-              },
-              CollectedAt: r.CollectedAt,
-            }))
-          "
-          :cols="[
+        <DataTable :rows="(displayTables.lexarFlag || []).map((r) => ({
+          ComputerName: r.ComputerName,
+          Storage: {
+            Model: r.Storage?.Model ?? r['Storage.Model'],
+            Serial: r.Storage?.Serial ?? r['Storage.Serial'],
+            SizeGB: r.Storage?.SizeGB ?? r['Storage.SizeGB'],
+          },
+          CollectedAt: r.CollectedAt,
+        }))
+          " :cols="[
             'ComputerName',
             'Storage/Model',
             'Storage/Serial',
             'Storage/SizeGB',
             'CollectedAt',
-          ]"
-        />
+          ]" />
       </div>
     </div>
   </div>
@@ -252,6 +185,16 @@
 <script setup>
 import { ref, computed, onMounted, h, defineComponent, onBeforeUnmount } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { fmtDate, fmtGb, fmtTb, fmtPct, fmtMbps } from '@/utils/format.js'
+import { sum, avg, median, round1, joinNonEmpty, maxOf, groupCount } from '@/utils/math.js'
+import {
+  totalRamGb,
+  cpuNameOf,
+  cpuCoresOf,
+  cpuThreadsOf,
+  cpuClockGHzOf,
+} from '@/utils/metadataHelpers.js'
+import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import * as XLSX from 'xlsx'
 
 const KpiCard = defineComponent({
@@ -376,7 +319,7 @@ const loading = ref(false)
 const serverTables = ref(null)
 const serverFlags = ref(null)
 const displayTables = computed(() => serverTables.value || tables.value)
-let inFlight = new AbortController()
+const { getSignal, abort } = useAbortableFetch()
 
 async function fetchStatsPreferServer() {
   try {
@@ -405,16 +348,14 @@ async function fetchStatsPreferServer() {
       const d = await r1.json()
       totalIpEntries.value = Number(d.total) || 0
     }
-  } catch {}
+  } catch { }
 
   try {
     let page = 1,
       all = []
     while (true) {
-      inFlight.abort()
-      inFlight = new AbortController()
       const r = await fetchWithAuth(`/api/protected/metadata?page=${page}&limit=200`, {
-        signal: inFlight.signal,
+        signal: getSignal(),
       })
       if (!r.ok) break
       const d = await r.json()
@@ -440,13 +381,12 @@ async function fetchStatsPreferServer() {
       }
     }
     meta.value = all
-  } catch {}
+  } catch { }
 }
 
 async function refreshAll() {
   loading.value = true
-  inFlight.abort()
-  inFlight = new AbortController()
+  getSignal()
   serverTables.value = null
   serverFlags.value = null
   meta.value = []
@@ -454,48 +394,9 @@ async function refreshAll() {
   loading.value = false
 }
 
-onMounted(async () => {
-  document.title = 'Metapodaci — Analitika'
-  await refreshAll()
-})
+onMounted(refreshAll)
 
-onBeforeUnmount(() => inFlight.abort())
-
-const cpuNameOf = (x) =>
-  x?.CPU?.Name ||
-  x?.Processor?.Name ||
-  x?.System?.CPUName ||
-  x?.System?.Processor ||
-  x?.CPUName ||
-  ''
-
-const cpuCoresOf = (x) =>
-  Number(x?.CPU?.Cores) ||
-  Number(x?.Processor?.Cores) ||
-  Number(x?.System?.CPUCores) ||
-  Number(x?.CPU?.NumberOfCores) ||
-  0
-
-const cpuThreadsOf = (x) =>
-  Number(x?.CPU?.LogicalCPUs) ||
-  Number(x?.CPU?.LogicalProcessors) ||
-  Number(x?.Processor?.LogicalProcessors) ||
-  Number(x?.System?.CPULogicalProcessors) ||
-  Number(x?.CPU?.Threads) ||
-  0
-
-const cpuClockGHzOf = (x) => {
-  const ghz =
-    Number(x?.CPU?.MaxClockGHz) ||
-    Number(x?.Processor?.MaxClockGHz) ||
-    Number(x?.System?.CPU_MaxClockGHz)
-  if (Number.isFinite(ghz) && ghz > 0) return ghz
-  const mhz =
-    Number(x?.CPU?.MaxClockMHz) ||
-    Number(x?.Processor?.MaxClockMHz) ||
-    Number(x?.System?.CPU_MaxClockMHz)
-  return Number.isFinite(mhz) && mhz > 0 ? Math.round((mhz / 1000) * 10) / 10 : 0
-}
+onBeforeUnmount(abort)
 
 const cpuDist = computed(() => groupCount(meta.value.map((x) => cpuNameOf(x)).filter(Boolean)))
 const topCpuModels = computed(() => cpuDist.value.slice(0, 5))
@@ -533,11 +434,7 @@ const topGpuName = computed(() => {
 })
 
 const bucketRam = computed(() => {
-  const totals = meta.value.map(
-    (x) =>
-      Number(x?.System?.TotalRAM_GB) ||
-      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0))
-  )
+  const totals = meta.value.map((x) => totalRamGb(x))
   return {
     le8: totals.filter((v) => v > 0 && v <= 8).length,
     eq16: totals.filter((v) => v === 16).length,
@@ -572,11 +469,7 @@ const stats = computed(() => {
   const m = meta.value
   const n = m.length
 
-  const ramTotals = m.map(
-    (x) =>
-      Number(x?.System?.TotalRAM_GB) ||
-      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0))
-  )
+  const ramTotals = m.map((x) => totalRamGb(x))
   const avgRam = avg(ramTotals),
     medRam = median(ramTotals),
     maxRam = Math.max(0, ...ramTotals)
@@ -633,10 +526,7 @@ const tables = computed(() => {
 
   const withTotals = m.map((x) => ({
     ComputerName: x?.ComputerName || '—',
-    TotalRAM_GB:
-      Number(x?.System?.TotalRAM_GB) ||
-      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0)) ||
-      0,
+    TotalRAM_GB: totalRamGb(x) || 0,
     OS: { Caption: x?.OS?.Caption },
     CollectedAt: x?.CollectedAt,
   }))
@@ -672,50 +562,6 @@ const tables = computed(() => {
   }
 })
 
-function sum(arr) {
-  return arr.reduce((a, b) => a + (Number(b) || 0), 0)
-}
-function avg(arr) {
-  return arr.length ? sum(arr) / arr.length : 0
-}
-function median(arr) {
-  if (!arr.length) return 0
-  const s = [...arr].sort((a, b) => a - b)
-  const m = Math.floor(s.length / 2)
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
-}
-function round1(n) {
-  return Number.isFinite(n) ? Math.round(n * 10) / 10 : 0
-}
-function fmtGb(n) {
-  return n || n === 0 ? `${n} GB` : '—'
-}
-function fmtTb(n) {
-  return n || n === 0 ? `${n} TB` : '—'
-}
-function fmtPct(n) {
-  return n || n === 0 ? `${n}%` : '—'
-}
-function fmtMbps(n) {
-  return n || n === 0 ? `${n} Mbps` : '—'
-}
-function joinNonEmpty(arr, sep) {
-  return arr.filter(Boolean).join(sep)
-}
-function maxOf(arr) {
-  return arr.length ? Math.max(...arr) : 0
-}
-function groupCount(items) {
-  const map = new Map()
-  for (const it of items) {
-    const k = it == null || it === '' ? '—' : String(it)
-    map.set(k, (map.get(k) || 0) + 1)
-  }
-  return Array.from(map.entries())
-    .map(([key, count]) => ({ key, count }))
-    .sort((a, b) => b.count - a.count)
-}
-
 function exportXlsx() {
   if (!meta.value.length) return
   const rows = meta.value.map((x) => ({
@@ -728,10 +574,7 @@ function exportXlsx() {
     OS_InstallDate: x?.OS?.InstallDate || '',
     System_Manufacturer: x?.System?.Manufacturer || '',
     System_Model: x?.System?.Model || '',
-    System_TotalRAM_GB:
-      Number(x?.System?.TotalRAM_GB) ||
-      sum((x?.RAMModules || []).map((r) => Number(r?.CapacityGB) || 0)) ||
-      '',
+    System_TotalRAM_GB: totalRamGb(x) || '',
     GPUs_Count: (x?.GPUs || []).length,
     Storage_Total_GB: sum((x?.Storage || []).map((s) => Number(s?.SizeGB) || 0)),
   }))

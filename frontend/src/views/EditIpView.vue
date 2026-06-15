@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="glass-container bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-lg max-w-4xl mx-auto"
-  >
+  <div class="glass-container max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-6 text-gray-800">Izmeni IP Unos</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
@@ -10,24 +8,13 @@
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
 
-        <textarea
-          v-if="field.name === 'description'"
-          :id="field.name"
-          v-model.trim="form[field.name]"
-          rows="6"
+        <textarea v-if="field.name === 'description'" :id="field.name" v-model.trim="form[field.name]" rows="6"
           placeholder="Unesi opis..."
-          class="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm resize-y"
-        />
+          class="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm resize-y" />
 
-        <input
-          v-else
-          :id="field.name"
-          v-model.trim="form[field.name]"
-          type="text"
+        <input v-else :id="field.name" v-model.trim="form[field.name]" type="text"
           class="w-full border px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-          :required="field.name === 'ip'"
-          :class="field.name === 'ip' && ipError ? 'border-red-400' : ''"
-        />
+          :required="field.name === 'ip'" :class="field.name === 'ip' && ipError ? 'border-red-400' : ''" />
 
         <p v-if="field.name === 'ip' && ipError" class="text-xs text-red-600 mt-1">
           {{ ipError }}
@@ -35,11 +22,7 @@
       </div>
 
       <div class="flex justify-between mt-6">
-        <button
-          type="button"
-          @click="goBack"
-          class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-        >
+        <button type="button" @click="goBack" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">
           Poništi
         </button>
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -56,43 +39,20 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth'
+import { parseError } from '@/utils/api.js'
+import {
+  createIpEntryForm,
+  IP_ENTRY_FIELDS,
+  validateIpv4,
+} from '@/constants/ipEntryFields.js'
 
 const route = useRoute()
 const router = useRouter()
 const error = ref('')
+const form = ref(createIpEntryForm())
+const fields = IP_ENTRY_FIELDS
 
-const form = ref({
-  ip: '',
-  computerName: '',
-  username: '',
-  fullName: '',
-  password: '',
-  rdp: '',
-  anyDesk: '',
-  os: '',
-  department: '',
-  heliantInstalled: '',
-  description: '',
-})
-
-const fields = [
-  { name: 'ip', label: 'IP Adresa' },
-  { name: 'computerName', label: 'Ime računara' },
-  { name: 'username', label: 'Korisničko ime' },
-  { name: 'fullName', label: 'Puno ime' },
-  { name: 'password', label: 'Lozinka' },
-  { name: 'rdp', label: 'RDP' },
-  { name: 'rdpApp', label: 'RDP App' },
-  { name: 'os', label: 'Sistem' },
-  { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
-  { name: 'department', label: 'Odeljenje' },
-  { name: 'description', label: 'Opis' },
-]
-
-const ipError = computed(() => {
-  if (!form.value.ip) return 'IP je obavezan'
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(form.value.ip) ? null : 'Neispravna IPv4 adresa'
-})
+const ipError = computed(() => validateIpv4(form.value.ip, { required: true }))
 
 const fetchEntry = async () => {
   try {
@@ -101,7 +61,7 @@ const fetchEntry = async () => {
       error.value = 'Unos nije pronađen'
       return
     }
-    form.value = await res.json()
+    form.value = createIpEntryForm(await res.json())
   } catch (err) {
     console.error(err)
     error.value = 'Neuspešno učitan unos'
@@ -120,8 +80,7 @@ const handleUpdate = async () => {
     })
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      error.value = err.message || 'Izmena neuspešna'
+      error.value = await parseError(res, 'Izmena neuspešna')
       return
     }
 
@@ -136,9 +95,3 @@ const goBack = () => router.push('/')
 
 onMounted(fetchEntry)
 </script>
-
-<style scoped>
-.glass-container {
-  backdrop-filter: saturate(140%) blur(2px);
-}
-</style>

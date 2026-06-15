@@ -6,15 +6,9 @@
       <div>
         <label for="ip" class="block text-sm font-medium text-gray-700 mb-1">IP Adresa *</label>
         <div class="relative">
-          <input
-            id="ip"
-            v-model.trim="form.ip"
-            type="text"
-            placeholder="Unesite IP adresu"
+          <input id="ip" v-model.trim="form.ip" type="text" placeholder="Unesite IP adresu"
             class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
-            required
-            :class="ipError ? 'border-red-400' : ''"
-          />
+            required :class="ipError ? 'border-red-400' : ''" />
         </div>
         <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
@@ -25,38 +19,20 @@
         </label>
 
         <div class="relative">
-          <textarea
-            v-if="field.name === 'description'"
-            :id="field.name"
-            v-model.trim="form[field.name]"
-            rows="6"
+          <textarea v-if="field.name === 'description'" :id="field.name" v-model.trim="form[field.name]" rows="6"
             placeholder="Opis..."
-            class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
+            class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y" />
 
-          <input
-            v-else
-            :id="field.name"
-            v-model.trim="form[field.name]"
-            type="text"
-            :placeholder="`${field.label}`"
-            class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10"
-          />
+          <input v-else :id="field.name" v-model.trim="form[field.name]" type="text" :placeholder="`${field.label}`"
+            class="w-full border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pl-10" />
         </div>
       </div>
 
       <div class="flex justify-between pt-4">
-        <button
-          type="button"
-          @click="goBack"
-          class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg"
-        >
+        <button type="button" @click="goBack" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
           Poništi
         </button>
-        <button
-          type="submit"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow"
-        >
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow">
           Dodaj
         </button>
       </div>
@@ -70,42 +46,20 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { parseError } from '@/utils/api.js'
+import {
+  createIpEntryForm,
+  IP_OPTIONAL_FIELDS,
+  validateIpv4,
+} from '@/constants/ipEntryFields.js'
 
 const route = useRoute()
 const router = useRouter()
 const error = ref('')
+const form = ref(createIpEntryForm())
+const optionalFields = IP_OPTIONAL_FIELDS
 
-const form = ref({
-  ip: '',
-  computerName: '',
-  username: '',
-  fullName: '',
-  password: '',
-  rdp: '',
-  rdpApp: '',
-  os: '',
-  heliantInstalled: '',
-  department: '',
-  description: '',
-})
-
-const optionalFields = [
-  { name: 'computerName', label: 'Ime računara' },
-  { name: 'username', label: 'Korisničko ime' },
-  { name: 'fullName', label: 'Puno ime' },
-  { name: 'password', label: 'Lozinka' },
-  { name: 'rdp', label: 'RDP' },
-  { name: 'rdpApp', label: 'RDP App' },
-  { name: 'os', label: 'Sistem' },
-  { name: 'heliantInstalled', label: 'Heliant Instaliran?' },
-  { name: 'department', label: 'Odeljenje' },
-  { name: 'description', label: 'Opis' },
-]
-
-const ipError = computed(() => {
-  if (!form.value.ip) return null
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(form.value.ip) ? null : 'Neispravna IPv4 adresa'
-})
+const ipError = computed(() => validateIpv4(form.value.ip))
 
 const handleSubmit = async () => {
   if (ipError.value) {
@@ -118,8 +72,7 @@ const handleSubmit = async () => {
       body: JSON.stringify(form.value),
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      error.value = err.message || 'Neuspešno dodata adresa'
+      error.value = await parseError(res, 'Neuspešno dodata adresa')
       return
     }
     router.push('/')

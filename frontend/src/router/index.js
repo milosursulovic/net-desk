@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isTokenExpired } from '@/utils/auth.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
@@ -9,22 +10,6 @@ const EditIpView = () => import('@/views/EditIpView.vue')
 const MetadataView = () => import('@/views/MetadataView.vue')
 const PrintersView = () => import('@/views/PrintersView.vue')
 const InventoryView = () => import('@/views/InventoryView.vue')
-
-function decodeJwt(token) {
-  try {
-    const [, payload] = token.split('.')
-    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const json = atob(b64)
-    return JSON.parse(json)
-  } catch {
-    return null
-  }
-}
-function isTokenExpired(token) {
-  const p = decodeJwt(token)
-  if (!p || !p.exp) return true
-  return Date.now() > p.exp * 1000 - 5000
-}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -97,12 +82,10 @@ router.beforeEach((to, from, next) => {
     return next('/')
   }
 
-  next()
-})
-
-router.afterEach((to) => {
   const title = to.meta?.title || 'NetDesk'
   if (typeof document !== 'undefined') document.title = title
+
+  next()
 })
 
 export default router
