@@ -17,14 +17,9 @@ export const ScanSchema = z.object({
 export const UpsertIpSchema = z.object({
   ip: z.string().refine(isValidIPv4, "Neispravan IPv4"),
   computerName: z.string().nullable().optional(),
-  username: z.string().nullable().optional(),
-  fullName: z.string().nullable().optional(),
-  password: z.string().nullable().optional(),
-  rdp: z.string().nullable().optional(),
   rdpApp: z.string().nullable().optional(),
   os: z.string().nullable().optional(),
   department: z.string().nullable().optional(),
-  heliantInstalled: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
 
@@ -36,13 +31,9 @@ export const ListSchema = z.object({
     .enum([
       "ip",
       "computerName",
-      "username",
-      "fullName",
-      "rdp",
       "rdpApp",
       "os",
       "department",
-      "heliantInstalled",
       "description",
     ])
     .optional()

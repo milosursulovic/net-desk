@@ -50,7 +50,7 @@ export async function getPrinterById(printerId) {
   let host = null;
   if (p.hostComputerId) {
     const [[h]] = await pool.execute(
-      `SELECT id, ip, computer_name AS computerName, username, department
+      `SELECT id, ip, computer_name AS computerName, department
        FROM ip_entries
        WHERE id = ?
        LIMIT 1`,
@@ -65,7 +65,6 @@ export async function getPrinterById(printerId) {
       ie.id,
       ie.ip,
       ie.computer_name AS computerName,
-      ie.username,
       ie.department
     FROM printer_connected_computers pc
     JOIN ip_entries ie ON ie.id = pc.ip_entry_id
@@ -112,9 +111,8 @@ export async function listPrinters({ page, limit, search }) {
       h.id AS hostId,
       h.ip AS hostIp,
       h.computer_name AS hostComputerName,
-      h.username AS hostUsername,
       h.department AS hostDepartment,
-
+      
       (
         SELECT COUNT(*)
         FROM printer_connected_computers pc

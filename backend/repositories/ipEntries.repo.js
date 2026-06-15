@@ -21,8 +21,6 @@ function buildFastSearchSql(raw = "") {
     }
     or.push("LOWER(COALESCE(computer_name,'')) LIKE ?");
     params.push(likePrefix);
-    or.push("LOWER(COALESCE(username,'')) LIKE ?");
-    params.push(likePrefix);
     or.push("LOWER(COALESCE(department,'')) LIKE ?");
     params.push(likePrefix);
 
@@ -39,17 +37,13 @@ function buildLegacySearchSql(search = "") {
   const where = `(
     ip LIKE ? OR
     computer_name LIKE ? OR
-    username LIKE ? OR
-    full_name LIKE ? OR
-    rdp LIKE ? OR
     rdp_app LIKE ? OR
     os LIKE ? OR
     department LIKE ? OR
-    heliant_installed LIKE ?
   )`;
   return {
     where,
-    params: [like, like, like, like, like, like, like, like, like],
+    params: [like, like, like, like, like],
   };
 }
 
@@ -61,10 +55,6 @@ export async function findIpEntryById(id) {
       ip,
       ip_numeric AS ipNumeric,
       computer_name AS computerName,
-      username,
-      password,
-      full_name AS fullName,
-      rdp,
       rdp_app AS rdpApp,
       os,
       department,
@@ -74,7 +64,6 @@ export async function findIpEntryById(id) {
       last_status_change AS lastStatusChange,
       created_at AS createdAt,
       updated_at AS updatedAt,
-      heliant_installed AS heliantInstalled,
       description
     FROM ip_entries
     WHERE id = ?
@@ -93,16 +82,12 @@ export async function findIpEntryByIdLean(id) {
       ip,
       ip_numeric AS ipNumeric,
       computer_name AS computerName,
-      username,
-      full_name AS fullName,
-      rdp,
       rdp_app AS rdpApp,
       os,
       department,
       is_online AS isOnline,
       last_checked AS lastChecked,
-      last_status_change AS lastStatusChange,
-      heliant_installed AS heliantInstalled
+      last_status_change AS lastStatusChange
     FROM ip_entries
     WHERE id = ?
     LIMIT 1
@@ -124,21 +109,16 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, username, full_name, password, rdp, rdp_app, os, department, heliant_installed, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, department, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
       row.ipNumeric,
       row.computerName,
-      row.username,
-      row.fullName,
-      row.password,
-      row.rdp,
       row.rdpApp,
       row.os,
       row.department,
-      row.heliantInstalled,
       row.description,
     ],
   );
@@ -193,13 +173,9 @@ export async function listIpEntries({
   const sortMap = {
     ip: "ip_numeric",
     computerName: "computer_name",
-    username: "username",
-    fullName: "full_name",
-    rdp: "rdp",
     rdpApp: "rdp_app",
     os: "os",
     department: "department",
-    heliantInstalled: "heliant_installed",
   };
 
   const safeSort = sortMap[sortBy] || "ip_numeric";
@@ -211,10 +187,6 @@ export async function listIpEntries({
       ip,
       ip_numeric AS ipNumeric,
       computer_name AS computerName,
-      username,
-      password,
-      full_name AS fullName,
-      rdp,
       rdp_app AS rdpApp,
       os,
       department,
@@ -222,7 +194,6 @@ export async function listIpEntries({
       is_online AS isOnline,
       last_checked AS lastChecked,
       last_status_change AS lastStatusChange,
-      heliant_installed AS heliantInstalled,
       description
     FROM ip_entries
     ${whereListSql}
@@ -328,10 +299,8 @@ export async function duplicateComputerNameGroups({ search, status }) {
         id,
         ip,
         computer_name AS computerName,
-        username,
         department,
-        updated_at AS updatedAt,
-        heliant_installed as heliantInstalled
+        updated_at AS updatedAt
       FROM ip_entries
       WHERE LOWER(TRIM(computer_name)) = ?
       ORDER BY ip_numeric ASC
@@ -366,14 +335,10 @@ export async function exportIpEntriesForXlsx(search) {
       ip,
       computer_name AS computerName,
       ip_numeric AS ipNumeric,
-      username,
-      full_name AS fullName,
-      rdp,
       rdp_app AS rdpApp,
       os,
       department,
       metadata_id AS metadataId,
-      heliant_installed AS heliantInstalled,
       description
     FROM ip_entries
     ${whereSql}

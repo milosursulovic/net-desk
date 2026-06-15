@@ -204,14 +204,9 @@ export async function createService(dto) {
     ip: dto.ip,
     ipNumeric,
     computerName: emptyToNull(dto.computerName),
-    username: emptyToNull(dto.username),
-    fullName: emptyToNull(dto.fullName),
-    password: emptyToNull(dto.password),
-    rdp: emptyToNull(dto.rdp),
     rdpApp: emptyToNull(dto.rdpApp),
     os: emptyToNull(dto.os),
     department: emptyToNull(dto.department),
-    heliantInstalled: emptyToNull(dto.heliantInstalled),
     description: emptyToNull(dto.description),
   });
 
@@ -233,22 +228,6 @@ export async function updateService(id, patch) {
     sets.push("computer_name = ?");
     params.push(emptyToNull(patch.computerName));
   }
-  if (patch.username !== undefined) {
-    sets.push("username = ?");
-    params.push(emptyToNull(patch.username));
-  }
-  if (patch.fullName !== undefined) {
-    sets.push("full_name = ?");
-    params.push(emptyToNull(patch.fullName));
-  }
-  if (patch.password !== undefined) {
-    sets.push("password = ?");
-    params.push(emptyToNull(patch.password));
-  }
-  if (patch.rdp !== undefined) {
-    sets.push("rdp = ?");
-    params.push(emptyToNull(patch.rdp));
-  }
   if (patch.rdpApp !== undefined) {
     sets.push("rdp_app = ?");
     params.push(emptyToNull(patch.rdpApp));
@@ -260,10 +239,6 @@ export async function updateService(id, patch) {
   if (patch.department !== undefined) {
     sets.push("department = ?");
     params.push(emptyToNull(patch.department));
-  }
-  if (patch.heliantInstalled !== undefined) {
-    sets.push("heliant_installed = ?");
-    params.push(emptyToNull(patch.heliantInstalled));
   }
   if (patch.description !== undefined) {
     sets.push("description = ?");
@@ -305,14 +280,10 @@ export async function exportXlsxRowsService(search) {
   return entries.map((e) => ({
     ip: e.ip,
     computerName: e.computerName || "",
-    username: e.username || "",
-    fullName: e.fullName || "",
-    rdp: e.rdp || "",
     rdpApp: e.rdpApp || "",
     os: e.os || "",
     department: e.department || "",
     hasMetadata: e.metadataId ? "Da" : "Ne",
-    heliantInstalled: e.heliantInstalled || "",
     description: e.description || "",
   }));
 }
