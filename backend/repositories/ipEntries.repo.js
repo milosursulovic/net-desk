@@ -57,6 +57,7 @@ export async function findIpEntryById(id) {
       computer_name AS computerName,
       rdp_app AS rdpApp,
       os,
+      remote_script AS remoteScript,
       department,
       metadata_id AS metadata,
       is_online AS isOnline,
@@ -109,8 +110,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, department, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, department, description, remote_script)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -120,6 +121,7 @@ export async function insertIpEntry(row) {
       row.os,
       row.department,
       row.description,
+      row.remoteScript,
     ],
   );
   return result.insertId;
@@ -176,6 +178,7 @@ export async function listIpEntries({
     rdpApp: "rdp_app",
     os: "os",
     department: "department",
+    remoteScript: "remote_script",
   };
 
   const safeSort = sortMap[sortBy] || "ip_numeric";
@@ -194,6 +197,7 @@ export async function listIpEntries({
       is_online AS isOnline,
       last_checked AS lastChecked,
       last_status_change AS lastStatusChange,
+      remote_script AS remoteScript,
       description
     FROM ip_entries
     ${whereListSql}
@@ -338,6 +342,7 @@ export async function exportIpEntriesForXlsx(search) {
       rdp_app AS rdpApp,
       os,
       department,
+      remote_script AS remoteScript,
       metadata_id AS metadataId,
       description
     FROM ip_entries

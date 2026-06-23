@@ -6,6 +6,7 @@ export const IP_ENTRY_DEFAULTS = {
   rdpApp: '',
   os: '',
   department: '',
+  remoteScript: '',
   description: '',
 }
 
@@ -15,6 +16,7 @@ export const IP_ENTRY_FIELDS = [
   { name: 'rdpApp', label: 'RDP App' },
   { name: 'os', label: 'Sistem' },
   { name: 'department', label: 'Odeljenje' },
+  { name: 'remoteScript', label: 'Remote skripta?' },
   { name: 'description', label: 'Opis' },
 ]
 

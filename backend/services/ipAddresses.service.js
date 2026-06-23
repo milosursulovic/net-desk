@@ -208,6 +208,7 @@ export async function createService(dto) {
     os: emptyToNull(dto.os),
     department: emptyToNull(dto.department),
     description: emptyToNull(dto.description),
+    remoteScript: emptyToNull(dto.remoteScript),
   });
 
   return await findIpEntryById(id);
@@ -243,6 +244,10 @@ export async function updateService(id, patch) {
   if (patch.description !== undefined) {
     sets.push("description = ?");
     params.push(emptyToNull(patch.description));
+  }
+  if (patch.remoteScript !== undefined) {
+    sets.push("remote_script = ?");
+    params.push(emptyToNull(patch.remoteScript));
   }
 
   if (!sets.length) {
@@ -283,6 +288,7 @@ export async function exportXlsxRowsService(search) {
     rdpApp: e.rdpApp || "",
     os: e.os || "",
     department: e.department || "",
+    remoteScript: e.remoteScript || "",
     hasMetadata: e.metadataId ? "Da" : "Ne",
     description: e.description || "",
   }));

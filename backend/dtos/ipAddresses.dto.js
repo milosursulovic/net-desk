@@ -21,6 +21,7 @@ export const UpsertIpSchema = z.object({
   os: z.string().nullable().optional(),
   department: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
+  remoteScript: z.string().nullable().optional(),
 });
 
 export const ListSchema = z.object({
@@ -35,6 +36,7 @@ export const ListSchema = z.object({
       "os",
       "department",
       "description",
+      "remoteScript",
     ])
     .optional()
     .default("ip"),
