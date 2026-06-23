@@ -4,6 +4,6 @@ import { createSoftwareSync } from "../controllers/softwareSync.controller.js";
 
 const router = express.Router();
 
-router.post("/", asyncHandler(createSoftwareSync));
+router.post("/software", asyncHandler(createSoftwareSync));
 
 export default router;
