@@ -9,7 +9,7 @@ export async function sync(payload) {
     throw new Error("Invalid payload");
   }
 
-  const ipEntryId = await findIpEntryIdByIp();
+  const ipEntryId = await findIpEntryIdByIp(computer);
   if (!ipEntryId) {
     throw new Error("Unknown computer");
   }
