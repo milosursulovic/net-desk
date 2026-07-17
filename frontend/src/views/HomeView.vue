@@ -231,6 +231,9 @@
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
             Meta
           </button>
+          <button @click="openInventory(entry)" class="text-purple-600 hover:underline text-sm">
+            Inventar
+          </button>
           <button @click="openPortScan(entry)" class="text-teal-600 hover:underline text-sm">
             Port scan
           </button>
@@ -418,6 +421,298 @@
               <div>{{ safe(meta.Motherboard?.Serial) }}</div>
             </div>
           </section>
+        </div>
+      </div>
+    </SlideOverPanel>
+
+    <SlideOverPanel :open="showInventory" @close="closeInventory">
+      <template #title>
+        Inventar —
+        {{
+          inventoryEntry?.computerName ||
+          inventoryEntry?.computer_name ||
+          inventoryEntry?.ip ||
+          'Nepoznato'
+        }}
+      </template>
+
+      <div class="space-y-4">
+        <div class="flex flex-wrap gap-2 border-b pb-3">
+          <button
+            type="button"
+            @click="selectInventoryTab('software')"
+            class="px-3 py-2 rounded-md text-sm font-medium transition"
+            :class="
+              inventoryTab === 'software'
+                ? 'bg-purple-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            "
+          >
+            Softver
+            <span v-if="inventoryLoaded.software" class="ml-1">
+              ({{ inventorySoftware.length }})
+            </span>
+          </button>
+
+          <button
+            type="button"
+            @click="selectInventoryTab('drivers')"
+            class="px-3 py-2 rounded-md text-sm font-medium transition"
+            :class="
+              inventoryTab === 'drivers'
+                ? 'bg-purple-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            "
+          >
+            Drajveri
+            <span v-if="inventoryLoaded.drivers" class="ml-1">
+              ({{ inventoryDrivers.length }})
+            </span>
+          </button>
+
+          <button
+            type="button"
+            @click="selectInventoryTab('services')"
+            class="px-3 py-2 rounded-md text-sm font-medium transition"
+            :class="
+              inventoryTab === 'services'
+                ? 'bg-purple-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            "
+          >
+            Servisi
+            <span v-if="inventoryLoaded.services" class="ml-1">
+              ({{ inventoryServices.length }})
+            </span>
+          </button>
+
+          <button
+            type="button"
+            @click="selectInventoryTab('updates')"
+            class="px-3 py-2 rounded-md text-sm font-medium transition"
+            :class="
+              inventoryTab === 'updates'
+                ? 'bg-purple-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            "
+          >
+            Ažuriranja
+            <span v-if="inventoryLoaded.updates" class="ml-1">
+              ({{ inventoryUpdates.length }})
+            </span>
+          </button>
+        </div>
+
+        <div class="relative">
+          <input
+            v-model="inventorySearch"
+            type="text"
+            :placeholder="
+              inventoryTab === 'software'
+                ? 'Pretraži softver, verziju ili izdavača...'
+                : inventoryTab === 'drivers'
+                ? 'Pretraži uređaj, drajver ili proizvođača...'
+                : inventoryTab === 'services'
+                ? 'Pretraži servis, status ili putanju...'
+                : 'Pretraži KB, opis ili korisnika...'
+            "
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+          />
+
+          <button
+            v-if="inventorySearch"
+            type="button"
+            @click="inventorySearch = ''"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+            title="Obriši pretragu"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div v-if="inventorySearch" class="text-xs text-slate-500">
+          Pronađeno:
+          <template v-if="inventoryTab === 'software'">
+            {{ filteredInventorySoftware.length }} od {{ inventorySoftware.length }}
+          </template>
+
+          <template v-else-if="inventoryTab === 'drivers'">
+            {{ filteredInventoryDrivers.length }} od {{ inventoryDrivers.length }}
+          </template>
+
+          <template v-else-if="inventoryTab === 'services'">
+            {{ filteredInventoryServices.length }} od {{ inventoryServices.length }}
+          </template>
+
+          <template v-else>
+            {{ filteredInventoryUpdates.length }} od {{ inventoryUpdates.length }}
+          </template>
+        </div>
+
+        <div v-if="inventoryLoading" class="text-slate-600">Učitavanje inventara…</div>
+
+        <div
+          v-else-if="inventoryError"
+          class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+        >
+          {{ inventoryError }}
+        </div>
+
+        <div v-else>
+          <div v-if="inventoryTab === 'software'">
+            <div v-if="filteredInventorySoftware.length === 0" class="text-slate-500">
+              Nema podataka o instaliranom softveru.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in filteredInventorySoftware"
+                :key="item.id"
+                class="rounded-lg border bg-white p-3"
+              >
+                <div class="font-medium text-slate-800">
+                  {{ item.display_name || 'Nepoznat program' }}
+                </div>
+
+                <div class="mt-1 text-sm text-slate-600">
+                  Verzija: {{ item.display_version || '—' }}
+                </div>
+
+                <div class="text-sm text-slate-600">Izdavač: {{ item.publisher || '—' }}</div>
+
+                <div class="text-sm text-slate-600">
+                  Instalirano: {{ fmtDate(item.install_date) }}
+                </div>
+
+                <div class="mt-1 text-xs text-slate-400">
+                  Inventar: {{ fmtDate(item.inventory_date) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="inventoryTab === 'drivers'">
+            <div v-if="filteredInventoryDrivers.length === 0" class="text-slate-500">
+              Nema podataka o drajverima.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in filteredInventoryDrivers"
+                :key="item.id"
+                class="rounded-lg border bg-white p-3"
+              >
+                <div class="font-medium text-slate-800">
+                  {{ item.device_name || 'Nepoznat uređaj' }}
+                </div>
+
+                <div class="mt-1 text-sm text-slate-600">
+                  Verzija: {{ item.driver_version || '—' }}
+                </div>
+
+                <div class="text-sm text-slate-600">
+                  Datum drajvera: {{ fmtDate(item.driver_date) }}
+                </div>
+
+                <div class="text-sm text-slate-600">Proizvođač: {{ item.manufacturer || '—' }}</div>
+
+                <div class="text-sm text-slate-600">
+                  Provider: {{ item.driver_provider_name || '—' }}
+                </div>
+
+                <div class="mt-1 text-xs text-slate-400">
+                  Inventar: {{ fmtDate(item.inventory_date) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="inventoryTab === 'services'">
+            <div v-if="filteredInventoryServices.length === 0" class="text-slate-500">
+              Nema podataka o servisima.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in filteredInventoryServices"
+                :key="item.id"
+                class="rounded-lg border bg-white p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="font-medium text-slate-800">
+                      {{ item.display_name || item.name || 'Nepoznat servis' }}
+                    </div>
+
+                    <div class="text-xs text-slate-500">
+                      {{ item.name || '—' }}
+                    </div>
+                  </div>
+
+                  <span
+                    class="rounded-full border px-2 py-0.5 text-xs"
+                    :class="
+                      item.state === 'Running'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                    "
+                  >
+                    {{ item.state || 'Nepoznato' }}
+                  </span>
+                </div>
+
+                <div class="mt-2 text-sm text-slate-600">
+                  Start mode: {{ item.start_mode || '—' }}
+                </div>
+
+                <div class="text-sm text-slate-600">Korisnik: {{ item.start_name || '—' }}</div>
+
+                <div class="mt-1 break-all text-xs text-slate-500">
+                  {{ item.path_name || '—' }}
+                </div>
+
+                <div class="mt-1 text-xs text-slate-400">
+                  Inventar: {{ fmtDate(item.inventory_date) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="inventoryTab === 'updates'">
+            <div v-if="filteredInventoryUpdates.length === 0" class="text-slate-500">
+              Nema podataka o Windows ažuriranjima.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in filteredInventoryUpdates"
+                :key="item.id"
+                class="rounded-lg border bg-white p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="font-medium text-slate-800">
+                    {{ item.hotfix_id || 'Nepoznat KB' }}
+                  </div>
+
+                  <div class="text-xs text-slate-500">
+                    {{ fmtDate(item.installed_on) }}
+                  </div>
+                </div>
+
+                <div class="mt-1 text-sm text-slate-600">
+                  {{ item.description || '—' }}
+                </div>
+
+                <div class="mt-1 text-sm text-slate-600">
+                  Instalirao: {{ item.installed_by || '—' }}
+                </div>
+
+                <div class="mt-1 text-xs text-slate-400">
+                  Inventar: {{ fmtDate(item.inventory_date) }}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </SlideOverPanel>
@@ -659,6 +954,28 @@ import { useToast } from '@/composables/useToast.js'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
+const showInventory = ref(false)
+const inventoryEntry = ref(null)
+
+const inventoryTab = ref('software')
+
+const inventoryLoading = ref(false)
+const inventoryError = ref(null)
+
+const inventorySoftware = ref([])
+const inventoryDrivers = ref([])
+const inventoryServices = ref([])
+const inventoryUpdates = ref([])
+
+const inventoryLoaded = ref({
+  software: false,
+  drivers: false,
+  services: false,
+  updates: false,
+})
+
+const inventorySearch = ref('')
+
 const router = useRouter()
 const { toast, copyToClipboard } = useToast()
 
@@ -696,7 +1013,7 @@ const sortOptions = [
   { value: 'department', label: 'Odeljenje' },
   { value: 'rdpApp', label: 'RDP App' },
   { value: 'os', label: 'Sistem' },
-  { value: 'os', label: 'Remote skripta?' },
+  { value: 'remoteScript', label: 'Remote skripta?' },
 ]
 
 const addEntry = () => router.push('/add')
@@ -733,6 +1050,172 @@ async function fetchData() {
     console.error('Neuspešno dohvatanje podataka')
   }
 }
+
+// =========================
+// Inventory
+// =========================
+
+async function openInventory(entry) {
+  inventoryEntry.value = entry
+  inventoryTab.value = 'software'
+  inventoryError.value = null
+
+  inventorySoftware.value = []
+  inventoryDrivers.value = []
+  inventoryServices.value = []
+  inventoryUpdates.value = []
+
+  inventoryLoaded.value = {
+    software: false,
+    drivers: false,
+    services: false,
+    updates: false,
+  }
+
+  showInventory.value = true
+
+  inventorySearch.value = ''
+
+  await loadInventoryTab('software')
+}
+
+function closeInventory() {
+  showInventory.value = false
+  inventoryEntry.value = null
+  inventoryTab.value = 'software'
+  inventoryError.value = null
+  inventoryLoading.value = false
+
+  inventorySoftware.value = []
+  inventoryDrivers.value = []
+  inventoryServices.value = []
+  inventoryUpdates.value = []
+
+  inventoryLoaded.value = {
+    software: false,
+    drivers: false,
+    services: false,
+    updates: false,
+  }
+
+  inventorySearch.value = ''
+}
+
+async function loadInventoryTab(tab) {
+  if (!inventoryEntry.value?.id) return
+
+  inventoryTab.value = tab
+
+  if (inventoryLoaded.value[tab]) {
+    return
+  }
+
+  inventoryLoading.value = true
+  inventoryError.value = null
+
+  try {
+    const res = await fetchWithAuth(`/api/protected/computers/${inventoryEntry.value.id}/${tab}`)
+
+    if (!res.ok) {
+      throw new Error(await parseError(res, `Greška pri učitavanju inventara. HTTP ${res.status}`))
+    }
+
+    const data = await res.json()
+    const rows = Array.isArray(data) ? data : []
+
+    if (tab === 'software') {
+      inventorySoftware.value = rows
+    } else if (tab === 'drivers') {
+      inventoryDrivers.value = rows
+    } else if (tab === 'services') {
+      inventoryServices.value = rows
+    } else if (tab === 'updates') {
+      inventoryUpdates.value = rows
+    }
+
+    inventoryLoaded.value[tab] = true
+  } catch (error) {
+    console.error('Greška pri učitavanju inventara:', error)
+
+    inventoryError.value = error?.message || 'Neuspešno učitavanje inventara.'
+  } finally {
+    inventoryLoading.value = false
+  }
+}
+
+async function selectInventoryTab(tab) {
+  inventorySearch.value = ''
+  await loadInventoryTab(tab)
+}
+
+const filteredInventorySoftware = computed(() => {
+  const q = inventorySearch.value.trim().toLowerCase()
+
+  if (!q) return inventorySoftware.value
+
+  return inventorySoftware.value.filter((item) =>
+    [item.display_name, item.display_version, item.publisher, item.install_date].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(q)
+    )
+  )
+})
+
+const filteredInventoryDrivers = computed(() => {
+  const q = inventorySearch.value.trim().toLowerCase()
+
+  if (!q) return inventoryDrivers.value
+
+  return inventoryDrivers.value.filter((item) =>
+    [
+      item.device_name,
+      item.driver_version,
+      item.driver_date,
+      item.manufacturer,
+      item.driver_provider_name,
+    ].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(q)
+    )
+  )
+})
+
+const filteredInventoryServices = computed(() => {
+  const q = inventorySearch.value.trim().toLowerCase()
+
+  if (!q) return inventoryServices.value
+
+  return inventoryServices.value.filter((item) =>
+    [
+      item.name,
+      item.display_name,
+      item.state,
+      item.start_mode,
+      item.start_name,
+      item.path_name,
+    ].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(q)
+    )
+  )
+})
+
+const filteredInventoryUpdates = computed(() => {
+  const q = inventorySearch.value.trim().toLowerCase()
+
+  if (!q) return inventoryUpdates.value
+
+  return inventoryUpdates.value.filter((item) =>
+    [item.description, item.hotfix_id, item.installed_on, item.installed_by].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(q)
+    )
+  )
+})
 
 const deleteEntry = async (id) => {
   if (!confirm('Da li si siguran da želiš da obrišeš ovaj unos?')) return
