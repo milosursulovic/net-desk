@@ -9,7 +9,7 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 
 export const createApp = () => {
   const app = express();
-  app.set("trust proxy", true);
+  app.set("trust proxy", false);
 
   app.use(
     helmet({
