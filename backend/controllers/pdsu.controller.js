@@ -1,5 +1,7 @@
 import { parseIdParam } from "../utils/idParam.js";
+import { toInt, clamp } from "../utils/numbers.js";
 import { badRequest, notFound } from "../utils/httpError.js";
+import { listEventLogsService } from "../services/eventLogs.service.js";
 
 import {
   listComputers,
@@ -13,6 +15,10 @@ import {
   syncComputerServices,
   syncComputerUpdates,
   getComputerByIp,
+  getComputerPrinters,
+  syncComputerPrinters,
+  getComputerAvailableUpdates,
+  syncComputerAvailableUpdates,
 } from "../services/pdsu.service.js";
 
 // =========================
@@ -133,6 +139,82 @@ export async function syncServicesController(req, res) {
   res.json({
     success: true,
     message: "Services inventar sinhronizovan.",
+  });
+}
+
+// =========================
+// Printers
+// =========================
+
+export async function getPrintersController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const printers = await getComputerPrinters(id);
+
+  res.json(printers);
+}
+
+export async function syncPrintersController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const printers = req.body.printers;
+
+  if (!Array.isArray(printers)) {
+    throw badRequest("Printers mora biti niz.");
+  }
+
+  await syncComputerPrinters(id, printers);
+
+  res.json({
+    success: true,
+    message: "Printer inventar sinhronizovan.",
+  });
+}
+
+// =========================
+// Event Log
+// =========================
+
+export async function getEventLogsController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+  const limit = clamp(toInt(req.query.limit, 50), 1, 500);
+  const logName = ["System", "Application", "Security"].includes(req.query.logName)
+    ? req.query.logName
+    : undefined;
+  const level = typeof req.query.level === "string" ? req.query.level : undefined;
+
+  const out = await listEventLogsService(id, { page, limit, logName, level });
+  res.json(out);
+}
+
+// =========================
+// Available Updates
+// =========================
+
+export async function getAvailableUpdatesController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const availableUpdates = await getComputerAvailableUpdates(id);
+
+  res.json(availableUpdates);
+}
+
+export async function syncAvailableUpdatesController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const availableUpdates = req.body.availableUpdates;
+
+  if (!Array.isArray(availableUpdates)) {
+    throw badRequest("AvailableUpdates mora biti niz.");
+  }
+
+  await syncComputerAvailableUpdates(id, availableUpdates);
+
+  res.json({
+    success: true,
+    message: "Dostupne zakrpe sinhronizovane.",
   });
 }
 

@@ -97,6 +97,11 @@ function mapMeta(meta, children) {
     GPUs: children?.gpus || [],
     NICs: children?.nics || [],
 
+    WindowsUpdate: {
+      ServiceStatus: meta.wuServiceStatus ?? null,
+      LastCheckAt: meta.wuLastCheckAt ?? null,
+    },
+
     PSU: meta.PSU ?? null,
     createdAt: meta.createdAt,
     updatedAt: meta.updatedAt,
@@ -125,12 +130,13 @@ export async function listMetadataPage({ page, limit }) {
   return { items, total, totalPages, page: safePage, limit };
 }
 
-async function upsertMetadataForIpEntry(ipEntryId, body) {
+export async function upsertMetadataForIpEntry(ipEntryId, body) {
   const OS = pick(body, ["OS", "os"]) || {};
   const System = pick(body, ["System", "system"]) || {};
   const Motherboard = pick(body, ["Motherboard", "motherboard"]) || {};
   const BIOS = pick(body, ["BIOS", "bios"]) || {};
   const CPU = pick(body, ["CPU", "cpu"]) || {};
+  const WindowsUpdate = pick(body, ["WindowsUpdate", "windowsUpdate"]) || {};
 
   const RAMModules = pick(body, ["RAMModules", "ramModules"]) || [];
   const Storage = pick(body, ["Storage", "storage"]) || [];
@@ -178,6 +184,12 @@ async function upsertMetadataForIpEntry(ipEntryId, body) {
     cpuSocket: emptyToNull(CPU.Socket ?? CPU.socket),
 
     psu,
+    wuServiceStatus: emptyToNull(
+      WindowsUpdate.ServiceStatus ?? WindowsUpdate.serviceStatus,
+    ),
+    wuLastCheckAt: parseDateMaybe(
+      WindowsUpdate.LastCheckAt ?? WindowsUpdate.lastCheckAt,
+    ),
   };
 
   const normalizeModules = (arr, mapFn) =>
@@ -270,22 +282,13 @@ export async function getMetadataByIp(ip) {
   return { ipEntryId, metadata: meta };
 }
 
-export async function patchMetadataByIp(ip, patchBody) {
-  if (!isValidIPv4(ip)) {
-    throw badRequest("Neispravan IP");
-  }
-
-  const ipEntryId = await findIpEntryIdByIp(ip);
-  if (!ipEntryId) {
-    throw notFound("IpEntry not found");
-  }
-
+export async function patchMetadataForIpEntry(ipEntryId, patchBody) {
   const metaId = await findMetadataIdByIpEntryId(ipEntryId);
   const existing = metaId ? await loadMetadataById(metaId) : {};
 
   const merged = { ...(existing || {}), ...(patchBody || {}) };
 
-  for (const k of ["OS", "System", "Motherboard", "BIOS", "CPU"]) {
+  for (const k of ["OS", "System", "Motherboard", "BIOS", "CPU", "WindowsUpdate"]) {
     if (patchBody?.[k])
       merged[k] = { ...(existing?.[k] || {}), ...(patchBody[k] || {}) };
   }
@@ -296,6 +299,19 @@ export async function patchMetadataByIp(ip, patchBody) {
   }
 
   return await upsertMetadataForIpEntry(ipEntryId, merged);
+}
+
+export async function patchMetadataByIp(ip, patchBody) {
+  if (!isValidIPv4(ip)) {
+    throw badRequest("Neispravan IP");
+  }
+
+  const ipEntryId = await findIpEntryIdByIp(ip);
+  if (!ipEntryId) {
+    throw notFound("IpEntry not found");
+  }
+
+  return await patchMetadataForIpEntry(ipEntryId, patchBody);
 }
 
 function median(nums) {

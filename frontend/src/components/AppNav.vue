@@ -7,6 +7,7 @@ const links = [
   { to: '/pdsu', label: 'PDSU' },
   { to: '/printers', label: 'Štampači' },
   { to: '/inventory', label: 'Inventar' },
+  { to: '/agents', label: 'Agenti' },
 ]
 
 const route = useRoute()

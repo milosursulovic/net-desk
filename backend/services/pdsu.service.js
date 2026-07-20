@@ -16,6 +16,12 @@ import {
   computerUpdatesDelete,
   computerUpdatesInsert,
   computerFindByIp,
+  computerPrintersList,
+  computerPrintersDelete,
+  computerPrintersInsert,
+  computerAvailableUpdatesList,
+  computerAvailableUpdatesDelete,
+  computerAvailableUpdatesInsert,
 } from "../repositories/pdsu.repo.js";
 
 // =========================
@@ -178,6 +184,74 @@ export async function syncComputerUpdates(ipEntryId, updates) {
   }));
 
   await computerUpdatesInsert(rows);
+
+  return true;
+}
+
+// =========================
+// Printers (agent-detektovani, po računaru)
+// =========================
+
+export async function getComputerPrinters(id) {
+  return await computerPrintersList(id);
+}
+
+export async function syncComputerPrinters(ipEntryId, printers) {
+  await getComputer(ipEntryId);
+
+  await computerPrintersDelete(ipEntryId);
+
+  if (!printers.length) {
+    return true;
+  }
+
+  const rows = printers.map((item) => ({
+    ip_entry_id: ipEntryId,
+
+    name: item.name ?? null,
+
+    driver_name: item.driverName ?? null,
+
+    port_name: item.portName ?? null,
+
+    status: item.status ?? null,
+
+    is_default: item.isDefault ? 1 : 0,
+  }));
+
+  await computerPrintersInsert(rows);
+
+  return true;
+}
+
+// =========================
+// Available Updates (dostupne, neinstalirane zakrpe)
+// =========================
+
+export async function getComputerAvailableUpdates(id) {
+  return await computerAvailableUpdatesList(id);
+}
+
+export async function syncComputerAvailableUpdates(ipEntryId, availableUpdates) {
+  await getComputer(ipEntryId);
+
+  await computerAvailableUpdatesDelete(ipEntryId);
+
+  if (!availableUpdates.length) {
+    return true;
+  }
+
+  const rows = availableUpdates.map((item) => ({
+    ip_entry_id: ipEntryId,
+
+    kb_id: item.kbId ?? null,
+
+    title: item.title ?? null,
+
+    severity: item.severity ?? null,
+  }));
+
+  await computerAvailableUpdatesInsert(rows);
 
   return true;
 }

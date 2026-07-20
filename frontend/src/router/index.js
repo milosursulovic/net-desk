@@ -15,6 +15,8 @@ const IpMetaView = () => import('@/views/IpMetaView.vue')
 const IpPdsuView = () => import('@/views/IpPdsuView.vue')
 const IpPortScanView = () => import('@/views/IpPortScanView.vue')
 const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
+const AgentsView = () => import('@/views/AgentsView.vue')
+const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -113,6 +115,22 @@ const router = createRouter({
           name: 'pdsu',
           meta: { title: 'PDSU Analitika - NetDesk', breadcrumb: 'PDSU Analitika' },
           component: PDSUAnalyticsView,
+        },
+        {
+          path: 'agents',
+          name: 'agents',
+          meta: { title: 'Netdesk Agenti - NetDesk', breadcrumb: 'Agenti' },
+          component: AgentsView,
+        },
+        {
+          path: 'agents/:id',
+          name: 'agent-detail',
+          meta: {
+            title: 'Agent - NetDesk',
+            breadcrumb: 'Detalji agenta',
+            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+          },
+          component: AgentDetailView,
         },
       ],
     },

@@ -320,3 +320,125 @@ export async function computerUpdatesInsert(rows) {
     [values],
   );
 }
+
+// =========================
+// Printers (agent-detektovani, po računaru)
+// =========================
+
+export async function computerPrintersList(ipEntryId) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      id,
+      name,
+      driver_name,
+      port_name,
+      status,
+      is_default,
+      inventory_date
+    FROM computer_printers
+    WHERE ip_entry_id = ?
+    ORDER BY is_default DESC, name
+    `,
+    [ipEntryId],
+  );
+
+  return rows;
+}
+
+export async function computerPrintersDelete(ipEntryId) {
+  await pool.query(
+    `
+    DELETE FROM computer_printers
+    WHERE ip_entry_id = ?
+    `,
+    [ipEntryId],
+  );
+}
+
+export async function computerPrintersInsert(rows) {
+  if (!rows.length) return;
+
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.name,
+    item.driver_name,
+    item.port_name,
+    item.status,
+    item.is_default,
+  ]);
+
+  await pool.query(
+    `
+    INSERT INTO computer_printers
+    (
+      ip_entry_id,
+      name,
+      driver_name,
+      port_name,
+      status,
+      is_default
+    )
+    VALUES ?
+    `,
+    [values],
+  );
+}
+
+// =========================
+// Available Updates (dostupne, neinstalirane zakrpe)
+// =========================
+
+export async function computerAvailableUpdatesList(ipEntryId) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      id,
+      kb_id,
+      title,
+      severity,
+      inventory_date
+    FROM computer_available_updates
+    WHERE ip_entry_id = ?
+    ORDER BY severity, title
+    `,
+    [ipEntryId],
+  );
+
+  return rows;
+}
+
+export async function computerAvailableUpdatesDelete(ipEntryId) {
+  await pool.query(
+    `
+    DELETE FROM computer_available_updates
+    WHERE ip_entry_id = ?
+    `,
+    [ipEntryId],
+  );
+}
+
+export async function computerAvailableUpdatesInsert(rows) {
+  if (!rows.length) return;
+
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.kb_id,
+    item.title,
+    item.severity,
+  ]);
+
+  await pool.query(
+    `
+    INSERT INTO computer_available_updates
+    (
+      ip_entry_id,
+      kb_id,
+      title,
+      severity
+    )
+    VALUES ?
+    `,
+    [values],
+  );
+}

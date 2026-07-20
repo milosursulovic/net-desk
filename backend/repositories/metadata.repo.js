@@ -34,6 +34,8 @@ export async function loadMetadataBaseById(metadataId) {
       cpu_socket AS cpuSocket,
 
       psu AS PSU,
+      wu_service_status AS wuServiceStatus,
+      wu_last_check_at AS wuLastCheckAt,
       created_at AS createdAt,
       updated_at AS updatedAt
     FROM computer_metadata
@@ -133,8 +135,8 @@ export async function txInsertMeta(conn, ipEntryId, data) {
        mb_manufacturer, mb_product, mb_serial,
        bios_vendor, bios_version, bios_release_date,
        cpu_name, cpu_cores, cpu_logical_cpus, cpu_max_clock_mhz, cpu_socket,
-       psu)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       psu, wu_service_status, wu_last_check_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       ipEntryId,
@@ -166,6 +168,8 @@ export async function txInsertMeta(conn, ipEntryId, data) {
       data.cpuSocket,
 
       data.psu,
+      data.wuServiceStatus,
+      data.wuLastCheckAt,
     ],
   );
   return ins.insertId;
@@ -202,7 +206,9 @@ export async function txUpdateMeta(conn, metadataId, data) {
       cpu_max_clock_mhz = ?,
       cpu_socket = ?,
 
-      psu = ?
+      psu = ?,
+      wu_service_status = ?,
+      wu_last_check_at = ?
     WHERE id = ?
     `,
     [
@@ -234,6 +240,8 @@ export async function txUpdateMeta(conn, metadataId, data) {
       data.cpuSocket,
 
       data.psu,
+      data.wuServiceStatus,
+      data.wuLastCheckAt,
       metadataId,
     ],
   );

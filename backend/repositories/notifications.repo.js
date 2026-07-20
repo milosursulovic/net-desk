@@ -39,6 +39,52 @@ export async function countAutomaticStoppedServices() {
   return Number(cnt) || 0;
 }
 
+export async function countDiskFullAgents(thresholdPct = 90) {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM agent_monitoring WHERE disk_used_pct >= ?`,
+    [thresholdPct],
+  );
+  return Number(cnt) || 0;
+}
+
+export async function countAntivirusInactiveAgents() {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM agent_monitoring WHERE antivirus_status = 'disabled'`,
+  );
+  return Number(cnt) || 0;
+}
+
+export async function countFirewallInactiveAgents() {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM agent_monitoring WHERE firewall_status = 'disabled'`,
+  );
+  return Number(cnt) || 0;
+}
+
+export async function countFailedJobsRecent(hours = 24) {
+  const [[{ cnt }]] = await pool.execute(
+    `
+    SELECT COUNT(*) AS cnt
+    FROM agent_jobs
+    WHERE status = 'failed' AND completed_at >= NOW() - INTERVAL ? HOUR
+    `,
+    [hours],
+  );
+  return Number(cnt) || 0;
+}
+
+export async function countWuServiceUnavailable() {
+  const [[{ cnt }]] = await pool.execute(`
+    SELECT COUNT(*) AS cnt
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+      AND cm.wu_service_status IS NOT NULL
+      AND cm.wu_service_status <> 'Running'
+  `);
+  return Number(cnt) || 0;
+}
+
 export async function countStaleUpdateComputers(staleDays = 90) {
   const safeDays = Math.max(1, Math.min(Number(staleDays) || 90, 3650));
 

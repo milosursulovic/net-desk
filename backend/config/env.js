@@ -19,6 +19,8 @@ export const DB_NAME = requireEnv("DB_NAME");
 export const JWT_SECRET = requireEnv("JWT_SECRET");
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
+export const AGENT_ENROLL_TOKEN = requireEnv("AGENT_ENROLL_TOKEN");
+
 export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
   .split(",")
   .map((s) => s.trim())

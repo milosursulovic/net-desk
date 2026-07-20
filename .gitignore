@@ -11,6 +11,9 @@ frontend/dist/
 frontend/dist-ssr/
 *.local
 
+# Uploaded agent release packages
+backend/uploads/
+
 # Logs
 logs/
 *.log
