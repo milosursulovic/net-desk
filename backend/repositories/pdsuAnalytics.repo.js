@@ -4,7 +4,7 @@ import { buildLikeSearch } from "../utils/sqlSearch.js";
 /**
  * Zajednička pokrivenost inventarom.
  */
-export async function getInventoryCoverage() {
+export async function getPdsuCoverage() {
   const [[row]] = await pool.execute(`
     SELECT
       (SELECT COUNT(*) FROM ip_entries WHERE entry_type = 'computer') AS totalComputers,

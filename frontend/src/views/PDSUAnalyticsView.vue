@@ -7,6 +7,7 @@ import { downloadFromResponse } from '@/utils/download.js'
 import { fmtDateSr } from '@/utils/format.js'
 import { stateLabel, startModeLabel } from '@/utils/pdsuServiceLabels.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
+import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import AppButton from '@/components/AppButton.vue'
 
 import PDSUOverview from '@/components/pdsu/PDSUOverview.vue'
@@ -21,7 +22,12 @@ const error = ref('')
 const stats = ref(null)
 
 const activeTab = ref('overview')
-const search = ref('')
+const { search } = usePaginatedRoute({
+  fields: {
+    search: { type: 'string', default: '', omitIfEmpty: true },
+  },
+  useReplace: true,
+})
 
 const coverage = computed(() => stats.value?.coverage ?? {})
 const software = computed(() => stats.value?.software ?? {})
@@ -116,10 +122,14 @@ async function runSearch() {
   }
 }
 
-watch(search, () => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(runSearch, 300)
-})
+watch(
+  search,
+  () => {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(runSearch, 300)
+  },
+  { immediate: true }
+)
 
 onBeforeUnmount(() => clearTimeout(searchTimer))
 

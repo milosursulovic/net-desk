@@ -1,12 +1,12 @@
 import {
-  inventoryAnalyticsStatsService,
+  pdsuAnalyticsStatsService,
   exportPdsuAnalyticsXlsx,
   searchPdsuAnalytics,
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 
-export async function inventoryAnalyticsStatsController(req, res) {
-  const result = await inventoryAnalyticsStatsService();
+export async function pdsuAnalyticsStatsController(req, res) {
+  const result = await pdsuAnalyticsStatsService();
 
   res.json(result);
 }

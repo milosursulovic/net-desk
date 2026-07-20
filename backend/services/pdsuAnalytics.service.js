@@ -1,5 +1,5 @@
 import {
-  getInventoryCoverage,
+  getPdsuCoverage,
   getSoftwareStats,
   getTopSoftware,
   getTopPublishers,
@@ -47,7 +47,7 @@ function pct(value, total) {
   return Math.round((safeValue / safeTotal) * 100);
 }
 
-export async function inventoryAnalyticsStatsService() {
+export async function pdsuAnalyticsStatsService() {
   const [
     coverage,
 
@@ -75,7 +75,7 @@ export async function inventoryAnalyticsStatsService() {
     latestUpdatesByComputer,
     staleUpdateComputers,
   ] = await Promise.all([
-    getInventoryCoverage(),
+    getPdsuCoverage(),
 
     getSoftwareStats(),
     getTopSoftware(10),

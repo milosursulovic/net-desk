@@ -113,10 +113,13 @@
         <template v-else> {{ filteredUpdates.length }} od {{ updates.length }} </template>
       </div>
 
-      <div v-if="tabLoading" class="text-slate-600">Učitavanje inventara…</div>
+      <div v-if="tabLoading[tab]" class="text-slate-600">Učitavanje inventara…</div>
 
-      <div v-else-if="tabError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-        {{ tabError }}
+      <div
+        v-else-if="tabError[tab]"
+        class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+      >
+        {{ tabError[tab] }}
       </div>
 
       <div v-else>
@@ -235,6 +238,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate } from '@/utils/format.js'
+import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import AppButton from '@/components/AppButton.vue'
 
 const route = useRoute()
@@ -244,9 +248,7 @@ const entry = ref(null)
 const entryLoading = ref(false)
 const entryError = ref('')
 
-const tab = ref('software')
-const tabLoading = ref(false)
-const tabError = ref('')
+const TAB_NAMES = ['software', 'drivers', 'services', 'updates']
 
 const software = ref([])
 const drivers = ref([])
@@ -254,20 +256,26 @@ const services = ref([])
 const updates = ref([])
 
 const loaded = ref({ software: false, drivers: false, services: false, updates: false })
+const tabLoading = ref({ software: false, drivers: false, services: false, updates: false })
+const tabError = ref({ software: '', drivers: '', services: '', updates: '' })
 
-const search = ref('')
+const { search, tab } = usePaginatedRoute({
+  fields: {
+    search: { type: 'string', default: '', omitIfEmpty: true },
+    tab: { type: 'string', default: 'software', oneOf: TAB_NAMES },
+  },
+  useReplace: true,
+})
 
 function goBack() {
   router.push('/')
 }
 
-async function loadTab(name) {
-  tab.value = name
-
+async function loadTabData(name) {
   if (loaded.value[name]) return
 
-  tabLoading.value = true
-  tabError.value = ''
+  tabLoading.value[name] = true
+  tabError.value[name] = ''
 
   try {
     const res = await fetchWithAuth(`/api/protected/pdsu/${route.params.id}/${name}`)
@@ -287,15 +295,16 @@ async function loadTab(name) {
     loaded.value[name] = true
   } catch (err) {
     console.error('Greška pri učitavanju inventara:', err)
-    tabError.value = err?.message || 'Neuspešno učitavanje inventara.'
+    tabError.value[name] = err?.message || 'Neuspešno učitavanje inventara.'
   } finally {
-    tabLoading.value = false
+    tabLoading.value[name] = false
   }
 }
 
-async function selectTab(name) {
+function selectTab(name) {
+  tab.value = name
   search.value = ''
-  await loadTab(name)
+  loadTabData(name)
 }
 
 const filteredSoftware = computed(() => {
@@ -348,7 +357,6 @@ async function loadEntry() {
       return
     }
     entry.value = await res.json()
-    await loadTab('software')
   } catch (err) {
     console.error(err)
     entryError.value = 'Neuspešno učitan računar'
@@ -357,5 +365,10 @@ async function loadEntry() {
   }
 }
 
-onMounted(loadEntry)
+onMounted(async () => {
+  await loadEntry()
+  if (!entryError.value) {
+    TAB_NAMES.forEach(loadTabData)
+  }
+})
 </script>
