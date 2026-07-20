@@ -26,6 +26,13 @@
         </RouterLink>
 
         <RouterLink
+          to="/pdsu"
+          class="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 inline-flex items-center font-medium transition"
+        >
+          PDSU
+        </RouterLink>
+
+        <RouterLink
           to="/printers"
           class="bg-orange-600 text-white px-4 py-2 rounded-md shadow hover:bg-orange-700 inline-flex items-center font-medium transition"
         >

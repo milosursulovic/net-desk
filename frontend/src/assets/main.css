@@ -1,19 +1,734 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+:root {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+
+  color: #1e293b;
+  background-color: #f4f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
 body {
-  @apply bg-gradient-to-br from-slate-100 to-white min-h-screen font-[Inter] text-gray-800;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.07), transparent 32rem),
+    linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+  color: #1e293b;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 .glass-container {
-  @apply bg-white/70 backdrop-blur-md rounded-xl shadow-lg p-6;
+  @apply rounded-xl bg-white/70 p-6 shadow-lg backdrop-blur-md;
 }
+
+/* =========================================================
+   GLOBAL TRANSITIONS
+   ========================================================= */
 
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* =========================================================
+   PDSU - PAGE
+   ========================================================= */
+
+.pdsu-page {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.pdsu-container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   PDSU - HEADER
+   ========================================================= */
+
+.pdsu-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.pdsu-eyebrow {
+  margin-bottom: 0.35rem;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pdsu-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.pdsu-subtitle {
+  max-width: 720px;
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.pdsu-refresh-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.65rem 1.05rem;
+  border: 1px solid #2563eb;
+  border-radius: 0.7rem;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0.3rem 0.8rem rgba(37, 99, 235, 0.2);
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pdsu-refresh-button:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 0.5rem 1.1rem rgba(37, 99, 235, 0.27);
+  transform: translateY(-1px);
+}
+
+.pdsu-refresh-button:focus {
+  color: #ffffff;
+  box-shadow: 0 0 0 0.22rem rgba(37, 99, 235, 0.2);
+}
+
+.pdsu-refresh-button:disabled {
+  border-color: #93c5fd;
+  background-color: #93c5fd;
+  color: #ffffff;
+  cursor: wait;
+  opacity: 1;
+}
+
+.pdsu-refresh-icon {
+  display: inline-block;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* =========================================================
+   PDSU - TABS
+   ========================================================= */
+
+.pdsu-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  padding: 0.4rem;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.9rem;
+  background-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0.25rem 0.9rem rgba(15, 23, 42, 0.045);
+  scrollbar-width: thin;
+}
+
+.pdsu-tab {
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  padding: 0.72rem 1rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background-color: transparent;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pdsu-tab:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.pdsu-tab:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 1px;
+}
+
+.pdsu-tab-active,
+.pdsu-tab-active:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0.25rem 0.65rem rgba(37, 99, 235, 0.24);
+}
+
+.pdsu-tab-icon {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  border-radius: 0.4rem;
+  background-color: rgba(100, 116, 139, 0.1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pdsu-tab-active .pdsu-tab-icon {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+/* =========================================================
+   PDSU - STATES
+   ========================================================= */
+
+.pdsu-alert {
+  border: 1px solid #fde68a;
+  border-radius: 0.8rem;
+}
+
+.pdsu-state-card {
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background-color: #ffffff;
+  text-align: center;
+  box-shadow: 0 0.3rem 1.2rem rgba(15, 23, 42, 0.055);
+}
+
+.pdsu-error-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 1rem;
+  place-items: center;
+  border-radius: 50%;
+  background-color: #fee2e2;
+  color: #dc2626;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* =========================================================
+   PDSU - COMMON CARDS
+   ========================================================= */
+
+.pdsu-overview .card,
+.pdsu-software .card,
+.pdsu-drivers .card,
+.pdsu-services .card,
+.pdsu-updates .card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.9rem;
+  background-color: #ffffff;
+  box-shadow: 0 0.25rem 0.9rem rgba(15, 23, 42, 0.045) !important;
+}
+
+/*
+  Ne pomeramo svaku karticu na hover.
+  Kod velikih tabela to stvara neprijatan skok stranice.
+*/
+.pdsu-overview .card,
+.pdsu-software .card,
+.pdsu-drivers .card,
+.pdsu-services .card,
+.pdsu-updates .card {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pdsu-overview .card:hover,
+.pdsu-software .card:hover,
+.pdsu-drivers .card:hover,
+.pdsu-services .card:hover,
+.pdsu-updates .card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 0.4rem 1.2rem rgba(15, 23, 42, 0.065) !important;
+}
+
+.pdsu-overview .card-header,
+.pdsu-software .card-header,
+.pdsu-drivers .card-header,
+.pdsu-services .card-header,
+.pdsu-updates .card-header {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc !important;
+}
+
+.pdsu-overview .card-header h5,
+.pdsu-software .card-header h5,
+.pdsu-drivers .card-header h5,
+.pdsu-services .card-header h5,
+.pdsu-updates .card-header h5 {
+  margin-bottom: 0.2rem;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pdsu-overview .card-body,
+.pdsu-software .card-body,
+.pdsu-drivers .card-body,
+.pdsu-services .card-body,
+.pdsu-updates .card-body {
+  padding: 1.15rem;
+}
+
+.pdsu-overview .text-muted,
+.pdsu-software .text-muted,
+.pdsu-drivers .text-muted,
+.pdsu-services .text-muted,
+.pdsu-updates .text-muted {
+  color: #64748b !important;
+}
+
+/* =========================================================
+   PDSU - KPI VALUES
+   ========================================================= */
+
+.pdsu-overview .display-6 {
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 700 !important;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.pdsu-software .fs-2,
+.pdsu-drivers .fs-2,
+.pdsu-services .fs-2,
+.pdsu-updates .fs-2 {
+  color: #0f172a;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em;
+}
+
+.pdsu-software .fs-4,
+.pdsu-drivers .fs-4,
+.pdsu-services .fs-4,
+.pdsu-updates .fs-4 {
+  color: #0f172a;
+  font-weight: 700 !important;
+}
+
+/*
+  Bootstrap status boje moraju ostati vidljive.
+*/
+.pdsu-content .text-success {
+  color: #15803d !important;
+}
+
+.pdsu-content .text-warning {
+  color: #b45309 !important;
+}
+
+.pdsu-content .text-danger {
+  color: #dc2626 !important;
+}
+
+.pdsu-content .text-primary {
+  color: #2563eb !important;
+}
+
+/* =========================================================
+   PDSU - BADGES
+   ========================================================= */
+
+.pdsu-content .badge {
+  padding: 0.4em 0.65em;
+  border-radius: 0.45rem;
+  font-weight: 600;
+}
+
+.pdsu-content .text-bg-primary {
+  background-color: #2563eb !important;
+}
+
+.pdsu-content .text-bg-success {
+  background-color: #16a34a !important;
+}
+
+.pdsu-content .text-bg-warning {
+  background-color: #f59e0b !important;
+  color: #422006 !important;
+}
+
+.pdsu-content .text-bg-danger {
+  background-color: #dc2626 !important;
+}
+
+.pdsu-content .text-bg-secondary {
+  background-color: #64748b !important;
+}
+
+.pdsu-content .text-bg-dark {
+  background-color: #0f172a !important;
+}
+
+/* =========================================================
+   PDSU - PROGRESS
+   ========================================================= */
+
+.pdsu-overview .progress,
+.pdsu-software .progress,
+.pdsu-drivers .progress,
+.pdsu-services .progress,
+.pdsu-updates .progress {
+  overflow: hidden;
+  height: 7px;
+  border-radius: 999px;
+  background-color: #e9eef5;
+}
+
+.pdsu-overview .progress {
+  height: 8px;
+}
+
+.pdsu-overview .progress-bar,
+.pdsu-software .progress-bar,
+.pdsu-drivers .progress-bar,
+.pdsu-services .progress-bar,
+.pdsu-updates .progress-bar {
+  border-radius: 999px;
+}
+
+/* =========================================================
+   PDSU - TABLES
+   ========================================================= */
+
+.pdsu-software .table-responsive,
+.pdsu-drivers .table-responsive,
+.pdsu-services .table-responsive,
+.pdsu-updates .table-responsive {
+  border-radius: 0.7rem;
+}
+
+.pdsu-software table,
+.pdsu-drivers table,
+.pdsu-services table,
+.pdsu-updates table {
+  margin-bottom: 0;
+  color: #334155;
+}
+
+.pdsu-software table > :not(caption) > * > *,
+.pdsu-drivers table > :not(caption) > * > *,
+.pdsu-services table > :not(caption) > * > *,
+.pdsu-updates table > :not(caption) > * > * {
+  padding: 0.8rem 0.75rem;
+  border-bottom-color: #e2e8f0;
+}
+
+.pdsu-software table th,
+.pdsu-drivers table th,
+.pdsu-services table th,
+.pdsu-updates table th {
+  white-space: nowrap;
+  border-bottom-width: 1px;
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pdsu-software table td,
+.pdsu-drivers table td,
+.pdsu-services table td,
+.pdsu-updates table td {
+  vertical-align: middle;
+}
+
+.pdsu-software table tbody tr,
+.pdsu-drivers table tbody tr,
+.pdsu-services table tbody tr,
+.pdsu-updates table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.pdsu-software table tbody tr:hover,
+.pdsu-drivers table tbody tr:hover,
+.pdsu-services table tbody tr:hover,
+.pdsu-updates table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* =========================================================
+   PDSU - FORM CONTROLS
+   ========================================================= */
+
+.software-search,
+.driver-search,
+.service-search,
+.update-search {
+  width: min(100%, 420px);
+}
+
+.pdsu-content .form-control,
+.pdsu-content .form-select {
+  min-height: 42px;
+  border-color: #cbd5e1;
+  border-radius: 0.65rem;
+  color: #334155;
+}
+
+.pdsu-content .form-control::placeholder {
+  color: #94a3b8;
+}
+
+.pdsu-content .form-control:focus,
+.pdsu-content .form-select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+}
+
+/* =========================================================
+   PDSU - CODE
+   ========================================================= */
+
+.pdsu-software code,
+.pdsu-drivers code,
+.pdsu-services code,
+.pdsu-updates code {
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.3rem;
+  background-color: #f1f5f9;
+  color: #334155;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   PDSU - SOFTWARE
+   ========================================================= */
+
+.software-bar-row {
+  margin-bottom: 1.25rem;
+}
+
+.software-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+/* =========================================================
+   PDSU - DRIVERS
+   ========================================================= */
+
+.driver-bar-row {
+  margin-bottom: 1.25rem;
+}
+
+.driver-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+/* =========================================================
+   PDSU - SERVICES
+   ========================================================= */
+
+.service-path {
+  min-width: 280px;
+  max-width: 520px;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   PDSU - UPDATES
+   ========================================================= */
+
+.freshness-row,
+.hotfix-bar-row {
+  margin-bottom: 1.25rem;
+}
+
+.freshness-row:last-child,
+.hotfix-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+.update-description {
+  min-width: 240px;
+  max-width: 440px;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   PDSU - TRANSITION
+   ========================================================= */
+
+.pdsu-fade-enter-active,
+.pdsu-fade-leave-active {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.pdsu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.pdsu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+/* =========================================================
+   PDSU - RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 991.98px) {
+  .pdsu-page {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .pdsu-page {
+    padding: 1rem;
+  }
+
+  .pdsu-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pdsu-refresh-button {
+    width: 100%;
+  }
+
+  .pdsu-tabs {
+    justify-content: flex-start;
+  }
+
+  .pdsu-tab {
+    flex: 0 0 auto;
+  }
+
+  .software-search,
+  .driver-search,
+  .service-search,
+  .update-search {
+    width: 100%;
+  }
+
+  .service-path,
+  .update-description {
+    min-width: 220px;
+  }
+
+  .pdsu-overview .card-body,
+  .pdsu-software .card-body,
+  .pdsu-drivers .card-body,
+  .pdsu-services .card-body,
+  .pdsu-updates .card-body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .pdsu-page {
+    padding: 0.75rem;
+  }
+
+  .pdsu-title {
+    font-size: 1.75rem;
+  }
+
+  .pdsu-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .pdsu-tabs {
+    margin-right: -0.1rem;
+    margin-left: -0.1rem;
+  }
+
+  .pdsu-tab {
+    min-width: 108px;
+    padding-right: 0.8rem;
+    padding-left: 0.8rem;
+  }
+
+  .pdsu-overview .display-6 {
+    font-size: 1.75rem;
+  }
+
+  .pdsu-software .fs-2,
+  .pdsu-drivers .fs-2,
+  .pdsu-services .fs-2,
+  .pdsu-updates .fs-2 {
+    font-size: 1.65rem !important;
+  }
 }

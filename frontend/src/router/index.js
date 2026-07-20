@@ -10,6 +10,7 @@ const EditIpView = () => import('@/views/EditIpView.vue')
 const MetadataView = () => import('@/views/MetadataView.vue')
 const PrintersView = () => import('@/views/PrintersView.vue')
 const InventoryView = () => import('@/views/InventoryView.vue')
+const PDSUAnalyticsView = () => import('@/views/PDSUAnalyticsView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,6 +50,12 @@ const router = createRouter({
           name: 'inventory',
           meta: { title: 'Inventar hardvera - NetDesk' },
           component: InventoryView,
+        },
+        {
+          path: 'pdsu',
+          name: 'pdsu',
+          meta: { title: 'PDSU Analitika - NetDesk' },
+          component: PDSUAnalyticsView,
         },
       ],
     },
