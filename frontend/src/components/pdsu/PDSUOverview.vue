@@ -1,6 +1,12 @@
 <script setup>
 import { computed } from 'vue'
-import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
+import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+
+const { formatNumber, formatDate: formatDateBase } = usePdsuFormatters()
+
+function formatDate(value) {
+  return formatDateBase(value, true)
+}
 
 const props = defineProps({
   coverage: {
@@ -109,14 +115,6 @@ const alertItems = computed(() => [
       Number(driverStats.value?.withoutDate) > 0 ? 'bg-amber-500 text-amber-950' : 'bg-green-600 text-white',
   },
 ])
-
-function formatNumber(value) {
-  return fmtNumberSr(value)
-}
-
-function formatDate(value) {
-  return fmtDateSr(value, { includeTime: true })
-}
 
 function percentageClass(percent) {
   const value = Number(percent) || 0

@@ -5,6 +5,8 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { fmtDateSr } from '@/utils/format.js'
+import { stateLabel, startModeLabel } from '@/utils/pdsuServiceLabels.js'
+import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import AppButton from '@/components/AppButton.vue'
 
 import PDSUOverview from '@/components/pdsu/PDSUOverview.vue'
@@ -62,6 +64,7 @@ const searchColumnsMap = {
 const searchResults = ref({ software: [], drivers: [], services: [], updates: [] })
 const searchLoading = ref(false)
 let searchTimer = null
+const { getSignal } = useAbortableFetch()
 
 const searchTotalCount = computed(() =>
   searchCategories.reduce((sum, cat) => sum + (searchResults.value[cat]?.length || 0), 0)
@@ -75,6 +78,8 @@ function cellValue(item, key) {
   const value = item?.[key]
   if (value == null || value === '') return '—'
   if (key === 'installedOn') return fmtDateSr(value)
+  if (key === 'state') return stateLabel(value)
+  if (key === 'startMode') return startModeLabel(value)
   return value
 }
 
@@ -90,7 +95,9 @@ async function runSearch() {
 
   try {
     const params = new URLSearchParams({ category: 'all', q: query })
-    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/search?${params.toString()}`)
+    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/search?${params.toString()}`, {
+      signal: getSignal(),
+    })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     searchResults.value = {
@@ -100,8 +107,10 @@ async function runSearch() {
       updates: Array.isArray(data.updates) ? data.updates : [],
     }
   } catch (err) {
-    console.error('PDSU pretraga greška:', err)
-    searchResults.value = { software: [], drivers: [], services: [], updates: [] }
+    if (err?.name !== 'AbortError') {
+      console.error('PDSU pretraga greška:', err)
+      searchResults.value = { software: [], drivers: [], services: [], updates: [] }
+    }
   } finally {
     searchLoading.value = false
   }

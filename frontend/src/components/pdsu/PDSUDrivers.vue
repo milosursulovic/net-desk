@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
-import { barWidth as sharedBarWidth } from '@/utils/math.js'
+import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 
 const props = defineProps({
   drivers: {
@@ -9,6 +8,8 @@ const props = defineProps({
     default: () => ({}),
   },
 })
+
+const { formatNumber, formatDate, barWidth, splitValues } = usePdsuFormatters()
 
 const stats = computed(() => props.drivers?.stats ?? {})
 const tables = computed(() => props.drivers?.tables ?? {})
@@ -24,29 +25,6 @@ const computersWithMostDrivers = computed(() => tables.value?.computersWithMostD
 const maxManufacturerDrivers = computed(() => {
   return Math.max(...topManufacturers.value.map((item) => Number(item.drivers) || 0), 1)
 })
-
-function formatNumber(value, maximumFractionDigits = 0) {
-  return fmtNumberSr(value, maximumFractionDigits)
-}
-
-function formatDate(value, includeTime = false) {
-  return fmtDateSr(value, { includeTime })
-}
-
-function barWidth(value, maximum) {
-  return sharedBarWidth(value, maximum)
-}
-
-function splitValues(value) {
-  if (!value) {
-    return []
-  }
-
-  return String(value)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
 
 function driverAgeClass(value) {
   if (!value) {

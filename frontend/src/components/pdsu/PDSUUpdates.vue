@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
-import { barWidth as sharedBarWidth } from '@/utils/math.js'
+import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 
 const props = defineProps({
   updates: {
@@ -9,6 +8,8 @@ const props = defineProps({
     default: () => ({}),
   },
 })
+
+const { formatNumber, formatDate, barWidth } = usePdsuFormatters()
 
 const stats = computed(() => props.updates?.stats ?? {})
 const tables = computed(() => props.updates?.tables ?? {})
@@ -92,18 +93,6 @@ function cryptoSafeKey(item) {
   return [item.label, item.bucket, item.computers, item.count]
     .filter((value) => value !== undefined && value !== null)
     .join('-')
-}
-
-function formatNumber(value, maximumFractionDigits = 0) {
-  return fmtNumberSr(value, maximumFractionDigits)
-}
-
-function formatDate(value, includeTime = false) {
-  return fmtDateSr(value, { includeTime })
-}
-
-function barWidth(value, maximum) {
-  return sharedBarWidth(value, maximum)
 }
 
 function bucketPercent(value) {

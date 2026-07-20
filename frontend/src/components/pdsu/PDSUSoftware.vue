@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
-import { barWidth as sharedBarWidth } from '@/utils/math.js'
+import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 
 const props = defineProps({
   software: {
@@ -9,6 +8,12 @@ const props = defineProps({
     default: () => ({}),
   },
 })
+
+const { formatNumber, formatDate: formatDateBase, barWidth, splitValues } = usePdsuFormatters()
+
+function formatDate(value) {
+  return formatDateBase(value, true)
+}
 
 const stats = computed(() => props.software?.stats ?? {})
 const tables = computed(() => props.software?.tables ?? {})
@@ -31,28 +36,6 @@ const maxPublisherInstallations = computed(() => {
   return Math.max(...topPublishers.value.map((item) => Number(item.installations) || 0), 1)
 })
 
-function formatNumber(value, maximumFractionDigits = 0) {
-  return fmtNumberSr(value, maximumFractionDigits)
-}
-
-function formatDate(value) {
-  return fmtDateSr(value, { includeTime: true })
-}
-
-function barWidth(value, maximum) {
-  return sharedBarWidth(value, maximum)
-}
-
-function splitValues(value) {
-  if (!value) {
-    return []
-  }
-
-  return String(value)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
 </script>
 
 <template>

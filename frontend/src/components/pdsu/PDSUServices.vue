@@ -1,6 +1,12 @@
 <script setup>
 import { computed } from 'vue'
-import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
+import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+import {
+  stateLabel,
+  stateBadgeClass,
+  startModeLabel,
+  startModeBadgeClass,
+} from '@/utils/pdsuServiceLabels.js'
 
 const props = defineProps({
   services: {
@@ -8,6 +14,12 @@ const props = defineProps({
     default: () => ({}),
   },
 })
+
+const { formatNumber, formatDate: formatDateBase, splitValues } = usePdsuFormatters()
+
+function formatDate(value) {
+  return formatDateBase(value, true)
+}
 
 const stats = computed(() => props.services?.stats ?? {})
 const tables = computed(() => props.services?.tables ?? {})
@@ -35,110 +47,6 @@ const stoppedPercent = computed(() => {
 
   return Math.round(((Number(stats.value?.stopped) || 0) / totalServices.value) * 100)
 })
-
-function formatNumber(value, maximumFractionDigits = 0) {
-  return fmtNumberSr(value, maximumFractionDigits)
-}
-
-function formatDate(value) {
-  return fmtDateSr(value, { includeTime: true })
-}
-
-function splitValues(value) {
-  if (!value) {
-    return []
-  }
-
-  return String(value)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function normalizeState(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-}
-
-function normalizeStartMode(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '')
-}
-
-function stateBadgeClass(value) {
-  const state = normalizeState(value)
-
-  if (state === 'running') {
-    return 'bg-green-600 text-white'
-  }
-
-  if (state === 'stopped') {
-    return 'bg-red-600 text-white'
-  }
-
-  if (state === 'paused') {
-    return 'bg-amber-500 text-amber-950'
-  }
-
-  return 'bg-slate-500 text-white'
-}
-
-function stateLabel(value) {
-  const state = normalizeState(value)
-
-  if (state === 'running') {
-    return 'Pokrenut'
-  }
-
-  if (state === 'stopped') {
-    return 'Zaustavljen'
-  }
-
-  if (state === 'paused') {
-    return 'Pauziran'
-  }
-
-  return value || 'Nepoznato'
-}
-
-function startModeBadgeClass(value) {
-  const mode = normalizeStartMode(value)
-
-  if (mode === 'auto' || mode === 'automatic' || mode === 'automatski') {
-    return 'bg-blue-600 text-white'
-  }
-
-  if (mode === 'manual' || mode === 'ručno' || mode === 'rucno') {
-    return 'bg-amber-500 text-amber-950'
-  }
-
-  if (mode === 'disabled' || mode === 'isključen' || mode === 'iskljucen') {
-    return 'bg-slate-500 text-white'
-  }
-
-  return 'bg-slate-100 text-slate-700 border border-slate-200'
-}
-
-function startModeLabel(value) {
-  const mode = normalizeStartMode(value)
-
-  if (mode === 'auto' || mode === 'automatic' || mode === 'automatski') {
-    return 'Automatski'
-  }
-
-  if (mode === 'manual' || mode === 'ručno' || mode === 'rucno') {
-    return 'Ručno'
-  }
-
-  if (mode === 'disabled' || mode === 'isključen' || mode === 'iskljucen') {
-    return 'Isključen'
-  }
-
-  return value || 'Nepoznato'
-}
 
 function shortenPath(value, maxLength = 90) {
   if (!value) {
