@@ -80,7 +80,7 @@ const normalizedFreshnessBuckets = computed(() => {
       key: item.key ?? item.bucket ?? item.label ?? cryptoSafeKey(item),
       label: item.label ?? freshnessLabel(item.bucket),
       count: Number(item.computers) || Number(item.count) || 0,
-      className: item.className ?? freshnessClass(item.bucket ?? item.key ?? item.label),
+      barClass: item.barClass ?? freshnessClass(item.bucket ?? item.key ?? item.label),
     }))
   }
 
@@ -89,31 +89,31 @@ const normalizedFreshnessBuckets = computed(() => {
       key: 'last30Days',
       label: 'Poslednjih 30 dana',
       count: Number(freshness.value.last30Days) || 0,
-      className: 'bg-success',
+      barClass: 'bg-green-600',
     },
     {
       key: 'between31And60Days',
       label: '31–60 dana',
       count: Number(freshness.value.between31And60Days) || 0,
-      className: 'bg-primary',
+      barClass: 'bg-blue-600',
     },
     {
       key: 'between61And90Days',
       label: '61–90 dana',
       count: Number(freshness.value.between61And90Days) || 0,
-      className: 'bg-warning',
+      barClass: 'bg-amber-500',
     },
     {
       key: 'olderThan90Days',
       label: 'Starije od 90 dana',
       count: Number(freshness.value.olderThan90Days) || 0,
-      className: 'bg-danger',
+      barClass: 'bg-red-600',
     },
     {
       key: 'withoutData',
       label: 'Bez podataka',
       count: Number(freshness.value.withoutData) || 0,
-      className: 'bg-secondary',
+      barClass: 'bg-slate-500',
     },
   ]
 })
@@ -180,22 +180,22 @@ function ageBadgeClass(value) {
   const days = daysSince(value)
 
   if (days === null) {
-    return 'text-bg-secondary'
+    return 'bg-slate-500 text-white'
   }
 
   if (days <= 30) {
-    return 'text-bg-success'
+    return 'bg-green-600 text-white'
   }
 
   if (days <= 60) {
-    return 'text-bg-primary'
+    return 'bg-blue-600 text-white'
   }
 
   if (days <= 90) {
-    return 'text-bg-warning'
+    return 'bg-amber-500 text-amber-950'
   }
 
-  return 'text-bg-danger'
+  return 'bg-red-600 text-white'
 }
 
 function ageLabel(value) {
@@ -248,194 +248,167 @@ function freshnessClass(value) {
   const normalized = String(value || '').toLowerCase()
 
   if (normalized.includes('without') || normalized.includes('missing')) {
-    return 'bg-secondary'
+    return 'bg-slate-500'
   }
 
   if (normalized.includes('older') || normalized.includes('stale') || normalized.includes('90+')) {
-    return 'bg-danger'
+    return 'bg-red-600'
   }
 
   if (normalized.includes('61') || normalized.includes('90')) {
-    return 'bg-warning'
+    return 'bg-amber-500'
   }
 
   if (normalized.includes('31') || normalized.includes('60')) {
-    return 'bg-primary'
+    return 'bg-blue-600'
   }
 
-  return 'bg-success'
+  return 'bg-green-600'
 }
 </script>
 
 <template>
   <section class="pdsu-updates">
     <!-- KPI kartice -->
-    <div class="row g-3 mb-4">
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Ukupno update zapisa</div>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Ukupno update zapisa</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.totalUpdates) }}
-            </div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.totalUpdates) }}
+          </div>
 
-            <div class="small text-muted mt-2">
-              Na
-              {{ formatNumber(stats.computersWithUpdates) }}
-              računara
-            </div>
+          <div class="text-xs text-slate-500 mt-2">
+            Na
+            {{ formatNumber(stats.computersWithUpdates) }}
+            računara
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Jedinstveni hotfix paketi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Jedinstveni hotfix paketi</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.uniqueHotfixes) }}
-            </div>
-
-            <div class="small text-muted mt-2">Različitih KB oznaka</div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.uniqueHotfixes) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Različitih KB oznaka</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Poslednjih 30 dana</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Poslednjih 30 dana</div>
 
-            <div class="fs-2 fw-semibold text-success">
-              {{ formatNumber(stats.installationsLast30Days ?? freshness.last30Days) }}
-            </div>
-
-            <div class="small text-muted mt-2">Svežih update zapisa</div>
+          <div class="text-2xl font-bold tracking-tight text-green-600">
+            {{ formatNumber(stats.installationsLast30Days ?? freshness.last30Days) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Svežih update zapisa</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Starije od 90 dana</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Starije od 90 dana</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-danger': Number(freshness.olderThan90Days) > 0,
-                'text-success': Number(freshness.olderThan90Days) === 0,
-              }"
-            >
-              {{ formatNumber(freshness.olderThan90Days) }}
-            </div>
-
-            <div class="small text-muted mt-2">Računara koji zahtevaju proveru</div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(freshness.olderThan90Days) > 0 ? 'text-red-600' : 'text-green-600'"
+          >
+            {{ formatNumber(freshness.olderThan90Days) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Računara koji zahtevaju proveru</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Bez update podataka</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Bez update podataka</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-warning': Number(freshness.withoutData) > 0,
-              }"
-            >
-              {{ formatNumber(freshness.withoutData) }}
-            </div>
-
-            <div class="small text-muted mt-2">Računara bez inventara update-a</div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(freshness.withoutData) > 0 ? 'text-amber-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(freshness.withoutData) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Računara bez inventara update-a</div>
         </div>
       </div>
     </div>
 
     <!-- Dodatne statistike -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Prosek po računaru</div>
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Prosek po računaru</div>
 
-            <div class="fs-4 fw-semibold">
-              {{ formatNumber(stats.avgPerComputer, 1) }}
-            </div>
-
-            <div class="small text-muted mt-2">Update zapisa po računaru</div>
+          <div class="text-lg font-bold text-slate-900">
+            {{ formatNumber(stats.avgPerComputer, 1) }}
           </div>
         </div>
       </div>
 
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Bez KB oznake</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Bez KB oznake</div>
 
-            <div
-              class="fs-4 fw-semibold"
-              :class="{
-                'text-warning': Number(stats.withoutHotfixId) > 0,
-              }"
-            >
-              {{ formatNumber(stats.withoutHotfixId) }}
-            </div>
+          <div
+            class="text-lg font-bold"
+            :class="Number(stats.withoutHotfixId) > 0 ? 'text-amber-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(stats.withoutHotfixId) }}
           </div>
         </div>
       </div>
 
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Bez datuma instalacije</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Bez datuma instalacije</div>
 
-            <div
-              class="fs-4 fw-semibold"
-              :class="{
-                'text-warning': Number(stats.withoutInstalledOn) > 0,
-              }"
-            >
-              {{ formatNumber(stats.withoutInstalledOn) }}
-            </div>
+          <div
+            class="text-lg font-bold"
+            :class="Number(stats.withoutInstalledOn) > 0 ? 'text-amber-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(stats.withoutInstalledOn) }}
           </div>
         </div>
       </div>
     </div>
 
     <!-- Svežina update-a -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body">
-        <h5 class="mb-1">Svežina poslednjeg update-a</h5>
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header">
+        <h5 class="pdsu-card-title">Svežina poslednjeg update-a</h5>
 
-        <div class="text-muted small">
+        <div class="text-xs text-slate-500">
           Raspodela računara prema datumu poslednjeg instaliranog update-a
         </div>
       </div>
 
-      <div class="card-body">
-        <div v-for="item in normalizedFreshnessBuckets" :key="item.key" class="freshness-row">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="fw-semibold">
+      <div class="p-4">
+        <div v-for="item in normalizedFreshnessBuckets" :key="item.key" class="mb-4 last:mb-0">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold text-slate-900">
               {{ item.label }}
             </span>
 
-            <span class="text-nowrap">
+            <span class="whitespace-nowrap">
               {{ formatNumber(item.count) }}
               ·
               {{ formatNumber(bucketPercent(item.count)) }}%
             </span>
           </div>
 
-          <div class="progress">
+          <div class="pdsu-progress">
             <div
-              class="progress-bar"
-              :class="item.className"
+              class="pdsu-progress-bar"
+              :class="item.barClass"
               :style="{
                 width: `${bucketPercent(item.count)}%`,
               }"
@@ -446,29 +419,29 @@ function freshnessClass(value) {
     </div>
 
     <!-- Period podataka -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <div class="text-muted small">Najstariji instalirani update</div>
+    <div class="pdsu-card mb-4">
+      <div class="p-4">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div>
+            <div class="text-xs text-slate-500">Najstariji instalirani update</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.oldestInstalledOn) }}
             </div>
           </div>
 
-          <div class="col-md-4 text-md-center">
-            <div class="text-muted small">Najnoviji instalirani update</div>
+          <div class="md:text-center">
+            <div class="text-xs text-slate-500">Najnoviji instalirani update</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.newestInstalledOn) }}
             </div>
           </div>
 
-          <div class="col-md-4 text-md-end">
-            <div class="text-muted small">Najnoviji PDSU inventar</div>
+          <div class="md:text-right">
+            <div class="text-xs text-slate-500">Najnoviji PDSU inventar</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.newestInventoryDate, true) }}
             </div>
           </div>
@@ -477,17 +450,17 @@ function freshnessClass(value) {
     </div>
 
     <!-- Najčešći hotfix paketi -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body">
-        <h5 class="mb-1">Najzastupljeniji hotfix paketi</h5>
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header">
+        <h5 class="pdsu-card-title">Najzastupljeniji hotfix paketi</h5>
 
-        <div class="text-muted small">
+        <div class="text-xs text-slate-500">
           Rangirano prema broju računara na kojima je paket pronađen
         </div>
       </div>
 
-      <div class="card-body">
-        <div v-if="topHotfixes.length === 0" class="text-muted text-center py-4">
+      <div class="p-4">
+        <div v-if="topHotfixes.length === 0" class="text-slate-500 text-center py-4">
           Nema podataka o hotfix paketima.
         </div>
 
@@ -495,44 +468,44 @@ function freshnessClass(value) {
           v-for="(item, index) in topHotfixes"
           v-else
           :key="`${item.hotfixId}-${index}`"
-          class="hotfix-bar-row"
+          class="mb-5 last:mb-0"
         >
-          <div class="d-flex justify-content-between align-items-start gap-3 mb-1">
-            <div class="text-truncate">
-              <span class="text-muted me-2"> {{ index + 1 }}. </span>
+          <div class="flex items-start justify-between gap-3 mb-1">
+            <div class="truncate">
+              <span class="text-slate-500 mr-2"> {{ index + 1 }}. </span>
 
-              <span class="fw-semibold" :title="item.hotfixId">
+              <span class="font-semibold text-slate-900" :title="item.hotfixId">
                 {{ item.hotfixId || 'Bez KB oznake' }}
               </span>
 
               <div
                 v-if="item.description"
-                class="small text-muted text-truncate"
+                class="text-xs text-slate-500 truncate"
                 :title="item.description"
               >
                 {{ item.description }}
               </div>
             </div>
 
-            <div class="text-nowrap text-end">
-              <span class="fw-semibold">
+            <div class="whitespace-nowrap text-right">
+              <span class="font-semibold text-slate-900">
                 {{ formatNumber(item.computers) }}
               </span>
 
-              <span class="text-muted small"> računara </span>
+              <span class="text-slate-500 text-xs"> računara </span>
             </div>
           </div>
 
-          <div class="progress">
+          <div class="pdsu-progress">
             <div
-              class="progress-bar bg-primary"
+              class="pdsu-progress-bar bg-blue-600"
               :style="{
                 width: `${barWidth(item.computers, maxHotfixComputers)}%`,
               }"
             />
           </div>
 
-          <div class="d-flex justify-content-between mt-1 small text-muted">
+          <div class="flex items-center justify-between mt-1 text-xs text-slate-500">
             <span>
               {{ formatNumber(item.installations) }}
               instalacija
@@ -548,14 +521,12 @@ function freshnessClass(value) {
     </div>
 
     <!-- Pretraga -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div
-        class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-      >
+    <div class="pdsu-card mb-4">
+      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h5 class="mb-1">Detaljna analiza update-a</h5>
+          <h5 class="pdsu-card-title">Detaljna analiza update-a</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Pretraga se primenjuje na tabele poslednjih i zastarelih update-a.
           </div>
         </div>
@@ -564,7 +535,7 @@ function freshnessClass(value) {
           <input
             v-model="search"
             type="search"
-            class="form-control"
+            class="pdsu-input"
             placeholder="Pretraži računar, IP, KB paket..."
           />
         </div>
@@ -572,21 +543,21 @@ function freshnessClass(value) {
     </div>
 
     <!-- Poslednji update po računaru -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Poslednji update po računaru</h5>
+          <h5 class="pdsu-card-title">Poslednji update po računaru</h5>
 
-          <div class="text-muted small">Najnoviji pronađeni hotfix za svaki računar</div>
+          <div class="text-xs text-slate-500">Najnoviji pronađeni hotfix za svaki računar</div>
         </div>
 
-        <span class="badge text-bg-primary">
+        <span class="pdsu-badge bg-blue-600 text-white">
           {{ formatNumber(filteredLatestUpdates.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Računar</th>
@@ -605,12 +576,12 @@ function freshnessClass(value) {
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.computerName || 'Nepoznat računar' }}
                 </div>
 
-                <div class="small">
-                  <code>{{ item.ip || '—' }}</code>
+                <div>
+                  <code class="pdsu-code">{{ item.ip || '—' }}</code>
                 </div>
               </td>
 
@@ -619,7 +590,7 @@ function freshnessClass(value) {
               </td>
 
               <td>
-                <span class="badge text-bg-light border">
+                <span class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200">
                   {{ item.hotfixId || 'Bez KB oznake' }}
                 </span>
               </td>
@@ -639,14 +610,14 @@ function freshnessClass(value) {
               </td>
 
               <td class="text-center">
-                <span class="badge" :class="ageBadgeClass(item.installedOn)">
+                <span class="pdsu-badge" :class="ageBadgeClass(item.installedOn)">
                   {{ ageLabel(item.installedOn) }}
                 </span>
               </td>
             </tr>
 
             <tr v-if="filteredLatestUpdates.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">Nema rezultata.</td>
+              <td colspan="7" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -654,26 +625,26 @@ function freshnessClass(value) {
     </div>
 
     <!-- Zastareli računari -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Računari sa zastarelim update podacima</h5>
+          <h5 class="pdsu-card-title">Računari sa zastarelim update podacima</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Računari čiji je poslednji pronađeni update stariji od 90 dana ili nedostaje datum
           </div>
         </div>
 
         <span
-          class="badge"
-          :class="filteredStaleComputers.length > 0 ? 'text-bg-danger' : 'text-bg-success'"
+          class="pdsu-badge"
+          :class="filteredStaleComputers.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
         >
           {{ formatNumber(filteredStaleComputers.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Računar</th>
@@ -691,12 +662,12 @@ function freshnessClass(value) {
               v-for="(item, index) in filteredStaleComputers"
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
-              <td class="fw-semibold">
+              <td class="font-semibold text-slate-900">
                 {{ item.computerName || 'Nepoznat računar' }}
               </td>
 
               <td>
-                <code>{{ item.ip || '—' }}</code>
+                <code class="pdsu-code">{{ item.ip || '—' }}</code>
               </td>
 
               <td>
@@ -704,11 +675,11 @@ function freshnessClass(value) {
               </td>
 
               <td>
-                <span class="badge text-bg-light border">
+                <span class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200">
                   {{ item.hotfixId || 'Bez KB oznake' }}
                 </span>
 
-                <div v-if="item.description" class="small text-muted mt-1">
+                <div v-if="item.description" class="text-xs text-slate-500 mt-1">
                   {{ item.description }}
                 </div>
               </td>
@@ -718,7 +689,7 @@ function freshnessClass(value) {
               </td>
 
               <td class="text-center">
-                <span class="badge" :class="ageBadgeClass(item.installedOn)">
+                <span class="pdsu-badge" :class="ageBadgeClass(item.installedOn)">
                   {{ ageLabel(item.installedOn) }}
                 </span>
               </td>
@@ -729,7 +700,7 @@ function freshnessClass(value) {
             </tr>
 
             <tr v-if="filteredStaleComputers.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">
+              <td colspan="7" class="text-center text-slate-500 py-4">
                 Nema računara sa zastarelim update podacima.
               </td>
             </tr>

@@ -45,7 +45,7 @@ const coverageItems = computed(() => [
     value: Number(props.coverage?.withSoftware) || 0,
     missing: Number(props.coverage?.withoutSoftware) || 0,
     percent: Number(props.coverage?.softwarePct) || 0,
-    progressClass: 'bg-primary',
+    barClass: 'bg-blue-600',
   },
   {
     key: 'drivers',
@@ -54,7 +54,7 @@ const coverageItems = computed(() => [
     value: Number(props.coverage?.withDrivers) || 0,
     missing: Number(props.coverage?.withoutDrivers) || 0,
     percent: Number(props.coverage?.driversPct) || 0,
-    progressClass: 'bg-success',
+    barClass: 'bg-green-600',
   },
   {
     key: 'services',
@@ -63,7 +63,7 @@ const coverageItems = computed(() => [
     value: Number(props.coverage?.withServices) || 0,
     missing: Number(props.coverage?.withoutServices) || 0,
     percent: Number(props.coverage?.servicesPct) || 0,
-    progressClass: 'bg-warning',
+    barClass: 'bg-amber-500',
   },
   {
     key: 'updates',
@@ -72,7 +72,7 @@ const coverageItems = computed(() => [
     value: Number(props.coverage?.withUpdates) || 0,
     missing: Number(props.coverage?.withoutUpdates) || 0,
     percent: Number(props.coverage?.updatesPct) || 0,
-    progressClass: 'bg-danger',
+    barClass: 'bg-red-600',
   },
 ])
 
@@ -81,28 +81,31 @@ const alertItems = computed(() => [
     key: 'automaticStopped',
     label: 'Automatski servisi koji ne rade',
     value: Number(serviceStats.value?.automaticStopped) || 0,
-    className:
-      Number(serviceStats.value?.automaticStopped) > 0 ? 'text-bg-danger' : 'text-bg-success',
+    badgeClass:
+      Number(serviceStats.value?.automaticStopped) > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white',
   },
   {
     key: 'oldUpdates',
     label: 'Računari bez update-a duže od 90 dana',
     value: Number(updateFreshness.value?.olderThan90Days) || 0,
-    className:
-      Number(updateFreshness.value?.olderThan90Days) > 0 ? 'text-bg-warning' : 'text-bg-success',
+    badgeClass:
+      Number(updateFreshness.value?.olderThan90Days) > 0
+        ? 'bg-amber-500 text-amber-950'
+        : 'bg-green-600 text-white',
   },
   {
     key: 'missingUpdates',
     label: 'Računari bez update podataka',
     value: Number(updateFreshness.value?.withoutData) || 0,
-    className:
-      Number(updateFreshness.value?.withoutData) > 0 ? 'text-bg-secondary' : 'text-bg-success',
+    badgeClass:
+      Number(updateFreshness.value?.withoutData) > 0 ? 'bg-slate-500 text-white' : 'bg-green-600 text-white',
   },
   {
     key: 'missingDriverDates',
     label: 'Drajveri bez datuma',
     value: Number(driverStats.value?.withoutDate) || 0,
-    className: Number(driverStats.value?.withoutDate) > 0 ? 'text-bg-warning' : 'text-bg-success',
+    badgeClass:
+      Number(driverStats.value?.withoutDate) > 0 ? 'bg-amber-500 text-amber-950' : 'bg-green-600 text-white',
   },
 ])
 
@@ -130,165 +133,157 @@ function formatDate(value) {
 function percentageClass(percent) {
   const value = Number(percent) || 0
 
-  if (value >= 90) return 'text-success'
-  if (value >= 70) return 'text-warning'
+  if (value >= 90) return 'text-green-600'
+  if (value >= 70) return 'text-amber-600'
 
-  return 'text-danger'
+  return 'text-red-600'
 }
 </script>
 
 <template>
   <section class="pdsu-overview">
     <!-- Glavni KPI -->
-    <div class="row g-3 mb-4">
-      <div class="col-sm-6 col-xl-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="text-muted small mb-1">Instalirani programi</div>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-xs text-slate-500 mb-1">Instalirani programi</div>
 
-                <div class="display-6 fw-semibold">
-                  {{ formatNumber(softwareStats.totalInstallations) }}
-                </div>
+              <div class="text-3xl font-bold tracking-tight text-slate-900">
+                {{ formatNumber(softwareStats.totalInstallations) }}
               </div>
-
-              <span class="badge text-bg-primary"> P </span>
             </div>
 
-            <div class="small text-muted mt-3">
-              {{ formatNumber(softwareStats.uniqueSoftware) }}
-              jedinstvenih programa
-            </div>
+            <span class="pdsu-icon-badge bg-blue-600">P</span>
+          </div>
 
-            <div class="small text-muted">
-              Prosek:
-              {{ formatNumber(softwareStats.avgPerComputer) }}
-              po računaru
-            </div>
+          <div class="text-xs text-slate-500 mt-3">
+            {{ formatNumber(softwareStats.uniqueSoftware) }}
+            jedinstvenih programa
+          </div>
+
+          <div class="text-xs text-slate-500">
+            Prosek:
+            {{ formatNumber(softwareStats.avgPerComputer) }}
+            po računaru
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="text-muted small mb-1">Drajveri</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-xs text-slate-500 mb-1">Drajveri</div>
 
-                <div class="display-6 fw-semibold">
-                  {{ formatNumber(driverStats.totalDrivers) }}
-                </div>
+              <div class="text-3xl font-bold tracking-tight text-slate-900">
+                {{ formatNumber(driverStats.totalDrivers) }}
               </div>
-
-              <span class="badge text-bg-success"> D </span>
             </div>
 
-            <div class="small text-muted mt-3">
-              {{ formatNumber(driverStats.uniqueDevices) }}
-              jedinstvenih uređaja
-            </div>
+            <span class="pdsu-icon-badge bg-green-600">D</span>
+          </div>
 
-            <div class="small text-muted">
-              Prosek:
-              {{ formatNumber(driverStats.avgPerComputer) }}
-              po računaru
-            </div>
+          <div class="text-xs text-slate-500 mt-3">
+            {{ formatNumber(driverStats.uniqueDevices) }}
+            jedinstvenih uređaja
+          </div>
+
+          <div class="text-xs text-slate-500">
+            Prosek:
+            {{ formatNumber(driverStats.avgPerComputer) }}
+            po računaru
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="text-muted small mb-1">Servisi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-xs text-slate-500 mb-1">Servisi</div>
 
-                <div class="display-6 fw-semibold">
-                  {{ formatNumber(serviceStats.totalServices) }}
-                </div>
+              <div class="text-3xl font-bold tracking-tight text-slate-900">
+                {{ formatNumber(serviceStats.totalServices) }}
               </div>
-
-              <span class="badge text-bg-warning"> S </span>
             </div>
 
-            <div class="small text-muted mt-3">
-              {{ formatNumber(serviceStats.running) }}
-              pokrenutih
-            </div>
+            <span class="pdsu-icon-badge bg-amber-500">S</span>
+          </div>
 
-            <div class="small text-muted">
-              {{ formatNumber(serviceStats.stopped) }}
-              zaustavljenih
-            </div>
+          <div class="text-xs text-slate-500 mt-3">
+            {{ formatNumber(serviceStats.running) }}
+            pokrenutih
+          </div>
+
+          <div class="text-xs text-slate-500">
+            {{ formatNumber(serviceStats.stopped) }}
+            zaustavljenih
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="text-muted small mb-1">Updates</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-xs text-slate-500 mb-1">Updates</div>
 
-                <div class="display-6 fw-semibold">
-                  {{ formatNumber(updateStats.totalUpdates) }}
-                </div>
+              <div class="text-3xl font-bold tracking-tight text-slate-900">
+                {{ formatNumber(updateStats.totalUpdates) }}
               </div>
-
-              <span class="badge text-bg-danger"> U </span>
             </div>
 
-            <div class="small text-muted mt-3">
-              {{ formatNumber(updateStats.uniqueHotfixes) }}
-              jedinstvenih KB paketa
-            </div>
+            <span class="pdsu-icon-badge bg-red-600">U</span>
+          </div>
 
-            <div class="small text-muted">
-              {{ formatNumber(updateStats.installationsLast30Days) }}
-              instalacija u poslednjih 30 dana
-            </div>
+          <div class="text-xs text-slate-500 mt-3">
+            {{ formatNumber(updateStats.uniqueHotfixes) }}
+            jedinstvenih KB paketa
+          </div>
+
+          <div class="text-xs text-slate-500">
+            {{ formatNumber(updateStats.installationsLast30Days) }}
+            instalacija u poslednjih 30 dana
           </div>
         </div>
       </div>
     </div>
 
     <!-- Pokrivenost -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between">
         <div>
-          <h5 class="mb-1">Pokrivenost PDSU podacima</h5>
+          <h5 class="pdsu-card-title">Pokrivenost PDSU podacima</h5>
 
-          <div class="text-muted small">U odnosu na ukupan broj računara u sistemu</div>
+          <div class="text-xs text-slate-500">U odnosu na ukupan broj računara u sistemu</div>
         </div>
 
-        <span class="badge text-bg-dark"> {{ formatNumber(totalComputers) }} računara </span>
+        <span class="pdsu-badge bg-slate-900 text-white"> {{ formatNumber(totalComputers) }} računara </span>
       </div>
 
-      <div class="card-body">
-        <div class="row g-4">
-          <div v-for="item in coverageItems" :key="item.key" class="col-md-6 col-xl-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="p-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div v-for="item in coverageItems" :key="item.key">
+            <div class="flex items-center justify-between mb-2">
               <div>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.label }}
                 </div>
 
-                <div class="text-muted small">
+                <div class="text-xs text-slate-500">
                   {{ item.description }}
                 </div>
               </div>
 
-              <div class="fw-bold fs-5" :class="percentageClass(item.percent)">
+              <div class="text-lg font-bold" :class="percentageClass(item.percent)">
                 {{ item.percent }}%
               </div>
             </div>
 
             <div
-              class="progress"
+              class="pdsu-progress"
               role="progressbar"
               :aria-label="`${item.label} pokrivenost`"
               :aria-valuenow="item.percent"
@@ -296,15 +291,15 @@ function percentageClass(percent) {
               aria-valuemax="100"
             >
               <div
-                class="progress-bar"
-                :class="item.progressClass"
+                class="pdsu-progress-bar"
+                :class="item.barClass"
                 :style="{
                   width: `${Math.min(item.percent, 100)}%`,
                 }"
               />
             </div>
 
-            <div class="d-flex justify-content-between mt-2 small">
+            <div class="flex items-center justify-between mt-2 text-xs">
               <span>
                 {{ formatNumber(item.value) }} /
                 {{ formatNumber(totalComputers) }}
@@ -312,8 +307,8 @@ function percentageClass(percent) {
 
               <span
                 :class="{
-                  'text-danger': item.missing > 0,
-                  'text-success': item.missing === 0,
+                  'text-red-600': item.missing > 0,
+                  'text-green-600': item.missing === 0,
                 }"
               >
                 Bez podataka:
@@ -326,28 +321,28 @@ function percentageClass(percent) {
     </div>
 
     <!-- Upozorenja i stanje -->
-    <div class="row g-3">
-      <div class="col-xl-7">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-body">
-            <h5 class="mb-1">Stanje koje zahteva pažnju</h5>
+    <div class="grid grid-cols-1 gap-3 xl:grid-cols-12">
+      <div class="xl:col-span-7">
+        <div class="pdsu-card h-full">
+          <div class="pdsu-card-header">
+            <h5 class="pdsu-card-title">Stanje koje zahteva pažnju</h5>
 
-            <div class="text-muted small">Najvažniji indikatori iz prikupljenih podataka</div>
+            <div class="text-xs text-slate-500">Najvažniji indikatori iz prikupljenih podataka</div>
           </div>
 
-          <div class="card-body">
-            <div class="row g-3">
-              <div v-for="item in alertItems" :key="item.key" class="col-sm-6">
+          <div class="p-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div v-for="item in alertItems" :key="item.key">
                 <div
-                  class="border rounded p-3 h-100 d-flex justify-content-between align-items-center"
+                  class="flex h-full items-center justify-between rounded-lg border border-slate-200 p-3"
                 >
-                  <div class="pe-3">
-                    <div class="fw-semibold">
+                  <div class="pr-3">
+                    <div class="font-semibold text-slate-900">
                       {{ item.label }}
                     </div>
                   </div>
 
-                  <span class="badge rounded-pill fs-6" :class="item.className">
+                  <span class="pdsu-badge pdsu-badge-pill text-base" :class="item.badgeClass">
                     {{ formatNumber(item.value) }}
                   </span>
                 </div>
@@ -357,43 +352,43 @@ function percentageClass(percent) {
         </div>
       </div>
 
-      <div class="col-xl-5">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-body">
-            <h5 class="mb-1">Poslednje prikupljanje</h5>
+      <div class="xl:col-span-5">
+        <div class="pdsu-card h-full">
+          <div class="pdsu-card-header">
+            <h5 class="pdsu-card-title">Poslednje prikupljanje</h5>
 
-            <div class="text-muted small">Najnoviji datum inventara po kategoriji</div>
+            <div class="text-xs text-slate-500">Najnoviji datum inventara po kategoriji</div>
           </div>
 
-          <div class="card-body">
-            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
-              <span class="fw-semibold"> Programi </span>
+          <div class="p-4">
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
+              <span class="font-semibold text-slate-900"> Programi </span>
 
-              <span class="text-muted text-end">
+              <span class="text-slate-500 text-right">
                 {{ formatDate(softwareStats.newestInventoryDate) }}
               </span>
             </div>
 
-            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
-              <span class="fw-semibold"> Drajveri </span>
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
+              <span class="font-semibold text-slate-900"> Drajveri </span>
 
-              <span class="text-muted text-end">
+              <span class="text-slate-500 text-right">
                 {{ formatDate(driverStats.newestInventoryDate) }}
               </span>
             </div>
 
-            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
-              <span class="fw-semibold"> Servisi </span>
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
+              <span class="font-semibold text-slate-900"> Servisi </span>
 
-              <span class="text-muted text-end">
+              <span class="text-slate-500 text-right">
                 {{ formatDate(serviceStats.newestInventoryDate) }}
               </span>
             </div>
 
-            <div class="d-flex justify-content-between gap-3 pt-2">
-              <span class="fw-semibold"> Updates </span>
+            <div class="flex items-center justify-between gap-3 pt-2">
+              <span class="font-semibold text-slate-900"> Updates </span>
 
-              <span class="text-muted text-end">
+              <span class="text-slate-500 text-right">
                 {{ formatDate(updateStats.newestInventoryDate) }}
               </span>
             </div>

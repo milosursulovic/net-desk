@@ -62,16 +62,11 @@ onMounted(loadStats)
 
         <button
           type="button"
-          class="btn pdsu-refresh-button"
+          class="pdsu-refresh-button"
           :disabled="loading"
           @click="loadStats"
         >
-          <span
-            v-if="loading"
-            class="spinner-border spinner-border-sm"
-            role="status"
-            aria-hidden="true"
-          />
+          <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
 
           <span v-else class="pdsu-refresh-icon">↻</span>
 
@@ -82,13 +77,13 @@ onMounted(loadStats)
       </header>
 
       <div v-if="loading && !stats" class="pdsu-state-card">
-        <div class="spinner-border text-primary mb-3" role="status">
-          <span class="visually-hidden">Učitavanje...</span>
+        <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
+          <span class="sr-only">Učitavanje...</span>
         </div>
 
-        <h2 class="h5 mb-2">Učitavanje PDSU analitike</h2>
+        <h2 class="text-lg font-bold text-slate-900 mb-2">Učitavanje PDSU analitike</h2>
 
-        <p class="text-muted mb-0">
+        <p class="text-slate-500 mb-0">
           Prikupljamo statistiku programa, drajvera, servisa i update podataka.
         </p>
       </div>
@@ -96,19 +91,24 @@ onMounted(loadStats)
       <div v-else-if="error && !stats" class="pdsu-state-card">
         <div class="pdsu-error-icon">!</div>
 
-        <h2 class="h5 mb-2">Podaci nisu učitani</h2>
+        <h2 class="text-lg font-bold text-slate-900 mb-2">Podaci nisu učitani</h2>
 
-        <p class="text-muted mb-4">
+        <p class="text-slate-500 mb-4">
           {{ error }}
         </p>
 
-        <button type="button" class="btn btn-primary" :disabled="loading" @click="loadStats">
+        <button
+          type="button"
+          class="pdsu-refresh-button"
+          :disabled="loading"
+          @click="loadStats"
+        >
           Pokušaj ponovo
         </button>
       </div>
 
       <template v-else>
-        <div v-if="error" class="alert alert-warning pdsu-alert" role="alert">
+        <div v-if="error" class="pdsu-alert" role="alert">
           {{ error }}
         </div>
 

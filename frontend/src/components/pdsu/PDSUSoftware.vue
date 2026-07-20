@@ -106,108 +106,94 @@ function splitValues(value) {
 <template>
   <section class="pdsu-software">
     <!-- KPI kartice -->
-    <div class="row g-3 mb-4">
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Ukupno instalacija</div>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Ukupno instalacija</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.totalInstallations) }}
-            </div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.totalInstallations) }}
+          </div>
 
-            <div class="small text-muted mt-2">
-              Na
-              {{ formatNumber(stats.computersWithSoftware) }}
-              računara
-            </div>
+          <div class="text-xs text-slate-500 mt-2">
+            Na
+            {{ formatNumber(stats.computersWithSoftware) }}
+            računara
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Jedinstvenih programa</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Jedinstvenih programa</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.uniqueSoftware) }}
-            </div>
-
-            <div class="small text-muted mt-2">Različitih naziva programa</div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.uniqueSoftware) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Različitih naziva programa</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Prosek po računaru</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Prosek po računaru</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.avgPerComputer, 1) }}
-            </div>
-
-            <div class="small text-muted mt-2">Instalacija po računaru</div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.avgPerComputer, 1) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Instalacija po računaru</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Bez izdavača</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Bez izdavača</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-warning': Number(stats.withoutPublisher) > 0,
-              }"
-            >
-              {{ formatNumber(stats.withoutPublisher) }}
-            </div>
-
-            <div class="small text-muted mt-2">Zapisa bez publisher podatka</div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(stats.withoutPublisher) > 0 ? 'text-amber-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(stats.withoutPublisher) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Zapisa bez publisher podatka</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Bez verzije</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Bez verzije</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-warning': Number(stats.withoutVersion) > 0,
-              }"
-            >
-              {{ formatNumber(stats.withoutVersion) }}
-            </div>
-
-            <div class="small text-muted mt-2">Zapisa bez verzije programa</div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(stats.withoutVersion) > 0 ? 'text-amber-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(stats.withoutVersion) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Zapisa bez verzije programa</div>
         </div>
       </div>
     </div>
 
     <!-- Period prikupljanja -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-body">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="p-4">
+        <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-muted small">Najstariji PDSU zapis programa</div>
+            <div class="text-xs text-slate-500">Najstariji PDSU zapis programa</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.oldestInventoryDate) }}
             </div>
           </div>
 
-          <div class="text-md-end">
-            <div class="text-muted small">Najnoviji PDSU zapis programa</div>
+          <div class="md:text-right">
+            <div class="text-xs text-slate-500">Najnoviji PDSU zapis programa</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.newestInventoryDate) }}
             </div>
           </div>
@@ -216,17 +202,17 @@ function splitValues(value) {
     </div>
 
     <!-- Top programi i izdavači -->
-    <div class="row g-4 mb-4">
-      <div class="col-xl-7">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-body">
-            <h5 class="mb-1">Najzastupljeniji programi</h5>
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-12 mb-4">
+      <div class="xl:col-span-7">
+        <div class="pdsu-card h-full">
+          <div class="pdsu-card-header">
+            <h5 class="pdsu-card-title">Najzastupljeniji programi</h5>
 
-            <div class="text-muted small">Rangirano prema broju računara</div>
+            <div class="text-xs text-slate-500">Rangirano prema broju računara</div>
           </div>
 
-          <div class="card-body">
-            <div v-if="topSoftware.length === 0" class="text-muted text-center py-4">
+          <div class="p-4">
+            <div v-if="topSoftware.length === 0" class="text-slate-500 text-center py-4">
               Nema podataka o programima.
             </div>
 
@@ -234,36 +220,36 @@ function splitValues(value) {
               v-for="(item, index) in topSoftware"
               v-else
               :key="`${item.name}-${index}`"
-              class="software-bar-row"
+              class="mb-5 last:mb-0"
             >
-              <div class="d-flex justify-content-between align-items-start gap-3 mb-1">
-                <div class="text-truncate">
-                  <span class="text-muted me-2"> {{ index + 1 }}. </span>
+              <div class="flex items-start justify-between gap-3 mb-1">
+                <div class="truncate">
+                  <span class="text-slate-500 mr-2"> {{ index + 1 }}. </span>
 
-                  <span class="fw-semibold" :title="item.name">
+                  <span class="font-semibold text-slate-900" :title="item.name">
                     {{ item.name }}
                   </span>
                 </div>
 
-                <div class="text-nowrap text-end">
-                  <span class="fw-semibold">
+                <div class="whitespace-nowrap text-right">
+                  <span class="font-semibold text-slate-900">
                     {{ formatNumber(item.computers) }}
                   </span>
 
-                  <span class="text-muted small"> računara </span>
+                  <span class="text-slate-500 text-xs"> računara </span>
                 </div>
               </div>
 
-              <div class="progress">
+              <div class="pdsu-progress">
                 <div
-                  class="progress-bar"
+                  class="pdsu-progress-bar bg-blue-600"
                   :style="{
                     width: `${barWidth(item.computers, maxTopSoftwareComputers)}%`,
                   }"
                 />
               </div>
 
-              <div class="d-flex justify-content-between mt-1 small text-muted">
+              <div class="flex items-center justify-between mt-1 text-xs text-slate-500">
                 <span>
                   {{ formatNumber(item.installations) }}
                   instalacija
@@ -279,16 +265,16 @@ function splitValues(value) {
         </div>
       </div>
 
-      <div class="col-xl-5">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-body">
-            <h5 class="mb-1">Najzastupljeniji izdavači</h5>
+      <div class="xl:col-span-5">
+        <div class="pdsu-card h-full">
+          <div class="pdsu-card-header">
+            <h5 class="pdsu-card-title">Najzastupljeniji izdavači</h5>
 
-            <div class="text-muted small">Prema ukupnom broju instalacija</div>
+            <div class="text-xs text-slate-500">Prema ukupnom broju instalacija</div>
           </div>
 
-          <div class="card-body">
-            <div v-if="topPublishers.length === 0" class="text-muted text-center py-4">
+          <div class="p-4">
+            <div v-if="topPublishers.length === 0" class="text-slate-500 text-center py-4">
               Nema podataka o izdavačima.
             </div>
 
@@ -296,28 +282,28 @@ function splitValues(value) {
               v-for="(item, index) in topPublishers"
               v-else
               :key="`${item.publisher}-${index}`"
-              class="software-bar-row"
+              class="mb-5 last:mb-0"
             >
-              <div class="d-flex justify-content-between align-items-start gap-3 mb-1">
-                <div class="fw-semibold text-truncate" :title="item.publisher">
+              <div class="flex items-start justify-between gap-3 mb-1">
+                <div class="font-semibold text-slate-900 truncate" :title="item.publisher">
                   {{ item.publisher }}
                 </div>
 
-                <div class="text-nowrap fw-semibold">
+                <div class="whitespace-nowrap font-semibold text-slate-900">
                   {{ formatNumber(item.installations) }}
                 </div>
               </div>
 
-              <div class="progress">
+              <div class="pdsu-progress">
                 <div
-                  class="progress-bar bg-secondary"
+                  class="pdsu-progress-bar bg-slate-500"
                   :style="{
                     width: `${barWidth(item.installations, maxPublisherInstallations)}%`,
                   }"
                 />
               </div>
 
-              <div class="d-flex justify-content-between mt-1 small text-muted">
+              <div class="flex items-center justify-between mt-1 text-xs text-slate-500">
                 <span>
                   {{ formatNumber(item.computers) }}
                   računara
@@ -335,14 +321,12 @@ function splitValues(value) {
     </div>
 
     <!-- Pretraga -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div
-        class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-      >
+    <div class="pdsu-card mb-4">
+      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h5 class="mb-1">Detaljna analiza programa</h5>
+          <h5 class="pdsu-card-title">Detaljna analiza programa</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Pretraga se primenjuje na programe sa više verzija i retke programe.
           </div>
         </div>
@@ -351,7 +335,7 @@ function splitValues(value) {
           <input
             v-model="search"
             type="search"
-            class="form-control"
+            class="pdsu-input"
             placeholder="Pretraži program, verziju, izdavača..."
           />
         </div>
@@ -359,23 +343,23 @@ function splitValues(value) {
     </div>
 
     <!-- Programi sa više verzija -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Programi sa više verzija</h5>
+          <h5 class="pdsu-card-title">Programi sa više verzija</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Programi kod kojih je pronađeno više različitih verzija
           </div>
         </div>
 
-        <span class="badge text-bg-primary">
+        <span class="pdsu-badge bg-blue-600 text-white">
           {{ formatNumber(filteredMultipleVersions.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Program</th>
@@ -387,12 +371,12 @@ function splitValues(value) {
 
           <tbody>
             <tr v-for="(item, index) in filteredMultipleVersions" :key="`${item.name}-${index}`">
-              <td class="fw-semibold">
+              <td class="font-semibold text-slate-900">
                 {{ item.name }}
               </td>
 
               <td class="text-center">
-                <span class="badge text-bg-warning">
+                <span class="pdsu-badge bg-amber-500 text-amber-950">
                   {{ formatNumber(item.versionCount) }}
                 </span>
               </td>
@@ -402,16 +386,16 @@ function splitValues(value) {
               </td>
 
               <td>
-                <div class="d-flex flex-wrap gap-1">
+                <div class="flex flex-wrap gap-1">
                   <span
                     v-for="version in splitValues(item.versions)"
                     :key="version"
-                    class="badge text-bg-light border"
+                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
                   >
                     {{ version }}
                   </span>
 
-                  <span v-if="splitValues(item.versions).length === 0" class="text-muted">
+                  <span v-if="splitValues(item.versions).length === 0" class="text-slate-500">
                     Nema podatka
                   </span>
                 </div>
@@ -419,7 +403,7 @@ function splitValues(value) {
             </tr>
 
             <tr v-if="filteredMultipleVersions.length === 0">
-              <td colspan="4" class="text-center text-muted py-4">Nema rezultata.</td>
+              <td colspan="4" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -427,21 +411,21 @@ function splitValues(value) {
     </div>
 
     <!-- Retki programi -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Retki programi</h5>
+          <h5 class="pdsu-card-title">Retki programi</h5>
 
-          <div class="text-muted small">Programi pronađeni na najviše dva računara</div>
+          <div class="text-xs text-slate-500">Programi pronađeni na najviše dva računara</div>
         </div>
 
-        <span class="badge text-bg-secondary">
+        <span class="pdsu-badge bg-slate-500 text-white">
           {{ formatNumber(filteredRareSoftware.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Program</th>
@@ -454,7 +438,7 @@ function splitValues(value) {
 
           <tbody>
             <tr v-for="(item, index) in filteredRareSoftware" :key="`${item.name}-${index}`">
-              <td class="fw-semibold">
+              <td class="font-semibold text-slate-900">
                 {{ item.name }}
               </td>
 
@@ -467,22 +451,22 @@ function splitValues(value) {
               </td>
 
               <td class="text-center">
-                <span class="badge text-bg-secondary">
+                <span class="pdsu-badge bg-slate-500 text-white">
                   {{ formatNumber(item.computers) }}
                 </span>
               </td>
 
               <td>
-                <div class="d-flex flex-wrap gap-1">
+                <div class="flex flex-wrap gap-1">
                   <span
                     v-for="computer in splitValues(item.computerNames)"
                     :key="computer"
-                    class="badge text-bg-light border"
+                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
                   >
                     {{ computer }}
                   </span>
 
-                  <span v-if="splitValues(item.computerNames).length === 0" class="text-muted">
+                  <span v-if="splitValues(item.computerNames).length === 0" class="text-slate-500">
                     Nema podatka
                   </span>
                 </div>
@@ -490,7 +474,7 @@ function splitValues(value) {
             </tr>
 
             <tr v-if="filteredRareSoftware.length === 0">
-              <td colspan="5" class="text-center text-muted py-4">Nema rezultata.</td>
+              <td colspan="5" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -498,22 +482,22 @@ function splitValues(value) {
     </div>
 
     <!-- Računari sa najviše programa -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center">
+    <div class="pdsu-card">
+      <div class="pdsu-card-header flex items-center justify-between">
         <div>
-          <h5 class="mb-1">Računari sa najviše programa</h5>
+          <h5 class="pdsu-card-title">Računari sa najviše programa</h5>
 
-          <div class="text-muted small">Rangirano prema broju instaliranih programa</div>
+          <div class="text-xs text-slate-500">Rangirano prema broju instaliranih programa</div>
         </div>
 
-        <span class="badge text-bg-dark">
+        <span class="pdsu-badge bg-slate-900 text-white">
           Top
           {{ formatNumber(computersWithMostSoftware.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>#</th>
@@ -530,16 +514,16 @@ function splitValues(value) {
               v-for="(item, index) in computersWithMostSoftware"
               :key="item.ipEntryId ?? `${item.ip}-${index}`"
             >
-              <td class="text-muted">
+              <td class="text-slate-500">
                 {{ index + 1 }}
               </td>
 
-              <td class="fw-semibold">
+              <td class="font-semibold text-slate-900">
                 {{ item.computerName || 'Nepoznat računar' }}
               </td>
 
               <td>
-                <code>{{ item.ip || '—' }}</code>
+                <code class="pdsu-code">{{ item.ip || '—' }}</code>
               </td>
 
               <td>
@@ -547,7 +531,7 @@ function splitValues(value) {
               </td>
 
               <td class="text-center">
-                <span class="badge text-bg-primary">
+                <span class="pdsu-badge bg-blue-600 text-white">
                   {{ formatNumber(item.softwareCount) }}
                 </span>
               </td>
@@ -558,7 +542,7 @@ function splitValues(value) {
             </tr>
 
             <tr v-if="computersWithMostSoftware.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">Nema podataka.</td>
+              <td colspan="6" class="text-center text-slate-500 py-4">Nema podataka.</td>
             </tr>
           </tbody>
         </table>

@@ -148,18 +148,18 @@ function stateBadgeClass(value) {
   const state = normalizeState(value)
 
   if (state === 'running') {
-    return 'text-bg-success'
+    return 'bg-green-600 text-white'
   }
 
   if (state === 'stopped') {
-    return 'text-bg-danger'
+    return 'bg-red-600 text-white'
   }
 
   if (state === 'paused') {
-    return 'text-bg-warning'
+    return 'bg-amber-500 text-amber-950'
   }
 
-  return 'text-bg-secondary'
+  return 'bg-slate-500 text-white'
 }
 
 function stateLabel(value) {
@@ -184,18 +184,18 @@ function startModeBadgeClass(value) {
   const mode = normalizeStartMode(value)
 
   if (mode === 'auto' || mode === 'automatic' || mode === 'automatski') {
-    return 'text-bg-primary'
+    return 'bg-blue-600 text-white'
   }
 
   if (mode === 'manual' || mode === 'ručno' || mode === 'rucno') {
-    return 'text-bg-warning'
+    return 'bg-amber-500 text-amber-950'
   }
 
   if (mode === 'disabled' || mode === 'isključen' || mode === 'iskljucen') {
-    return 'text-bg-secondary'
+    return 'bg-slate-500 text-white'
   }
 
-  return 'text-bg-light border'
+  return 'bg-slate-100 text-slate-700 border border-slate-200'
 }
 
 function startModeLabel(value) {
@@ -234,147 +234,126 @@ function shortenPath(value, maxLength = 90) {
 <template>
   <section class="pdsu-services">
     <!-- KPI kartice -->
-    <div class="row g-3 mb-4">
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Ukupno servisa</div>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Ukupno servisa</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.totalServices) }}
-            </div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.totalServices) }}
+          </div>
 
-            <div class="small text-muted mt-2">
-              Na
-              {{ formatNumber(stats.computersWithServices) }}
-              računara
-            </div>
+          <div class="text-xs text-slate-500 mt-2">
+            Na
+            {{ formatNumber(stats.computersWithServices) }}
+            računara
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Pokrenuti servisi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Pokrenuti servisi</div>
 
-            <div class="fs-2 fw-semibold text-success">
-              {{ formatNumber(stats.running) }}
-            </div>
+          <div class="text-2xl font-bold tracking-tight text-green-600">
+            {{ formatNumber(stats.running) }}
+          </div>
 
-            <div class="small text-muted mt-2">
-              {{ formatNumber(runningPercent) }}% svih servisa
-            </div>
+          <div class="text-xs text-slate-500 mt-2">
+            {{ formatNumber(runningPercent) }}% svih servisa
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Zaustavljeni servisi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Zaustavljeni servisi</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-danger': Number(stats.stopped) > 0,
-              }"
-            >
-              {{ formatNumber(stats.stopped) }}
-            </div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(stats.stopped) > 0 ? 'text-red-600' : 'text-slate-900'"
+          >
+            {{ formatNumber(stats.stopped) }}
+          </div>
 
-            <div class="small text-muted mt-2">
-              {{ formatNumber(stoppedPercent) }}% svih servisa
-            </div>
+          <div class="text-xs text-slate-500 mt-2">
+            {{ formatNumber(stoppedPercent) }}% svih servisa
           </div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Automatski, a zaustavljeni</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Automatski, a zaustavljeni</div>
 
-            <div
-              class="fs-2 fw-semibold"
-              :class="{
-                'text-danger': Number(stats.automaticStopped) > 0,
-                'text-success': Number(stats.automaticStopped) === 0,
-              }"
-            >
-              {{ formatNumber(stats.automaticStopped) }}
-            </div>
-
-            <div class="small text-muted mt-2">Potencijalno zahtevaju proveru</div>
+          <div
+            class="text-2xl font-bold tracking-tight"
+            :class="Number(stats.automaticStopped) > 0 ? 'text-red-600' : 'text-green-600'"
+          >
+            {{ formatNumber(stats.automaticStopped) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Potencijalno zahtevaju proveru</div>
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Jedinstveni servisi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Jedinstveni servisi</div>
 
-            <div class="fs-2 fw-semibold">
-              {{ formatNumber(stats.uniqueServices) }}
-            </div>
-
-            <div class="small text-muted mt-2">Različitih naziva servisa</div>
+          <div class="text-2xl font-bold tracking-tight text-slate-900">
+            {{ formatNumber(stats.uniqueServices) }}
           </div>
+
+          <div class="text-xs text-slate-500 mt-2">Različitih naziva servisa</div>
         </div>
       </div>
     </div>
 
     <!-- Dodatne statistike -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Automatski servisi</div>
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Automatski servisi</div>
 
-            <div class="fs-4 fw-semibold">
-              {{ formatNumber(stats.automatic) }}
-            </div>
+          <div class="text-lg font-bold text-slate-900">
+            {{ formatNumber(stats.automatic) }}
           </div>
         </div>
       </div>
 
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Ručno pokretanje</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Ručno pokretanje</div>
 
-            <div class="fs-4 fw-semibold">
-              {{ formatNumber(stats.manual) }}
-            </div>
+          <div class="text-lg font-bold text-slate-900">
+            {{ formatNumber(stats.manual) }}
           </div>
         </div>
       </div>
 
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small mb-1">Isključeni servisi</div>
+      <div class="pdsu-card">
+        <div class="p-4">
+          <div class="text-xs text-slate-500 mb-1">Isključeni servisi</div>
 
-            <div class="fs-4 fw-semibold">
-              {{ formatNumber(stats.disabled) }}
-            </div>
+          <div class="text-lg font-bold text-slate-900">
+            {{ formatNumber(stats.disabled) }}
           </div>
         </div>
       </div>
     </div>
 
     <!-- Status distribucija -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body">
-        <h5 class="mb-1">Status servisa</h5>
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header">
+        <h5 class="pdsu-card-title">Status servisa</h5>
 
-        <div class="text-muted small">Odnos pokrenutih i zaustavljenih servisa</div>
+        <div class="text-xs text-slate-500">Odnos pokrenutih i zaustavljenih servisa</div>
       </div>
 
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="fw-semibold"> Pokrenuti </span>
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-semibold text-slate-900"> Pokrenuti </span>
 
           <span>
             {{ formatNumber(stats.running) }}
@@ -383,12 +362,12 @@ function shortenPath(value, maxLength = 90) {
           </span>
         </div>
 
-        <div class="progress mb-4">
-          <div class="progress-bar bg-success" :style="{ width: `${runningPercent}%` }" />
+        <div class="pdsu-progress mb-4">
+          <div class="pdsu-progress-bar bg-green-600" :style="{ width: `${runningPercent}%` }" />
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="fw-semibold"> Zaustavljeni </span>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-semibold text-slate-900"> Zaustavljeni </span>
 
           <span>
             {{ formatNumber(stats.stopped) }}
@@ -397,28 +376,28 @@ function shortenPath(value, maxLength = 90) {
           </span>
         </div>
 
-        <div class="progress">
-          <div class="progress-bar bg-danger" :style="{ width: `${stoppedPercent}%` }" />
+        <div class="pdsu-progress">
+          <div class="pdsu-progress-bar bg-red-600" :style="{ width: `${stoppedPercent}%` }" />
         </div>
       </div>
     </div>
 
     <!-- Period inventara -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-body">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="p-4">
+        <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-muted small">Najstariji PDSU zapis servisa</div>
+            <div class="text-xs text-slate-500">Najstariji PDSU zapis servisa</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.oldestInventoryDate) }}
             </div>
           </div>
 
-          <div class="text-md-end">
-            <div class="text-muted small">Najnoviji PDSU zapis servisa</div>
+          <div class="md:text-right">
+            <div class="text-xs text-slate-500">Najnoviji PDSU zapis servisa</div>
 
-            <div class="fw-semibold">
+            <div class="font-semibold text-slate-900">
               {{ formatDate(stats.newestInventoryDate) }}
             </div>
           </div>
@@ -427,21 +406,19 @@ function shortenPath(value, maxLength = 90) {
     </div>
 
     <!-- Pretraga -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div
-        class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-      >
+    <div class="pdsu-card mb-4">
+      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h5 class="mb-1">Detaljna analiza servisa</h5>
+          <h5 class="pdsu-card-title">Detaljna analiza servisa</h5>
 
-          <div class="text-muted small">Pretraga se primenjuje na sve tabele ispod.</div>
+          <div class="text-xs text-slate-500">Pretraga se primenjuje na sve tabele ispod.</div>
         </div>
 
         <div class="service-search">
           <input
             v-model="search"
             type="search"
-            class="form-control"
+            class="pdsu-input"
             placeholder="Pretraži servis, računar, putanju..."
           />
         </div>
@@ -449,26 +426,26 @@ function shortenPath(value, maxLength = 90) {
     </div>
 
     <!-- Automatski servisi koji ne rade -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Automatski servisi koji nisu pokrenuti</h5>
+          <h5 class="pdsu-card-title">Automatski servisi koji nisu pokrenuti</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Servisi podešeni na automatsko pokretanje, ali su trenutno zaustavljeni
           </div>
         </div>
 
         <span
-          class="badge"
-          :class="filteredAutomaticStopped.length > 0 ? 'text-bg-danger' : 'text-bg-success'"
+          class="pdsu-badge"
+          :class="filteredAutomaticStopped.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
         >
           {{ formatNumber(filteredAutomaticStopped.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Servis</th>
@@ -486,25 +463,25 @@ function shortenPath(value, maxLength = 90) {
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.displayName || item.name || 'Nepoznat servis' }}
                 </div>
 
-                <div class="small text-muted">
+                <div class="text-xs text-slate-500">
                   {{ item.name || '—' }}
                 </div>
               </td>
 
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.computerName || 'Nepoznat računar' }}
                 </div>
 
-                <div class="small">
-                  <code>{{ item.ip || '—' }}</code>
+                <div>
+                  <code class="pdsu-code">{{ item.ip || '—' }}</code>
                 </div>
 
-                <div class="small text-muted">
+                <div class="text-xs text-slate-500">
                   {{ item.department || '—' }}
                 </div>
               </td>
@@ -514,13 +491,13 @@ function shortenPath(value, maxLength = 90) {
               </td>
 
               <td class="service-path">
-                <code :title="item.pathName">
+                <code class="pdsu-code" :title="item.pathName">
                   {{ shortenPath(item.pathName) }}
                 </code>
               </td>
 
               <td class="text-center">
-                <span class="badge" :class="stateBadgeClass(item.state)">
+                <span class="pdsu-badge" :class="stateBadgeClass(item.state)">
                   {{ stateLabel(item.state) }}
                 </span>
               </td>
@@ -531,7 +508,7 @@ function shortenPath(value, maxLength = 90) {
             </tr>
 
             <tr v-if="filteredAutomaticStopped.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">
+              <td colspan="6" class="text-center text-slate-500 py-4">
                 Nema automatskih servisa koji su zaustavljeni.
               </td>
             </tr>
@@ -541,23 +518,23 @@ function shortenPath(value, maxLength = 90) {
     </div>
 
     <!-- Neuobičajene putanje -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Neuobičajene putanje servisa</h5>
+          <h5 class="pdsu-card-title">Neuobičajene putanje servisa</h5>
 
-          <div class="text-muted small">
+          <div class="text-xs text-slate-500">
             Servisi čije izvršne datoteke nisu pronađene u standardnim Windows direktorijumima
           </div>
         </div>
 
-        <span class="badge text-bg-warning">
+        <span class="pdsu-badge bg-amber-500 text-amber-950">
           {{ formatNumber(filteredUnusualPaths.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Servis</th>
@@ -575,31 +552,31 @@ function shortenPath(value, maxLength = 90) {
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.displayName || item.name || 'Nepoznat servis' }}
                 </div>
 
-                <div class="small text-muted">
+                <div class="text-xs text-slate-500">
                   {{ item.name || '—' }}
                 </div>
               </td>
 
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.computerName || 'Nepoznat računar' }}
                 </div>
 
-                <div class="small">
-                  <code>{{ item.ip || '—' }}</code>
+                <div>
+                  <code class="pdsu-code">{{ item.ip || '—' }}</code>
                 </div>
 
-                <div class="small text-muted">
+                <div class="text-xs text-slate-500">
                   {{ item.department || '—' }}
                 </div>
               </td>
 
               <td>
-                <span class="badge" :class="startModeBadgeClass(item.startMode)">
+                <span class="pdsu-badge" :class="startModeBadgeClass(item.startMode)">
                   {{ startModeLabel(item.startMode) }}
                 </span>
               </td>
@@ -609,20 +586,20 @@ function shortenPath(value, maxLength = 90) {
               </td>
 
               <td class="service-path">
-                <code :title="item.pathName">
+                <code class="pdsu-code" :title="item.pathName">
                   {{ shortenPath(item.pathName, 110) }}
                 </code>
               </td>
 
               <td class="text-center">
-                <span class="badge" :class="stateBadgeClass(item.state)">
+                <span class="pdsu-badge" :class="stateBadgeClass(item.state)">
                   {{ stateLabel(item.state) }}
                 </span>
               </td>
             </tr>
 
             <tr v-if="filteredUnusualPaths.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -630,21 +607,21 @@ function shortenPath(value, maxLength = 90) {
     </div>
 
     <!-- Retki servisi -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-body d-flex justify-content-between align-items-center gap-3">
+    <div class="pdsu-card">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="mb-1">Retki servisi</h5>
+          <h5 class="pdsu-card-title">Retki servisi</h5>
 
-          <div class="text-muted small">Servisi pronađeni na malom broju računara</div>
+          <div class="text-xs text-slate-500">Servisi pronađeni na malom broju računara</div>
         </div>
 
-        <span class="badge text-bg-secondary">
+        <span class="pdsu-badge bg-slate-500 text-white">
           {{ formatNumber(filteredRareServices.length) }}
         </span>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
           <thead>
             <tr>
               <th>Servis</th>
@@ -659,17 +636,17 @@ function shortenPath(value, maxLength = 90) {
           <tbody>
             <tr v-for="(item, index) in filteredRareServices" :key="`${item.name}-${index}`">
               <td>
-                <div class="fw-semibold">
+                <div class="font-semibold text-slate-900">
                   {{ item.displayName || item.name || 'Nepoznat servis' }}
                 </div>
 
-                <div class="small text-muted">
+                <div class="text-xs text-slate-500">
                   {{ item.name || '—' }}
                 </div>
               </td>
 
               <td>
-                <span class="badge" :class="startModeBadgeClass(item.startMode)">
+                <span class="pdsu-badge" :class="startModeBadgeClass(item.startMode)">
                   {{ startModeLabel(item.startMode) }}
                 </span>
               </td>
@@ -679,36 +656,36 @@ function shortenPath(value, maxLength = 90) {
               </td>
 
               <td class="text-center">
-                <span class="badge text-bg-secondary">
+                <span class="pdsu-badge bg-slate-500 text-white">
                   {{ formatNumber(item.computers) }}
                 </span>
               </td>
 
               <td>
-                <div class="d-flex flex-wrap gap-1">
+                <div class="flex flex-wrap gap-1">
                   <span
                     v-for="computer in splitValues(item.computerNames)"
                     :key="computer"
-                    class="badge text-bg-light border"
+                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
                   >
                     {{ computer }}
                   </span>
 
-                  <span v-if="splitValues(item.computerNames).length === 0" class="text-muted">
+                  <span v-if="splitValues(item.computerNames).length === 0" class="text-slate-500">
                     Nema podatka
                   </span>
                 </div>
               </td>
 
               <td class="service-path">
-                <code :title="item.pathName">
+                <code class="pdsu-code" :title="item.pathName">
                   {{ shortenPath(item.pathName) }}
                 </code>
               </td>
             </tr>
 
             <tr v-if="filteredRareServices.length === 0">
-              <td colspan="6" class="text-center text-muted py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
