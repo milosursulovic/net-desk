@@ -1,16 +1,14 @@
 <template>
-  <div class="w-full px-4 sm:px-6 py-6 space-y-6">
+  <div class="glass-container space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <h1 class="text-3xl font-bold text-slate-800">Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button @click="refreshAll" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700"
-          :disabled="loading">
+        <AppButton variant="primary" :disabled="loading" @click="refreshAll">
           {{ loading ? 'Učitavam…' : 'Osveži' }}
-        </button>
-        <button @click="exportXlsx" class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
-          :disabled="!meta.length || loading">
+        </AppButton>
+        <AppButton variant="secondary" :disabled="!meta.length || loading" @click="exportXlsx">
           Izvezi XLSX
-        </button>
+        </AppButton>
       </div>
     </div>
 
@@ -45,7 +43,7 @@
             {{ stats.totalWithMeta }} / {{ totalIpEntries }} mašina sa metapodacima
           </div>
           <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full bg-indigo-600" :style="{ width: stats.coveragePct + '%' }" />
+            <div class="h-full bg-blue-600" :style="{ width: stats.coveragePct + '%' }" />
           </div>
         </div>
       </div>
@@ -195,6 +193,7 @@ import {
   cpuClockGHzOf,
 } from '@/utils/metadataHelpers.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
+import AppButton from '@/components/AppButton.vue'
 import * as XLSX from 'xlsx'
 
 const KpiCard = defineComponent({
@@ -235,7 +234,7 @@ const BarRow = defineComponent({
           h('span', { class: 'tabular-nums text-slate-600' }, String(props.value ?? 0)),
         ]),
         h('div', { class: 'w-full h-2 bg-slate-100 rounded' }, [
-          h('div', { class: 'h-2 bg-indigo-600 rounded', style: { width: `${pct.value}%` } }),
+          h('div', { class: 'h-2 bg-blue-600 rounded', style: { width: `${pct.value}%` } }),
         ]),
       ])
   },
@@ -265,7 +264,7 @@ const Sparkline = defineComponent({
           fill: 'none',
           stroke: 'currentColor',
           'stroke-width': 2,
-          class: 'text-indigo-600',
+          class: 'text-blue-600',
         }),
       ])
     }

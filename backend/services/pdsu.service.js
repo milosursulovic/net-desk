@@ -1,4 +1,4 @@
-import { toInt } from "../utils/numbers.js";
+import { notFound } from "../utils/httpError.js";
 
 import {
   computerFindById,
@@ -34,11 +34,7 @@ export async function getComputer(id) {
   const computer = await computerFindById(id);
 
   if (!computer) {
-    const err = new Error("Racunar nije pronadjen.");
-
-    err.status = 404;
-
-    throw err;
+    throw notFound("Racunar nije pronadjen.");
   }
 
   return computer;

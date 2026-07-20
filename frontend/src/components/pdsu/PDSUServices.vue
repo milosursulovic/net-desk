@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 
 const props = defineProps({
   services: {
@@ -98,26 +99,11 @@ const stoppedPercent = computed(() => {
 })
 
 function formatNumber(value, maximumFractionDigits = 0) {
-  return new Intl.NumberFormat('sr-RS', {
-    maximumFractionDigits,
-  }).format(Number(value) || 0)
+  return fmtNumberSr(value, maximumFractionDigits)
 }
 
 function formatDate(value) {
-  if (!value) {
-    return 'Nema podataka'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Nema podataka'
-  }
-
-  return new Intl.DateTimeFormat('sr-RS', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
+  return fmtDateSr(value, { includeTime: true })
 }
 
 function splitValues(value) {

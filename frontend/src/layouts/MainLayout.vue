@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-100 to-white flex flex-col">
-    <header class="bg-white/90 shadow p-4 sticky top-0 z-50">
-      <div class="w-full flex justify-between items-center px-4">
+    <header class="bg-white/90 shadow sticky top-0 z-50">
+      <div class="w-full flex justify-between items-center px-4 py-4">
         <Logo />
 
         <div class="flex items-center gap-4">
@@ -11,9 +11,12 @@
           <LogoutButton />
         </div>
       </div>
+
+      <AppNav />
     </header>
 
     <main class="w-full px-4 py-6 flex-1">
+      <Breadcrumbs />
       <router-view />
     </main>
 
@@ -28,6 +31,8 @@ import { ref, onMounted } from 'vue'
 import Logo from '@/components/Logo.vue'
 import LogoutButton from '@/components/LogoutButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AppNav from '@/components/AppNav.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 
 const currentUser = ref(null)

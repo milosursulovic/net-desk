@@ -1,4 +1,5 @@
 import { toInt, clamp } from "../utils/numbers.js";
+import { parseBool } from "../utils/queryCoercion.js";
 import {
   listMetadataPage,
   statsService,
@@ -13,8 +14,7 @@ export async function listMetadataController(req, res) {
 }
 
 export async function statsController(req, res) {
-  const includeMeta =
-    String(req.query.includeMeta || "").toLowerCase() === "true";
+  const includeMeta = parseBool(req.query.includeMeta);
   const out = await statsService(includeMeta);
   res.json(out);
 }

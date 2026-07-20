@@ -1,16 +1,10 @@
 <template>
-  <div class="space-y-4">
+  <div class="glass-container space-y-4 relative">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-semibold text-slate-800">Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button @click="openCreate"
-          class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 inline-flex items-center gap-2">
-          <span>Dodaj štampač</span>
-        </button>
-        <button @click="exportXlsx"
-          class="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700 inline-flex items-center gap-2">
-          <span>Izvezi XLSX</span>
-        </button>
+        <AppButton variant="success" @click="openCreate">Dodaj štampač</AppButton>
+        <AppButton variant="secondary" @click="exportXlsx">Izvezi XLSX</AppButton>
       </div>
     </div>
 
@@ -18,7 +12,7 @@
       <div class="relative w-full sm:w-[480px]">
         <input v-model="searchInput" @input="onSearchInput" type="text"
           placeholder="Pretraga po nazivu, modelu, IP, serijskom..."
-          class="w-full border border-gray-300 px-10 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          class="app-input pr-10"
           aria-label="Pretraga štampača" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
@@ -30,21 +24,21 @@
       <div class="flex flex-col items-start sm:items-end gap-1">
         <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600" for="pp">Po strani</label>
-          <select id="pp" v-model.number="limit" class="border rounded px-2 py-1">
+          <select id="pp" v-model.number="limit" class="app-input w-auto py-1">
             <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
             <option :value="100">100</option>
           </select>
           <button @click="prevPage" :disabled="page === 1 || loading"
-            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Prethodna strana">
+            class="px-2 py-1 bg-gray-200 rounded-lg disabled:opacity-50" aria-label="Prethodna strana">
             ⬅️
           </button>
           <span class="text-sm">
             Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
           </span>
           <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-            class="px-2 py-1 bg-gray-200 rounded disabled:opacity-50" aria-label="Sledeća strana">
+            class="px-2 py-1 bg-gray-200 rounded-lg disabled:opacity-50" aria-label="Sledeća strana">
             ➡️
           </button>
         </div>
@@ -138,7 +132,7 @@
           <FormInput v-model.trim="form.department" label="Odeljenje" />
           <div>
             <label class="text-sm text-gray-600">Tip konekcije</label>
-            <select v-model="form.connectionType" class="w-full border px-3 py-2 rounded">
+            <select v-model="form.connectionType" class="app-input">
               <option value="Network">Network</option>
               <option value="USB">USB</option>
               <option value="Other">Other</option>
@@ -146,17 +140,16 @@
           </div>
           <FormInput v-model.trim="form.ip" label="IP" placeholder="10.230.62.200" />
           <div class="flex items-center gap-2 mt-6">
-            <input id="shared" type="checkbox" v-model="form.shared" class="accent-indigo-600 scale-110" />
+            <input id="shared" type="checkbox" v-model="form.shared" class="accent-blue-600 scale-110" />
             <label for="shared" class="text-sm">Deljen</label>
           </div>
         </div>
 
         <div class="flex gap-2 justify-end">
-          <button @click="closeModal" class="px-4 py-2 rounded border">Otkaži</button>
-          <button @click="save" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-            :disabled="saving">
+          <AppButton variant="neutral" @click="closeModal">Otkaži</AppButton>
+          <AppButton variant="success" :disabled="saving" @click="save">
             {{ saving ? 'Čuvam…' : 'Sačuvaj' }}
-          </button>
+          </AppButton>
         </div>
       </div>
     </SlideOverPanel>
@@ -251,6 +244,14 @@
     </SlideOverPanel>
 
     <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>
 
@@ -262,13 +263,17 @@ import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import FormInput from '@/components/FormInput.vue'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const { page, limit, search, nextPage, prevPage, applyServerPagination } =
   usePaginatedRoute({
@@ -451,7 +456,9 @@ async function save() {
 }
 
 async function confirmDelete(p) {
-  if (!confirm(`Obrisati "${p.name || 'štampač'}"?`)) return
+  const ok = await askConfirm(`Obrisati "${p.name || 'štampač'}"?`, { title: 'Brisanje štampača' })
+  if (!ok) return
+
   try {
     const res = await fetchWithAuth(`/api/protected/printers/${p.id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('HTTP ' + res.status)
@@ -459,6 +466,7 @@ async function confirmDelete(p) {
     showToast('Obrisano')
   } catch (e) {
     console.error(e)
+    showToast('Greška pri brisanju štampača', { prefix: '❌ ', duration: 3000 })
   }
 }
 

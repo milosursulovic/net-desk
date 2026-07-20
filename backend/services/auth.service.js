@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../config/env.js";
+import { unauthorized } from "../utils/httpError.js";
 import {
   findUserByUsername,
   updateUserPasswordHash,
@@ -9,9 +10,7 @@ import {
 export async function login(username, password) {
   const user = await findUserByUsername(username);
   if (!user) {
-    const err = new Error("Neispravni kredencijali");
-    err.status = 401;
-    throw err;
+    throw unauthorized("Neispravni kredencijali");
   }
 
   let isMatch = false;
@@ -27,9 +26,7 @@ export async function login(username, password) {
   }
 
   if (!isMatch) {
-    const err = new Error("Neispravni kredencijali");
-    err.status = 401;
-    throw err;
+    throw unauthorized("Neispravni kredencijali");
   }
 
   const role = user.username === "admin" ? "admin" : "user";
@@ -52,8 +49,6 @@ export function getMeFromToken(token) {
       role: payload.role || "user",
     };
   } catch {
-    const err = new Error("Nevažeći ili istekao token");
-    err.status = 401;
-    throw err;
+    throw unauthorized("Nevažeći ili istekao token");
   }
 }

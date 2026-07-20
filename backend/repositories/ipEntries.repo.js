@@ -1,4 +1,13 @@
 import { pool } from "../db/pool.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
+
+const LEGACY_SEARCH_COLUMNS = [
+  "ip",
+  "computer_name",
+  "rdp_app",
+  "os",
+  "department",
+];
 
 function buildFastSearchSql(raw = "") {
   const q = String(raw || "")
@@ -31,20 +40,7 @@ function buildFastSearchSql(raw = "") {
 }
 
 function buildLegacySearchSql(search = "") {
-  const s = String(search || "").trim();
-  if (!s) return { where: "", params: [] };
-  const like = `%${s}%`;
-  const where = `(
-    ip LIKE ? OR
-    computer_name LIKE ? OR
-    rdp_app LIKE ? OR
-    os LIKE ? OR
-    department LIKE ? OR
-  )`;
-  return {
-    where,
-    params: [like, like, like, like, like],
-  };
+  return buildLikeSearch(LEGACY_SEARCH_COLUMNS, search);
 }
 
 export async function findIpEntryById(id) {

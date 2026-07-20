@@ -1,4 +1,5 @@
-import { toInt } from "../utils/numbers.js";
+import { parseIdParam } from "../utils/idParam.js";
+import { badRequest, notFound } from "../utils/httpError.js";
 
 import {
   listComputers,
@@ -30,29 +31,19 @@ export async function getComputerByIpController(req, res) {
   const computer = await getComputerByIp(ip);
 
   if (!computer) {
-    return res.status(404).json({
-      error: "Racunar nije pronadjen.",
-    });
+    throw notFound("Racunar nije pronadjen.");
   }
 
   res.json(computer);
 }
 
 export async function getComputerController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const computer = await getComputer(id);
 
   if (!computer) {
-    return res.status(404).json({
-      error: "Racunar nije pronadjen.",
-    });
+    throw notFound("Racunar nije pronadjen.");
   }
 
   res.json(computer);
@@ -63,13 +54,7 @@ export async function getComputerController(req, res) {
 // =========================
 
 export async function getSoftwareController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const software = await getComputerSoftware(id);
 
@@ -77,20 +62,12 @@ export async function getSoftwareController(req, res) {
 }
 
 export async function syncSoftwareController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const software = req.body.software;
 
   if (!Array.isArray(software)) {
-    return res.status(400).json({
-      error: "Software mora biti niz.",
-    });
+    throw badRequest("Software mora biti niz.");
   }
 
   await syncComputerSoftware(id, software);
@@ -106,13 +83,7 @@ export async function syncSoftwareController(req, res) {
 // =========================
 
 export async function getDriversController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const drivers = await getComputerDrivers(id);
 
@@ -120,20 +91,12 @@ export async function getDriversController(req, res) {
 }
 
 export async function syncDriversController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const drivers = req.body.drivers;
 
   if (!Array.isArray(drivers)) {
-    return res.status(400).json({
-      error: "Drivers mora biti niz.",
-    });
+    throw badRequest("Drivers mora biti niz.");
   }
 
   await syncComputerDrivers(id, drivers);
@@ -149,13 +112,7 @@ export async function syncDriversController(req, res) {
 // =========================
 
 export async function getServicesController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const services = await getComputerServices(id);
 
@@ -163,20 +120,12 @@ export async function getServicesController(req, res) {
 }
 
 export async function syncServicesController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const services = req.body.services;
 
   if (!Array.isArray(services)) {
-    return res.status(400).json({
-      error: "Services mora biti niz.",
-    });
+    throw badRequest("Services mora biti niz.");
   }
 
   await syncComputerServices(id, services);
@@ -192,13 +141,7 @@ export async function syncServicesController(req, res) {
 // =========================
 
 export async function getUpdatesController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const updates = await getComputerUpdates(id);
 
@@ -206,20 +149,12 @@ export async function getUpdatesController(req, res) {
 }
 
 export async function syncUpdatesController(req, res) {
-  const id = toInt(req.params.id);
-
-  if (!id) {
-    return res.status(400).json({
-      error: "Neispravan ID racunara.",
-    });
-  }
+  const id = parseIdParam(req, "id", "ID racunara");
 
   const updates = req.body.updates;
 
   if (!Array.isArray(updates)) {
-    return res.status(400).json({
-      error: "Updates mora biti niz.",
-    });
+    throw badRequest("Updates mora biti niz.");
   }
 
   await syncComputerUpdates(id, updates);

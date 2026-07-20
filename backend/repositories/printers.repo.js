@@ -1,25 +1,20 @@
 import { pool } from "../db/pool.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
+
+const SEARCH_COLUMNS = [
+  "p.ip",
+  "p.name",
+  "p.manufacturer",
+  "p.model",
+  "p.serial",
+  "p.department",
+];
 
 function buildPrintersWhere(search = "") {
-  const q = String(search || "").trim();
-  if (!q) return { where: "1=1", params: [] };
-
-  const like = `%${q}%`;
-  const ipPrefix = `${q}%`;
-
-  return {
-    where: `
-      (
-        p.ip LIKE ?
-        OR p.name LIKE ?
-        OR p.manufacturer LIKE ?
-        OR p.model LIKE ?
-        OR p.serial LIKE ?
-        OR p.department LIKE ?
-      )
-    `,
-    params: [ipPrefix, like, like, like, like, like],
-  };
+  const { where, params } = buildLikeSearch(SEARCH_COLUMNS, search, {
+    prefixColumns: ["p.ip"],
+  });
+  return where ? { where, params } : { where: "1=1", params: [] };
 }
 
 export async function getPrinterById(printerId) {

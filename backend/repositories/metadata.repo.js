@@ -103,24 +103,6 @@ export async function countMetadataTotal() {
   return Number(total) || 0;
 }
 
-export async function beginTx() {
-  const conn = await pool.getConnection();
-  await conn.beginTransaction();
-  return conn;
-}
-
-export async function commitTx(conn) {
-  await conn.commit();
-  conn.release();
-}
-
-export async function rollbackTx(conn) {
-  try {
-    await conn.rollback();
-  } catch {}
-  conn.release();
-}
-
 export async function txGetExistingMetaId(conn, ipEntryId) {
   const [[existing]] = await conn.execute(
     `SELECT id FROM computer_metadata WHERE ip_entry_id = ? LIMIT 1`,

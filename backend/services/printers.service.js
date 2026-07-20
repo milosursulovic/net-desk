@@ -1,6 +1,8 @@
 import { emptyToNull } from "../utils/strings.js";
 import { isValidIPv4, ipToNumeric } from "../utils/ip.js";
 import { pool } from "../db/pool.js";
+import { paginate } from "../utils/pagination.js";
+import { notFound } from "../utils/httpError.js";
 import {
   getPrinterById,
   listPrinters,
@@ -49,9 +51,7 @@ async function findIpEntryByIpOrId(ipOrId) {
 
 export async function listPrintersService({ page, limit, search }) {
   const { items, total } = await listPrinters({ page, limit, search });
-  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-  const safePage =
-    totalPages === 0 ? 1 : Math.max(1, Math.min(page, totalPages));
+  const { page: safePage, totalPages } = paginate({ page, limit, total });
 
   return { items, page: safePage, limit, search, total, totalPages };
 }
@@ -59,9 +59,7 @@ export async function listPrintersService({ page, limit, search }) {
 export async function getPrinterService(id) {
   const p = await getPrinterById(id);
   if (!p) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
   return p;
 }
@@ -120,9 +118,7 @@ export async function updatePrinterService(id, body) {
 
   const affected = await updatePrinterFields(id, fields.join(", "), params);
   if (!affected) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
 
   return await getPrinterById(id);
@@ -131,9 +127,7 @@ export async function updatePrinterService(id, body) {
 export async function deletePrinterService(id) {
   const affected = await deletePrinter(id);
   if (!affected) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
   return true;
 }
@@ -141,16 +135,12 @@ export async function deletePrinterService(id) {
 export async function setHostService(printerId, computer) {
   const host = await findIpEntryByIpOrId(computer);
   if (!host) {
-    const err = new Error("Host computer not found (use IPv4 or numeric id)");
-    err.status = 404;
-    throw err;
+    throw notFound("Host computer not found (use IPv4 or numeric id)");
   }
 
   const affected = await setPrinterHost(printerId, host.id);
   if (!affected) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
 
   return await getPrinterById(printerId);
@@ -159,9 +149,7 @@ export async function setHostService(printerId, computer) {
 export async function unsetHostService(printerId) {
   const affected = await unsetPrinterHost(printerId);
   if (!affected) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
   return await getPrinterById(printerId);
 }
@@ -169,18 +157,14 @@ export async function unsetHostService(printerId) {
 export async function connectComputerService(printerId, computer) {
   const pc = await findIpEntryByIpOrId(computer);
   if (!pc) {
-    const err = new Error("Computer not found (use IPv4 or numeric id)");
-    err.status = 404;
-    throw err;
+    throw notFound("Computer not found (use IPv4 or numeric id)");
   }
 
   await connectPrinterComputer(printerId, pc.id);
 
   const updated = await getPrinterById(printerId);
   if (!updated) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
   return updated;
 }
@@ -188,9 +172,7 @@ export async function connectComputerService(printerId, computer) {
 export async function disconnectComputerService(printerId, computer) {
   const pc = await findIpEntryByIpOrId(computer);
   if (!pc) {
-    const err = new Error("Computer not found (use IPv4 or numeric id)");
-    err.status = 404;
-    throw err;
+    throw notFound("Computer not found (use IPv4 or numeric id)");
   }
 
   await disconnectPrinterComputer(printerId, pc.id);
@@ -198,9 +180,7 @@ export async function disconnectComputerService(printerId, computer) {
 
   const updated = await getPrinterById(printerId);
   if (!updated) {
-    const err = new Error("Printer not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Printer not found");
   }
   return updated;
 }

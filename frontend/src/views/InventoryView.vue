@@ -4,31 +4,25 @@
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">Inventar hardvera</h1>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button @click="openAddModal"
-          class="bg-emerald-600 text-white px-4 py-2 rounded-md shadow hover:bg-emerald-700 font-semibold transition">
-          Dodaj stavku
-        </button>
+        <AppButton variant="success" @click="openAddModal">Dodaj stavku</AppButton>
 
-        <button @click="exportToXlsx"
-          class="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 font-semibold transition">
-          Izvezi XLSX
-        </button>
+        <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
       </div>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
       <input v-model="search" type="text" placeholder="Pretraga (model, serijski, proizvođač, lokacija…) "
-        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        class="app-input sm:w-1/2" />
 
       <div class="w-full sm:w-auto flex flex-wrap items-center gap-2">
-        <select v-model="filterType" class="border px-2 py-2 rounded text-sm" :title="'Filter po tipu opreme'">
+        <select v-model="filterType" class="app-input py-2 text-sm" :title="'Filter po tipu opreme'">
           <option value="all">Sve vrste</option>
           <option v-for="t in typeOptions" :key="t.value" :value="t.value">
             {{ t.label }}
           </option>
         </select>
 
-        <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
+        <select v-model="sortBy" class="app-input py-2 text-sm">
           <option value="type">Tip</option>
           <option value="manufacturer">Proizvođač</option>
           <option value="model">Model</option>
@@ -36,12 +30,12 @@
           <option value="createdAt">Datum unosa</option>
         </select>
 
-        <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'" class="px-3 py-2 border rounded text-sm"
+        <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'" class="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50"
           :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'">
           {{ sortOrder === 'asc' ? '↑' : '↓' }}
         </button>
 
-        <select v-model.number="limit" class="border px-2 py-2 rounded text-sm">
+        <select v-model.number="limit" class="app-input py-2 text-sm">
           <option :value="10">10 / strana</option>
           <option :value="20">20 / strana</option>
           <option :value="50">50 / strana</option>
@@ -153,14 +147,21 @@
 
     <ToastNotification :message="toast" />
 
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
+
     <SlideOverPanel :open="showForm" :title="formMode === 'create' ? 'Dodaj stavku u inventar' : 'Izmeni stavku'"
       @close="closeForm">
       <div class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Tip opreme</label>
-            <select v-model="form.type"
-              class="w-full border px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+            <select v-model="form.type" class="app-input text-sm">
               <option disabled value="">Odaberi tip</option>
               <option v-for="t in typeOptions" :key="t.value" :value="t.value">
                 {{ t.label }}
@@ -170,66 +171,61 @@
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Proizvođač</label>
-            <input v-model="form.manufacturer" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.manufacturer" class="app-input text-sm"
               placeholder="npr. Dell, HP, Seagate…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Model</label>
-            <input v-model="form.model" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.model" class="app-input text-sm"
               placeholder="npr. ProLiant DL380 G9…" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Serijski broj</label>
-            <input v-model="form.serialNumber" class="w-full border px-3 py-2 rounded shadow-sm text-sm font-mono"
+            <input v-model="form.serialNumber" class="app-input text-sm font-mono"
               placeholder="Serijski broj" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Količina</label>
-            <input v-model.number="form.quantity" type="number" min="1"
-              class="w-full border px-3 py-2 rounded shadow-sm text-sm" />
+            <input v-model.number="form.quantity" type="number" min="1" class="app-input text-sm" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">
               Kapacitet (HDD/SSD/RAM) / veličina
             </label>
-            <input v-model="form.capacity" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.capacity" class="app-input text-sm"
               placeholder="npr. 500 GB, 16 GB…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Brzina</label>
-            <input v-model="form.speed" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.speed" class="app-input text-sm"
               placeholder="npr. 7200 rpm, 3200 MHz, 3.4 GHz…" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Socket / Form factor</label>
-            <input v-model="form.socket" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.socket" class="app-input text-sm"
               placeholder="npr. LGA1151, SODIMM, ATX…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Lokacija</label>
-            <input v-model="form.location" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+            <input v-model="form.location" class="app-input text-sm"
               placeholder="npr. Magacin 2, Orman 3, IT kancelarija…" />
           </div>
         </div>
 
         <div>
           <label class="block text-xs text-slate-500 mb-1">Napomena</label>
-          <textarea v-model="form.notes" rows="3" class="w-full border px-3 py-2 rounded shadow-sm text-sm"
+          <textarea v-model="form.notes" rows="3" class="app-input text-sm"
             placeholder="Dodatne informacije, stanje, istorija, kompatibilnost…"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t">
-          <button type="button" @click="closeForm"
-            class="px-4 py-2 rounded border text-sm text-slate-700 hover:bg-slate-50">
-            Odustani
-          </button>
-          <button type="button" @click="saveItem"
-            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
+          <AppButton type="button" variant="neutral" @click="closeForm">Odustani</AppButton>
+          <AppButton type="button" variant="success" @click="saveItem">
             {{ formMode === 'create' ? 'Sačuvaj' : 'Sačuvaj izmene' }}
-          </button>
+          </AppButton>
         </div>
       </div>
     </SlideOverPanel>
@@ -244,12 +240,15 @@ import { fmtDateOnly, shortSerial } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import {
   INVENTORY_TYPE_OPTIONS,
   labelForInventoryType,
 } from '@/constants/inventoryTypes.js'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppButton from '@/components/AppButton.vue'
 
 const {
   page,
@@ -283,7 +282,8 @@ const entries = ref([])
 const total = ref(0)
 const totalPages = ref(0)
 const typeOptions = INVENTORY_TYPE_OPTIONS
-const { toast, copyToClipboard } = useToast()
+const { toast, showToast, copyToClipboard } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 const fmtDate = fmtDateOnly
@@ -378,7 +378,7 @@ const closeForm = () => {
 
 const saveItem = async () => {
   if (!form.value.type || !form.value.model) {
-    alert('Bar tip opreme i model su obavezni.')
+    showToast('Bar tip opreme i model su obavezni.', { prefix: '❌ ', duration: 3000 })
     return
   }
 
@@ -419,12 +419,16 @@ const saveItem = async () => {
     await fetchData()
   } catch (e) {
     console.error('Greška pri čuvanju stavke:', e)
-    alert('Greška pri čuvanju stavke inventara.')
+    showToast('Greška pri čuvanju stavke inventara.', { prefix: '❌ ', duration: 3000 })
   }
 }
 
 const confirmDelete = async (item) => {
-  if (!confirm(`Da li želiš da obrišeš ${item.model || 'ovu stavku'} iz inventara?`)) return
+  const ok = await askConfirm(`Da li želiš da obrišeš ${item.model || 'ovu stavku'} iz inventara?`, {
+    title: 'Brisanje stavke',
+  })
+  if (!ok) return
+
   try {
     const res = await fetchWithAuth(`/api/protected/inventory/${item.id}`, { method: 'DELETE' })
     if (!res.ok) {
@@ -433,7 +437,7 @@ const confirmDelete = async (item) => {
     await fetchData()
   } catch (e) {
     console.error('Greška pri brisanju stavke:', e)
-    alert('Greška pri brisanju stavke.')
+    showToast('Greška pri brisanju stavke.', { prefix: '❌ ', duration: 3000 })
   }
 }
 

@@ -51,3 +51,17 @@ export function shortSerial(s) {
   if (s.length <= 10) return s
   return `${s.slice(0, 4)}…${s.slice(-4)}`
 }
+
+export function fmtNumberSr(value, maximumFractionDigits = 0) {
+  return new Intl.NumberFormat('sr-RS', { maximumFractionDigits }).format(Number(value) || 0)
+}
+
+export function fmtDateSr(value, { includeTime = false } = {}) {
+  if (!value) return 'Nema podataka'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Nema podataka'
+  return new Intl.DateTimeFormat('sr-RS', {
+    dateStyle: 'medium',
+    ...(includeTime ? { timeStyle: 'short' } : {}),
+  }).format(date)
+}

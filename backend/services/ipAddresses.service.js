@@ -3,6 +3,7 @@ import tls from "tls";
 import { isPrivateIPv4 } from "../utils/ip.js";
 import { ipToNumeric } from "../utils/ip.js";
 import { emptyToNull } from "../utils/strings.js";
+import { badRequest, notFound } from "../utils/httpError.js";
 import {
   listIpEntries,
   findIpEntryById,
@@ -142,11 +143,9 @@ async function probeTCP(ip, port, timeoutMs = 100) {
 
 export async function scanPorts({ ip, ports, timeoutMs, concurrency }) {
   if (!isPrivateIPv4(ip)) {
-    const err = new Error(
+    throw badRequest(
       "Skeniranje dozvoljeno samo za privatne IPv4 adrese (bez javnog skeniranja).",
     );
-    err.status = 400;
-    throw err;
   }
 
   const portList = parsePorts(ports);
@@ -191,9 +190,7 @@ export async function listService(filters) {
 export async function getByIdService(id) {
   const entry = await findIpEntryById(id);
   if (!entry) {
-    const err = new Error("Unos nije pronađen");
-    err.status = 404;
-    throw err;
+    throw notFound("Unos nije pronađen");
   }
   return entry;
 }
@@ -251,16 +248,12 @@ export async function updateService(id, patch) {
   }
 
   if (!sets.length) {
-    const err = new Error("Nema polja za izmenu");
-    err.status = 400;
-    throw err;
+    throw badRequest("Nema polja za izmenu");
   }
 
   const affected = await updateIpEntryPatch(id, sets.join(", "), params);
   if (!affected) {
-    const err = new Error("Unos nije pronađen");
-    err.status = 404;
-    throw err;
+    throw notFound("Unos nije pronađen");
   }
 
   return await findIpEntryById(id);
@@ -269,9 +262,7 @@ export async function updateService(id, patch) {
 export async function deleteService(id) {
   const affected = await deleteIpEntry(id);
   if (!affected) {
-    const err = new Error("Unos nije pronađen");
-    err.status = 404;
-    throw err;
+    throw notFound("Unos nije pronađen");
   }
   return true;
 }

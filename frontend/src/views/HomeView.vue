@@ -4,47 +4,9 @@
       <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">IP Adrese</h1>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="addEntry"
-          class="bg-emerald-600 text-white px-4 py-2 rounded-md shadow hover:bg-emerald-700 font-semibold transition"
-        >
-          Dodaj
-        </button>
+        <AppButton variant="success" @click="addEntry">Dodaj</AppButton>
 
-        <button
-          @click="exportToXlsx"
-          class="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 font-semibold transition"
-        >
-          Izvezi XLSX
-        </button>
-
-        <RouterLink
-          to="/metadata"
-          class="bg-gray-700 text-white px-4 py-2 rounded-md shadow hover:bg-gray-800 inline-flex items-center font-medium transition"
-        >
-          Metapodaci
-        </RouterLink>
-
-        <RouterLink
-          to="/pdsu"
-          class="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 inline-flex items-center font-medium transition"
-        >
-          PDSU
-        </RouterLink>
-
-        <RouterLink
-          to="/printers"
-          class="bg-orange-600 text-white px-4 py-2 rounded-md shadow hover:bg-orange-700 inline-flex items-center font-medium transition"
-        >
-          Štampači
-        </RouterLink>
-
-        <RouterLink
-          to="/inventory"
-          class="bg-purple-600 text-white px-4 py-2 rounded-md shadow hover:bg-purple-700 inline-flex items-center font-medium transition"
-        >
-          Inventar
-        </RouterLink>
+        <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
       </div>
     </div>
 
@@ -54,23 +16,23 @@
         @input="page = 1"
         type="text"
         placeholder="Pretraga..."
-        class="border border-gray-300 px-3 py-2 rounded w-full sm:w-1/2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        class="app-input sm:w-1/2"
       />
 
       <div class="w-full sm:w-auto flex items-center gap-2">
-        <select v-model="status" class="border px-2 py-2 rounded text-sm" :title="'Filter statusa'">
+        <select v-model="status" class="app-input py-2 text-sm" :title="'Filter statusa'">
           <option value="all">Svi</option>
           <option value="online">Samo online</option>
           <option value="offline">Samo offline</option>
         </select>
 
-        <select v-model="sortBy" class="border px-2 py-2 rounded text-sm">
+        <select v-model="sortBy" class="app-input py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
 
         <button
           @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-3 py-2 border rounded text-sm"
+          class="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50"
           :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'"
         >
           {{ sortOrder === 'asc' ? '↑ Rastuće' : '↓ Opadajuće' }}
@@ -249,6 +211,14 @@
     </div>
 
     <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
 
     <SlideOverPanel :open="showMeta" @close="closeMetadata">
       <template #title>
@@ -936,15 +906,18 @@
 
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate, fmtRelative, fmtGb, fmtMbps, safe } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppButton from '@/components/AppButton.vue'
 
 const showPdsu = ref(false)
 const psduEntry = ref(null)
@@ -969,7 +942,8 @@ const pdsuLoaded = ref({
 const pdsuSearch = ref('')
 
 const router = useRouter()
-const { toast, copyToClipboard } = useToast()
+const { toast, showToast, copyToClipboard } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const { page, limit, search, sortBy, sortOrder, status, nextPage, prevPage } = usePaginatedRoute({
   fields: {
@@ -1210,9 +1184,17 @@ const filteredPdsuUpdates = computed(() => {
 })
 
 const deleteEntry = async (id) => {
-  if (!confirm('Da li si siguran da želiš da obrišeš ovaj unos?')) return
+  const ok = await askConfirm('Da li si siguran da želiš da obrišeš ovaj unos?', {
+    title: 'Brisanje unosa',
+  })
+  if (!ok) return
+
   const res = await fetchWithAuth(`/api/protected/ip-addresses/${id}`, { method: 'DELETE' })
-  if (res.ok) fetchData()
+  if (res.ok) {
+    fetchData()
+  } else {
+    showToast('Greška pri brisanju unosa', { prefix: '❌ ', duration: 3000 })
+  }
 }
 
 const exportToXlsx = async () => {

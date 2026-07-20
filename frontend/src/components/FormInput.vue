@@ -1,7 +1,7 @@
 <template>
   <div>
     <label class="text-sm text-gray-600">{{ label }}</label>
-    <input :value="modelValue" :placeholder="placeholder" class="w-full border px-3 py-2 rounded"
+    <input :value="modelValue" :placeholder="placeholder" class="app-input"
       @input="$emit('update:modelValue', $event.target.value)" />
   </div>
 </template>

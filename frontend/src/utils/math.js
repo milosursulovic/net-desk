@@ -25,6 +25,13 @@ export function maxOf(arr) {
   return arr.length ? Math.max(...arr) : 0
 }
 
+export function barWidth(value, maximum, { minVisible = 2 } = {}) {
+  const safeValue = Number(value) || 0
+  const safeMaximum = Number(maximum) || 1
+  if (safeValue <= 0) return 0
+  return Math.max(minVisible, Math.min(100, (safeValue / safeMaximum) * 100))
+}
+
 export function groupCount(items) {
   const map = new Map()
   for (const it of items) {

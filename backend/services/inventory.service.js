@@ -1,5 +1,8 @@
 import { toInt, clamp } from "../utils/numbers.js";
 import { normalizeStatus, SORT_FIELDS } from "../dtos/inventory.dto.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
+import { paginate } from "../utils/pagination.js";
+import { notFound } from "../utils/httpError.js";
 import {
   inventoryInsert,
   inventoryFindById,
@@ -7,6 +10,17 @@ import {
   inventoryDelete,
   inventoryListWithCounts,
 } from "../repositories/inventory.repo.js";
+
+const SEARCH_COLUMNS = [
+  "manufacturer",
+  "model",
+  "serial_number",
+  "location",
+  "notes",
+  "capacity",
+  "speed",
+  "socket",
+];
 
 export async function listInventory(query) {
   const rawPage = clamp(toInt(query.page, 1), 1, 1_000_000);
@@ -27,19 +41,10 @@ export async function listInventory(query) {
     params.push(type);
   }
 
-  if (search !== "") {
-    const like = `%${search}%`;
-    where.push(`(
-      manufacturer LIKE ? OR
-      model LIKE ? OR
-      serial_number LIKE ? OR
-      location LIKE ? OR
-      notes LIKE ? OR
-      capacity LIKE ? OR
-      speed LIKE ? OR
-      socket LIKE ?
-    )`);
-    params.push(like, like, like, like, like, like, like, like);
+  const searchClause = buildLikeSearch(SEARCH_COLUMNS, search);
+  if (searchClause.where) {
+    where.push(searchClause.where);
+    params.push(...searchClause.params);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -54,9 +59,7 @@ export async function listInventory(query) {
   });
 
   const total = Number(countRows?.[0]?.total ?? 0);
-  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-
-  const page = totalPages === 0 ? 1 : clamp(rawPage, 1, totalPages);
+  const { page, totalPages } = paginate({ page: rawPage, limit, total });
   const offset = (page - 1) * limit;
 
   const { entries } = await inventoryListWithCounts({
@@ -101,9 +104,7 @@ export async function updateInventoryItem(id, dto) {
   const payload = { ...dto, status: normalizeStatus(dto.status) };
   const affected = await inventoryUpdate(id, payload);
   if (!affected) {
-    const err = new Error("Stavka nije pronađena.");
-    err.status = 404;
-    throw err;
+    throw notFound("Stavka nije pronađena.");
   }
   return await inventoryFindById(id);
 }
@@ -111,9 +112,7 @@ export async function updateInventoryItem(id, dto) {
 export async function deleteInventoryItem(id) {
   const affected = await inventoryDelete(id);
   if (!affected) {
-    const err = new Error("Stavka nije pronađena.");
-    err.status = 404;
-    throw err;
+    throw notFound("Stavka nije pronađena.");
   }
   return true;
 }

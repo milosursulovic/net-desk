@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 
 const props = defineProps({
   coverage: {
@@ -110,24 +111,11 @@ const alertItems = computed(() => [
 ])
 
 function formatNumber(value) {
-  return new Intl.NumberFormat('sr-RS').format(Number(value) || 0)
+  return fmtNumberSr(value)
 }
 
 function formatDate(value) {
-  if (!value) {
-    return 'Nema podataka'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Nema podataka'
-  }
-
-  return new Intl.DateTimeFormat('sr-RS', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
+  return fmtDateSr(value, { includeTime: true })
 }
 
 function percentageClass(percent) {

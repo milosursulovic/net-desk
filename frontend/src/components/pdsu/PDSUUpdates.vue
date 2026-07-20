@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
+import { barWidth as sharedBarWidth } from '@/utils/math.js'
 
 const props = defineProps({
   updates: {
@@ -125,33 +127,15 @@ function cryptoSafeKey(item) {
 }
 
 function formatNumber(value, maximumFractionDigits = 0) {
-  return new Intl.NumberFormat('sr-RS', {
-    maximumFractionDigits,
-  }).format(Number(value) || 0)
+  return fmtNumberSr(value, maximumFractionDigits)
 }
 
 function formatDate(value, includeTime = false) {
-  if (!value) {
-    return 'Nema podataka'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Nema podataka'
-  }
-
-  return new Intl.DateTimeFormat('sr-RS', {
-    dateStyle: 'medium',
-    ...(includeTime ? { timeStyle: 'short' } : {}),
-  }).format(date)
+  return fmtDateSr(value, { includeTime })
 }
 
 function barWidth(value, maximum) {
-  const safeValue = Number(value) || 0
-  const safeMaximum = Number(maximum) || 1
-
-  return Math.max(safeValue > 0 ? 2 : 0, Math.min(100, (safeValue / safeMaximum) * 100))
+  return sharedBarWidth(value, maximum)
 }
 
 function bucketPercent(value) {

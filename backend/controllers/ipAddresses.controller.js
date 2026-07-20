@@ -1,4 +1,3 @@
-import XLSX from "xlsx";
 import {
   ScanSchema,
   ListSchema,
@@ -14,7 +13,8 @@ import {
   duplicatesService,
   exportXlsxRowsService,
 } from "../services/ipAddresses.service.js";
-import { toInt } from "../utils/numbers.js";
+import { parseIdParam } from "../utils/idParam.js";
+import { sendXlsxExport } from "../utils/exportExcel.js";
 
 export async function scanPortsController(req, res) {
   const q = ScanSchema.safeParse(req.query);
@@ -37,47 +37,25 @@ export async function exportXlsxController(req, res) {
   const search = String(req.query.search || "");
   const rows = await exportXlsxRowsService(search);
 
-  const ws = XLSX.utils.json_to_sheet(rows, {
-    header: [
-      "ip",
-      "computerName",
-      "rdpApp",
-      "os",
-      "department",
-      "remoteScript",
-      "hasMetadata",
-      "description",
+  await sendXlsxExport(res, {
+    filename: "ip-entries.xlsx",
+    sheets: [
+      {
+        name: "IP-Entries",
+        columns: [
+          { header: "ip", key: "ip", width: 14 },
+          { header: "computerName", key: "computerName", width: 20 },
+          { header: "rdpApp", key: "rdpApp", width: 18 },
+          { header: "os", key: "os", width: 22 },
+          { header: "department", key: "department", width: 16 },
+          { header: "remoteScript", key: "remoteScript", width: 20 },
+          { header: "hasMetadata", key: "hasMetadata", width: 14 },
+          { header: "description", key: "description", width: 24 },
+        ],
+        rows,
+      },
     ],
-    skipHeader: false,
   });
-
-  ws["!cols"] = [
-    { wch: 14 },
-    { wch: 12 },
-    { wch: 18 },
-    { wch: 22 },
-    { wch: 16 },
-    { wch: 20 },
-    { wch: 20 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 16 },
-    { wch: 16 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "IP-Entries");
-
-  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-  res.setHeader(
-    "Content-Disposition",
-    'attachment; filename="ip-entries.xlsx"',
-  );
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  );
-  res.send(buffer);
 }
 
 export async function listController(req, res) {
@@ -87,9 +65,7 @@ export async function listController(req, res) {
 }
 
 export async function getByIdController(req, res) {
-  const id = toInt(req.params.id);
-  if (!id) return res.status(400).json({ message: "Neispravan ID" });
-
+  const id = parseIdParam(req);
   const out = await getByIdService(id);
   res.json(out);
 }
@@ -101,18 +77,14 @@ export async function createController(req, res) {
 }
 
 export async function updateController(req, res) {
-  const id = toInt(req.params.id);
-  if (!id) return res.status(400).json({ message: "Neispravan ID" });
-
+  const id = parseIdParam(req);
   const parsed = UpsertIpSchema.partial().parse(req.body);
   const updated = await updateService(id, parsed);
   res.json(updated);
 }
 
 export async function deleteController(req, res) {
-  const id = toInt(req.params.id);
-  if (!id) return res.status(400).json({ message: "Neispravan ID" });
-
+  const id = parseIdParam(req);
   await deleteService(id);
   res.json({ message: "Unos obrisan" });
 }

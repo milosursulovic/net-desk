@@ -1,5 +1,7 @@
-import XLSX from "xlsx";
 import { toInt, clamp } from "../utils/numbers.js";
+import { parseSearchTerm } from "../utils/queryCoercion.js";
+import { parseIdParam } from "../utils/idParam.js";
+import { sendXlsxExport } from "../utils/exportExcel.js";
 import {
   listPrintersService,
   getPrinterService,
@@ -13,26 +15,8 @@ import {
   exportPrintersService,
 } from "../services/printers.service.js";
 
-function autosizeSheet(worksheet, headerKeys) {
-  if (!worksheet || !headerKeys || headerKeys.length === 0) return;
-  const colWidths = headerKeys.map((h) => (h ? String(h).length : 10));
-
-  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1");
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    let max = colWidths[C - range.s.c] || 10;
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
-      if (!cell || cell.v == null) continue;
-      const len = String(cell.v).length;
-      if (len > max) max = len;
-    }
-    colWidths[C - range.s.c] = Math.min(Math.max(max + 2, 10), 60);
-  }
-  worksheet["!cols"] = colWidths.map((wch) => ({ wch }));
-}
-
 export async function exportXlsxPrintersController(req, res) {
-  const search = String(req.query.search || "");
+  const search = parseSearchTerm(req.query.search);
   const { printers, connections, connAgg } =
     await exportPrintersService(search);
 
@@ -52,69 +36,74 @@ export async function exportXlsxPrintersController(req, res) {
       connectedList: "",
     };
     return {
-      Name: p.name || "",
-      Manufacturer: p.manufacturer || "",
-      Model: p.model || "",
-      Serial: p.serial || "",
-      Department: p.department || "",
-      ConnectionType: p.connectionType || "",
-      IP: p.ip || "",
-      Shared: !!p.shared,
-      Host_ComputerName: p.hostComputerName || "",
-      Host_IP: p.hostIp || "",
-      ConnectedCount: extra.connectedCount,
-      ConnectedList: extra.connectedList,
-      UpdatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : "",
-      CreatedAt: p.createdAt ? new Date(p.createdAt).toISOString() : "",
+      name: p.name || "",
+      manufacturer: p.manufacturer || "",
+      model: p.model || "",
+      serial: p.serial || "",
+      department: p.department || "",
+      connectionType: p.connectionType || "",
+      ip: p.ip || "",
+      shared: !!p.shared,
+      hostComputerName: p.hostComputerName || "",
+      hostIp: p.hostIp || "",
+      connectedCount: extra.connectedCount,
+      connectedList: extra.connectedList,
+      updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : "",
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : "",
     };
   });
 
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.json_to_sheet(printerRows);
-  autosizeSheet(ws1, Object.keys(printerRows[0] || {}));
-  XLSX.utils.book_append_sheet(wb, ws1, "Printers");
-
-  const ws2 = XLSX.utils.json_to_sheet(connections);
-  autosizeSheet(
-    ws2,
-    Object.keys(
-      connections[0] || {
-        PrinterName: "",
-        PrinterIP: "",
-        Role: "",
-        ComputerName: "",
-        ComputerIP: "",
-        Department: "",
-      },
-    ),
-  );
-  XLSX.utils.book_append_sheet(wb, ws2, "Connections");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
   const dateStamp = new Date().toISOString().slice(0, 10);
-  const filename = `NetDesk_Printers_${dateStamp}.xlsx`;
 
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  );
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  res.send(buf);
+  await sendXlsxExport(res, {
+    filename: `NetDesk_Printers_${dateStamp}.xlsx`,
+    sheets: [
+      {
+        name: "Printers",
+        columns: [
+          { header: "Name", key: "name", width: 22 },
+          { header: "Manufacturer", key: "manufacturer", width: 18 },
+          { header: "Model", key: "model", width: 20 },
+          { header: "Serial", key: "serial", width: 18 },
+          { header: "Department", key: "department", width: 18 },
+          { header: "ConnectionType", key: "connectionType", width: 16 },
+          { header: "IP", key: "ip", width: 14 },
+          { header: "Shared", key: "shared", width: 10 },
+          { header: "Host_ComputerName", key: "hostComputerName", width: 20 },
+          { header: "Host_IP", key: "hostIp", width: 14 },
+          { header: "ConnectedCount", key: "connectedCount", width: 14 },
+          { header: "ConnectedList", key: "connectedList", width: 40 },
+          { header: "UpdatedAt", key: "updatedAt", width: 22 },
+          { header: "CreatedAt", key: "createdAt", width: 22 },
+        ],
+        rows: printerRows,
+      },
+      {
+        name: "Connections",
+        columns: [
+          { header: "PrinterName", key: "PrinterName", width: 22 },
+          { header: "PrinterIP", key: "PrinterIP", width: 14 },
+          { header: "Role", key: "Role", width: 12 },
+          { header: "ComputerName", key: "ComputerName", width: 20 },
+          { header: "ComputerIP", key: "ComputerIP", width: 14 },
+          { header: "Department", key: "Department", width: 18 },
+        ],
+        rows: connections,
+      },
+    ],
+  });
 }
 
 export async function listPrintersController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 50), 1, 1000);
-  const search = String(req.query.search || "");
+  const search = parseSearchTerm(req.query.search);
   const out = await listPrintersService({ page, limit, search });
   res.json(out);
 }
 
 export async function getPrinterController(req, res) {
-  const id = toInt(req.params.id, null);
-  if (!id) return res.status(400).json({ error: "Invalid printer id" });
+  const id = parseIdParam(req, "id", "printer id");
   const out = await getPrinterService(id);
   res.json(out);
 }
@@ -125,51 +114,39 @@ export async function createPrinterController(req, res) {
 }
 
 export async function updatePrinterController(req, res) {
-  const id = toInt(req.params.id, null);
-  if (!id) return res.status(400).json({ error: "Invalid printer id" });
-
+  const id = parseIdParam(req, "id", "printer id");
   const updated = await updatePrinterService(id, req.body || {});
   res.json(updated);
 }
 
 export async function deletePrinterController(req, res) {
-  const id = toInt(req.params.id, null);
-  if (!id) return res.status(400).json({ error: "Invalid printer id" });
-
+  const id = parseIdParam(req, "id", "printer id");
   await deletePrinterService(id);
   res.json({ message: "Printer deleted" });
 }
 
 export async function setHostController(req, res) {
-  const printerId = toInt(req.params.id, null);
-  if (!printerId) return res.status(400).json({ error: "Invalid printer id" });
-
+  const printerId = parseIdParam(req, "id", "printer id");
   const { computer } = req.body || {};
   const updated = await setHostService(printerId, computer);
   res.json(updated);
 }
 
 export async function unsetHostController(req, res) {
-  const printerId = toInt(req.params.id, null);
-  if (!printerId) return res.status(400).json({ error: "Invalid printer id" });
-
+  const printerId = parseIdParam(req, "id", "printer id");
   const updated = await unsetHostService(printerId);
   res.json(updated);
 }
 
 export async function connectController(req, res) {
-  const printerId = toInt(req.params.id, null);
-  if (!printerId) return res.status(400).json({ error: "Invalid printer id" });
-
+  const printerId = parseIdParam(req, "id", "printer id");
   const { computer } = req.body || {};
   const updated = await connectComputerService(printerId, computer);
   res.json(updated);
 }
 
 export async function disconnectController(req, res) {
-  const printerId = toInt(req.params.id, null);
-  if (!printerId) return res.status(400).json({ error: "Invalid printer id" });
-
+  const printerId = parseIdParam(req, "id", "printer id");
   const { computer } = req.body || {};
   const updated = await disconnectComputerService(printerId, computer);
   res.json(updated);

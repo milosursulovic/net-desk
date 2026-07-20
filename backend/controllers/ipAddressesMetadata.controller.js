@@ -5,11 +5,15 @@ import {
   patchMetadataByIp,
 } from "../services/metadata.service.js";
 import { findIpEntryByIdLean } from "../repositories/ipEntries.repo.js";
+import { badRequest, notFound } from "../utils/httpError.js";
+
+function requireValidIp(ip) {
+  if (!isValidIPv4(ip)) throw badRequest("Neispravan IP");
+}
 
 export async function upsertMetadataByIpController(req, res) {
   const ip = req.params.ip;
-  if (!isValidIPv4(ip))
-    return res.status(400).json({ message: "Neispravan IP" });
+  requireValidIp(ip);
 
   const meta = await upsertMetadataByIp(ip, req.body || {});
   res.json(meta);
@@ -17,22 +21,20 @@ export async function upsertMetadataByIpController(req, res) {
 
 export async function getMetadataByIpController(req, res) {
   const ip = req.params.ip;
-  if (!isValidIPv4(ip))
-    return res.status(400).json({ message: "Neispravan IP" });
+  requireValidIp(ip);
 
   const { ipEntryId, metadata } = await getMetadataByIp(ip);
 
   const ipEntry = await findIpEntryByIdLean(ipEntryId);
-  if (!ipEntry) return res.status(404).json({ error: "Not found" });
-  if (!metadata) return res.status(404).json({ error: "Metadata not found" });
+  if (!ipEntry) throw notFound("Not found");
+  if (!metadata) throw notFound("Metadata not found");
 
   res.json({ ...ipEntry, metadata });
 }
 
 export async function patchMetadataByIpController(req, res) {
   const ip = req.params.ip;
-  if (!isValidIPv4(ip))
-    return res.status(400).json({ message: "Neispravan IP" });
+  requireValidIp(ip);
 
   const meta = await patchMetadataByIp(ip, req.body || {});
   res.json(meta);

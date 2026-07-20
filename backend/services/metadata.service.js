@@ -1,5 +1,9 @@
 import { emptyToNull } from "../utils/strings.js";
 import { isValidIPv4 } from "../utils/ip.js";
+import { pool } from "../db/pool.js";
+import { withTransaction } from "../utils/withTransaction.js";
+import { paginate } from "../utils/pagination.js";
+import { badRequest, notFound } from "../utils/httpError.js";
 import { findIpEntryIdByIp } from "../repositories/ipEntries.repo.js";
 import {
   loadMetadataBaseById,
@@ -7,9 +11,6 @@ import {
   findMetadataIdByIpEntryId,
   listMetadataIds,
   countMetadataTotal,
-  beginTx,
-  commitTx,
-  rollbackTx,
   txGetExistingMetaId,
   txInsertMeta,
   txUpdateMeta,
@@ -111,9 +112,7 @@ async function loadMetadataById(metadataId) {
 
 export async function listMetadataPage({ page, limit }) {
   const total = await countMetadataTotal();
-  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-  const safePage =
-    totalPages === 0 ? 1 : Math.max(1, Math.min(page, totalPages));
+  const { page: safePage, totalPages } = paginate({ page, limit, total });
   const offset = (safePage - 1) * limit;
 
   const ids = await listMetadataIds(offset, limit);
@@ -216,44 +215,37 @@ async function upsertMetadataForIpEntry(ipEntryId, body) {
     speedMbps: n.SpeedMbps ?? n.speedMbps ?? null,
   }));
 
-  const conn = await beginTx();
-  try {
+  const metadataId = await withTransaction(pool, async (conn) => {
     const existingId = await txGetExistingMetaId(conn, ipEntryId);
 
-    let metadataId;
+    let id;
     if (!existingId) {
-      metadataId = await txInsertMeta(conn, ipEntryId, data);
-      await txAttachMetadataToIpEntry(conn, ipEntryId, metadataId);
+      id = await txInsertMeta(conn, ipEntryId, data);
+      await txAttachMetadataToIpEntry(conn, ipEntryId, id);
     } else {
-      metadataId = existingId;
-      await txUpdateMeta(conn, metadataId, data);
+      id = existingId;
+      await txUpdateMeta(conn, id, data);
     }
 
-    await txReplaceRam(conn, metadataId, ramNorm);
-    await txReplaceStorage(conn, metadataId, storageNorm);
-    await txReplaceGpus(conn, metadataId, gpusNorm);
-    await txReplaceNics(conn, metadataId, nicsNorm);
+    await txReplaceRam(conn, id, ramNorm);
+    await txReplaceStorage(conn, id, storageNorm);
+    await txReplaceGpus(conn, id, gpusNorm);
+    await txReplaceNics(conn, id, nicsNorm);
 
-    await commitTx(conn);
-    return await loadMetadataById(metadataId);
-  } catch (e) {
-    await rollbackTx(conn);
-    throw e;
-  }
+    return id;
+  });
+
+  return await loadMetadataById(metadataId);
 }
 
 export async function upsertMetadataByIp(ip, body) {
   if (!isValidIPv4(ip)) {
-    const err = new Error("Neispravan IP");
-    err.status = 400;
-    throw err;
+    throw badRequest("Neispravan IP");
   }
 
   const ipEntryId = await findIpEntryIdByIp(ip);
   if (!ipEntryId) {
-    const err = new Error("IpEntry not found");
-    err.status = 404;
-    throw err;
+    throw notFound("IpEntry not found");
   }
 
   return await upsertMetadataForIpEntry(ipEntryId, body);
@@ -261,23 +253,17 @@ export async function upsertMetadataByIp(ip, body) {
 
 export async function getMetadataByIp(ip) {
   if (!isValidIPv4(ip)) {
-    const err = new Error("Neispravan IP");
-    err.status = 400;
-    throw err;
+    throw badRequest("Neispravan IP");
   }
 
   const ipEntryId = await findIpEntryIdByIp(ip);
   if (!ipEntryId) {
-    const err = new Error("Not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Not found");
   }
 
   const metaId = await findMetadataIdByIpEntryId(ipEntryId);
   if (!metaId) {
-    const err = new Error("Metadata not found");
-    err.status = 404;
-    throw err;
+    throw notFound("Metadata not found");
   }
 
   const meta = await loadMetadataById(metaId);
@@ -286,16 +272,12 @@ export async function getMetadataByIp(ip) {
 
 export async function patchMetadataByIp(ip, patchBody) {
   if (!isValidIPv4(ip)) {
-    const err = new Error("Neispravan IP");
-    err.status = 400;
-    throw err;
+    throw badRequest("Neispravan IP");
   }
 
   const ipEntryId = await findIpEntryIdByIp(ip);
   if (!ipEntryId) {
-    const err = new Error("IpEntry not found");
-    err.status = 404;
-    throw err;
+    throw notFound("IpEntry not found");
   }
 
   const metaId = await findMetadataIdByIpEntryId(ipEntryId);
