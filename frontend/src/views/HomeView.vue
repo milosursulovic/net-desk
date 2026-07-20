@@ -231,8 +231,8 @@
           <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
             Meta
           </button>
-          <button @click="openInventory(entry)" class="text-purple-600 hover:underline text-sm">
-            Inventar
+          <button @click="openPdsu(entry)" class="text-purple-600 hover:underline text-sm">
+            PDSU
           </button>
           <button @click="openPortScan(entry)" class="text-teal-600 hover:underline text-sm">
             Port scan
@@ -425,94 +425,81 @@
       </div>
     </SlideOverPanel>
 
-    <SlideOverPanel :open="showInventory" @close="closeInventory">
+    <SlideOverPanel :open="showPdsu" @close="closePdsu">
       <template #title>
         Inventar —
-        {{
-          inventoryEntry?.computerName ||
-          inventoryEntry?.computer_name ||
-          inventoryEntry?.ip ||
-          'Nepoznato'
-        }}
+        {{ psduEntry?.computerName || psduEntry?.computer_name || psduEntry?.ip || 'Nepoznato' }}
       </template>
 
       <div class="space-y-4">
         <div class="flex flex-wrap gap-2 border-b pb-3">
           <button
             type="button"
-            @click="selectInventoryTab('software')"
+            @click="selectPsduTab('software')"
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
-              inventoryTab === 'software'
+              psduTab === 'software'
                 ? 'bg-purple-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
             Softver
-            <span v-if="inventoryLoaded.software" class="ml-1">
-              ({{ inventorySoftware.length }})
-            </span>
+            <span v-if="pdsuLoaded.software" class="ml-1"> ({{ pdsuSoftware.length }}) </span>
           </button>
 
           <button
             type="button"
-            @click="selectInventoryTab('drivers')"
+            @click="selectPsduTab('drivers')"
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
-              inventoryTab === 'drivers'
+              psduTab === 'drivers'
                 ? 'bg-purple-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
             Drajveri
-            <span v-if="inventoryLoaded.drivers" class="ml-1">
-              ({{ inventoryDrivers.length }})
-            </span>
+            <span v-if="pdsuLoaded.drivers" class="ml-1"> ({{ pdsuDrivers.length }}) </span>
           </button>
 
           <button
             type="button"
-            @click="selectInventoryTab('services')"
+            @click="selectPsduTab('services')"
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
-              inventoryTab === 'services'
+              psduTab === 'services'
                 ? 'bg-purple-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
             Servisi
-            <span v-if="inventoryLoaded.services" class="ml-1">
-              ({{ inventoryServices.length }})
-            </span>
+            <span v-if="pdsuLoaded.services" class="ml-1"> ({{ pdsuServices.length }}) </span>
           </button>
 
           <button
             type="button"
-            @click="selectInventoryTab('updates')"
+            @click="selectPsduTab('updates')"
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
-              inventoryTab === 'updates'
+              psduTab === 'updates'
                 ? 'bg-purple-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
             Ažuriranja
-            <span v-if="inventoryLoaded.updates" class="ml-1">
-              ({{ inventoryUpdates.length }})
-            </span>
+            <span v-if="pdsuLoaded.updates" class="ml-1"> ({{ pdsuUpdates.length }}) </span>
           </button>
         </div>
 
         <div class="relative">
           <input
-            v-model="inventorySearch"
+            v-model="pdsuSearch"
             type="text"
             :placeholder="
-              inventoryTab === 'software'
+              psduTab === 'software'
                 ? 'Pretraži softver, verziju ili izdavača...'
-                : inventoryTab === 'drivers'
+                : psduTab === 'drivers'
                 ? 'Pretraži uređaj, drajver ili proizvođača...'
-                : inventoryTab === 'services'
+                : psduTab === 'services'
                 ? 'Pretraži servis, status ili putanju...'
                 : 'Pretraži KB, opis ili korisnika...'
             "
@@ -520,9 +507,9 @@
           />
 
           <button
-            v-if="inventorySearch"
+            v-if="pdsuSearch"
             type="button"
-            @click="inventorySearch = ''"
+            @click="pdsuSearch = ''"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
             title="Obriši pretragu"
           >
@@ -530,43 +517,41 @@
           </button>
         </div>
 
-        <div v-if="inventorySearch" class="text-xs text-slate-500">
+        <div v-if="pdsuSearch" class="text-xs text-slate-500">
           Pronađeno:
-          <template v-if="inventoryTab === 'software'">
-            {{ filteredInventorySoftware.length }} od {{ inventorySoftware.length }}
+          <template v-if="psduTab === 'software'">
+            {{ filteredPdsuSoftware.length }} od {{ pdsuSoftware.length }}
           </template>
 
-          <template v-else-if="inventoryTab === 'drivers'">
-            {{ filteredInventoryDrivers.length }} od {{ inventoryDrivers.length }}
+          <template v-else-if="psduTab === 'drivers'">
+            {{ filteredPdsuDrivers.length }} od {{ pdsuDrivers.length }}
           </template>
 
-          <template v-else-if="inventoryTab === 'services'">
-            {{ filteredInventoryServices.length }} od {{ inventoryServices.length }}
+          <template v-else-if="psduTab === 'services'">
+            {{ filteredPdsuServices.length }} od {{ pdsuServices.length }}
           </template>
 
-          <template v-else>
-            {{ filteredInventoryUpdates.length }} od {{ inventoryUpdates.length }}
-          </template>
+          <template v-else> {{ filteredPdsuUpdates.length }} od {{ pdsuUpdates.length }} </template>
         </div>
 
-        <div v-if="inventoryLoading" class="text-slate-600">Učitavanje inventara…</div>
+        <div v-if="psduLoading" class="text-slate-600">Učitavanje inventara…</div>
 
         <div
-          v-else-if="inventoryError"
+          v-else-if="pdsuError"
           class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
         >
-          {{ inventoryError }}
+          {{ pdsuError }}
         </div>
 
         <div v-else>
-          <div v-if="inventoryTab === 'software'">
-            <div v-if="filteredInventorySoftware.length === 0" class="text-slate-500">
+          <div v-if="psduTab === 'software'">
+            <div v-if="filteredPdsuSoftware.length === 0" class="text-slate-500">
               Nema podataka o instaliranom softveru.
             </div>
 
             <div v-else class="space-y-2">
               <div
-                v-for="item in filteredInventorySoftware"
+                v-for="item in filteredPdsuSoftware"
                 :key="item.id"
                 class="rounded-lg border bg-white p-3"
               >
@@ -591,14 +576,14 @@
             </div>
           </div>
 
-          <div v-else-if="inventoryTab === 'drivers'">
-            <div v-if="filteredInventoryDrivers.length === 0" class="text-slate-500">
+          <div v-else-if="psduTab === 'drivers'">
+            <div v-if="filteredPdsuDrivers.length === 0" class="text-slate-500">
               Nema podataka o drajverima.
             </div>
 
             <div v-else class="space-y-2">
               <div
-                v-for="item in filteredInventoryDrivers"
+                v-for="item in filteredPdsuDrivers"
                 :key="item.id"
                 class="rounded-lg border bg-white p-3"
               >
@@ -627,14 +612,14 @@
             </div>
           </div>
 
-          <div v-else-if="inventoryTab === 'services'">
-            <div v-if="filteredInventoryServices.length === 0" class="text-slate-500">
+          <div v-else-if="psduTab === 'services'">
+            <div v-if="filteredPdsuServices.length === 0" class="text-slate-500">
               Nema podataka o servisima.
             </div>
 
             <div v-else class="space-y-2">
               <div
-                v-for="item in filteredInventoryServices"
+                v-for="item in filteredPdsuServices"
                 :key="item.id"
                 class="rounded-lg border bg-white p-3"
               >
@@ -678,14 +663,14 @@
             </div>
           </div>
 
-          <div v-else-if="inventoryTab === 'updates'">
-            <div v-if="filteredInventoryUpdates.length === 0" class="text-slate-500">
+          <div v-else-if="psduTab === 'updates'">
+            <div v-if="filteredPdsuUpdates.length === 0" class="text-slate-500">
               Nema podataka o Windows ažuriranjima.
             </div>
 
             <div v-else class="space-y-2">
               <div
-                v-for="item in filteredInventoryUpdates"
+                v-for="item in filteredPdsuUpdates"
                 :key="item.id"
                 class="rounded-lg border bg-white p-3"
               >
@@ -954,27 +939,27 @@ import { useToast } from '@/composables/useToast.js'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
-const showInventory = ref(false)
-const inventoryEntry = ref(null)
+const showPdsu = ref(false)
+const psduEntry = ref(null)
 
-const inventoryTab = ref('software')
+const psduTab = ref('software')
 
-const inventoryLoading = ref(false)
-const inventoryError = ref(null)
+const psduLoading = ref(false)
+const pdsuError = ref(null)
 
-const inventorySoftware = ref([])
-const inventoryDrivers = ref([])
-const inventoryServices = ref([])
-const inventoryUpdates = ref([])
+const pdsuSoftware = ref([])
+const pdsuDrivers = ref([])
+const pdsuServices = ref([])
+const pdsuUpdates = ref([])
 
-const inventoryLoaded = ref({
+const pdsuLoaded = ref({
   software: false,
   drivers: false,
   services: false,
   updates: false,
 })
 
-const inventorySearch = ref('')
+const pdsuSearch = ref('')
 
 const router = useRouter()
 const { toast, copyToClipboard } = useToast()
@@ -1055,66 +1040,66 @@ async function fetchData() {
 // Inventory
 // =========================
 
-async function openInventory(entry) {
-  inventoryEntry.value = entry
-  inventoryTab.value = 'software'
-  inventoryError.value = null
+async function openPdsu(entry) {
+  psduEntry.value = entry
+  psduTab.value = 'software'
+  pdsuError.value = null
 
-  inventorySoftware.value = []
-  inventoryDrivers.value = []
-  inventoryServices.value = []
-  inventoryUpdates.value = []
+  pdsuSoftware.value = []
+  pdsuDrivers.value = []
+  pdsuServices.value = []
+  pdsuUpdates.value = []
 
-  inventoryLoaded.value = {
+  pdsuLoaded.value = {
     software: false,
     drivers: false,
     services: false,
     updates: false,
   }
 
-  showInventory.value = true
+  showPdsu.value = true
 
-  inventorySearch.value = ''
+  pdsuSearch.value = ''
 
-  await loadInventoryTab('software')
+  await loadPsduTab('software')
 }
 
-function closeInventory() {
-  showInventory.value = false
-  inventoryEntry.value = null
-  inventoryTab.value = 'software'
-  inventoryError.value = null
-  inventoryLoading.value = false
+function closePdsu() {
+  showPdsu.value = false
+  psduEntry.value = null
+  psduTab.value = 'software'
+  pdsuError.value = null
+  psduLoading.value = false
 
-  inventorySoftware.value = []
-  inventoryDrivers.value = []
-  inventoryServices.value = []
-  inventoryUpdates.value = []
+  pdsuSoftware.value = []
+  pdsuDrivers.value = []
+  pdsuServices.value = []
+  pdsuUpdates.value = []
 
-  inventoryLoaded.value = {
+  pdsuLoaded.value = {
     software: false,
     drivers: false,
     services: false,
     updates: false,
   }
 
-  inventorySearch.value = ''
+  pdsuSearch.value = ''
 }
 
-async function loadInventoryTab(tab) {
-  if (!inventoryEntry.value?.id) return
+async function loadPsduTab(tab) {
+  if (!psduEntry.value?.id) return
 
-  inventoryTab.value = tab
+  psduTab.value = tab
 
-  if (inventoryLoaded.value[tab]) {
+  if (pdsuLoaded.value[tab]) {
     return
   }
 
-  inventoryLoading.value = true
-  inventoryError.value = null
+  psduLoading.value = true
+  pdsuError.value = null
 
   try {
-    const res = await fetchWithAuth(`/api/protected/computers/${inventoryEntry.value.id}/${tab}`)
+    const res = await fetchWithAuth(`/api/protected/pdsu/${psduEntry.value.id}/${tab}`)
 
     if (!res.ok) {
       throw new Error(await parseError(res, `Greška pri učitavanju inventara. HTTP ${res.status}`))
@@ -1124,36 +1109,36 @@ async function loadInventoryTab(tab) {
     const rows = Array.isArray(data) ? data : []
 
     if (tab === 'software') {
-      inventorySoftware.value = rows
+      pdsuSoftware.value = rows
     } else if (tab === 'drivers') {
-      inventoryDrivers.value = rows
+      pdsuDrivers.value = rows
     } else if (tab === 'services') {
-      inventoryServices.value = rows
+      pdsuServices.value = rows
     } else if (tab === 'updates') {
-      inventoryUpdates.value = rows
+      pdsuUpdates.value = rows
     }
 
-    inventoryLoaded.value[tab] = true
+    pdsuLoaded.value[tab] = true
   } catch (error) {
     console.error('Greška pri učitavanju inventara:', error)
 
-    inventoryError.value = error?.message || 'Neuspešno učitavanje inventara.'
+    pdsuError.value = error?.message || 'Neuspešno učitavanje inventara.'
   } finally {
-    inventoryLoading.value = false
+    psduLoading.value = false
   }
 }
 
-async function selectInventoryTab(tab) {
-  inventorySearch.value = ''
-  await loadInventoryTab(tab)
+async function selectPsduTab(tab) {
+  pdsuSearch.value = ''
+  await loadPsduTab(tab)
 }
 
-const filteredInventorySoftware = computed(() => {
-  const q = inventorySearch.value.trim().toLowerCase()
+const filteredPdsuSoftware = computed(() => {
+  const q = pdsuSearch.value.trim().toLowerCase()
 
-  if (!q) return inventorySoftware.value
+  if (!q) return pdsuSoftware.value
 
-  return inventorySoftware.value.filter((item) =>
+  return pdsuSoftware.value.filter((item) =>
     [item.display_name, item.display_version, item.publisher, item.install_date].some((value) =>
       String(value ?? '')
         .toLowerCase()
@@ -1162,12 +1147,12 @@ const filteredInventorySoftware = computed(() => {
   )
 })
 
-const filteredInventoryDrivers = computed(() => {
-  const q = inventorySearch.value.trim().toLowerCase()
+const filteredPdsuDrivers = computed(() => {
+  const q = pdsuSearch.value.trim().toLowerCase()
 
-  if (!q) return inventoryDrivers.value
+  if (!q) return pdsuDrivers.value
 
-  return inventoryDrivers.value.filter((item) =>
+  return pdsuDrivers.value.filter((item) =>
     [
       item.device_name,
       item.driver_version,
@@ -1182,12 +1167,12 @@ const filteredInventoryDrivers = computed(() => {
   )
 })
 
-const filteredInventoryServices = computed(() => {
-  const q = inventorySearch.value.trim().toLowerCase()
+const filteredPdsuServices = computed(() => {
+  const q = pdsuSearch.value.trim().toLowerCase()
 
-  if (!q) return inventoryServices.value
+  if (!q) return pdsuServices.value
 
-  return inventoryServices.value.filter((item) =>
+  return pdsuServices.value.filter((item) =>
     [
       item.name,
       item.display_name,
@@ -1203,12 +1188,12 @@ const filteredInventoryServices = computed(() => {
   )
 })
 
-const filteredInventoryUpdates = computed(() => {
-  const q = inventorySearch.value.trim().toLowerCase()
+const filteredPdsuUpdates = computed(() => {
+  const q = pdsuSearch.value.trim().toLowerCase()
 
-  if (!q) return inventoryUpdates.value
+  if (!q) return pdsuUpdates.value
 
-  return inventoryUpdates.value.filter((item) =>
+  return pdsuUpdates.value.filter((item) =>
     [item.description, item.hotfix_id, item.installed_on, item.installed_by].some((value) =>
       String(value ?? '')
         .toLowerCase()

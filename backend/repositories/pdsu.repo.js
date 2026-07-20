@@ -1,13 +1,11 @@
 import { pool } from "../db/pool.js";
 
-
 // =========================
 // Computers
 // =========================
 
 export async function computerList(query = {}) {
-
-    const [rows] = await pool.query(`
+  const [rows] = await pool.query(`
     SELECT
       id,
       ip,
@@ -23,15 +21,12 @@ export async function computerList(query = {}) {
     ORDER BY computer_name
   `);
 
-    return rows;
+  return rows;
 }
 
-
-
 export async function computerFindById(id) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       ip,
@@ -48,23 +43,19 @@ export async function computerFindById(id) {
     FROM ip_entries
     WHERE id = ?
     `,
-        [id]
-    );
+    [id],
+  );
 
-
-    return rows[0] ?? null;
+  return rows[0] ?? null;
 }
-
-
 
 // =========================
 // Software
 // =========================
 
 export async function computerSoftwareList(ipEntryId) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       display_name,
@@ -76,33 +67,27 @@ export async function computerSoftwareList(ipEntryId) {
     WHERE ip_entry_id = ?
     ORDER BY display_name
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 
-
-    return rows;
+  return rows;
 }
 
-
-
 export async function computerSoftwareDelete(ipEntryId) {
-
-    const [result] = await pool.query(
-        `
+  const [result] = await pool.query(
+    `
     DELETE FROM computer_software
     WHERE ip_entry_id = ?
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 
-
-    return result.affectedRows;
+  return result.affectedRows;
 }
 
 export async function computerFindByIp(ip) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
         SELECT
             id,
             ip,
@@ -110,29 +95,25 @@ export async function computerFindByIp(ip) {
         FROM ip_entries
         WHERE ip = ?
         `,
-        [ip]
-    );
+    [ip],
+  );
 
-
-    return rows[0] ?? null;
+  return rows[0] ?? null;
 }
 
 export async function computerSoftwareInsert(rows) {
+  if (!rows.length) return;
 
-    if (!rows.length) return;
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.display_name,
+    item.display_version,
+    item.publisher,
+    item.install_date,
+  ]);
 
-
-    const values = rows.map(item => [
-        item.ip_entry_id,
-        item.display_name,
-        item.display_version,
-        item.publisher,
-        item.install_date
-    ]);
-
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     INSERT INTO computer_software
     (
       ip_entry_id,
@@ -143,20 +124,17 @@ export async function computerSoftwareInsert(rows) {
     )
     VALUES ?
     `,
-        [values]
-    );
+    [values],
+  );
 }
-
-
 
 // =========================
 // Drivers
 // =========================
 
 export async function computerDriversList(ipEntryId) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       device_name,
@@ -169,47 +147,36 @@ export async function computerDriversList(ipEntryId) {
     WHERE ip_entry_id = ?
     ORDER BY device_name
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 
-
-    return rows;
+  return rows;
 }
 
-
-
 export async function computerDriversDelete(ipEntryId) {
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     DELETE FROM computer_drivers
     WHERE ip_entry_id = ?
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 }
 
-
-
 export async function computerDriversInsert(rows) {
+  if (!rows.length) return;
 
-    if (!rows.length) return;
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.device_name,
+    item.driver_version,
+    item.driver_date,
+    item.manufacturer,
+    item.driver_provider_name,
+  ]);
 
-
-    const values = rows.map(item => [
-
-        item.ip_entry_id,
-        item.device_name,
-        item.driver_version,
-        item.driver_date,
-        item.manufacturer,
-        item.driver_provider_name
-
-    ]);
-
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     INSERT INTO computer_drivers
     (
       ip_entry_id,
@@ -221,20 +188,17 @@ export async function computerDriversInsert(rows) {
     )
     VALUES ?
     `,
-        [values]
-    );
+    [values],
+  );
 }
-
-
 
 // =========================
 // Services
 // =========================
 
 export async function computerServicesList(ipEntryId) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       name,
@@ -248,48 +212,37 @@ export async function computerServicesList(ipEntryId) {
     WHERE ip_entry_id = ?
     ORDER BY display_name
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 
-
-    return rows;
+  return rows;
 }
 
-
-
 export async function computerServicesDelete(ipEntryId) {
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     DELETE FROM computer_services
     WHERE ip_entry_id = ?
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 }
 
-
-
 export async function computerServicesInsert(rows) {
+  if (!rows.length) return;
 
-    if (!rows.length) return;
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.name,
+    item.display_name,
+    item.state,
+    item.start_mode,
+    item.start_name,
+    item.path_name,
+  ]);
 
-
-    const values = rows.map(item => [
-
-        item.ip_entry_id,
-        item.name,
-        item.display_name,
-        item.state,
-        item.start_mode,
-        item.start_name,
-        item.path_name
-
-    ]);
-
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     INSERT INTO computer_services
     (
       ip_entry_id,
@@ -302,20 +255,17 @@ export async function computerServicesInsert(rows) {
     )
     VALUES ?
     `,
-        [values]
-    );
+    [values],
+  );
 }
-
-
 
 // =========================
 // Updates
 // =========================
 
 export async function computerUpdatesList(ipEntryId) {
-
-    const [rows] = await pool.query(
-        `
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       description,
@@ -327,46 +277,35 @@ export async function computerUpdatesList(ipEntryId) {
     WHERE ip_entry_id = ?
     ORDER BY installed_on DESC
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 
-
-    return rows;
+  return rows;
 }
 
-
-
 export async function computerUpdatesDelete(ipEntryId) {
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     DELETE FROM computer_updates
     WHERE ip_entry_id = ?
     `,
-        [ipEntryId]
-    );
+    [ipEntryId],
+  );
 }
 
-
-
 export async function computerUpdatesInsert(rows) {
+  if (!rows.length) return;
 
-    if (!rows.length) return;
+  const values = rows.map((item) => [
+    item.ip_entry_id,
+    item.description,
+    item.hotfix_id,
+    item.installed_on,
+    item.installed_by,
+  ]);
 
-
-    const values = rows.map(item => [
-
-        item.ip_entry_id,
-        item.description,
-        item.hotfix_id,
-        item.installed_on,
-        item.installed_by
-
-    ]);
-
-
-    await pool.query(
-        `
+  await pool.query(
+    `
     INSERT INTO computer_updates
     (
       ip_entry_id,
@@ -377,6 +316,6 @@ export async function computerUpdatesInsert(rows) {
     )
     VALUES ?
     `,
-        [values]
-    );
+    [values],
+  );
 }
