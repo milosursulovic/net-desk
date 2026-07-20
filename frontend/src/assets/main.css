@@ -104,107 +104,6 @@ textarea {
 }
 
 /* =========================================================
-   PDSU - PAGE
-   ========================================================= */
-
-.pdsu-page {
-  min-height: 100vh;
-  padding: 2rem;
-}
-
-.pdsu-container {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-/* =========================================================
-   PDSU - HEADER
-   ========================================================= */
-
-.pdsu-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.pdsu-eyebrow {
-  margin-bottom: 0.35rem;
-  color: #2563eb;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pdsu-title {
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(1.8rem, 3vw, 2.35rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-}
-
-.pdsu-subtitle {
-  max-width: 720px;
-  margin: 0.5rem 0 0;
-  color: #64748b;
-  font-size: 0.95rem;
-  line-height: 1.55;
-}
-
-.pdsu-refresh-button {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-height: 44px;
-  padding: 0.65rem 1.05rem;
-  border: 1px solid #2563eb;
-  border-radius: 0.7rem;
-  background-color: #2563eb;
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 0.3rem 0.8rem rgba(37, 99, 235, 0.2);
-  transition:
-    transform 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.pdsu-refresh-button:hover:not(:disabled) {
-  border-color: #1d4ed8;
-  background-color: #1d4ed8;
-  color: #ffffff;
-  box-shadow: 0 0.5rem 1.1rem rgba(37, 99, 235, 0.27);
-  transform: translateY(-1px);
-}
-
-.pdsu-refresh-button:focus {
-  color: #ffffff;
-  box-shadow: 0 0 0 0.22rem rgba(37, 99, 235, 0.2);
-}
-
-.pdsu-refresh-button:disabled {
-  border-color: #93c5fd;
-  background-color: #93c5fd;
-  color: #ffffff;
-  cursor: wait;
-  opacity: 1;
-}
-
-.pdsu-refresh-icon {
-  display: inline-block;
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-/* =========================================================
    PDSU - TABS
    ========================================================= */
 
@@ -348,9 +247,9 @@ textarea {
 .pdsu-card {
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 0.9rem;
+  border-radius: 0.75rem;
   background-color: #ffffff;
-  box-shadow: 0 0.25rem 0.9rem rgba(15, 23, 42, 0.045);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -358,7 +257,9 @@ textarea {
 
 .pdsu-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 0.4rem 1.2rem rgba(15, 23, 42, 0.065);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
 .pdsu-card-header {
@@ -595,26 +496,7 @@ textarea {
    PDSU - RESPONSIVE
    ========================================================= */
 
-@media (max-width: 991.98px) {
-  .pdsu-page {
-    padding: 1.5rem;
-  }
-}
-
 @media (max-width: 767.98px) {
-  .pdsu-page {
-    padding: 1rem;
-  }
-
-  .pdsu-page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .pdsu-refresh-button {
-    width: 100%;
-  }
-
   .pdsu-tabs {
     justify-content: flex-start;
   }
@@ -637,18 +519,6 @@ textarea {
 }
 
 @media (max-width: 575.98px) {
-  .pdsu-page {
-    padding: 0.75rem;
-  }
-
-  .pdsu-title {
-    font-size: 1.75rem;
-  }
-
-  .pdsu-subtitle {
-    font-size: 0.875rem;
-  }
-
   .pdsu-tabs {
     margin-right: -0.1rem;
     margin-left: -0.1rem;

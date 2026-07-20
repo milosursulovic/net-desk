@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
+import AppButton from '@/components/AppButton.vue'
 
 import PDSUOverview from '@/components/pdsu/PDSUOverview.vue'
 import PDSUSoftware from '@/components/pdsu/PDSUSoftware.vue'
@@ -49,70 +50,55 @@ onMounted(loadStats)
 </script>
 
 <template>
-  <main class="pdsu-page">
-    <div class="pdsu-container">
-      <header class="pdsu-page-header">
-        <div>
-          <h1 class="pdsu-title">PDSU analitika</h1>
+  <div class="glass-container">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">PDSU analitika</h1>
 
-          <p class="pdsu-subtitle">
-            Centralni pregled programa, drajvera, servisa i Windows update podataka.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          class="pdsu-refresh-button"
-          :disabled="loading"
-          @click="loadStats"
-        >
-          <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
-
-          <span v-else class="pdsu-refresh-icon">↻</span>
-
-          <span>
-            {{ loading ? 'Osvežavanje...' : 'Osveži podatke' }}
-          </span>
-        </button>
-      </header>
-
-      <div v-if="loading && !stats" class="pdsu-state-card">
-        <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
-          <span class="sr-only">Učitavanje...</span>
-        </div>
-
-        <h2 class="text-lg font-bold text-slate-900 mb-2">Učitavanje PDSU analitike</h2>
-
-        <p class="text-slate-500 mb-0">
-          Prikupljamo statistiku programa, drajvera, servisa i update podataka.
+        <p class="text-sm text-slate-500 mt-1">
+          Centralni pregled programa, drajvera, servisa i Windows update podataka.
         </p>
       </div>
 
-      <div v-else-if="error && !stats" class="pdsu-state-card">
-        <div class="pdsu-error-icon">!</div>
+      <AppButton variant="primary" :disabled="loading" @click="loadStats">
+        <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
+        <span v-else>↻</span>
+        <span>{{ loading ? 'Osvežavanje...' : 'Osveži podatke' }}</span>
+      </AppButton>
+    </div>
 
-        <h2 class="text-lg font-bold text-slate-900 mb-2">Podaci nisu učitani</h2>
-
-        <p class="text-slate-500 mb-4">
-          {{ error }}
-        </p>
-
-        <button
-          type="button"
-          class="pdsu-refresh-button"
-          :disabled="loading"
-          @click="loadStats"
-        >
-          Pokušaj ponovo
-        </button>
+    <div v-if="loading && !stats" class="pdsu-state-card">
+      <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
+        <span class="sr-only">Učitavanje...</span>
       </div>
 
-      <template v-else>
-        <div v-if="error" class="pdsu-alert" role="alert">
-          {{ error }}
-        </div>
+      <h2 class="text-lg font-bold text-slate-900 mb-2">Učitavanje PDSU analitike</h2>
 
-        <nav class="pdsu-tabs" aria-label="PDSU kategorije">
+      <p class="text-slate-500 mb-0">
+        Prikupljamo statistiku programa, drajvera, servisa i update podataka.
+      </p>
+    </div>
+
+    <div v-else-if="error && !stats" class="pdsu-state-card">
+      <div class="pdsu-error-icon">!</div>
+
+      <h2 class="text-lg font-bold text-slate-900 mb-2">Podaci nisu učitani</h2>
+
+      <p class="text-slate-500 mb-4">
+        {{ error }}
+      </p>
+
+      <AppButton variant="primary" :disabled="loading" @click="loadStats">
+        Pokušaj ponovo
+      </AppButton>
+    </div>
+
+    <template v-else>
+      <div v-if="error" class="pdsu-alert" role="alert">
+        {{ error }}
+      </div>
+
+      <nav class="pdsu-tabs" aria-label="PDSU kategorije">
           <button
             type="button"
             class="pdsu-tab"
@@ -193,7 +179,6 @@ onMounted(loadStats)
             <PDSUUpdates v-else-if="activeTab === 'updates'" key="updates" :updates="updates" />
           </Transition>
         </section>
-      </template>
-    </div>
-  </main>
+    </template>
+  </div>
 </template>

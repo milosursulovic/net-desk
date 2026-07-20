@@ -52,7 +52,7 @@
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="username" class="block text-sm font-medium text-slate-700 mb-1">
               Korisničko ime
             </label>
             <input
@@ -66,7 +66,7 @@
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="password" class="block text-sm font-medium text-slate-700 mb-1">
               Lozinka
             </label>
             <input

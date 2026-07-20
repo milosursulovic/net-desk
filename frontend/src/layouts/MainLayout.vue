@@ -36,7 +36,7 @@
       <router-view />
     </main>
 
-    <footer class="w-full text-center text-sm text-gray-500 py-4 border-t">
+    <footer class="w-full text-center text-sm text-slate-500 py-4 border-t">
       <AppFooter />
     </footer>
   </div>

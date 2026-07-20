@@ -1,10 +1,10 @@
 <template>
-  <div class="glass-container max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6 text-gray-800">Izmeni IP Unos</h1>
+  <div class="glass-container w-full max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6 text-slate-800">Izmeni IP Unos</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
       <div v-for="field in fields" :key="field.name">
-        <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
+        <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
 

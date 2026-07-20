@@ -1,7 +1,7 @@
 <template>
   <div class="glass-container space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <h1 class="text-3xl font-bold text-slate-800">Metapodaci — Analitika</h1>
+      <h1 class="text-2xl font-bold text-slate-800">Metapodaci — Analitika</h1>
       <div class="flex flex-wrap items-center gap-2">
         <AppButton variant="primary" :disabled="loading" @click="refreshAll">
           {{ loading ? 'Učitavam…' : 'Osveži' }}
@@ -36,7 +36,7 @@
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Pokrivenost metapodacima</h2>
         <div class="space-y-2">
           <div class="text-sm text-slate-600">
@@ -48,13 +48,13 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Svežina prikupljanja</h2>
         <div class="text-sm text-slate-600 mb-2">Broj mašina po danu (poslednjih 14 dana)</div>
         <Sparkline :series="recencySeries" :max="maxOf(recencySeries)" />
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Distribucija OS verzija (Top 5)</h2>
         <div class="space-y-2">
           <div v-for="row in topOs" :key="row.key" class="text-sm">
@@ -73,7 +73,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Proizvođači sistema (Top 6)</h2>
         <div class="space-y-2">
           <BarRow v-for="row in topManufacturers" :key="row.key" :label="row.key || '—'" :value="row.count"
@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">GPU prisutnost</h2>
         <div class="grid grid-cols-2 gap-3">
           <InfoPill label="Sa dedikovanom GPU" :value="stats.withGpu" />
@@ -91,7 +91,7 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">RAM raspodela</h2>
         <div class="grid grid-cols-2 gap-3">
           <InfoPill label="≤ 8 GB" :value="bucketRam.le8" />
@@ -101,7 +101,7 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Brzine mreže (Top 5)</h2>
         <div class="space-y-2">
           <BarRow v-for="row in topNicSpeeds" :key="row.key" :label="fmtMbps(Number(row.key))" :value="row.count"
@@ -111,7 +111,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">CPU modeli (Top 5)</h2>
         <div class="space-y-2">
           <BarRow v-for="row in topCpuModels" :key="row.key" :label="row.key || '—'" :value="row.count"
@@ -124,7 +124,7 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Broj diskova po mašini</h2>
         <div class="space-y-2">
           <BarRow label="1 disk" :value="diskBuckets.eq1" :total="stats.totalWithMeta" />
@@ -135,17 +135,17 @@
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
+      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">Najmanje RAM-a (Top 10)</h2>
         <DataTable :rows="tables.lowRam" :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']" />
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden">
+      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-slate-800 mb-3">Najstarija instalacija OS-a (Top 10)</h2>
         <DataTable :rows="tables.oldOs" :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']" />
       </div>
 
-      <div class="rounded-2xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
+      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
         <h2 class="font-semibold text-slate-800 mb-3">Najveći ukupni storage (Top 10)</h2>
         <DataTable :rows="tables.topStorage"
           :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']" />
@@ -153,7 +153,7 @@
     </div>
 
     <div class="grid grid-cols-1">
-      <div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
+      <div class="rounded-xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
         <h2 class="font-semibold text-red-700 mb-1">Lexar SSD detektovani (red-flag)</h2>
         <p class="text-sm text-slate-600 mb-3">
           Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
@@ -201,7 +201,7 @@ const KpiCard = defineComponent({
   props: { title: String, value: [String, Number], sub: String, icon: String },
   setup(props) {
     return () =>
-      h('div', { class: 'rounded-2xl border bg-white p-4 shadow-sm' }, [
+      h('div', { class: 'rounded-xl border bg-white p-4 shadow-sm' }, [
         h('div', { class: 'text-2xl' }, props.icon),
         h('div', { class: 'text-slate-600 text-sm mt-1' }, props.title),
         h('div', { class: 'text-3xl font-semibold tracking-tight' }, props.value ?? '—'),

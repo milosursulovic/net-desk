@@ -1,7 +1,7 @@
 <template>
-  <div class="glass-container space-y-4 relative">
+  <div class="glass-container space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-semibold text-slate-800">Štampači</h1>
+      <h1 class="text-2xl font-bold text-slate-800">Štampači</h1>
       <div class="flex flex-wrap items-center gap-2">
         <AppButton variant="success" @click="openCreate">Dodaj štampač</AppButton>
         <AppButton variant="secondary" @click="exportXlsx">Izvezi XLSX</AppButton>
@@ -16,7 +16,7 @@
           class="app-input w-full pr-10"
           aria-label="Pretraga štampača" />
         <button v-if="searchInput" @click="clearSearch"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
           aria-label="Obriši pretragu">
           ✖️
         </button>
@@ -24,7 +24,7 @@
 
       <!-- Po strani i paginacija -->
       <div class="flex flex-wrap items-center gap-2">
-        <label class="text-sm text-gray-600" for="pp">Po strani</label>
+        <label class="text-sm text-slate-600" for="pp">Po strani</label>
         <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
           <option :value="10">10</option>
           <option :value="20">20</option>
@@ -52,7 +52,7 @@
 
     <div class="min-h-[200px]">
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="n in 6" :key="n" class="animate-pulse bg-white rounded-2xl shadow ring-1 ring-black/5 p-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white shadow-sm p-4">
           <div class="h-5 w-2/3 bg-slate-200 rounded mb-3"></div>
           <div class="h-4 w-1/2 bg-slate-200 rounded mb-2"></div>
           <div class="h-4 w-1/3 bg-slate-200 rounded mb-4"></div>
@@ -61,12 +61,12 @@
       </div>
 
       <div v-else-if="!items.length"
-        class="bg-white rounded-2xl shadow ring-1 ring-black/5 p-8 text-center text-slate-500">
+        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
         Nema rezultata za zadate filtere.
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="p in items" :key="p.id" class="bg-white rounded-2xl shadow ring-1 ring-black/5 p-4 flex flex-col">
+        <div v-for="p in items" :key="p.id" class="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
           <div class="flex items-start justify-between gap-3">
             <div>
               <div class="text-lg font-semibold text-slate-800">{{ p.name || '—' }}</div>
@@ -83,10 +83,10 @@
               </div>
             </div>
             <div class="shrink-0 flex gap-2">
-              <button @click="openEdit(p)" class="text-indigo-700 hover:underline text-sm">
+              <button @click="openEdit(p)" class="text-blue-600 hover:underline text-sm">
                 Izmeni
               </button>
-              <button @click="confirmDelete(p)" class="text-rose-700 hover:underline text-sm">
+              <button @click="confirmDelete(p)" class="text-red-600 hover:underline text-sm">
                 Obriši
               </button>
             </div>
@@ -102,7 +102,7 @@
             <div class="flex items-center gap-2">
               <span class="font-medium">IP:</span>
               <span>{{ p.ip || '—' }}</span>
-              <button v-if="p.ip" @click="copy(p.ip)" class="text-xs text-indigo-700 hover:underline">
+              <button v-if="p.ip" @click="copy(p.ip)" class="text-xs text-slate-500 hover:underline">
                 kopiraj
               </button>
             </div>
@@ -118,7 +118,7 @@
           </div>
 
           <div class="mt-3 pt-3 border-t flex items-center justify-end gap-3">
-            <button @click="openTools(p)" class="text-amber-700 hover:underline text-sm">
+            <button @click="openTools(p)" class="text-slate-600 hover:underline text-sm">
               Poveži/otkači
             </button>
           </div>
@@ -135,7 +135,7 @@
           <FormInput v-model.trim="form.serial" label="Serijski" />
           <FormInput v-model.trim="form.department" label="Odeljenje" />
           <div>
-            <label class="text-sm text-gray-600">Tip konekcije</label>
+            <label class="text-sm text-slate-600">Tip konekcije</label>
             <select v-model="form.connectionType" class="app-input w-full">
               <option value="Network">Network</option>
               <option value="USB">USB</option>
@@ -166,44 +166,44 @@
 
       <div class="space-y-4">
         <div class="grid grid-cols-1 gap-3">
-          <div class="border rounded-lg p-3 bg-slate-50">
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
             <div class="font-medium mb-2">Poveži računar</div>
-            <div class="text-xs text-gray-600 mb-1">Unesi IP ili id računara (IpEntry)</div>
+            <div class="text-xs text-slate-500 mb-1">Unesi IP ili id računara (IpEntry)</div>
             <div class="flex gap-2">
               <input v-model.trim="toolsForm.connectInput" placeholder="npr. 10.230.62.15"
-                class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="connectComputerFromTools" />
+                class="app-input w-full text-sm" @keyup.enter="connectComputerFromTools" />
               <button @click="connectComputerFromTools"
-                class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700">
+                class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700">
                 Poveži
               </button>
             </div>
           </div>
 
-          <div class="border rounded-lg p-3 bg-slate-50">
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
             <div class="font-medium mb-2">Postavi host</div>
-            <div class="text-xs text-gray-600 mb-1">Računar koji "šeruje" ovaj štampač</div>
+            <div class="text-xs text-slate-500 mb-1">Računar koji "šeruje" ovaj štampač</div>
             <div class="flex gap-2">
               <input v-model.trim="toolsForm.hostInput" placeholder="IP ili id"
-                class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="setHostFromTools" />
+                class="app-input w-full text-sm" @keyup.enter="setHostFromTools" />
               <button @click="setHostFromTools"
-                class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700">
                 Postavi
               </button>
               <button @click="unsetHostFromTools"
-                class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-800">
+                class="bg-slate-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-600">
                 Skini
               </button>
             </div>
           </div>
 
-          <div class="border rounded-lg p-3 bg-slate-50">
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
             <div class="font-medium mb-2">Otkači računar</div>
-            <div class="text-xs text-gray-600 mb-1">Skini jedan računar sa ovog štampača</div>
+            <div class="text-xs text-slate-500 mb-1">Skini jedan računar sa ovog štampača</div>
             <div class="flex gap-2">
               <input v-model.trim="toolsForm.disconnectInput" placeholder="IP ili id"
-                class="border px-2 py-1 rounded text-sm w-full" @keyup.enter="disconnectComputerFromTools" />
+                class="app-input w-full text-sm" @keyup.enter="disconnectComputerFromTools" />
               <button @click="disconnectComputerFromTools"
-                class="bg-amber-700 text-white px-3 py-1 rounded text-sm hover:bg-amber-800">
+                class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700">
                 Otkači
               </button>
             </div>
@@ -240,7 +240,7 @@
           </div>
         </div>
 
-        <div class="text-xs text-gray-600 flex flex-wrap gap-x-4">
+        <div class="text-xs text-slate-500 flex flex-wrap gap-x-4">
           <span>Ažurirano: {{ fmtDate(toolsPrinter?.updatedAt) }}</span>
           <span>Kreirano: {{ fmtDate(toolsPrinter?.createdAt) }}</span>
         </div>

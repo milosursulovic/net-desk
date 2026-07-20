@@ -9,7 +9,7 @@
             <h3 class="text-lg font-semibold">
               <slot name="title">{{ title }}</slot>
             </h3>
-            <button @click="$emit('close')" class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+            <button @click="$emit('close')" class="text-slate-400 hover:text-red-600 text-2xl leading-none"
               aria-label="Zatvori">
               &times;
             </button>

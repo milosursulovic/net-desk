@@ -1,6 +1,6 @@
 <template>
   <div>
-    <label class="text-sm text-gray-600">{{ label }}</label>
+    <label class="block text-sm font-medium text-slate-700 mb-1">{{ label }}</label>
     <input :value="modelValue" :placeholder="placeholder" class="app-input w-full"
       @input="$emit('update:modelValue', $event.target.value)" />
   </div>

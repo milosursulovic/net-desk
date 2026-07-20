@@ -1,7 +1,7 @@
 <template>
-  <main class="glass-container relative">
+  <div class="glass-container">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">Inventar hardvera</h1>
+      <h1 class="text-2xl font-bold text-slate-800">Inventar hardvera</h1>
 
       <div class="flex flex-wrap items-center gap-2">
         <AppButton variant="success" @click="openAddModal">Dodaj stavku</AppButton>
@@ -233,7 +233,7 @@
         </div>
       </div>
     </SlideOverPanel>
-  </main>
+  </div>
 </template>
 
 <script setup>

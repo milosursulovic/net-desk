@@ -1,10 +1,10 @@
 <template>
-  <div class="glass-container w-full max-w-xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">Dodaj novu IP adresu</h1>
+  <div class="glass-container w-full max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">Dodaj novu IP adresu</h1>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
       <div>
-        <label for="ip" class="block text-sm font-medium text-gray-700 mb-1">IP Adresa *</label>
+        <label for="ip" class="block text-sm font-medium text-slate-700 mb-1">IP Adresa *</label>
         <input
           id="ip"
           v-model.trim="form.ip"
@@ -18,7 +18,7 @@
       </div>
 
       <div v-for="field in optionalFields" :key="field.name">
-        <label :for="field.name" class="block text-sm font-medium text-gray-700 mb-1">
+        <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }}
         </label>
 

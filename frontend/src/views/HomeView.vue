@@ -1,7 +1,7 @@
 <template>
-  <main class="glass-container relative">
+  <div class="glass-container">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-      <h1 class="text-xl sm:text-2xl font-semibold text-slate-700">IP Adrese</h1>
+      <h1 class="text-2xl font-bold text-slate-800">IP Adrese</h1>
 
       <div class="flex flex-wrap items-center gap-2">
         <AppButton variant="success" @click="addEntry">Dodaj</AppButton>
@@ -200,13 +200,13 @@
           <button @click="deleteEntry(entry.id)" class="text-red-600 hover:underline text-sm">
             Obriši
           </button>
-          <button @click="openMetadata(entry)" class="text-indigo-600 hover:underline text-sm">
+          <button @click="openMetadata(entry)" class="text-slate-600 hover:underline text-sm">
             Meta
           </button>
-          <button @click="openPdsu(entry)" class="text-purple-600 hover:underline text-sm">
+          <button @click="openPdsu(entry)" class="text-slate-600 hover:underline text-sm">
             PDSU
           </button>
-          <button @click="openPortScan(entry)" class="text-teal-600 hover:underline text-sm">
+          <button @click="openPortScan(entry)" class="text-slate-600 hover:underline text-sm">
             Port scan
           </button>
         </div>
@@ -227,9 +227,9 @@
       <template #title>
         Metapodaci — {{ metaEntry?.computerName || metaEntry?.ip || 'Nepoznato' }}
       </template>
-      <div v-if="metaLoading" class="text-gray-600">Učitavanje…</div>
+      <div v-if="metaLoading" class="text-slate-600">Učitavanje…</div>
       <div v-else-if="metaError" class="text-red-600">{{ metaError }}</div>
-      <div v-else-if="!meta" class="text-gray-600">Nema metapodataka za ovu IP adresu.</div>
+      <div v-else-if="!meta" class="text-slate-600">Nema metapodataka za ovu IP adresu.</div>
 
       <div v-else class="space-y-6">
         <div class="rounded-lg border p-4 bg-slate-50">
@@ -240,7 +240,7 @@
               <span class="font-semibold">Prikupljeno:</span>
               {{ fmtDate(meta.CollectedAt) }}
             </div>
-            <div class="text-xs text-gray-500 mt-1">
+            <div class="text-xs text-slate-500 mt-1">
               Last update: {{ fmtDate(meta.updatedAt) }} • Created:
               {{ fmtDate(meta.createdAt) }}
             </div>
@@ -251,13 +251,13 @@
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">Operativni sistem</h4>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500">Caption</div>
+              <div class="text-slate-500">Caption</div>
               <div>{{ safe(meta.OS?.Caption) }}</div>
-              <div class="text-gray-500">Verzija</div>
+              <div class="text-slate-500">Verzija</div>
               <div>{{ safe(meta.OS?.Version) }}</div>
-              <div class="text-gray-500">Build</div>
+              <div class="text-slate-500">Build</div>
               <div>{{ safe(meta.OS?.Build) }}</div>
-              <div class="text-gray-500">Install date</div>
+              <div class="text-slate-500">Install date</div>
               <div>{{ fmtDate(meta.OS?.InstallDate) }}</div>
             </div>
           </section>
@@ -265,11 +265,11 @@
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">Sistem</h4>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500">Proizvođač</div>
+              <div class="text-slate-500">Proizvođač</div>
               <div>{{ safe(meta.System?.Manufacturer) }}</div>
-              <div class="text-gray-500">Model</div>
+              <div class="text-slate-500">Model</div>
               <div>{{ safe(meta.System?.Model) }}</div>
-              <div class="text-gray-500">RAM ukupno</div>
+              <div class="text-slate-500">RAM ukupno</div>
               <div>{{ fmtGb(meta.System?.TotalRAM_GB) }}</div>
             </div>
           </section>
@@ -277,15 +277,15 @@
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">CPU</h4>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500">Naziv</div>
+              <div class="text-slate-500">Naziv</div>
               <div>{{ safe(meta.CPU?.Name) }}</div>
-              <div class="text-gray-500">Jezgra</div>
+              <div class="text-slate-500">Jezgra</div>
               <div>{{ safe(meta.CPU?.Cores) }}</div>
-              <div class="text-gray-500">Logičkih</div>
+              <div class="text-slate-500">Logičkih</div>
               <div>{{ safe(meta.CPU?.LogicalCPUs) }}</div>
-              <div class="text-gray-500">Max MHz</div>
+              <div class="text-slate-500">Max MHz</div>
               <div>{{ safe(meta.CPU?.MaxClockMHz) }}</div>
-              <div class="text-gray-500">Socket</div>
+              <div class="text-slate-500">Socket</div>
               <div>{{ safe(meta.CPU?.Socket) }}</div>
             </div>
           </section>
@@ -296,108 +296,108 @@
               <div
                 v-for="(r, idx) in meta.RAMModules"
                 :key="idx"
-                class="border rounded p-3 bg-white"
+                class="border rounded-lg p-3 bg-white"
               >
                 <div class="text-sm">
-                  <span class="text-gray-500">Slot:</span> {{ safe(r.Slot) }}
+                  <span class="text-slate-500">Slot:</span> {{ safe(r.Slot) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Mfr/PN:</span>
+                  <span class="text-slate-500">Mfr/PN:</span>
                   {{ [r.Manufacturer, r.PartNumber].filter(Boolean).join(' · ') || '—' }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Serijski:</span> {{ safe(r.Serial) }}
+                  <span class="text-slate-500">Serijski:</span> {{ safe(r.Serial) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Kapacitet:</span> {{ fmtGb(r.CapacityGB) }}
+                  <span class="text-slate-500">Kapacitet:</span> {{ fmtGb(r.CapacityGB) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Brzina:</span> {{ safe(r.SpeedMTps) }}
+                  <span class="text-slate-500">Brzina:</span> {{ safe(r.SpeedMTps) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Form factor:</span> {{ safe(r.FormFactor) }}
+                  <span class="text-slate-500">Form factor:</span> {{ safe(r.FormFactor) }}
                 </div>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+            <div v-else class="text-sm text-slate-500">Nema podataka.</div>
           </section>
 
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">Diskovi ({{ meta.Storage?.length || 0 }})</h4>
             <div v-if="meta.Storage?.length" class="space-y-2">
-              <div v-for="(s, idx) in meta.Storage" :key="idx" class="border rounded p-3 bg-white">
+              <div v-for="(s, idx) in meta.Storage" :key="idx" class="border rounded-lg p-3 bg-white">
                 <div class="text-sm">
-                  <span class="text-gray-500">Model:</span> {{ safe(s.Model) }}
+                  <span class="text-slate-500">Model:</span> {{ safe(s.Model) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Serijski/FW:</span>
+                  <span class="text-slate-500">Serijski/FW:</span>
                   {{ [s.Serial, s.Firmware].filter(Boolean).join(' · ') || '—' }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Veličina:</span>
+                  <span class="text-slate-500">Veličina:</span>
                   {{ s.SizeGB ? `${s.SizeGB} GB` : '—' }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Tip/BUS:</span>
+                  <span class="text-slate-500">Tip/BUS:</span>
                   {{ [s.MediaType, s.BusType].filter(Boolean).join(' · ') || '—' }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">DeviceID:</span> {{ safe(s.DeviceID) }}
+                  <span class="text-slate-500">DeviceID:</span> {{ safe(s.DeviceID) }}
                 </div>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+            <div v-else class="text-sm text-slate-500">Nema podataka.</div>
           </section>
 
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">GPU ({{ meta.GPUs?.length || 0 }})</h4>
             <div v-if="meta.GPUs?.length" class="space-y-2">
-              <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded p-3 bg-white">
+              <div v-for="(g, idx) in meta.GPUs" :key="idx" class="border rounded-lg p-3 bg-white">
                 <div class="text-sm">
-                  <span class="text-gray-500">Naziv:</span> {{ safe(g.Name) }}
+                  <span class="text-slate-500">Naziv:</span> {{ safe(g.Name) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Driver:</span> {{ safe(g.DriverVers) }}
+                  <span class="text-slate-500">Driver:</span> {{ safe(g.DriverVers) }}
                 </div>
                 <div class="text-sm">
-                  <span class="text-gray-500">VRAM:</span>
+                  <span class="text-slate-500">VRAM:</span>
                   {{ g.VRAM_GB ? `${g.VRAM_GB} GB` : '—' }}
                 </div>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+            <div v-else class="text-sm text-slate-500">Nema podataka.</div>
           </section>
 
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">Mreža ({{ meta.NICs?.length || 0 }})</h4>
             <div v-if="meta.NICs?.length" class="space-y-2">
-              <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded p-3 bg-white">
+              <div v-for="(n, idx) in meta.NICs" :key="idx" class="border rounded-lg p-3 bg-white">
                 <div class="text-sm">
-                  <span class="text-gray-500">Naziv:</span> {{ safe(n.Name) }}
+                  <span class="text-slate-500">Naziv:</span> {{ safe(n.Name) }}
                 </div>
-                <div class="text-sm"><span class="text-gray-500">MAC:</span> {{ safe(n.MAC) }}</div>
+                <div class="text-sm"><span class="text-slate-500">MAC:</span> {{ safe(n.MAC) }}</div>
                 <div class="text-sm">
-                  <span class="text-gray-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
+                  <span class="text-slate-500">Brzina:</span> {{ fmtMbps(n.SpeedMbps) }}
                 </div>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">Nema podataka.</div>
+            <div v-else class="text-sm text-slate-500">Nema podataka.</div>
           </section>
 
           <section class="rounded-lg border p-4">
             <h4 class="font-semibold mb-2">BIOS / Matična</h4>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="text-gray-500">BIOS Vendor</div>
+              <div class="text-slate-500">BIOS Vendor</div>
               <div>{{ safe(meta.BIOS?.Vendor) }}</div>
-              <div class="text-gray-500">BIOS Ver.</div>
+              <div class="text-slate-500">BIOS Ver.</div>
               <div>{{ safe(meta.BIOS?.Version) }}</div>
-              <div class="text-gray-500">BIOS Release</div>
+              <div class="text-slate-500">BIOS Release</div>
               <div>{{ fmtDate(meta.BIOS?.ReleaseDate) }}</div>
-              <div class="text-gray-500">MB Proizvođač</div>
+              <div class="text-slate-500">MB Proizvođač</div>
               <div>{{ safe(meta.Motherboard?.Manufacturer) }}</div>
-              <div class="text-gray-500">MB Model</div>
+              <div class="text-slate-500">MB Model</div>
               <div>{{ safe(meta.Motherboard?.Product) }}</div>
-              <div class="text-gray-500">MB Serijski</div>
+              <div class="text-slate-500">MB Serijski</div>
               <div>{{ safe(meta.Motherboard?.Serial) }}</div>
             </div>
           </section>
@@ -419,7 +419,7 @@
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
               psduTab === 'software'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
@@ -433,7 +433,7 @@
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
               psduTab === 'drivers'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
@@ -447,7 +447,7 @@
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
               psduTab === 'services'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
@@ -461,7 +461,7 @@
             class="px-3 py-2 rounded-md text-sm font-medium transition"
             :class="
               psduTab === 'updates'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             "
           >
@@ -483,7 +483,7 @@
                 ? 'Pretraži servis, status ili putanju...'
                 : 'Pretraži KB, opis ili korisnika...'
             "
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
           />
 
           <button
@@ -696,14 +696,14 @@
               <h2 class="text-lg font-semibold">Duplirana imena računara</h2>
               <button
                 @click="showDupesModal = false"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                class="text-slate-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori"
               >
                 &times;
               </button>
             </div>
 
-            <div v-if="duplicateGroups.length === 0" class="text-gray-600">
+            <div v-if="duplicateGroups.length === 0" class="text-slate-600">
               Nema duplih imena u trenutnom prikazu.
             </div>
 
@@ -802,7 +802,7 @@
               <h3 class="text-lg font-semibold">Port scan — {{ portScanTarget?.ip }}</h3>
               <button
                 @click="closePortScan"
-                class="text-gray-500 hover:text-red-600 text-2xl leading-none"
+                class="text-slate-500 hover:text-red-600 text-2xl leading-none"
                 aria-label="Zatvori"
               >
                 &times;
@@ -836,7 +836,7 @@
                     <button
                       @click="runPortScan"
                       :disabled="portScanLoading"
-                      class="px-4 py-2 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                      class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                     >
                       Pokreni sken
                     </button>
@@ -856,7 +856,7 @@
                 </div>
               </div>
 
-              <div v-if="portScanLoading" class="text-gray-600">Skeniram…</div>
+              <div v-if="portScanLoading" class="text-slate-600">Skeniram…</div>
               <div v-else-if="portScanError" class="text-red-600">{{ portScanError }}</div>
 
               <div v-else-if="portScanResult">
@@ -865,7 +865,7 @@
                   {{ portScanResult.scanned }}
                 </div>
 
-                <div v-if="portScanResult.openCount === 0" class="text-gray-600">
+                <div v-if="portScanResult.openCount === 0" class="text-slate-600">
                   Nije pronađen nijedan otvoren TCP port (za zadate uslove).
                 </div>
 
@@ -904,7 +904,7 @@
         </div>
       </transition>
     </teleport>
-  </main>
+  </div>
 </template>
 
 <script setup>
