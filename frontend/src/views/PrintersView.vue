@@ -8,11 +8,12 @@
       </div>
     </div>
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div class="relative w-full sm:w-[480px]">
+    <div class="space-y-3">
+      <!-- Pretraga -->
+      <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
           placeholder="Pretraga po nazivu, modelu, IP, serijskom..."
-          class="app-input pr-10"
+          class="app-input w-full pr-10"
           aria-label="Pretraga štampača" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
@@ -21,29 +22,32 @@
         </button>
       </div>
 
-      <div class="flex flex-col items-start sm:items-end gap-1">
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600" for="pp">Po strani</label>
-          <select id="pp" v-model.number="limit" class="app-input w-auto py-1">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          <button @click="prevPage" :disabled="page === 1 || loading"
-            class="px-2 py-1 bg-gray-200 rounded-lg disabled:opacity-50" aria-label="Prethodna strana">
-            ⬅️
-          </button>
-          <span class="text-sm">
-            Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
-          </span>
-          <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-            class="px-2 py-1 bg-gray-200 rounded-lg disabled:opacity-50" aria-label="Sledeća strana">
-            ➡️
-          </button>
-        </div>
-        <p class="text-sm text-gray-600">Prikazano {{ items.length }} od {{ total }} štampača</p>
+      <!-- Po strani i paginacija -->
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="text-sm text-gray-600" for="pp">Po strani</label>
+        <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+        </select>
+
+        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
+        <button @click="prevPage" :disabled="page === 1 || loading"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
+          ⬅️
+        </button>
+        <span class="text-sm text-slate-600">
+          Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
+        </span>
+        <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
+          ➡️
+        </button>
       </div>
+
+      <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} štampača</p>
     </div>
 
     <div class="min-h-[200px]">
@@ -132,7 +136,7 @@
           <FormInput v-model.trim="form.department" label="Odeljenje" />
           <div>
             <label class="text-sm text-gray-600">Tip konekcije</label>
-            <select v-model="form.connectionType" class="app-input">
+            <select v-model="form.connectionType" class="app-input w-full">
               <option value="Network">Network</option>
               <option value="USB">USB</option>
               <option value="Other">Other</option>

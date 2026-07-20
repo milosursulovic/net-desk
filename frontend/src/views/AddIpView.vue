@@ -10,7 +10,7 @@
           v-model.trim="form.ip"
           type="text"
           placeholder="Unesite IP adresu"
-          class="app-input"
+          class="app-input w-full"
           required
           :class="ipError ? 'border-red-400' : ''"
         />
@@ -28,7 +28,7 @@
           v-model.trim="form[field.name]"
           rows="6"
           placeholder="Opis..."
-          class="app-input resize-y"
+          class="app-input w-full resize-y"
         />
 
         <input
@@ -37,7 +37,7 @@
           v-model.trim="form[field.name]"
           type="text"
           :placeholder="`${field.label}`"
-          class="app-input"
+          class="app-input w-full"
         />
       </div>
 

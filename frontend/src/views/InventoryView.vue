@@ -10,19 +10,21 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+    <div class="mb-4 space-y-3">
+      <!-- Pretraga -->
       <input v-model="search" type="text" placeholder="Pretraga (model, serijski, proizvođač, lokacija…) "
-        class="app-input sm:w-1/2" />
+        class="app-input w-full" />
 
-      <div class="w-full sm:w-auto flex flex-wrap items-center gap-2">
-        <select v-model="filterType" class="app-input py-2 text-sm" :title="'Filter po tipu opreme'">
+      <!-- Filteri, sortiranje, paginacija -->
+      <div class="flex flex-wrap items-center gap-2">
+        <select v-model="filterType" class="app-input w-auto py-2 text-sm" :title="'Filter po tipu opreme'">
           <option value="all">Sve vrste</option>
           <option v-for="t in typeOptions" :key="t.value" :value="t.value">
             {{ t.label }}
           </option>
         </select>
 
-        <select v-model="sortBy" class="app-input py-2 text-sm">
+        <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
           <option value="type">Tip</option>
           <option value="manufacturer">Proizvođač</option>
           <option value="model">Model</option>
@@ -30,33 +32,35 @@
           <option value="createdAt">Datum unosa</option>
         </select>
 
-        <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'" class="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50"
-          :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'">
+        <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+          class="px-2.5 py-2 border rounded-lg text-sm hover:bg-slate-50"
+          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
+          aria-label="Promeni redosled sortiranja">
           {{ sortOrder === 'asc' ? '↑' : '↓' }}
         </button>
 
-        <select v-model.number="limit" class="app-input py-2 text-sm">
-          <option :value="10">10 / strana</option>
-          <option :value="20">20 / strana</option>
-          <option :value="50">50 / strana</option>
+        <select v-model.number="limit" class="app-input w-auto py-2 text-sm">
+          <option :value="12">12 / strana</option>
+          <option :value="24">24 / strana</option>
+          <option :value="48">48 / strana</option>
         </select>
+
+        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
+        <button @click="prevPage" :disabled="page === 1"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100">
+          ⬅️
+        </button>
+        <span class="text-sm text-slate-600">Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
+        <button @click="nextPage({ totalPages })" :disabled="page >= totalPages"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100">
+          ➡️
+        </button>
       </div>
 
-      <div class="flex flex-col items-start sm:items-end gap-1">
-        <div class="flex items-center gap-2 text-sm">
-          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
-            ⬅️
-          </button>
-          <span>Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
-          <button @click="nextPage({ totalPages })" :disabled="page >= totalPages"
-            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50">
-            ➡️
-          </button>
-        </div>
-        <p class="text-xs sm:text-sm text-gray-600">
-          Prikazano {{ entries.length }} od {{ total }} stavki
-        </p>
-      </div>
+      <p class="text-sm text-slate-500">
+        Prikazano {{ entries.length }} od {{ total }} stavki
+      </p>
     </div>
 
     <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -161,7 +165,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Tip opreme</label>
-            <select v-model="form.type" class="app-input text-sm">
+            <select v-model="form.type" class="app-input w-full text-sm">
               <option disabled value="">Odaberi tip</option>
               <option v-for="t in typeOptions" :key="t.value" :value="t.value">
                 {{ t.label }}
@@ -171,53 +175,53 @@
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Proizvođač</label>
-            <input v-model="form.manufacturer" class="app-input text-sm"
+            <input v-model="form.manufacturer" class="app-input w-full text-sm"
               placeholder="npr. Dell, HP, Seagate…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Model</label>
-            <input v-model="form.model" class="app-input text-sm"
+            <input v-model="form.model" class="app-input w-full text-sm"
               placeholder="npr. ProLiant DL380 G9…" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Serijski broj</label>
-            <input v-model="form.serialNumber" class="app-input text-sm font-mono"
+            <input v-model="form.serialNumber" class="app-input w-full text-sm font-mono"
               placeholder="Serijski broj" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Količina</label>
-            <input v-model.number="form.quantity" type="number" min="1" class="app-input text-sm" />
+            <input v-model.number="form.quantity" type="number" min="1" class="app-input w-full text-sm" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">
               Kapacitet (HDD/SSD/RAM) / veličina
             </label>
-            <input v-model="form.capacity" class="app-input text-sm"
+            <input v-model="form.capacity" class="app-input w-full text-sm"
               placeholder="npr. 500 GB, 16 GB…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Brzina</label>
-            <input v-model="form.speed" class="app-input text-sm"
+            <input v-model="form.speed" class="app-input w-full text-sm"
               placeholder="npr. 7200 rpm, 3200 MHz, 3.4 GHz…" />
           </div>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Socket / Form factor</label>
-            <input v-model="form.socket" class="app-input text-sm"
+            <input v-model="form.socket" class="app-input w-full text-sm"
               placeholder="npr. LGA1151, SODIMM, ATX…" />
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Lokacija</label>
-            <input v-model="form.location" class="app-input text-sm"
+            <input v-model="form.location" class="app-input w-full text-sm"
               placeholder="npr. Magacin 2, Orman 3, IT kancelarija…" />
           </div>
         </div>
 
         <div>
           <label class="block text-xs text-slate-500 mb-1">Napomena</label>
-          <textarea v-model="form.notes" rows="3" class="app-input text-sm"
+          <textarea v-model="form.notes" rows="3" class="app-input w-full text-sm"
             placeholder="Dodatne informacije, stanje, istorija, kompatibilnost…"></textarea>
         </div>
 

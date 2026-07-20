@@ -10,68 +10,71 @@
       </div>
     </div>
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+    <div class="mb-4 space-y-3">
+      <!-- Pretraga -->
       <input
         v-model="search"
         @input="page = 1"
         type="text"
-        placeholder="Pretraga..."
-        class="app-input sm:w-1/2"
+        placeholder="Pretraga po IP-u, imenu računara, odeljenju..."
+        class="app-input w-full"
       />
 
-      <div class="w-full sm:w-auto flex items-center gap-2">
-        <select v-model="status" class="app-input py-2 text-sm" :title="'Filter statusa'">
-          <option value="all">Svi</option>
+      <!-- Filteri, status, paginacija -->
+      <div class="flex flex-wrap items-center gap-2">
+        <select v-model="status" class="app-input w-auto py-2 text-sm" :title="'Filter statusa'">
+          <option value="all">Svi statusi</option>
           <option value="online">Samo online</option>
           <option value="offline">Samo offline</option>
         </select>
 
-        <select v-model="sortBy" class="app-input py-2 text-sm">
+        <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
 
         <button
           @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50"
-          :title="sortOrder === 'asc' ? 'Rastuće' : 'Opadajuće'"
+          class="px-2.5 py-2 border rounded-lg text-sm hover:bg-slate-50"
+          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
+          aria-label="Promeni redosled sortiranja"
         >
-          {{ sortOrder === 'asc' ? '↑ Rastuće' : '↓ Opadajuće' }}
+          {{ sortOrder === 'asc' ? '↑' : '↓' }}
+        </button>
+
+        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+        >
+          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online:
+          {{ counts.online }}
+        </span>
+        <span
+          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs bg-rose-50 text-rose-700 border-rose-200"
+        >
+          <span class="h-2 w-2 rounded-full bg-rose-500"></span> Offline: {{ counts.offline }}
+        </span>
+
+        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
+        <button
+          @click="prevPage"
+          :disabled="page === 1"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100"
+        >
+          ⬅️
+        </button>
+        <span class="text-sm text-slate-600">Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
+        <button
+          @click="nextPage({ total })"
+          :disabled="page * limit >= total"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100"
+        >
+          ➡️
         </button>
       </div>
 
-      <div class="flex flex-col items-start sm:items-end gap-1">
-        <div class="flex items-center gap-3 text-sm">
-          <span
-            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
-          >
-            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online:
-            {{ counts.online }}
-          </span>
-          <span
-            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs bg-rose-50 text-rose-700 border-rose-200"
-          >
-            <span class="h-2 w-2 rounded-full bg-rose-500"></span> Offline: {{ counts.offline }}
-          </span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button
-            @click="prevPage"
-            :disabled="page === 1"
-            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            ⬅️
-          </button>
-          <span>Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
-          <button
-            @click="nextPage({ total })"
-            :disabled="page * limit >= total"
-            class="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
-          >
-            ➡️
-          </button>
-        </div>
-        <p class="text-sm text-gray-600">Prikazano {{ entries.length }} od {{ total }} unosa</p>
-      </div>
+      <p class="text-sm text-slate-500">Prikazano {{ entries.length }} od {{ total }} unosa</p>
     </div>
 
     <div

@@ -14,7 +14,7 @@
           v-model.trim="form[field.name]"
           rows="6"
           placeholder="Unesi opis..."
-          class="app-input resize-y"
+          class="app-input w-full resize-y"
         />
 
         <input
@@ -22,7 +22,7 @@
           :id="field.name"
           v-model.trim="form[field.name]"
           type="text"
-          class="app-input"
+          class="app-input w-full"
           :required="field.name === 'ip'"
           :class="field.name === 'ip' && ipError ? 'border-red-400' : ''"
         />
