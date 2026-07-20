@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
 
 /**
  * Zajednička pokrivenost inventarom.
@@ -968,4 +969,211 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
     latestInstalledOn: row.latestInstalledOn ?? null,
     inventoryDate: row.inventoryDate ?? null,
   }));
+}
+
+/* =========================================================
+   EXPORT (pune liste, bez limita/top-N kurirovanja)
+   ========================================================= */
+
+export async function getAllSoftwareForExport() {
+  const [rows] = await pool.execute(`
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cs.display_name AS displayName,
+      cs.display_version AS displayVersion,
+      cs.publisher,
+      cs.install_date AS installDate,
+      cs.inventory_date AS inventoryDate
+    FROM computer_software cs
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    ORDER BY ie.computer_name ASC, cs.display_name ASC
+  `);
+  return rows || [];
+}
+
+export async function getAllDriversForExport() {
+  const [rows] = await pool.execute(`
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cd.device_name AS deviceName,
+      cd.driver_version AS driverVersion,
+      cd.driver_date AS driverDate,
+      cd.manufacturer,
+      cd.driver_provider_name AS driverProviderName,
+      cd.inventory_date AS inventoryDate
+    FROM computer_drivers cd
+    JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    ORDER BY ie.computer_name ASC, cd.device_name ASC
+  `);
+  return rows || [];
+}
+
+export async function getAllServicesForExport() {
+  const [rows] = await pool.execute(`
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cs.name,
+      cs.display_name AS displayName,
+      cs.state,
+      cs.start_mode AS startMode,
+      cs.start_name AS startName,
+      cs.path_name AS pathName,
+      cs.inventory_date AS inventoryDate
+    FROM computer_services cs
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    ORDER BY ie.computer_name ASC, cs.display_name ASC
+  `);
+  return rows || [];
+}
+
+export async function getAllUpdatesForExport() {
+  const [rows] = await pool.execute(`
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cu.hotfix_id AS hotfixId,
+      cu.description,
+      cu.installed_on AS installedOn,
+      cu.installed_by AS installedBy,
+      cu.inventory_date AS inventoryDate
+    FROM computer_updates cu
+    JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    ORDER BY ie.computer_name ASC, cu.installed_on DESC
+  `);
+  return rows || [];
+}
+
+/* =========================================================
+   SEARCH (prava pretraga cele baze, ne samo kurirane top-N/retke
+   tabele koje se prikazuju na dashboard-u)
+   ========================================================= */
+
+export async function searchSoftwareRows(term, limit = 100) {
+  const { where, params } = buildLikeSearch(
+    ["cs.display_name", "cs.display_version", "cs.publisher", "ie.computer_name", "ie.ip"],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cs.display_name AS displayName,
+      cs.display_version AS displayVersion,
+      cs.publisher,
+      cs.install_date AS installDate,
+      cs.inventory_date AS inventoryDate
+    FROM computer_software cs
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    WHERE ie.entry_type = 'computer' AND ${where}
+    ORDER BY ie.computer_name ASC, cs.display_name ASC
+    LIMIT ?
+    `,
+    [...params, limit],
+  );
+  return rows || [];
+}
+
+export async function searchDriverRows(term, limit = 100) {
+  const { where, params } = buildLikeSearch(
+    ["cd.device_name", "cd.driver_version", "cd.manufacturer", "cd.driver_provider_name", "ie.computer_name", "ie.ip"],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cd.device_name AS deviceName,
+      cd.driver_version AS driverVersion,
+      cd.driver_date AS driverDate,
+      cd.manufacturer,
+      cd.driver_provider_name AS driverProviderName,
+      cd.inventory_date AS inventoryDate
+    FROM computer_drivers cd
+    JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+    WHERE ie.entry_type = 'computer' AND ${where}
+    ORDER BY ie.computer_name ASC, cd.device_name ASC
+    LIMIT ?
+    `,
+    [...params, limit],
+  );
+  return rows || [];
+}
+
+export async function searchServiceRows(term, limit = 100) {
+  const { where, params } = buildLikeSearch(
+    ["cs.name", "cs.display_name", "cs.start_name", "cs.path_name", "ie.computer_name", "ie.ip"],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cs.name,
+      cs.display_name AS displayName,
+      cs.state,
+      cs.start_mode AS startMode,
+      cs.start_name AS startName,
+      cs.path_name AS pathName,
+      cs.inventory_date AS inventoryDate
+    FROM computer_services cs
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    WHERE ie.entry_type = 'computer' AND ${where}
+    ORDER BY ie.computer_name ASC, cs.display_name ASC
+    LIMIT ?
+    `,
+    [...params, limit],
+  );
+  return rows || [];
+}
+
+export async function searchUpdateRows(term, limit = 100) {
+  const { where, params } = buildLikeSearch(
+    ["cu.hotfix_id", "cu.description", "cu.installed_by", "ie.computer_name", "ie.ip"],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cu.hotfix_id AS hotfixId,
+      cu.description,
+      cu.installed_on AS installedOn,
+      cu.installed_by AS installedBy,
+      cu.inventory_date AS inventoryDate
+    FROM computer_updates cu
+    JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+    WHERE ie.entry_type = 'computer' AND ${where}
+    ORDER BY cu.installed_on DESC
+    LIMIT ?
+    `,
+    [...params, limit],
+  );
+  return rows || [];
 }

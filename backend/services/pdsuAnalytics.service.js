@@ -20,7 +20,23 @@ import {
   getTopHotfixes,
   getLatestUpdateByComputer,
   getStaleUpdateComputers,
+  getAllSoftwareForExport,
+  getAllDriversForExport,
+  getAllServicesForExport,
+  getAllUpdatesForExport,
+  searchSoftwareRows,
+  searchDriverRows,
+  searchServiceRows,
+  searchUpdateRows,
 } from "../repositories/pdsuAnalytics.repo.js";
+import { badRequest } from "../utils/httpError.js";
+
+const SEARCH_HANDLERS = {
+  software: searchSoftwareRows,
+  drivers: searchDriverRows,
+  services: searchServiceRows,
+  updates: searchUpdateRows,
+};
 
 function pct(value, total) {
   const safeValue = Number(value) || 0;
@@ -169,4 +185,43 @@ export async function inventoryAnalyticsStatsService() {
       },
     },
   };
+}
+
+export async function searchPdsuAnalytics(category, term) {
+  const query = String(term ?? "").trim();
+
+  if (category === "all") {
+    if (!query) {
+      return { software: [], drivers: [], services: [], updates: [] };
+    }
+
+    const [software, drivers, services, updates] = await Promise.all([
+      searchSoftwareRows(query, 50),
+      searchDriverRows(query, 50),
+      searchServiceRows(query, 50),
+      searchUpdateRows(query, 50),
+    ]);
+
+    return { software, drivers, services, updates };
+  }
+
+  const handler = SEARCH_HANDLERS[category];
+  if (!handler) {
+    throw badRequest("Nepoznata kategorija za pretragu.");
+  }
+
+  if (!query) return [];
+
+  return await handler(query, 100);
+}
+
+export async function exportPdsuAnalyticsXlsx() {
+  const [software, drivers, services, updates] = await Promise.all([
+    getAllSoftwareForExport(),
+    getAllDriversForExport(),
+    getAllServicesForExport(),
+    getAllUpdatesForExport(),
+  ]);
+
+  return { software, drivers, services, updates };
 }

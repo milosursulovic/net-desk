@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 import { barWidth as sharedBarWidth } from '@/utils/math.js'
 
@@ -9,8 +9,6 @@ const props = defineProps({
     default: () => ({}),
   },
 })
-
-const search = ref('')
 
 const stats = computed(() => props.software?.stats ?? {})
 const tables = computed(() => props.software?.tables ?? {})
@@ -24,36 +22,6 @@ const multipleVersions = computed(() => tables.value?.multipleVersions ?? [])
 const rareSoftware = computed(() => tables.value?.rareSoftware ?? [])
 
 const computersWithMostSoftware = computed(() => tables.value?.computersWithMostSoftware ?? [])
-
-const normalizedSearch = computed(() => search.value.trim().toLocaleLowerCase('sr-RS'))
-
-const filteredMultipleVersions = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return multipleVersions.value
-  }
-
-  return multipleVersions.value.filter((item) =>
-    [item.name, item.versions]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
-
-const filteredRareSoftware = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return rareSoftware.value
-  }
-
-  return rareSoftware.value.filter((item) =>
-    [item.name, item.version, item.publisher, item.computerNames]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
 
 const maxTopSoftwareComputers = computed(() => {
   return Math.max(...topSoftware.value.map((item) => Number(item.computers) || 0), 1)
@@ -304,28 +272,6 @@ function splitValues(value) {
       </div>
     </div>
 
-    <!-- Pretraga -->
-    <div class="pdsu-card mb-4">
-      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h5 class="pdsu-card-title">Detaljna analiza programa</h5>
-
-          <div class="text-xs text-slate-500">
-            Pretraga se primenjuje na programe sa više verzija i retke programe.
-          </div>
-        </div>
-
-        <div class="software-search">
-          <input
-            v-model="search"
-            type="search"
-            class="pdsu-input"
-            placeholder="Pretraži program, verziju, izdavača..."
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- Programi sa više verzija -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
@@ -338,7 +284,7 @@ function splitValues(value) {
         </div>
 
         <span class="pdsu-badge bg-blue-600 text-white">
-          {{ formatNumber(filteredMultipleVersions.length) }}
+          {{ formatNumber(multipleVersions.length) }}
         </span>
       </div>
 
@@ -354,7 +300,7 @@ function splitValues(value) {
           </thead>
 
           <tbody>
-            <tr v-for="(item, index) in filteredMultipleVersions" :key="`${item.name}-${index}`">
+            <tr v-for="(item, index) in multipleVersions" :key="`${item.name}-${index}`">
               <td class="font-semibold text-slate-900">
                 {{ item.name }}
               </td>
@@ -386,7 +332,7 @@ function splitValues(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredMultipleVersions.length === 0">
+            <tr v-if="multipleVersions.length === 0">
               <td colspan="4" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
@@ -404,7 +350,7 @@ function splitValues(value) {
         </div>
 
         <span class="pdsu-badge bg-slate-500 text-white">
-          {{ formatNumber(filteredRareSoftware.length) }}
+          {{ formatNumber(rareSoftware.length) }}
         </span>
       </div>
 
@@ -421,7 +367,7 @@ function splitValues(value) {
           </thead>
 
           <tbody>
-            <tr v-for="(item, index) in filteredRareSoftware" :key="`${item.name}-${index}`">
+            <tr v-for="(item, index) in rareSoftware" :key="`${item.name}-${index}`">
               <td class="font-semibold text-slate-900">
                 {{ item.name }}
               </td>
@@ -457,7 +403,7 @@ function splitValues(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredRareSoftware.length === 0">
+            <tr v-if="rareSoftware.length === 0">
               <td colspan="5" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>

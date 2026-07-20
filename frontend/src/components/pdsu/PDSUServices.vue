@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 
 const props = defineProps({
@@ -9,8 +9,6 @@ const props = defineProps({
   },
 })
 
-const search = ref('')
-
 const stats = computed(() => props.services?.stats ?? {})
 const tables = computed(() => props.services?.tables ?? {})
 
@@ -19,66 +17,6 @@ const automaticStopped = computed(() => tables.value?.automaticStopped ?? [])
 const unusualPaths = computed(() => tables.value?.unusualPaths ?? [])
 
 const rareServices = computed(() => tables.value?.rareServices ?? [])
-
-const normalizedSearch = computed(() => search.value.trim().toLocaleLowerCase('sr-RS'))
-
-const filteredAutomaticStopped = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return automaticStopped.value
-  }
-
-  return automaticStopped.value.filter((item) =>
-    [
-      item.name,
-      item.displayName,
-      item.computerName,
-      item.ip,
-      item.department,
-      item.startName,
-      item.pathName,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
-
-const filteredUnusualPaths = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return unusualPaths.value
-  }
-
-  return unusualPaths.value.filter((item) =>
-    [
-      item.name,
-      item.displayName,
-      item.computerName,
-      item.ip,
-      item.department,
-      item.pathName,
-      item.startName,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
-
-const filteredRareServices = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return rareServices.value
-  }
-
-  return rareServices.value.filter((item) =>
-    [item.name, item.displayName, item.startMode, item.startName, item.pathName, item.computerNames]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
 
 const totalServices = computed(() => Number(stats.value?.totalServices) || 0)
 
@@ -391,26 +329,6 @@ function shortenPath(value, maxLength = 90) {
       </div>
     </div>
 
-    <!-- Pretraga -->
-    <div class="pdsu-card mb-4">
-      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h5 class="pdsu-card-title">Detaljna analiza servisa</h5>
-
-          <div class="text-xs text-slate-500">Pretraga se primenjuje na sve tabele ispod.</div>
-        </div>
-
-        <div class="service-search">
-          <input
-            v-model="search"
-            type="search"
-            class="pdsu-input"
-            placeholder="Pretraži servis, računar, putanju..."
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- Automatski servisi koji ne rade -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
@@ -424,9 +342,9 @@ function shortenPath(value, maxLength = 90) {
 
         <span
           class="pdsu-badge"
-          :class="filteredAutomaticStopped.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
+          :class="automaticStopped.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
         >
-          {{ formatNumber(filteredAutomaticStopped.length) }}
+          {{ formatNumber(automaticStopped.length) }}
         </span>
       </div>
 
@@ -445,7 +363,7 @@ function shortenPath(value, maxLength = 90) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredAutomaticStopped"
+              v-for="(item, index) in automaticStopped"
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
@@ -493,7 +411,7 @@ function shortenPath(value, maxLength = 90) {
               </td>
             </tr>
 
-            <tr v-if="filteredAutomaticStopped.length === 0">
+            <tr v-if="automaticStopped.length === 0">
               <td colspan="6" class="text-center text-slate-500 py-4">
                 Nema automatskih servisa koji su zaustavljeni.
               </td>
@@ -515,7 +433,7 @@ function shortenPath(value, maxLength = 90) {
         </div>
 
         <span class="pdsu-badge bg-amber-500 text-amber-950">
-          {{ formatNumber(filteredUnusualPaths.length) }}
+          {{ formatNumber(unusualPaths.length) }}
         </span>
       </div>
 
@@ -534,7 +452,7 @@ function shortenPath(value, maxLength = 90) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredUnusualPaths"
+              v-for="(item, index) in unusualPaths"
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
@@ -584,7 +502,7 @@ function shortenPath(value, maxLength = 90) {
               </td>
             </tr>
 
-            <tr v-if="filteredUnusualPaths.length === 0">
+            <tr v-if="unusualPaths.length === 0">
               <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
@@ -602,7 +520,7 @@ function shortenPath(value, maxLength = 90) {
         </div>
 
         <span class="pdsu-badge bg-slate-500 text-white">
-          {{ formatNumber(filteredRareServices.length) }}
+          {{ formatNumber(rareServices.length) }}
         </span>
       </div>
 
@@ -620,7 +538,7 @@ function shortenPath(value, maxLength = 90) {
           </thead>
 
           <tbody>
-            <tr v-for="(item, index) in filteredRareServices" :key="`${item.name}-${index}`">
+            <tr v-for="(item, index) in rareServices" :key="`${item.name}-${index}`">
               <td>
                 <div class="font-semibold text-slate-900">
                   {{ item.displayName || item.name || 'Nepoznat servis' }}
@@ -670,7 +588,7 @@ function shortenPath(value, maxLength = 90) {
               </td>
             </tr>
 
-            <tr v-if="filteredRareServices.length === 0">
+            <tr v-if="rareServices.length === 0">
               <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>

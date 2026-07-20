@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 import { barWidth as sharedBarWidth } from '@/utils/math.js'
 
@@ -9,8 +9,6 @@ const props = defineProps({
     default: () => ({}),
   },
 })
-
-const search = ref('')
 
 const stats = computed(() => props.updates?.stats ?? {})
 const tables = computed(() => props.updates?.tables ?? {})
@@ -24,36 +22,6 @@ const topHotfixes = computed(() => tables.value?.topHotfixes ?? [])
 const latestUpdateByComputer = computed(() => tables.value?.latestUpdateByComputer ?? [])
 
 const staleUpdateComputers = computed(() => tables.value?.staleUpdateComputers ?? [])
-
-const normalizedSearch = computed(() => search.value.trim().toLocaleLowerCase('sr-RS'))
-
-const filteredLatestUpdates = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return latestUpdateByComputer.value
-  }
-
-  return latestUpdateByComputer.value.filter((item) =>
-    [item.computerName, item.ip, item.department, item.hotfixId, item.description, item.installedBy]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
-
-const filteredStaleComputers = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return staleUpdateComputers.value
-  }
-
-  return staleUpdateComputers.value.filter((item) =>
-    [item.computerName, item.ip, item.department, item.hotfixId, item.description, item.installedBy]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
 
 const maxHotfixComputers = computed(() => {
   return Math.max(...topHotfixes.value.map((item) => Number(item.computers) || 0), 1)
@@ -504,28 +472,6 @@ function freshnessClass(value) {
       </div>
     </div>
 
-    <!-- Pretraga -->
-    <div class="pdsu-card mb-4">
-      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h5 class="pdsu-card-title">Detaljna analiza update-a</h5>
-
-          <div class="text-xs text-slate-500">
-            Pretraga se primenjuje na tabele poslednjih i zastarelih update-a.
-          </div>
-        </div>
-
-        <div class="update-search">
-          <input
-            v-model="search"
-            type="search"
-            class="pdsu-input"
-            placeholder="Pretraži računar, IP, KB paket..."
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- Poslednji update po računaru -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
@@ -536,7 +482,7 @@ function freshnessClass(value) {
         </div>
 
         <span class="pdsu-badge bg-blue-600 text-white">
-          {{ formatNumber(filteredLatestUpdates.length) }}
+          {{ formatNumber(latestUpdateByComputer.length) }}
         </span>
       </div>
 
@@ -556,7 +502,7 @@ function freshnessClass(value) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredLatestUpdates"
+              v-for="(item, index) in latestUpdateByComputer"
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
               <td>
@@ -600,7 +546,7 @@ function freshnessClass(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredLatestUpdates.length === 0">
+            <tr v-if="latestUpdateByComputer.length === 0">
               <td colspan="7" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
@@ -621,9 +567,9 @@ function freshnessClass(value) {
 
         <span
           class="pdsu-badge"
-          :class="filteredStaleComputers.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
+          :class="staleUpdateComputers.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
         >
-          {{ formatNumber(filteredStaleComputers.length) }}
+          {{ formatNumber(staleUpdateComputers.length) }}
         </span>
       </div>
 
@@ -643,7 +589,7 @@ function freshnessClass(value) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredStaleComputers"
+              v-for="(item, index) in staleUpdateComputers"
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
               <td class="font-semibold text-slate-900">
@@ -683,7 +629,7 @@ function freshnessClass(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredStaleComputers.length === 0">
+            <tr v-if="staleUpdateComputers.length === 0">
               <td colspan="7" class="text-center text-slate-500 py-4">
                 Nema računara sa zastarelim update podacima.
               </td>

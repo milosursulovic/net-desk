@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { fmtNumberSr, fmtDateSr } from '@/utils/format.js'
 import { barWidth as sharedBarWidth } from '@/utils/math.js'
 
@@ -9,8 +9,6 @@ const props = defineProps({
     default: () => ({}),
   },
 })
-
-const search = ref('')
 
 const stats = computed(() => props.drivers?.stats ?? {})
 const tables = computed(() => props.drivers?.tables ?? {})
@@ -22,44 +20,6 @@ const oldestDrivers = computed(() => tables.value?.oldestDrivers ?? [])
 const multipleVersions = computed(() => tables.value?.multipleVersions ?? [])
 
 const computersWithMostDrivers = computed(() => tables.value?.computersWithMostDrivers ?? [])
-
-const normalizedSearch = computed(() => search.value.trim().toLocaleLowerCase('sr-RS'))
-
-const filteredOldestDrivers = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return oldestDrivers.value
-  }
-
-  return oldestDrivers.value.filter((item) =>
-    [
-      item.computerName,
-      item.ip,
-      item.department,
-      item.deviceName,
-      item.driverVersion,
-      item.manufacturer,
-      item.driverProviderName,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
-
-const filteredMultipleVersions = computed(() => {
-  const query = normalizedSearch.value
-
-  if (!query) {
-    return multipleVersions.value
-  }
-
-  return multipleVersions.value.filter((item) =>
-    [item.deviceName, item.manufacturer, item.versions]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('sr-RS').includes(query))
-  )
-})
 
 const maxManufacturerDrivers = computed(() => {
   return Math.max(...topManufacturers.value.map((item) => Number(item.drivers) || 0), 1)
@@ -326,28 +286,6 @@ function driverAgeLabel(value) {
       </div>
     </div>
 
-    <!-- Pretraga -->
-    <div class="pdsu-card mb-4">
-      <div class="p-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h5 class="pdsu-card-title">Detaljna analiza drajvera</h5>
-
-          <div class="text-xs text-slate-500">
-            Pretraga se primenjuje na najstarije drajvere i uređaje sa više verzija.
-          </div>
-        </div>
-
-        <div class="driver-search">
-          <input
-            v-model="search"
-            type="search"
-            class="pdsu-input"
-            placeholder="Pretraži uređaj, računar, verziju..."
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- Najstariji drajveri -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
@@ -358,7 +296,7 @@ function driverAgeLabel(value) {
         </div>
 
         <span class="pdsu-badge bg-red-600 text-white">
-          {{ formatNumber(filteredOldestDrivers.length) }}
+          {{ formatNumber(oldestDrivers.length) }}
         </span>
       </div>
 
@@ -377,7 +315,7 @@ function driverAgeLabel(value) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredOldestDrivers"
+              v-for="(item, index) in oldestDrivers"
               :key="
                 item.ipEntryId
                   ? `${item.ipEntryId}-${item.deviceName}-${index}`
@@ -427,7 +365,7 @@ function driverAgeLabel(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredOldestDrivers.length === 0">
+            <tr v-if="oldestDrivers.length === 0">
               <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
@@ -447,7 +385,7 @@ function driverAgeLabel(value) {
         </div>
 
         <span class="pdsu-badge bg-amber-500 text-amber-950">
-          {{ formatNumber(filteredMultipleVersions.length) }}
+          {{ formatNumber(multipleVersions.length) }}
         </span>
       </div>
 
@@ -465,7 +403,7 @@ function driverAgeLabel(value) {
 
           <tbody>
             <tr
-              v-for="(item, index) in filteredMultipleVersions"
+              v-for="(item, index) in multipleVersions"
               :key="`${item.deviceName}-${index}`"
             >
               <td class="font-semibold text-slate-900">
@@ -503,7 +441,7 @@ function driverAgeLabel(value) {
               </td>
             </tr>
 
-            <tr v-if="filteredMultipleVersions.length === 0">
+            <tr v-if="multipleVersions.length === 0">
               <td colspan="5" class="text-center text-slate-500 py-4">Nema rezultata.</td>
             </tr>
           </tbody>
