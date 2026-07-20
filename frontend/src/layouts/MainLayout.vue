@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-100 to-white flex flex-col">
     <header class="bg-white/90 shadow sticky top-0 z-50">
-      <div class="w-full flex justify-between items-center px-4 py-3">
-        <div class="flex items-center gap-3">
+      <div class="w-full flex items-center gap-4 px-4 py-3">
+        <div class="flex shrink-0 items-center gap-3">
           <Logo />
 
           <span class="hidden h-8 w-px bg-slate-200 md:inline-block"></span>
@@ -12,7 +12,9 @@
           </span>
         </div>
 
-        <div class="flex items-center gap-3">
+        <NotificationTicker class="hidden min-w-0 flex-1 md:block" />
+
+        <div class="flex shrink-0 items-center gap-3">
           <div class="hidden items-center gap-2 rounded-full bg-slate-100 py-1.5 pl-1.5 pr-3 sm:flex">
             <div
               class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white"
@@ -49,6 +51,7 @@ import LogoutButton from '@/components/LogoutButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import AppNav from '@/components/AppNav.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import NotificationTicker from '@/components/NotificationTicker.vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useAppInfo } from '@/composables/useAppInfo.js'
 

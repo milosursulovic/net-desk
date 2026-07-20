@@ -5,6 +5,7 @@ import pdsuRoutes from "./pdsu.routes.js";
 import pdsuAnalyticsRoutes from "./pdsuAnalytics.routes.js";
 import printersRoutes from "./printers.routes.js";
 import inventoryRoutes from "./inventory.routes.js";
+import notificationsRoutes from "./notifications.routes.js";
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use("/pdsu", pdsuRoutes);
 router.use("/pdsu-analytics", pdsuAnalyticsRoutes);
 router.use("/printers", printersRoutes);
 router.use("/inventory", inventoryRoutes);
+router.use("/notifications", notificationsRoutes);
 
 export default router;
