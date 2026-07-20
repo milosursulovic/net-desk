@@ -48,6 +48,7 @@ export async function exportXlsxController(req, res) {
           { header: "rdpApp", key: "rdpApp", width: 18 },
           { header: "os", key: "os", width: 22 },
           { header: "department", key: "department", width: 16 },
+          { header: "entryType", key: "entryType", width: 14 },
           { header: "remoteScript", key: "remoteScript", width: 20 },
           { header: "hasMetadata", key: "hasMetadata", width: 14 },
           { header: "description", key: "description", width: 24 },

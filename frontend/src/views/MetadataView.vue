@@ -326,33 +326,20 @@ const displayTables = computed(() => serverTables.value || tables.value)
 const { getSignal, abort } = useAbortableFetch()
 
 async function fetchStatsPreferServer() {
+  // Napomena: /api/protected/metadata i /api/protected/metadata/stats već
+  // filtriraju na entry_type = 'computer' na backend-u (vidi metadata.repo.js).
+  // Namerno se NE oslanjamo na /api/protected/ip-addresses kao fallback ovde -
+  // ta lista nije filtrirana po tipu i vraćala bi i aparate.
   try {
     const res = await fetchWithAuth('/api/protected/metadata/stats')
     if (res.ok) {
       const payload = await res.json()
       if (payload?.tables) serverTables.value = payload.tables
       if (payload?.flags) serverFlags.value = payload.flags
-
-      if (Array.isArray(payload.meta)) meta.value = payload.meta
-
-      totalIpEntries.value =
-        Number(payload.cover?.totalIpEntries) ??
-        Number(payload.totalIpEntries) ??
-        Number(totalIpEntries.value) ??
-        0
-
-      if (Array.isArray(payload.meta)) return
+      totalIpEntries.value = Number(payload.cover?.totalIpEntries) || 0
     }
   } catch {
   }
-
-  try {
-    const r1 = await fetchWithAuth('/api/protected/ip-addresses?limit=1&page=1')
-    if (r1.ok) {
-      const d = await r1.json()
-      totalIpEntries.value = Number(d.total) || 0
-    }
-  } catch { }
 
   try {
     let page = 1,
@@ -372,16 +359,6 @@ async function fetchStatsPreferServer() {
         break
       } else {
         break
-      }
-    }
-    if (!all.length) {
-      const r2 = await fetchWithAuth('/api/protected/ip-addresses?limit=10000&page=1')
-      if (r2.ok) {
-        const d2 = await r2.json()
-        const list = (d2.entries || []).map((e) => e.metadata).filter(Boolean)
-        meta.value = list
-        totalIpEntries.value = Number(d2.total) || list.length
-        return
       }
     }
     meta.value = all

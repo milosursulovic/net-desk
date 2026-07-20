@@ -284,8 +284,15 @@ export async function exportXlsxRowsService(search) {
     rdpApp: e.rdpApp || "",
     os: e.os || "",
     department: e.department || "",
+    entryType: labelForEntryType(e.entryType),
     remoteScript: e.remoteScript || "",
     hasMetadata: e.metadataId ? "Da" : "Ne",
     description: e.description || "",
   }));
+}
+
+function labelForEntryType(value) {
+  if (value === "computer") return "Računar";
+  if (value === "device") return "Aparat";
+  return "Nepoznato";
 }
