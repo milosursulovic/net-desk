@@ -13,6 +13,7 @@ import {
   duplicatesService,
   exportXlsxRowsService,
 } from "../services/ipAddresses.service.js";
+import { getUptimeHistory } from "../services/ipStatusHistory.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 
@@ -68,6 +69,12 @@ export async function listController(req, res) {
 export async function getByIdController(req, res) {
   const id = parseIdParam(req);
   const out = await getByIdService(id);
+  res.json(out);
+}
+
+export async function uptimeHistoryController(req, res) {
+  const id = parseIdParam(req);
+  const out = await getUptimeHistory(id);
   res.json(out);
 }
 

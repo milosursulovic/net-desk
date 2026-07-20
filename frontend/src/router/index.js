@@ -11,6 +11,10 @@ const MetadataView = () => import('@/views/MetadataView.vue')
 const PrintersView = () => import('@/views/PrintersView.vue')
 const InventoryView = () => import('@/views/InventoryView.vue')
 const PDSUAnalyticsView = () => import('@/views/PDSUAnalyticsView.vue')
+const IpMetaView = () => import('@/views/IpMetaView.vue')
+const IpPdsuView = () => import('@/views/IpPdsuView.vue')
+const IpPortScanView = () => import('@/views/IpPortScanView.vue')
+const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -45,6 +49,46 @@ const router = createRouter({
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
           },
           component: EditIpView,
+        },
+        {
+          path: 'ip/:id/meta',
+          name: 'ip-meta',
+          meta: {
+            title: 'Metapodaci - NetDesk',
+            breadcrumb: 'Metapodaci',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: IpMetaView,
+        },
+        {
+          path: 'ip/:id/pdsu',
+          name: 'ip-pdsu',
+          meta: {
+            title: 'PDSU Inventar - NetDesk',
+            breadcrumb: 'PDSU Inventar',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: IpPdsuView,
+        },
+        {
+          path: 'ip/:id/port-scan',
+          name: 'ip-port-scan',
+          meta: {
+            title: 'Port scan - NetDesk',
+            breadcrumb: 'Port scan',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: IpPortScanView,
+        },
+        {
+          path: 'duplicates',
+          name: 'duplicates',
+          meta: {
+            title: 'Duplirana imena - NetDesk',
+            breadcrumb: 'Duplirana imena',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: DuplicateNamesView,
         },
         {
           path: 'metadata',

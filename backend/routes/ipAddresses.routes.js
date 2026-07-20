@@ -9,6 +9,7 @@ import {
   createController,
   updateController,
   deleteController,
+  uptimeHistoryController,
 } from "../controllers/ipAddresses.controller.js";
 import metadataForIpRoutes from "./ipAddressesMetadata.routes.js";
 
@@ -20,6 +21,7 @@ router.get("/export-xlsx", asyncHandler(exportXlsxController));
 
 router.get("/", asyncHandler(listController));
 router.get("/:id", asyncHandler(getByIdController));
+router.get("/:id/uptime", asyncHandler(uptimeHistoryController));
 router.post("/", asyncHandler(createController));
 router.put("/:id", asyncHandler(updateController));
 router.delete("/:id", asyncHandler(deleteController));

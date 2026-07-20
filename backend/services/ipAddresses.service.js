@@ -14,6 +14,25 @@ import {
   exportIpEntriesForXlsx,
 } from "../repositories/ipEntries.repo.js";
 
+const WELL_KNOWN_PORTS = {
+  21: "FTP",
+  22: "SSH",
+  25: "SMTP",
+  80: "HTTP",
+  135: "RPC",
+  139: "NetBIOS",
+  443: "HTTPS",
+  445: "SMB",
+  3306: "MySQL",
+  3389: "RDP",
+  5432: "PostgreSQL",
+  5985: "WinRM (HTTP)",
+  5986: "WinRM (HTTPS)",
+  6379: "Redis",
+  8080: "HTTP (alt)",
+  8443: "HTTPS (alt)",
+};
+
 function parsePorts(str) {
   if (!str || String(str).trim() === "") {
     const full = [];
@@ -71,7 +90,7 @@ async function probeTCP(ip, port, timeoutMs = 100) {
         open: !!ok,
         rttMs: Date.now() - start,
         protocol: proto,
-        serviceHint: null,
+        serviceHint: WELL_KNOWN_PORTS[port] ?? null,
         banner: banner ? String(banner).slice(0, 800) : null,
         ...extra,
       });

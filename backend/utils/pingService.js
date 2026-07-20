@@ -2,6 +2,7 @@ import os from "os";
 import ping from "ping";
 import pLimit from "p-limit";
 import { pool } from "../db/pool.js";
+import { insertStatusHistoryBulk } from "../repositories/ipStatusHistory.repo.js";
 
 export function startPingLoop(
   intervalSeconds = 30,
@@ -125,6 +126,14 @@ export function startPingLoop(
           WHERE id IN (${idsChanged.map(() => "?").join(",")})
           `,
           [now, ...idsChanged],
+        );
+
+        await insertStatusHistoryBulk(
+          changed.map((r) => ({
+            ip_entry_id: r.id,
+            is_online: r.alive,
+            changed_at: now,
+          })),
         );
       }
     } catch (err) {
