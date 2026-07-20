@@ -6,26 +6,34 @@ import { pool } from "../db/pool.js";
 export async function getInventoryCoverage() {
   const [[row]] = await pool.execute(`
     SELECT
-      (SELECT COUNT(*) FROM ip_entries) AS totalComputers,
+      (SELECT COUNT(*) FROM ip_entries WHERE entry_type = 'computer') AS totalComputers,
 
       (
-        SELECT COUNT(DISTINCT ip_entry_id)
-        FROM computer_software
+        SELECT COUNT(DISTINCT cs.ip_entry_id)
+        FROM computer_software cs
+        JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+        WHERE ie.entry_type = 'computer'
       ) AS withSoftware,
 
       (
-        SELECT COUNT(DISTINCT ip_entry_id)
-        FROM computer_drivers
+        SELECT COUNT(DISTINCT cd.ip_entry_id)
+        FROM computer_drivers cd
+        JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+        WHERE ie.entry_type = 'computer'
       ) AS withDrivers,
 
       (
-        SELECT COUNT(DISTINCT ip_entry_id)
-        FROM computer_services
+        SELECT COUNT(DISTINCT csv.ip_entry_id)
+        FROM computer_services csv
+        JOIN ip_entries ie ON ie.id = csv.ip_entry_id
+        WHERE ie.entry_type = 'computer'
       ) AS withServices,
 
       (
-        SELECT COUNT(DISTINCT ip_entry_id)
-        FROM computer_updates
+        SELECT COUNT(DISTINCT cu.ip_entry_id)
+        FROM computer_updates cu
+        JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+        WHERE ie.entry_type = 'computer'
       ) AS withUpdates
   `);
 
@@ -48,14 +56,14 @@ export async function getSoftwareStats() {
       COUNT(*) AS totalInstallations,
 
       COUNT(
-        DISTINCT NULLIF(TRIM(display_name), '')
+        DISTINCT NULLIF(TRIM(cs.display_name), '')
       ) AS uniqueSoftware,
 
-      COUNT(DISTINCT ip_entry_id) AS computersWithSoftware,
+      COUNT(DISTINCT cs.ip_entry_id) AS computersWithSoftware,
 
       SUM(
         CASE
-          WHEN publisher IS NULL OR TRIM(publisher) = ''
+          WHEN cs.publisher IS NULL OR TRIM(cs.publisher) = ''
           THEN 1
           ELSE 0
         END
@@ -63,16 +71,18 @@ export async function getSoftwareStats() {
 
       SUM(
         CASE
-          WHEN display_version IS NULL OR TRIM(display_version) = ''
+          WHEN cs.display_version IS NULL OR TRIM(cs.display_version) = ''
           THEN 1
           ELSE 0
         END
       ) AS withoutVersion,
 
-      MIN(inventory_date) AS oldestInventoryDate,
-      MAX(inventory_date) AS newestInventoryDate
+      MIN(cs.inventory_date) AS oldestInventoryDate,
+      MAX(cs.inventory_date) AS newestInventoryDate
 
-    FROM computer_software
+    FROM computer_software cs
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    WHERE ie.entry_type = 'computer'
   `);
 
   const totalInstallations = Number(row?.totalInstallations) || 0;
@@ -96,16 +106,18 @@ export async function getTopSoftware(limit = 10) {
   const [rows] = await pool.execute(
     `
       SELECT
-        TRIM(display_name) AS name,
+        TRIM(cs.display_name) AS name,
         COUNT(*) AS installations,
-        COUNT(DISTINCT ip_entry_id) AS computers,
+        COUNT(DISTINCT cs.ip_entry_id) AS computers,
         COUNT(
-          DISTINCT NULLIF(TRIM(display_version), '')
+          DISTINCT NULLIF(TRIM(cs.display_version), '')
         ) AS versions
-      FROM computer_software
-      WHERE display_name IS NOT NULL
-        AND TRIM(display_name) <> ''
-      GROUP BY TRIM(display_name)
+      FROM computer_software cs
+      JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+      WHERE ie.entry_type = 'computer'
+        AND cs.display_name IS NOT NULL
+        AND TRIM(cs.display_name) <> ''
+      GROUP BY TRIM(cs.display_name)
       ORDER BY computers DESC, installations DESC, name ASC
       LIMIT ?
     `,
@@ -125,18 +137,20 @@ export async function getTopPublishers(limit = 10) {
     `
       SELECT
         COALESCE(
-          NULLIF(TRIM(publisher), ''),
+          NULLIF(TRIM(cs.publisher), ''),
           'Nepoznat izdavač'
         ) AS publisher,
         COUNT(*) AS installations,
-        COUNT(DISTINCT ip_entry_id) AS computers,
+        COUNT(DISTINCT cs.ip_entry_id) AS computers,
         COUNT(
-          DISTINCT NULLIF(TRIM(display_name), '')
+          DISTINCT NULLIF(TRIM(cs.display_name), '')
         ) AS softwareCount
-      FROM computer_software
+      FROM computer_software cs
+      JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+      WHERE ie.entry_type = 'computer'
       GROUP BY
         COALESCE(
-          NULLIF(TRIM(publisher), ''),
+          NULLIF(TRIM(cs.publisher), ''),
           'Nepoznat izdavač'
         )
       ORDER BY installations DESC
@@ -157,21 +171,23 @@ export async function getSoftwareMultipleVersions(limit = 20) {
   const [rows] = await pool.execute(
     `
       SELECT
-        TRIM(display_name) AS name,
-        COUNT(DISTINCT display_version) AS versionCount,
-        COUNT(DISTINCT ip_entry_id) AS computers,
+        TRIM(cs.display_name) AS name,
+        COUNT(DISTINCT cs.display_version) AS versionCount,
+        COUNT(DISTINCT cs.ip_entry_id) AS computers,
         GROUP_CONCAT(
-          DISTINCT NULLIF(TRIM(display_version), '')
-          ORDER BY display_version
+          DISTINCT NULLIF(TRIM(cs.display_version), '')
+          ORDER BY cs.display_version
           SEPARATOR ', '
         ) AS versions
-      FROM computer_software
-      WHERE display_name IS NOT NULL
-        AND TRIM(display_name) <> ''
-        AND display_version IS NOT NULL
-        AND TRIM(display_version) <> ''
-      GROUP BY TRIM(display_name)
-      HAVING COUNT(DISTINCT display_version) > 1
+      FROM computer_software cs
+      JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+      WHERE ie.entry_type = 'computer'
+        AND cs.display_name IS NOT NULL
+        AND TRIM(cs.display_name) <> ''
+        AND cs.display_version IS NOT NULL
+        AND TRIM(cs.display_version) <> ''
+      GROUP BY TRIM(cs.display_name)
+      HAVING COUNT(DISTINCT cs.display_version) > 1
       ORDER BY versionCount DESC, computers DESC
       LIMIT ?
     `,
@@ -205,7 +221,8 @@ export async function getRareSoftware(limit = 20) {
       FROM computer_software cs
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
-      WHERE cs.display_name IS NOT NULL
+      WHERE ip.entry_type = 'computer'
+        AND cs.display_name IS NOT NULL
         AND TRIM(cs.display_name) <> ''
       GROUP BY TRIM(cs.display_name)
       HAVING COUNT(DISTINCT cs.ip_entry_id) <= 2
@@ -237,6 +254,7 @@ export async function getComputersWithMostSoftware(limit = 10) {
       FROM ip_entries ip
       JOIN computer_software cs
         ON cs.ip_entry_id = ip.id
+      WHERE ip.entry_type = 'computer'
       GROUP BY
         ip.id,
         ip.ip,
@@ -268,18 +286,18 @@ export async function getDriverStats() {
       COUNT(*) AS totalDrivers,
 
       COUNT(
-        DISTINCT NULLIF(TRIM(device_name), '')
+        DISTINCT NULLIF(TRIM(cd.device_name), '')
       ) AS uniqueDevices,
 
-      COUNT(DISTINCT ip_entry_id) AS computersWithDrivers,
+      COUNT(DISTINCT cd.ip_entry_id) AS computersWithDrivers,
 
       COUNT(
-        DISTINCT NULLIF(TRIM(manufacturer), '')
+        DISTINCT NULLIF(TRIM(cd.manufacturer), '')
       ) AS uniqueManufacturers,
 
       SUM(
         CASE
-          WHEN manufacturer IS NULL OR TRIM(manufacturer) = ''
+          WHEN cd.manufacturer IS NULL OR TRIM(cd.manufacturer) = ''
           THEN 1
           ELSE 0
         END
@@ -287,7 +305,7 @@ export async function getDriverStats() {
 
       SUM(
         CASE
-          WHEN driver_version IS NULL OR TRIM(driver_version) = ''
+          WHEN cd.driver_version IS NULL OR TRIM(cd.driver_version) = ''
           THEN 1
           ELSE 0
         END
@@ -295,18 +313,20 @@ export async function getDriverStats() {
 
       SUM(
         CASE
-          WHEN driver_date IS NULL
+          WHEN cd.driver_date IS NULL
           THEN 1
           ELSE 0
         END
       ) AS withoutDate,
 
-      MIN(driver_date) AS oldestDriverDate,
-      MAX(driver_date) AS newestDriverDate,
-      MIN(inventory_date) AS oldestInventoryDate,
-      MAX(inventory_date) AS newestInventoryDate
+      MIN(cd.driver_date) AS oldestDriverDate,
+      MAX(cd.driver_date) AS newestDriverDate,
+      MIN(cd.inventory_date) AS oldestInventoryDate,
+      MAX(cd.inventory_date) AS newestInventoryDate
 
-    FROM computer_drivers
+    FROM computer_drivers cd
+    JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+    WHERE ie.entry_type = 'computer'
   `);
 
   const totalDrivers = Number(row?.totalDrivers) || 0;
@@ -335,20 +355,22 @@ export async function getTopDriverManufacturers(limit = 10) {
     `
       SELECT
         COALESCE(
-          NULLIF(TRIM(manufacturer), ''),
-          NULLIF(TRIM(driver_provider_name), ''),
+          NULLIF(TRIM(cd.manufacturer), ''),
+          NULLIF(TRIM(cd.driver_provider_name), ''),
           'Nepoznat proizvođač'
         ) AS manufacturer,
         COUNT(*) AS drivers,
-        COUNT(DISTINCT ip_entry_id) AS computers,
+        COUNT(DISTINCT cd.ip_entry_id) AS computers,
         COUNT(
-          DISTINCT NULLIF(TRIM(device_name), '')
+          DISTINCT NULLIF(TRIM(cd.device_name), '')
         ) AS devices
-      FROM computer_drivers
+      FROM computer_drivers cd
+      JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+      WHERE ie.entry_type = 'computer'
       GROUP BY
         COALESCE(
-          NULLIF(TRIM(manufacturer), ''),
-          NULLIF(TRIM(driver_provider_name), ''),
+          NULLIF(TRIM(cd.manufacturer), ''),
+          NULLIF(TRIM(cd.driver_provider_name), ''),
           'Nepoznat proizvođač'
         )
       ORDER BY drivers DESC
@@ -382,7 +404,8 @@ export async function getOldestDrivers(limit = 20) {
       FROM computer_drivers cd
       JOIN ip_entries ip
         ON ip.id = cd.ip_entry_id
-      WHERE cd.driver_date IS NOT NULL
+      WHERE ip.entry_type = 'computer'
+        AND cd.driver_date IS NOT NULL
       ORDER BY cd.driver_date ASC
       LIMIT ?
     `,
@@ -407,27 +430,29 @@ export async function getDriverMultipleVersions(limit = 20) {
   const [rows] = await pool.execute(
     `
       SELECT
-        TRIM(device_name) AS deviceName,
-        COUNT(DISTINCT driver_version) AS versionCount,
-        COUNT(DISTINCT ip_entry_id) AS computers,
+        TRIM(cd.device_name) AS deviceName,
+        COUNT(DISTINCT cd.driver_version) AS versionCount,
+        COUNT(DISTINCT cd.ip_entry_id) AS computers,
         GROUP_CONCAT(
-          DISTINCT NULLIF(TRIM(driver_version), '')
-          ORDER BY driver_version
+          DISTINCT NULLIF(TRIM(cd.driver_version), '')
+          ORDER BY cd.driver_version
           SEPARATOR ', '
         ) AS versions,
         MAX(
           COALESCE(
-            NULLIF(TRIM(manufacturer), ''),
-            NULLIF(TRIM(driver_provider_name), '')
+            NULLIF(TRIM(cd.manufacturer), ''),
+            NULLIF(TRIM(cd.driver_provider_name), '')
           )
         ) AS manufacturer
-      FROM computer_drivers
-      WHERE device_name IS NOT NULL
-        AND TRIM(device_name) <> ''
-        AND driver_version IS NOT NULL
-        AND TRIM(driver_version) <> ''
-      GROUP BY TRIM(device_name)
-      HAVING COUNT(DISTINCT driver_version) > 1
+      FROM computer_drivers cd
+      JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+      WHERE ie.entry_type = 'computer'
+        AND cd.device_name IS NOT NULL
+        AND TRIM(cd.device_name) <> ''
+        AND cd.driver_version IS NOT NULL
+        AND TRIM(cd.driver_version) <> ''
+      GROUP BY TRIM(cd.device_name)
+      HAVING COUNT(DISTINCT cd.driver_version) > 1
       ORDER BY versionCount DESC, computers DESC
       LIMIT ?
     `,
@@ -456,6 +481,7 @@ export async function getComputersWithMostDrivers(limit = 10) {
       FROM ip_entries ip
       JOIN computer_drivers cd
         ON cd.ip_entry_id = ip.id
+      WHERE ip.entry_type = 'computer'
       GROUP BY
         ip.id,
         ip.ip,
@@ -487,14 +513,14 @@ export async function getServiceStats() {
       COUNT(*) AS totalServices,
 
       COUNT(
-        DISTINCT NULLIF(TRIM(name), '')
+        DISTINCT NULLIF(TRIM(csv.name), '')
       ) AS uniqueServices,
 
-      COUNT(DISTINCT ip_entry_id) AS computersWithServices,
+      COUNT(DISTINCT csv.ip_entry_id) AS computersWithServices,
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(state)) = 'running'
+          WHEN LOWER(TRIM(csv.state)) = 'running'
           THEN 1
           ELSE 0
         END
@@ -502,7 +528,7 @@ export async function getServiceStats() {
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(state)) = 'stopped'
+          WHEN LOWER(TRIM(csv.state)) = 'stopped'
           THEN 1
           ELSE 0
         END
@@ -510,7 +536,7 @@ export async function getServiceStats() {
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(start_mode)) IN ('auto', 'automatic')
+          WHEN LOWER(TRIM(csv.start_mode)) IN ('auto', 'automatic')
           THEN 1
           ELSE 0
         END
@@ -518,7 +544,7 @@ export async function getServiceStats() {
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(start_mode)) = 'manual'
+          WHEN LOWER(TRIM(csv.start_mode)) = 'manual'
           THEN 1
           ELSE 0
         END
@@ -526,7 +552,7 @@ export async function getServiceStats() {
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(start_mode)) = 'disabled'
+          WHEN LOWER(TRIM(csv.start_mode)) = 'disabled'
           THEN 1
           ELSE 0
         END
@@ -534,17 +560,19 @@ export async function getServiceStats() {
 
       SUM(
         CASE
-          WHEN LOWER(TRIM(start_mode)) IN ('auto', 'automatic')
-           AND LOWER(TRIM(state)) <> 'running'
+          WHEN LOWER(TRIM(csv.start_mode)) IN ('auto', 'automatic')
+           AND LOWER(TRIM(csv.state)) <> 'running'
           THEN 1
           ELSE 0
         END
       ) AS automaticStopped,
 
-      MIN(inventory_date) AS oldestInventoryDate,
-      MAX(inventory_date) AS newestInventoryDate
+      MIN(csv.inventory_date) AS oldestInventoryDate,
+      MAX(csv.inventory_date) AS newestInventoryDate
 
-    FROM computer_services
+    FROM computer_services csv
+    JOIN ip_entries ie ON ie.id = csv.ip_entry_id
+    WHERE ie.entry_type = 'computer'
   `);
 
   const totalServices = Number(row?.totalServices) || 0;
@@ -586,7 +614,8 @@ export async function getAutomaticStoppedServices(limit = 30) {
       FROM computer_services cs
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
-      WHERE LOWER(TRIM(cs.start_mode)) IN ('auto', 'automatic')
+      WHERE ip.entry_type = 'computer'
+        AND LOWER(TRIM(cs.start_mode)) IN ('auto', 'automatic')
         AND LOWER(TRIM(cs.state)) <> 'running'
       ORDER BY
         ip.computer_name ASC,
@@ -629,7 +658,8 @@ export async function getUnusualServicePaths(limit = 30) {
       FROM computer_services cs
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
-      WHERE cs.path_name IS NOT NULL
+      WHERE ip.entry_type = 'computer'
+        AND cs.path_name IS NOT NULL
         AND TRIM(cs.path_name) <> ''
 
         AND LOWER(cs.path_name) NOT LIKE '%\\\\windows\\\\%'
@@ -675,7 +705,8 @@ export async function getRareServices(limit = 20) {
       FROM computer_services cs
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
-      WHERE cs.name IS NOT NULL
+      WHERE ip.entry_type = 'computer'
+        AND cs.name IS NOT NULL
         AND TRIM(cs.name) <> ''
       GROUP BY TRIM(cs.name)
       HAVING COUNT(DISTINCT cs.ip_entry_id) <= 2
@@ -703,25 +734,27 @@ export async function getUpdateStats() {
       COUNT(*) AS totalUpdates,
 
       COUNT(
-        DISTINCT NULLIF(TRIM(hotfix_id), '')
+        DISTINCT NULLIF(TRIM(cu.hotfix_id), '')
       ) AS uniqueHotfixes,
 
-      COUNT(DISTINCT ip_entry_id) AS computersWithUpdates,
+      COUNT(DISTINCT cu.ip_entry_id) AS computersWithUpdates,
 
       SUM(
         CASE
-          WHEN installed_on >= CURDATE() - INTERVAL 30 DAY
+          WHEN cu.installed_on >= CURDATE() - INTERVAL 30 DAY
           THEN 1
           ELSE 0
         END
       ) AS installationsLast30Days,
 
-      MIN(installed_on) AS oldestInstalledOn,
-      MAX(installed_on) AS newestInstalledOn,
-      MIN(inventory_date) AS oldestInventoryDate,
-      MAX(inventory_date) AS newestInventoryDate
+      MIN(cu.installed_on) AS oldestInstalledOn,
+      MAX(cu.installed_on) AS newestInstalledOn,
+      MIN(cu.inventory_date) AS oldestInventoryDate,
+      MAX(cu.inventory_date) AS newestInventoryDate
 
-    FROM computer_updates
+    FROM computer_updates cu
+    JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+    WHERE ie.entry_type = 'computer'
   `);
 
   return {
@@ -775,22 +808,25 @@ export async function getUpdateFreshnessBuckets() {
 
     FROM (
       SELECT
-        ip_entry_id,
-        MAX(installed_on) AS latestUpdate
-      FROM computer_updates
-      WHERE installed_on IS NOT NULL
-      GROUP BY ip_entry_id
+        cu.ip_entry_id,
+        MAX(cu.installed_on) AS latestUpdate
+      FROM computer_updates cu
+      JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+      WHERE ie.entry_type = 'computer'
+        AND cu.installed_on IS NOT NULL
+      GROUP BY cu.ip_entry_id
     ) latest
   `);
 
   const [[missingRow]] = await pool.execute(`
     SELECT COUNT(*) AS withoutData
     FROM ip_entries ip
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM computer_updates cu
-      WHERE cu.ip_entry_id = ip.id
-    )
+    WHERE ip.entry_type = 'computer'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM computer_updates cu
+        WHERE cu.ip_entry_id = ip.id
+      )
   `);
 
   return {
@@ -806,16 +842,18 @@ export async function getTopHotfixes(limit = 10) {
   const [rows] = await pool.execute(
     `
       SELECT
-        TRIM(hotfix_id) AS hotfixId,
-        MAX(description) AS description,
+        TRIM(cu.hotfix_id) AS hotfixId,
+        MAX(cu.description) AS description,
         COUNT(*) AS installations,
-        COUNT(DISTINCT ip_entry_id) AS computers,
-        MIN(installed_on) AS firstInstalledOn,
-        MAX(installed_on) AS lastInstalledOn
-      FROM computer_updates
-      WHERE hotfix_id IS NOT NULL
-        AND TRIM(hotfix_id) <> ''
-      GROUP BY TRIM(hotfix_id)
+        COUNT(DISTINCT cu.ip_entry_id) AS computers,
+        MIN(cu.installed_on) AS firstInstalledOn,
+        MAX(cu.installed_on) AS lastInstalledOn
+      FROM computer_updates cu
+      JOIN ip_entries ie ON ie.id = cu.ip_entry_id
+      WHERE ie.entry_type = 'computer'
+        AND cu.hotfix_id IS NOT NULL
+        AND TRIM(cu.hotfix_id) <> ''
+      GROUP BY TRIM(cu.hotfix_id)
       ORDER BY computers DESC, installations DESC
       LIMIT ?
     `,
@@ -858,6 +896,8 @@ export async function getLatestUpdateByComputer(limit = 200) {
       FROM ip_entries ip
       LEFT JOIN computer_updates cu
         ON cu.ip_entry_id = ip.id
+
+      WHERE ip.entry_type = 'computer'
 
       GROUP BY
         ip.id,
@@ -902,6 +942,7 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
       FROM ip_entries ip
       LEFT JOIN computer_updates cu
         ON cu.ip_entry_id = ip.id
+      WHERE ip.entry_type = 'computer'
       GROUP BY
         ip.id,
         ip.ip,

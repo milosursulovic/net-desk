@@ -57,6 +57,7 @@ onMounted(loadStats)
 
         <p class="text-sm text-slate-500 mt-1">
           Centralni pregled programa, drajvera, servisa i Windows update podataka.
+          Prikazani su samo računari (Aparati su isključeni iz analitike).
         </p>
       </div>
 

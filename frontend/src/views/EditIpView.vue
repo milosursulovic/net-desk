@@ -3,6 +3,16 @@
     <h1 class="text-2xl font-bold mb-6 text-slate-800">Izmeni IP Unos</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
+      <div>
+        <label for="entryType" class="block text-sm font-medium text-slate-700 mb-1">Tip</label>
+        <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
+          <option value="">— Nije određeno —</option>
+          <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
       <div v-for="field in fields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
@@ -53,6 +63,7 @@ import {
   IP_ENTRY_FIELDS,
   validateIpv4,
 } from '@/constants/ipEntryFields.js'
+import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,6 +72,13 @@ const form = ref(createIpEntryForm())
 const fields = IP_ENTRY_FIELDS
 
 const ipError = computed(() => validateIpv4(form.value.ip, { required: true }))
+
+const entryTypeModel = computed({
+  get: () => form.value.entryType ?? '',
+  set: (value) => {
+    form.value.entryType = value || null
+  },
+})
 
 const fetchEntry = async () => {
   try {

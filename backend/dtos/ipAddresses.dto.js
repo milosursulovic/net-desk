@@ -14,6 +14,8 @@ export const ScanSchema = z.object({
   concurrency: z.coerce.number().int().min(1).max(1024).optional().default(64),
 });
 
+export const EntryTypeEnum = z.enum(["computer", "device"]);
+
 export const UpsertIpSchema = z.object({
   ip: z.string().refine(isValidIPv4, "Neispravan IPv4"),
   computerName: z.string().nullable().optional(),
@@ -22,6 +24,7 @@ export const UpsertIpSchema = z.object({
   department: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   remoteScript: z.string().nullable().optional(),
+  entryType: EntryTypeEnum.nullable().optional(),
 });
 
 export const ListSchema = z.object({
@@ -42,4 +45,8 @@ export const ListSchema = z.object({
     .default("ip"),
   sortOrder: z.enum(["asc", "desc"]).optional().default("asc"),
   status: z.enum(["all", "online", "offline"]).optional().default("all"),
+  entryType: z
+    .enum(["all", "computer", "device", "unknown"])
+    .optional()
+    .default("all"),
 });

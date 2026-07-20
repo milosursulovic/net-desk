@@ -90,7 +90,14 @@ export async function findMetadataIdByIpEntryId(ipEntryId) {
 
 export async function listMetadataIds(offset, limit) {
   const [rows] = await pool.execute(
-    `SELECT id FROM computer_metadata ORDER BY id DESC LIMIT ? OFFSET ?`,
+    `
+    SELECT cm.id
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    ORDER BY cm.id DESC
+    LIMIT ? OFFSET ?
+    `,
     [limit, offset],
   );
   return rows || [];
@@ -98,7 +105,12 @@ export async function listMetadataIds(offset, limit) {
 
 export async function countMetadataTotal() {
   const [[{ total }]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM computer_metadata`,
+    `
+    SELECT COUNT(*) AS total
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    `,
   );
   return Number(total) || 0;
 }
@@ -314,14 +326,19 @@ export async function txReplaceNics(conn, metadataId, items) {
 
 export async function statsTotalIpEntries() {
   const [[{ totalIpEntries }]] = await pool.execute(
-    `SELECT COUNT(*) AS totalIpEntries FROM ip_entries`,
+    `SELECT COUNT(*) AS totalIpEntries FROM ip_entries WHERE entry_type = 'computer'`,
   );
   return Number(totalIpEntries) || 0;
 }
 
 export async function statsTotalWithMeta() {
   const [[{ totalWithMeta }]] = await pool.execute(
-    `SELECT COUNT(*) AS totalWithMeta FROM computer_metadata`,
+    `
+    SELECT COUNT(*) AS totalWithMeta
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    `,
   );
   return Number(totalWithMeta) || 0;
 }
@@ -340,6 +357,8 @@ export async function statsRamTotals() {
         )
       ) AS ramTotal
     FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     `,
   );
   return rows || [];
@@ -353,6 +372,9 @@ export async function statsStorageAgg() {
       SUM(CASE WHEN UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%' THEN 1 ELSE 0 END) AS ssdCount,
       SUM(CASE WHEN UPPER(COALESCE(s.media_type,'')) LIKE '%HDD%' THEN 1 ELSE 0 END) AS hddCount
     FROM computer_metadata_storage s
+    JOIN computer_metadata cm ON cm.id = s.metadata_id
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     `,
   );
   return rows?.[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
@@ -360,10 +382,22 @@ export async function statsStorageAgg() {
 
 export async function statsGpuCounts() {
   const [[{ withGpu }]] = await pool.execute(
-    `SELECT COUNT(DISTINCT metadata_id) AS withGpu FROM computer_metadata_gpus`,
+    `
+    SELECT COUNT(DISTINCT g.metadata_id) AS withGpu
+    FROM computer_metadata_gpus g
+    JOIN computer_metadata cm ON cm.id = g.metadata_id
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    `,
   );
   const [[{ avgVramGb }]] = await pool.execute(
-    `SELECT AVG(COALESCE(vram_gb, 0)) AS avgVramGb FROM computer_metadata_gpus`,
+    `
+    SELECT AVG(COALESCE(g.vram_gb, 0)) AS avgVramGb
+    FROM computer_metadata_gpus g
+    JOIN computer_metadata cm ON cm.id = g.metadata_id
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+    `,
   );
   return { withGpu: Number(withGpu) || 0, avgVramGb: Number(avgVramGb) || 0 };
 }
@@ -372,9 +406,11 @@ export async function statsTopOs() {
   const [rows] = await pool.execute(
     `
     SELECT
-      TRIM(CONCAT(COALESCE(os_caption,''), ' ', COALESCE(os_version,''))) AS \`key\`,
+      TRIM(CONCAT(COALESCE(cm.os_caption,''), ' ', COALESCE(cm.os_version,''))) AS \`key\`,
       COUNT(*) AS count
-    FROM computer_metadata
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     GROUP BY \`key\`
     ORDER BY count DESC
     LIMIT 5
@@ -387,9 +423,11 @@ export async function statsTopManufacturers() {
   const [rows] = await pool.execute(
     `
     SELECT
-      COALESCE(NULLIF(system_manufacturer,''), NULLIF(mb_manufacturer,''), NULL) AS \`key\`,
+      COALESCE(NULLIF(cm.system_manufacturer,''), NULLIF(cm.mb_manufacturer,''), NULL) AS \`key\`,
       COUNT(*) AS count
-    FROM computer_metadata
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     GROUP BY \`key\`
     ORDER BY count DESC
     LIMIT 6
@@ -403,11 +441,14 @@ export async function statsTopNicSpeedsRaw() {
     `
     SELECT
       CASE
-        WHEN COALESCE(speed_mbps,0) >= 950 AND COALESCE(speed_mbps,0) <= 1100 THEN 1000
-        ELSE COALESCE(speed_mbps,0)
+        WHEN COALESCE(n.speed_mbps,0) >= 950 AND COALESCE(n.speed_mbps,0) <= 1100 THEN 1000
+        ELSE COALESCE(n.speed_mbps,0)
       END AS speedNorm,
       COUNT(*) AS count
-    FROM computer_metadata_nics
+    FROM computer_metadata_nics n
+    JOIN computer_metadata cm ON cm.id = n.metadata_id
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     GROUP BY speedNorm
     ORDER BY count DESC
     LIMIT 5
@@ -419,10 +460,12 @@ export async function statsTopNicSpeedsRaw() {
 export async function statsRecencyAgg(startDate) {
   const [rows] = await pool.execute(
     `
-    SELECT DATE(collected_at) AS day, COUNT(*) AS count
-    FROM computer_metadata
-    WHERE collected_at >= ?
-    GROUP BY DATE(collected_at)
+    SELECT DATE(cm.collected_at) AS day, COUNT(*) AS count
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+      AND cm.collected_at >= ?
+    GROUP BY DATE(cm.collected_at)
     ORDER BY day ASC
     `,
     [startDate],
@@ -446,6 +489,8 @@ export async function statsLowRamRows() {
         )
       ) AS TotalRAM_GB
     FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
     ORDER BY TotalRAM_GB ASC
     LIMIT 10
     `,
@@ -457,13 +502,15 @@ export async function statsOldOsRows() {
   const [rows] = await pool.execute(
     `
     SELECT
-      COALESCE(computer_name, '—') AS ComputerName,
-      os_caption AS osCaption,
-      os_install_date AS osInstallDate,
-      collected_at AS CollectedAt
-    FROM computer_metadata
-    WHERE os_install_date IS NOT NULL
-    ORDER BY os_install_date ASC
+      COALESCE(cm.computer_name, '—') AS ComputerName,
+      cm.os_caption AS osCaption,
+      cm.os_install_date AS osInstallDate,
+      cm.collected_at AS CollectedAt
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+      AND cm.os_install_date IS NOT NULL
+    ORDER BY cm.os_install_date ASC
     LIMIT 10
     `,
   );
@@ -482,7 +529,9 @@ export async function statsLexarFlagRows() {
       cm.collected_at AS CollectedAt
     FROM computer_metadata_storage s
     JOIN computer_metadata cm ON cm.id = s.metadata_id
-    WHERE s.model LIKE '%lexar%' AND UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%'
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+      AND s.model LIKE '%lexar%' AND UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%'
     ORDER BY ComputerName ASC
     `,
   );

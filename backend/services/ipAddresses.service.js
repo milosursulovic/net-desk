@@ -206,6 +206,7 @@ export async function createService(dto) {
     department: emptyToNull(dto.department),
     description: emptyToNull(dto.description),
     remoteScript: emptyToNull(dto.remoteScript),
+    entryType: dto.entryType ?? null,
   });
 
   return await findIpEntryById(id);
@@ -245,6 +246,10 @@ export async function updateService(id, patch) {
   if (patch.remoteScript !== undefined) {
     sets.push("remote_script = ?");
     params.push(emptyToNull(patch.remoteScript));
+  }
+  if (patch.entryType !== undefined) {
+    sets.push("entry_type = ?");
+    params.push(patch.entryType ?? null);
   }
 
   if (!sets.length) {

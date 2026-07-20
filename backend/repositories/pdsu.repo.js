@@ -18,6 +18,7 @@ export async function computerList(query = {}) {
       created_at,
       updated_at
     FROM ip_entries
+    WHERE entry_type = 'computer'
     ORDER BY computer_name
   `);
 

@@ -17,6 +17,16 @@
         <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
       </div>
 
+      <div>
+        <label for="entryType" class="block text-sm font-medium text-slate-700 mb-1">Tip</label>
+        <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
+          <option value="">— Nije određeno —</option>
+          <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
       <div v-for="field in optionalFields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }}
@@ -62,6 +72,7 @@ import {
   IP_OPTIONAL_FIELDS,
   validateIpv4,
 } from '@/constants/ipEntryFields.js'
+import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,6 +81,13 @@ const form = ref(createIpEntryForm())
 const optionalFields = IP_OPTIONAL_FIELDS
 
 const ipError = computed(() => validateIpv4(form.value.ip))
+
+const entryTypeModel = computed({
+  get: () => form.value.entryType ?? '',
+  set: (value) => {
+    form.value.entryType = value || null
+  },
+})
 
 const handleSubmit = async () => {
   if (ipError.value) {

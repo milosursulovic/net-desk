@@ -55,6 +55,7 @@ export async function findIpEntryById(id) {
       os,
       remote_script AS remoteScript,
       department,
+      entry_type AS entryType,
       metadata_id AS metadata,
       is_online AS isOnline,
       last_checked AS lastChecked,
@@ -82,6 +83,7 @@ export async function findIpEntryByIdLean(id) {
       rdp_app AS rdpApp,
       os,
       department,
+      entry_type AS entryType,
       is_online AS isOnline,
       last_checked AS lastChecked,
       last_status_change AS lastStatusChange
@@ -106,8 +108,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, department, description, remote_script)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, department, description, remote_script, entry_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -118,6 +120,7 @@ export async function insertIpEntry(row) {
       row.department,
       row.description,
       row.remoteScript,
+      row.entryType ?? null,
     ],
   );
   return result.insertId;
@@ -145,6 +148,7 @@ export async function listIpEntries({
   sortBy,
   sortOrder,
   status,
+  entryType,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -154,6 +158,14 @@ export async function listIpEntries({
     whereBaseParts.push(base.where);
     baseParams.push(...base.params);
   }
+
+  if (entryType === "computer" || entryType === "device") {
+    whereBaseParts.push("entry_type = ?");
+    baseParams.push(entryType);
+  } else if (entryType === "unknown") {
+    whereBaseParts.push("entry_type IS NULL");
+  }
+
   const whereBaseSql = whereBaseParts.length
     ? `WHERE ${whereBaseParts.join(" AND ")}`
     : "";
@@ -189,6 +201,7 @@ export async function listIpEntries({
       rdp_app AS rdpApp,
       os,
       department,
+      entry_type AS entryType,
       metadata_id AS metadata,
       is_online AS isOnline,
       last_checked AS lastChecked,
@@ -338,6 +351,7 @@ export async function exportIpEntriesForXlsx(search) {
       rdp_app AS rdpApp,
       os,
       department,
+      entry_type AS entryType,
       remote_script AS remoteScript,
       metadata_id AS metadataId,
       description

@@ -28,6 +28,13 @@
           <option value="offline">Samo offline</option>
         </select>
 
+        <select v-model="entryType" class="app-input w-auto py-2 text-sm" :title="'Filter tipa'">
+          <option value="all">Svi tipovi</option>
+          <option value="computer">Računari</option>
+          <option value="device">Aparati</option>
+          <option value="unknown">Nepoznato</option>
+        </select>
+
         <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
@@ -116,6 +123,18 @@
           </div>
 
           <div class="flex items-center gap-2">
+            <span
+              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
+              :class="
+                entry.entryType
+                  ? 'bg-slate-50 text-slate-700 border-slate-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              "
+              title="Tip unosa"
+            >
+              {{ labelForEntryType(entry.entryType) }}
+            </span>
+
             <span
               v-if="entry.department"
               class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
@@ -913,6 +932,7 @@ import { useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate, fmtRelative, fmtGb, fmtMbps, safe } from '@/utils/format.js'
+import { labelForEntryType } from '@/constants/entryTypes.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
@@ -948,19 +968,25 @@ const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-const { page, limit, search, sortBy, sortOrder, status, nextPage, prevPage } = usePaginatedRoute({
-  fields: {
-    page: { type: 'int', default: 1 },
-    limit: { type: 'int', default: 10 },
-    search: { type: 'string', default: '' },
-    sortBy: { type: 'string', default: 'ip' },
-    sortOrder: { type: 'string', default: 'asc' },
-    status: { type: 'string', default: 'all', oneOf: ['all', 'online', 'offline'] },
-  },
-  resetPageOn: ['sortBy', 'sortOrder', 'status'],
-})
+const { page, limit, search, sortBy, sortOrder, status, entryType, nextPage, prevPage } =
+  usePaginatedRoute({
+    fields: {
+      page: { type: 'int', default: 1 },
+      limit: { type: 'int', default: 10 },
+      search: { type: 'string', default: '' },
+      sortBy: { type: 'string', default: 'ip' },
+      sortOrder: { type: 'string', default: 'asc' },
+      status: { type: 'string', default: 'all', oneOf: ['all', 'online', 'offline'] },
+      entryType: {
+        type: 'string',
+        default: 'all',
+        oneOf: ['all', 'computer', 'device', 'unknown'],
+      },
+    },
+    resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType'],
+  })
 
-watch([page, limit, search, sortBy, sortOrder, status], fetchData, { immediate: true })
+watch([page, limit, search, sortBy, sortOrder, status, entryType], fetchData, { immediate: true })
 
 const entries = ref([])
 const total = ref(0)
@@ -1000,6 +1026,7 @@ async function fetchData() {
     sortBy: sortBy.value,
     sortOrder: sortOrder.value,
     status: status.value,
+    entryType: entryType.value,
   })
 
   try {

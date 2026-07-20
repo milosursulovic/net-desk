@@ -8,6 +8,7 @@ export const IP_ENTRY_DEFAULTS = {
   department: '',
   remoteScript: '',
   description: '',
+  entryType: null,
 }
 
 export const IP_ENTRY_FIELDS = [
