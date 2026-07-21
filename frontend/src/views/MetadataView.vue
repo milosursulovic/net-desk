@@ -27,377 +27,485 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Ukupno mašina"
-        :value="stats.totalWithMeta"
-        :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
-      />
-      <KpiCard
-        title="Bez metapodataka"
-        :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
-        :sub="'od ' + totalIpEntries"
-      />
-      <KpiCard
-        title="Pros. RAM"
-        :value="fmtGb(stats.avgRamGb)"
-        :sub="'med.: ' + fmtGb(stats.medRamGb)"
-      />
-      <KpiCard
-        title="SSD/HDD"
-        :value="stats.ssdCount + ' / ' + stats.hddCount"
-        :sub="fmtTb(stats.totalStorageTb) + ' ukupno'"
-      />
+    <div class="rounded-xl border bg-white p-3 shadow-sm flex items-center gap-2">
+      <input
+        v-model="search"
+        type="text"
+        class="app-input w-full"
+        placeholder="Pretraži računar, korisnika, proizvođača, CPU... u celoj bazi"
+      >
+      <button
+        v-if="search"
+        type="button"
+        class="shrink-0 text-slate-400 hover:text-slate-600"
+        title="Obriši pretragu"
+        @click="search = ''"
+      >
+        ✕
+      </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Jedinstvenih korisnika"
-        :value="stats.uniqueUsers"
-        :sub="'od ' + stats.totalWithMeta + ' mašina'"
-      />
-      <KpiCard
-        title="Pros. # diskova"
-        :value="stats.avgDisks"
-        :sub="'med.: ' + stats.medDisks"
-      />
-      <KpiCard
-        title="Pros. # NIC-ova"
-        :value="stats.avgNics"
-        :sub="'med.: ' + stats.medNics"
-      />
-      <KpiCard
-        title="Medijana starosti OS"
-        :value="stats.medOsAgeDays + ' dana'"
-        :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
-      />
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <KpiCard
-        title="Lexar SSD (red-flag)"
-        :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
-        sub="problematični uređaji"
-      />
-      <KpiCard
-        title="WU servis ne radi"
-        :value="wuStatusDist.stopped"
-        sub="rizik po alerting pravilu"
-      />
-      <KpiCard
-        title="PSU detektovan"
-        :value="fmtPct(stats.psuDetectedPct)"
-        sub="ostalo: nije programski čitljivo"
-      />
-    </div>
-
-    <!-- ================= PREGLED ================= -->
-    <SectionHeader title="Pregled" />
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Pokrivenost metapodacima
-        </h2>
-        <MeterBar
-          :pct="stats.coveragePct"
-          :label="`${stats.totalWithMeta} / ${totalIpEntries} mašina`"
-        />
+    <!-- ================= REZULTATI PRETRAGE (cela baza) ================= -->
+    <template v-if="search.trim()">
+      <div
+        v-if="searchLoading"
+        class="rounded-xl border bg-white p-8 text-center text-slate-500 shadow-sm"
+      >
+        Pretražujem…
       </div>
-
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Svežina prikupljanja
-        </h2>
-        <div class="text-sm text-slate-600 mb-2">
-          Broj mašina po danu (poslednjih 14 dana)
+      <div
+        v-else-if="!searchResults.length"
+        class="rounded-xl border bg-white p-8 text-center text-slate-500 shadow-sm"
+      >
+        Ništa ne odgovara pojmu "{{ search.trim() }}".
+      </div>
+      <div
+        v-else
+        class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto"
+      >
+        <div class="text-sm text-slate-500 mb-3">
+          {{ searchResults.length }}{{ searchResults.length >= 100 ? '+' : '' }} rezultata
         </div>
-        <TrendArea
-          :series="recencySeries"
-          :labels="recencyLabels"
+        <table class="min-w-full text-left text-sm">
+          <thead class="bg-slate-100 text-slate-700">
+            <tr>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                Računar
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                IP
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                Odeljenje
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                Korisnik
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                OS
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                Proizvođač / Model
+              </th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">
+                CPU
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in searchResults"
+              :key="row.ipEntry"
+              class="border-b hover:bg-slate-50 cursor-pointer"
+              @click="router.push(`/ip/${row.ipEntry}/meta`)"
+            >
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-blue-700">
+                {{ row.computerName || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs">
+                {{ row.ip || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.department || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.userName || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.osCaption || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ [row.systemManufacturer, row.systemModel].filter(Boolean).join(' / ') || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.cpuName || '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <!-- ================= NORMALAN DASHBOARD (kad se ne pretražuje) ================= -->
+    <template v-else>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiCard
+          title="Ukupno mašina"
+          :value="stats.totalWithMeta"
+          :sub="fmtPct(stats.coveragePct) + ' pokrivenost'"
+        />
+        <KpiCard
+          title="Bez metapodataka"
+          :value="Math.max(totalIpEntries - stats.totalWithMeta, 0)"
+          :sub="'od ' + totalIpEntries"
+        />
+        <KpiCard
+          title="Pros. RAM"
+          :value="fmtGb(stats.avgRamGb)"
+          :sub="'med.: ' + fmtGb(stats.medRamGb)"
+        />
+        <KpiCard
+          title="SSD/HDD"
+          :value="stats.ssdCount + ' / ' + stats.hddCount"
+          :sub="fmtTb(stats.totalStorageTb) + ' ukupno'"
         />
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-semibold text-slate-800">
-            Distribucija OS verzija (Top 5)
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiCard
+          title="Jedinstvenih korisnika"
+          :value="stats.uniqueUsers"
+          :sub="'od ' + stats.totalWithMeta + ' mašina'"
+        />
+        <KpiCard
+          title="Pros. # diskova"
+          :value="stats.avgDisks"
+          :sub="'med.: ' + stats.medDisks"
+        />
+        <KpiCard
+          title="Pros. # NIC-ova"
+          :value="stats.avgNics"
+          :sub="'med.: ' + stats.medNics"
+        />
+        <KpiCard
+          title="Medijana starosti OS"
+          :value="stats.medOsAgeDays + ' dana'"
+          :sub="'prosek: ' + stats.avgOsAgeDays + ' dana'"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiCard
+          title="Lexar SSD (red-flag)"
+          :value="serverFlags?.lexarCount ?? (displayTables.lexarFlag?.length || 0)"
+          sub="problematični uređaji"
+        />
+        <KpiCard
+          title="WU servis ne radi"
+          :value="wuStatusDist.stopped"
+          sub="rizik po alerting pravilu"
+        />
+        <KpiCard
+          title="PSU detektovan"
+          :value="fmtPct(stats.psuDetectedPct)"
+          sub="ostalo: nije programski čitljivo"
+        />
+      </div>
+
+      <!-- ================= PREGLED ================= -->
+      <SectionHeader title="Pregled" />
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Pokrivenost metapodacima
           </h2>
-          <span class="text-xs text-slate-400" title="Klik na red prikazuje mašine">🔎 klik = detalji</span>
+          <MeterBar
+            :pct="stats.coveragePct"
+            :label="`${stats.totalWithMeta} / ${totalIpEntries} mašina`"
+          />
         </div>
-        <div class="space-y-2.5">
-          <template v-for="row in topOs" :key="row.key">
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Svežina prikupljanja
+          </h2>
+          <div class="text-sm text-slate-600 mb-2">
+            Broj mašina po danu (poslednjih 14 dana)
+          </div>
+          <TrendArea
+            :series="recencySeries"
+            :labels="recencyLabels"
+          />
+        </div>
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-slate-800">
+              Distribucija OS verzija (Top 5)
+            </h2>
+            <span
+              class="text-xs text-slate-400"
+              title="Klik na red prikazuje mašine"
+            >🔎 klik = detalji</span>
+          </div>
+          <div class="space-y-2.5">
+            <template
+              v-for="row in topOs"
+              :key="row.key"
+            >
+              <HBarChart
+                :label="row.key || 'Nepoznato'"
+                :value="row.count"
+                :total="stats.totalWithMeta"
+                clickable
+                @click="toggleOsDrilldown(row.key)"
+              />
+              <div
+                v-if="osDrilldownKey === row.key"
+                class="rounded-lg bg-slate-50 p-2 space-y-1"
+              >
+                <RouterLink
+                  v-for="m in osDrilldownMachines"
+                  :key="m.ipEntry"
+                  :to="`/ip/${m.ipEntry}/meta`"
+                  class="block truncate text-xs text-blue-600 hover:underline px-1 py-0.5"
+                >
+                  {{ m.ComputerName || '—' }}
+                </RouterLink>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= HARDVER ================= -->
+      <SectionHeader title="Hardver" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Proizvođači sistema (Top 6)
+          </h2>
+          <div class="space-y-2.5">
             <HBarChart
-              :label="row.key || 'Nepoznato'"
+              v-for="row in topManufacturers"
+              :key="row.key"
+              :label="row.key || '—'"
               :value="row.count"
               :total="stats.totalWithMeta"
-              clickable
-              @click="toggleOsDrilldown(row.key)"
             />
-            <div
-              v-if="osDrilldownKey === row.key"
-              class="rounded-lg bg-slate-50 p-2 space-y-1"
-            >
-              <RouterLink
-                v-for="m in osDrilldownMachines"
-                :key="m.ipEntry"
-                :to="`/ip/${m.ipEntry}/meta`"
-                class="block truncate text-xs text-blue-600 hover:underline px-1 py-0.5"
-              >
-                {{ m.ComputerName || '—' }}
-              </RouterLink>
-            </div>
-          </template>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ================= HARDVER ================= -->
-    <SectionHeader title="Hardver" />
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Proizvođači sistema (Top 6)
-        </h2>
-        <div class="space-y-2.5">
-          <HBarChart
-            v-for="row in topManufacturers"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            GPU prisutnost
+          </h2>
+          <SplitBar
+            :segments="[
+              { label: 'Sa dedikovanom GPU', value: stats.withGpu, colorClass: 'bg-blue-600' },
+              { label: 'Bez GPU / iGPU samo', value: stats.withoutGpu, colorClass: 'bg-slate-300' },
+            ]"
           />
+          <div class="grid grid-cols-2 gap-3 mt-3">
+            <InfoPill
+              label="Prosečan VRAM"
+              :value="fmtGb(stats.avgVramGb)"
+            />
+            <InfoPill
+              label="Top GPU (model)"
+              :value="topGpuName || '—'"
+            />
+          </div>
         </div>
-      </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          GPU prisutnost
-        </h2>
-        <SplitBar
-          :segments="[
-            { label: 'Sa dedikovanom GPU', value: stats.withGpu, colorClass: 'bg-blue-600' },
-            { label: 'Bez GPU / iGPU samo', value: stats.withoutGpu, colorClass: 'bg-slate-300' },
-          ]"
-        />
-        <div class="grid grid-cols-2 gap-3 mt-3">
-          <InfoPill
-            label="Prosečan VRAM"
-            :value="fmtGb(stats.avgVramGb)"
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            RAM raspodela
+          </h2>
+          <SplitBar
+            :segments="[
+              { label: '≤ 8 GB', value: bucketRam.le8, colorClass: 'bg-blue-200' },
+              { label: '16 GB', value: bucketRam.eq16, colorClass: 'bg-blue-500' },
+              { label: '> 16 GB', value: bucketRam.gt16, colorClass: 'bg-blue-800' },
+            ]"
           />
-          <InfoPill
-            label="Top GPU (model)"
-            :value="topGpuName || '—'"
-          />
+          <div class="grid grid-cols-1 gap-3 mt-3">
+            <InfoPill
+              label="Max RAM"
+              :value="fmtGb(stats.maxRamGb)"
+            />
+          </div>
         </div>
-      </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          RAM raspodela
-        </h2>
-        <SplitBar
-          :segments="[
-            { label: '≤ 8 GB', value: bucketRam.le8, colorClass: 'bg-blue-200' },
-            { label: '16 GB', value: bucketRam.eq16, colorClass: 'bg-blue-500' },
-            { label: '> 16 GB', value: bucketRam.gt16, colorClass: 'bg-blue-800' },
-          ]"
-        />
-        <div class="grid grid-cols-1 gap-3 mt-3">
-          <InfoPill
-            label="Max RAM"
-            :value="fmtGb(stats.maxRamGb)"
-          />
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Brzine mreže (Top 5)
+          </h2>
+          <div class="space-y-2.5">
+            <HBarChart
+              v-for="row in topNicSpeeds"
+              :key="row.key"
+              :label="fmtMbps(Number(row.key))"
+              :value="row.count"
+              :total="stats.totalWithMeta"
+            />
+          </div>
         </div>
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Brzine mreže (Top 5)
-        </h2>
-        <div class="space-y-2.5">
-          <HBarChart
-            v-for="row in topNicSpeeds"
-            :key="row.key"
-            :label="fmtMbps(Number(row.key))"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
+      <!-- ================= PROCESOR I SKLADIŠTE ================= -->
+      <SectionHeader title="Procesor i skladište" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            CPU modeli (Top 5)
+          </h2>
+          <div class="space-y-2.5">
+            <HBarChart
+              v-for="row in topCpuModels"
+              :key="row.key"
+              :label="row.key || '—'"
+              :value="row.count"
+              :total="stats.totalWithMeta"
+            />
+          </div>
+          <div class="grid grid-cols-3 gap-3 mt-3">
+            <InfoPill
+              label="Pros. jezgra"
+              :value="stats.avgCpuCores"
+            />
+            <InfoPill
+              label="Pros. niti"
+              :value="stats.avgCpuThreads"
+            />
+            <InfoPill
+              label="Pros. takt"
+              :value="stats.avgCpuClockGHz + ' GHz'"
+            />
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ================= PROCESOR I SKLADIŠTE ================= -->
-    <SectionHeader title="Procesor i skladište" />
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          CPU modeli (Top 5)
-        </h2>
-        <div class="space-y-2.5">
-          <HBarChart
-            v-for="row in topCpuModels"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
-          />
-        </div>
-        <div class="grid grid-cols-3 gap-3 mt-3">
-          <InfoPill
-            label="Pros. jezgra"
-            :value="stats.avgCpuCores"
-          />
-          <InfoPill
-            label="Pros. niti"
-            :value="stats.avgCpuThreads"
-          />
-          <InfoPill
-            label="Pros. takt"
-            :value="stats.avgCpuClockGHz + ' GHz'"
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Broj diskova po mašini
+          </h2>
+          <SplitBar
+            :segments="[
+              { label: '1 disk', value: diskBuckets.eq1, colorClass: 'bg-blue-200' },
+              { label: '2 diska', value: diskBuckets.eq2, colorClass: 'bg-blue-500' },
+              { label: '3+ diska', value: diskBuckets.ge3, colorClass: 'bg-blue-800' },
+            ]"
           />
         </div>
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Broj diskova po mašini
-        </h2>
-        <SplitBar
-          :segments="[
-            { label: '1 disk', value: diskBuckets.eq1, colorClass: 'bg-blue-200' },
-            { label: '2 diska', value: diskBuckets.eq2, colorClass: 'bg-blue-500' },
-            { label: '3+ diska', value: diskBuckets.ge3, colorClass: 'bg-blue-800' },
-          ]"
-        />
-      </div>
-    </div>
+      <!-- ================= MATIČNA PLOČA / BIOS / WINDOWS UPDATE ================= -->
+      <SectionHeader title="Matična ploča, BIOS, Windows Update" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Proizvođači matične ploče (Top 5)
+          </h2>
+          <div class="space-y-2.5">
+            <HBarChart
+              v-for="row in topMotherboards"
+              :key="row.key"
+              :label="row.key || '—'"
+              :value="row.count"
+              :total="stats.totalWithMeta"
+            />
+          </div>
+        </div>
 
-    <!-- ================= MATIČNA PLOČA / BIOS / WINDOWS UPDATE ================= -->
-    <SectionHeader title="Matična ploča, BIOS, Windows Update" />
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Proizvođači matične ploče (Top 5)
-        </h2>
-        <div class="space-y-2.5">
-          <HBarChart
-            v-for="row in topMotherboards"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
+        <div class="rounded-xl border bg-white p-4 shadow-sm">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            BIOS proizvođači (Top 5)
+          </h2>
+          <div class="space-y-2.5">
+            <HBarChart
+              v-for="row in topBiosVendors"
+              :key="row.key"
+              :label="row.key || '—'"
+              :value="row.count"
+              :total="stats.totalWithMeta"
+            />
+          </div>
+        </div>
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Windows Update servis (wuauserv)
+          </h2>
+          <SplitBar
+            :segments="[
+              { label: 'Running', value: wuStatusDist.running, colorClass: 'bg-emerald-500' },
+              { label: 'Stopped', value: wuStatusDist.stopped, colorClass: 'bg-rose-500' },
+              { label: 'Nepoznato', value: wuStatusDist.unknown, colorClass: 'bg-slate-300' },
+            ]"
+          />
+          <p class="text-xs text-slate-500 mt-2">
+            "Stopped" mašine su rizik — pokriveno postojećim alerting pravilom (WU servis nije "Running").
+          </p>
+        </div>
+      </div>
+
+      <!-- ================= TOP LISTE ================= -->
+      <SectionHeader title="Top liste" />
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Najmanje RAM-a (Top 10)
+          </h2>
+          <DataTable
+            :rows="tables.lowRam"
+            :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']"
+            link-col="ipEntry"
+          />
+        </div>
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Najstarija instalacija OS-a (Top 10)
+          </h2>
+          <DataTable
+            :rows="tables.oldOs"
+            :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
+            link-col="ipEntry"
+          />
+        </div>
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
+          <h2 class="font-semibold text-slate-800 mb-3">
+            Najveći ukupni storage (Top 10)
+          </h2>
+          <DataTable
+            :rows="tables.topStorage"
+            :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
+            link-col="ipEntry"
           />
         </div>
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          BIOS proizvođači (Top 5)
-        </h2>
-        <div class="space-y-2.5">
-          <HBarChart
-            v-for="row in topBiosVendors"
-            :key="row.key"
-            :label="row.key || '—'"
-            :value="row.count"
-            :total="stats.totalWithMeta"
+      <!-- ================= RED-FLAGS ================= -->
+      <SectionHeader title="Red-flags" />
+      <div class="grid grid-cols-1">
+        <div class="rounded-xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-red-700 mb-1">
+            🚩 Lexar SSD detektovani
+          </h2>
+          <p class="text-sm text-slate-600 mb-3">
+            Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
+          </p>
+
+          <DataTable
+            :rows="(displayTables.lexarFlag || []).map((r) => ({
+              ComputerName: r.ComputerName,
+              Storage: {
+                Model: r.Storage?.Model ?? r['Storage.Model'],
+                Serial: r.Storage?.Serial ?? r['Storage.Serial'],
+                SizeGB: r.Storage?.SizeGB ?? r['Storage.SizeGB'],
+              },
+              CollectedAt: r.CollectedAt,
+              ipEntry: r.ipEntry,
+            }))
+            "
+            :cols="[
+              'ComputerName',
+              'Storage/Model',
+              'Storage/Serial',
+              'Storage/SizeGB',
+              'CollectedAt',
+            ]"
+            link-col="ipEntry"
           />
         </div>
       </div>
-
-      <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Windows Update servis (wuauserv)
-        </h2>
-        <SplitBar
-          :segments="[
-            { label: 'Running', value: wuStatusDist.running, colorClass: 'bg-emerald-500' },
-            { label: 'Stopped', value: wuStatusDist.stopped, colorClass: 'bg-rose-500' },
-            { label: 'Nepoznato', value: wuStatusDist.unknown, colorClass: 'bg-slate-300' },
-          ]"
-        />
-        <p class="text-xs text-slate-500 mt-2">
-          "Stopped" mašine su rizik — pokriveno postojećim alerting pravilom (WU servis nije "Running").
-        </p>
-      </div>
-    </div>
-
-    <!-- ================= TOP LISTE ================= -->
-    <SectionHeader title="Top liste" />
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Najmanje RAM-a (Top 10)
-        </h2>
-        <DataTable
-          :rows="tables.lowRam"
-          :cols="['ComputerName', 'TotalRAM_GB', 'OS/Caption', 'CollectedAt']"
-          link-col="ipEntry"
-        />
-      </div>
-
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Najstarija instalacija OS-a (Top 10)
-        </h2>
-        <DataTable
-          :rows="tables.oldOs"
-          :cols="['ComputerName', 'OS/Caption', 'OS/InstallDate', 'CollectedAt']"
-          link-col="ipEntry"
-        />
-      </div>
-
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
-        <h2 class="font-semibold text-slate-800 mb-3">
-          Najveći ukupni storage (Top 10)
-        </h2>
-        <DataTable
-          :rows="tables.topStorage"
-          :cols="['ComputerName', 'DisksCount', 'Storage_Total_GB', 'CollectedAt']"
-          link-col="ipEntry"
-        />
-      </div>
-    </div>
-
-    <!-- ================= RED-FLAGS ================= -->
-    <SectionHeader title="Red-flags" />
-    <div class="grid grid-cols-1">
-      <div class="rounded-xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
-        <h2 class="font-semibold text-red-700 mb-1">
-          🚩 Lexar SSD detektovani
-        </h2>
-        <p class="text-sm text-slate-600 mb-3">
-          Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
-        </p>
-
-        <DataTable
-          :rows="(displayTables.lexarFlag || []).map((r) => ({
-            ComputerName: r.ComputerName,
-            Storage: {
-              Model: r.Storage?.Model ?? r['Storage.Model'],
-              Serial: r.Storage?.Serial ?? r['Storage.Serial'],
-              SizeGB: r.Storage?.SizeGB ?? r['Storage.SizeGB'],
-            },
-            CollectedAt: r.CollectedAt,
-            ipEntry: r.ipEntry,
-          }))
-          "
-          :cols="[
-            'ComputerName',
-            'Storage/Model',
-            'Storage/Serial',
-            'Storage/SizeGB',
-            'CollectedAt',
-          ]"
-          link-col="ipEntry"
-        />
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, h, defineComponent, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, h, defineComponent, onBeforeUnmount } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtGb, fmtTb, fmtPct, fmtMbps } from '@/utils/format.js'
@@ -410,8 +518,11 @@ import {
   cpuClockGHzOf,
 } from '@/utils/metadataHelpers.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
+import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import AppButton from '@/components/AppButton.vue'
 import * as XLSX from 'xlsx'
+
+const router = useRouter()
 
 const SectionHeader = defineComponent({
   name: 'SectionHeader',
@@ -692,6 +803,49 @@ const serverFlags = ref(null)
 const displayTables = computed(() => serverTables.value || tables.value)
 const { getSignal, abort } = useAbortableFetch()
 
+// Pretraga preko CELE baze (isti obrazac kao PDSUAnalyticsView) - namerno
+// odvojena od klijentski učitanog `meta` (koji je samo trenutna stranica po
+// 200) i gađa /api/protected/metadata/search, koje pretražuje direktno u
+// bazi bez obzira šta je trenutno učitano u browseru.
+const { search } = usePaginatedRoute({
+  fields: { search: { type: 'string', default: '', omitIfEmpty: true } },
+  useReplace: true,
+})
+const searchResults = ref([])
+const searchLoading = ref(false)
+const { getSignal: getSearchSignal } = useAbortableFetch()
+let searchTimer = null
+
+async function runSearch() {
+  const query = search.value.trim()
+  if (!query) {
+    searchResults.value = []
+    return
+  }
+  searchLoading.value = true
+  try {
+    const params = new URLSearchParams({ q: query })
+    const res = await fetchWithAuth(`/api/protected/metadata/search?${params.toString()}`, {
+      signal: getSearchSignal(),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    searchResults.value = Array.isArray(data.items) ? data.items : []
+  } catch (err) {
+    if (err?.name !== 'AbortError') {
+      console.error('Metadata pretraga greška:', err)
+      searchResults.value = []
+    }
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(runSearch, 300)
+}, { immediate: true })
+
 // Inline drill-down (not a HomeView navigation): ip_entries.os (what
 // HomeView's os filter matches exactly against) and computer_metadata's
 // OS.Caption/Version (what this chart groups by) are two independently
@@ -765,7 +919,10 @@ async function refreshAll() {
 
 onMounted(refreshAll)
 
-onBeforeUnmount(abort)
+onBeforeUnmount(() => {
+  abort()
+  clearTimeout(searchTimer)
+})
 
 const cpuDist = computed(() => groupCount(meta.value.map((x) => cpuNameOf(x)).filter(Boolean)))
 const topCpuModels = computed(() => cpuDist.value.slice(0, 5))

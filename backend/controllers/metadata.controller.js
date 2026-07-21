@@ -3,6 +3,7 @@ import { parseBool } from "../utils/queryCoercion.js";
 import {
   listMetadataPage,
   statsService,
+  searchMetadataService,
 } from "../services/metadata.service.js";
 
 export async function listMetadataController(req, res) {
@@ -10,6 +11,12 @@ export async function listMetadataController(req, res) {
   const limit = clamp(toInt(req.query.limit, 50), 1, 1000);
 
   const out = await listMetadataPage({ page, limit });
+  res.json(out);
+}
+
+export async function searchMetadataController(req, res) {
+  const term = String(req.query.q || "");
+  const out = await searchMetadataService(term);
   res.json(out);
 }
 

@@ -12,6 +12,7 @@ import {
   findMetadataIdByIpEntryId,
   listMetadataIds,
   countMetadataTotal,
+  searchMetadataRows,
   txGetExistingMetaId,
   txInsertMeta,
   txUpdateMeta,
@@ -115,6 +116,14 @@ export async function listMetadataPage({ page, limit }) {
   }
 
   return { items, total, totalPages, page: safePage, limit };
+}
+
+export async function searchMetadataService(term) {
+  const query = String(term ?? "").trim();
+  if (!query) return { items: [] };
+
+  const items = await searchMetadataRows(query, 100);
+  return { items };
 }
 
 export async function upsertMetadataForIpEntry(ipEntryId, body) {

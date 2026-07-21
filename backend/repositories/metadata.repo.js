@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
 
 export async function loadMetadataBaseById(metadataId) {
   const [[meta]] = await pool.execute(
@@ -101,6 +102,53 @@ export async function listMetadataIds(offset, limit) {
     LIMIT ? OFFSET ?
     `,
     [limit, offset],
+  );
+  return rows || [];
+}
+
+// Pretraga preko cele baze (ne samo trenutno učitane strane) - isti obrazac
+// kao pdsuAnalytics.repo.js searchSoftwareRows/searchDriverRows/itd: LIKE
+// preko relevantnih kolona, JOIN sa ip_entries za računar/IP/odeljenje, hard
+// LIMIT da jedan preširok upit ne vrati celu bazu.
+export async function searchMetadataRows(term, limit = 100) {
+  const { where, params } = buildLikeSearch(
+    [
+      "ie.computer_name",
+      "ie.ip",
+      "cm.user_name",
+      "cm.os_caption",
+      "cm.system_manufacturer",
+      "cm.system_model",
+      "cm.cpu_name",
+      "cm.mb_manufacturer",
+      "cm.mb_product",
+      "cm.bios_vendor",
+    ],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.id AS ipEntry,
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cm.user_name AS userName,
+      cm.os_caption AS osCaption,
+      cm.os_version AS osVersion,
+      cm.system_manufacturer AS systemManufacturer,
+      cm.system_model AS systemModel,
+      cm.cpu_name AS cpuName,
+      cm.collected_at AS collectedAt
+    FROM computer_metadata cm
+    JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    WHERE ie.entry_type = 'computer' AND ${where}
+    ORDER BY ie.computer_name ASC
+    LIMIT ?
+    `,
+    [...params, limit],
   );
   return rows || [];
 }
