@@ -17,6 +17,7 @@ import {
 import { getUptimeHistory } from "../services/ipStatusHistory.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
+import { badRequest } from "../utils/httpError.js";
 
 export async function scanPortsController(req, res) {
   const q = ScanSchema.safeParse(req.query);
@@ -27,10 +28,11 @@ export async function scanPortsController(req, res) {
 }
 
 export async function duplicatesController(req, res) {
-  const parsed = ListSchema.parse(req.query);
+  const parsed = ListSchema.safeParse(req.query);
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
   const out = await duplicatesService({
-    search: parsed.search,
-    status: parsed.status,
+    search: parsed.data.search,
+    status: parsed.data.status,
   });
   res.json(out);
 }
@@ -67,8 +69,9 @@ export async function filterOptionsController(req, res) {
 }
 
 export async function listController(req, res) {
-  const parsed = ListSchema.parse(req.query);
-  const out = await listService(parsed);
+  const parsed = ListSchema.safeParse(req.query);
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+  const out = await listService(parsed.data);
   res.json(out);
 }
 
@@ -85,15 +88,17 @@ export async function uptimeHistoryController(req, res) {
 }
 
 export async function createController(req, res) {
-  const parsed = UpsertIpSchema.parse(req.body);
-  const created = await createService(parsed);
+  const parsed = UpsertIpSchema.safeParse(req.body);
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+  const created = await createService(parsed.data);
   res.status(201).json(created);
 }
 
 export async function updateController(req, res) {
   const id = parseIdParam(req);
-  const parsed = UpsertIpSchema.partial().parse(req.body);
-  const updated = await updateService(id, parsed);
+  const parsed = UpsertIpSchema.partial().safeParse(req.body);
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+  const updated = await updateService(id, parsed.data);
   res.json(updated);
 }
 
