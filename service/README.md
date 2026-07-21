@@ -11,16 +11,66 @@ Sve faze iz specifikacije su implementirane: enrollment, heartbeat, monitoring,
 inventory sync (hardver/softver/servisi/Windows Update/štampači preko WMI i
 registry-ja), job polling/izvršavanje (restart/shutdown/logoff/servisi/
 PowerShell/brisanje temp fajlova), event log sync, i auto-update (provera
-verzije, preuzimanje, SHA-256 verifikacija, zamena preko odvojenog Updater
-procesa, rollback pri neuspehu).
+verzije, preuzimanje, SHA-256 + digitalni potpis verifikacija, zamena preko
+odvojenog Updater procesa, rollback pri neuspehu).
 
 **Namerno neurađeno** (videti komentare u kodu za detalje):
-- Verifikacija digitalnog potpisa paketa — spec ovo pominje kao opciono
-  ("mogućnost"); zahtevalo bi code-signing sertifikat/PKI koji ne postoji u
-  ovom projektu. SHA-256 integritet se proverava.
 - Instalacija sertifikata i odobrenih paketa kao job komande — zahteva poseban
   katalog odobravanja koji nije izgrađen.
-- Potpisivanje komandi (11.12).
+- Potpisivanje komandi (11.12) — trenutno se potpisuju samo update paketi, ne
+  i pojedinačne job komande.
+
+## Digitalni potpis update paketa
+
+Pošto je organizacija već distribuirala internu root CA u trusted root store
+svih upravljanih računara (koristi se za HTTPS ka Netdesk serveru), verifikacija
+potpisa je zasnovana na toj istoj CA — nema potrebe za posebnom distribucijom
+javnog ključa agentu.
+
+**Podešavanje na serveru** (`backend/.env`):
+
+```
+AGENT_SIGNING_CERT_PATH=putanja/do/code-signing-sertifikata.pem
+AGENT_SIGNING_KEY_PATH=putanja/do/privatnog-kljuca.pem
+```
+
+Sertifikat mora biti **izdat od iste interne CA** koja je već u trusted root
+store-u računara (ne mora biti isti sertifikat koji se koristi za HTTPS -
+poželjno je poseban code-signing sertifikat, ali mora deliti istu CA
+lanac-do-root). Ako ova dva env-a nisu podešena, release paketi se i dalje
+otpremaju normalno, samo bez potpisa (agent tada proveri samo SHA-256, kao
+i pre) — potpisivanje je opciono, u skladu sa spec formulacijom "mogućnost".
+
+**Kako radi:**
+1. Server pri upload-u potpisuje sirove bajtove paketa (`RSA-SHA256`,
+   `utils/agentSigning.js`) i čuva potpis u `agent_releases.signature`.
+2. `GET /api/agents/update` vraća i `signature` i `signatureCertificatePem`
+   (javni sertifikat, ne privatni ključ).
+3. Agent (`UpdateManager.VerifySignatureIfPresent`) posle SHA-256 provere:
+   - gradi `X509Chain` od primljenog sertifikata i proverava da vodi do
+     trusted root (već prisutne na mašini) - `X509RevocationMode.NoCheck`
+     jer organizacija verovatno nema CRL/OCSP za internu CA,
+   - verifikuje RSA potpis nad preuzetim fajlom.
+   - Ako sertifikat/paket nema potpis (server nema podešeno potpisivanje),
+     provera se preskače i update ide dalje samo sa SHA-256 potvrdom.
+   - Ako je potpis poslat ali provera (lanac ili sam potpis) ne uspe, update
+     se pouzdano odbacuje.
+
+**Napomena o .NET Framework 4.5.2 kompatibilnosti:** verifikacija koristi
+stariji `RSACryptoServiceProvider.VerifyData(byte[], string, byte[])` API, NE
+`RSA.VerifyData(..., HashAlgorithmName, RSASignaturePadding)` ni
+`X509Certificate2.GetRSAPublicKey()` - oba su dodata tek u .NET Framework 4.6
+i ne postoje na 4.5.2 (Windows 7 cilj).
+
+**Testirano u ovoj sesiji** (van stvarnog Windows/Visual Studio okruženja):
+generisan test self-signed sertifikat, potpisan test paket preko iste
+Node.js logike koja se koristi u `agentSigning.js`, i verifikovan preko
+identičnog C# koda kao `UpdateManager` (uključujući ceo HTTP round-trip -
+pravi upload → pravi `/api/agents/update` odgovor → pravi download → uspešna
+verifikacija, plus potvrda da namerno izmenjen/oštećen sadržaj ispravno
+propada proveru). **X509Chain provera do stvarne trusted root CA nije
+testirana** - to zahteva pravu Windows mašinu sa vašom internom CA već
+instaliranom, što ovo sandboxovano okruženje nema.
 
 ## Struktura
 

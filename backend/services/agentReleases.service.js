@@ -16,6 +16,7 @@ import { updateAgentVersion } from "../repositories/agents.repo.js";
 import { compareVersions, isNewerVersion } from "../utils/semver.js";
 import { paginate } from "../utils/pagination.js";
 import { badRequest, notFound } from "../utils/httpError.js";
+import { signBuffer, getSigningCertificatePem } from "../utils/agentSigning.js";
 
 const RELEASES_DIR = path.join(process.cwd(), "uploads", "agent-releases");
 
@@ -40,12 +41,15 @@ export async function uploadReleaseService(
 
   fs.writeFileSync(filePath, buffer);
 
+  const signature = signBuffer(buffer);
+
   const id = await insertRelease({
     version,
     fileName: originalName || storedFileName,
     filePath: storedFileName,
     fileSize: buffer.length,
     sha256,
+    signature,
     releaseNotes: releaseNotes ?? null,
     deploymentGroup,
     createdByUserId,
@@ -89,6 +93,7 @@ export async function checkForUpdateService(agent) {
     version: best.version,
     sha256: best.sha256,
     signature: best.signature,
+    signatureCertificatePem: best.signature ? getSigningCertificatePem() : null,
     releaseNotes: best.releaseNotes,
     downloadUrl: `/api/agents/update/download/${best.id}`,
   };

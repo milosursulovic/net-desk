@@ -21,6 +21,7 @@ export async function insertRelease({
   filePath,
   fileSize,
   sha256,
+  signature,
   releaseNotes,
   deploymentGroup,
   createdByUserId,
@@ -28,8 +29,8 @@ export async function insertRelease({
   const [result] = await pool.execute(
     `
     INSERT INTO agent_releases
-      (version, file_name, file_path, file_size, sha256, release_notes, deployment_group, is_active, created_by_user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+      (version, file_name, file_path, file_size, sha256, signature, release_notes, deployment_group, is_active, created_by_user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     `,
     [
       version,
@@ -37,6 +38,7 @@ export async function insertRelease({
       filePath,
       fileSize,
       sha256,
+      signature ?? null,
       releaseNotes,
       deploymentGroup,
       createdByUserId,

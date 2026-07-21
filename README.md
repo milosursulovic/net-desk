@@ -105,6 +105,8 @@ npm run dev
 | `DB_USER`, `DB_PASS`     | MySQL kredencijali                         |
 | `DB_NAME`                | naziv baze                                 |
 | `JWT_SECRET`             | tajni ključ za potpisivanje JWT tokena     |
+| `AGENT_ENROLL_TOKEN`     | deljeni tajni token za registraciju Netdesk Agent-a (`service/`) |
+| `AGENT_SIGNING_CERT_PATH`, `AGENT_SIGNING_KEY_PATH` | opciono - PEM sertifikat/ključ za potpisivanje agent release paketa (videti `service/README.md`) |
 | `SSL_CERT`, `SSL_KEY`    | putanje do SSL sertifikata za HTTPS        |
 | `CORS_ALLOWED_ORIGINS`   | dozvoljeni origin-i, odvojeni zarezom      |
 

@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using NetdeskAgent.Common.Configuration;
 using NetdeskAgent.Common.Http;
@@ -12,15 +14,18 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Update
 {
     /// <summary>
-    /// Orkestrira proveru/preuzimanje/SHA-256 verifikaciju nove verzije i
-    /// pokretanje Netdesk.Agent.Updater.exe (spec sekcija 7). Sama zamena
-    /// fajlova i restart servisa NIJE ovde - to radi Updater kao odvojen
-    /// proces, jer servis ne sme (i ne može, dok je fajl u upotrebi) da menja
-    /// sopstveni izvršni fajl dok je pokrenut.
+    /// Orkestrira proveru/preuzimanje/SHA-256 verifikaciju/digitalni potpis
+    /// nove verzije i pokretanje Netdesk.Agent.Updater.exe (spec sekcija 7).
+    /// Sama zamena fajlova i restart servisa NIJE ovde - to radi Updater kao
+    /// odvojen proces, jer servis ne sme (i ne može, dok je fajl u upotrebi)
+    /// da menja sopstveni izvršni fajl dok je pokrenut.
     ///
-    /// Napomena o bezbednosti: SHA-256 integritet se proverava. Digitalni
-    /// potpis paketa (spec pominje kao "mogućnost") NIJE implementiran - to bi
-    /// zahtevalo code-signing sertifikat/PKI koji van ovog projekta ne postoji.
+    /// Bezbednost: SHA-256 integritet se uvek proverava. Digitalni potpis
+    /// (spec: "mogućnost") se proverava AKO ga server pošalje - organizacija
+    /// već ima internu CA distribuiranu u trusted root store svih upravljanih
+    /// računara (koristi se već za HTTPS ka Netdesk serveru), pa se lanac
+    /// potpisnog sertifikata proverava preko X509Chain protiv te iste trusted
+    /// root - nema potrebe za posebnom distribucijom javnog ključa agentu.
     /// </summary>
     public static class UpdateManager
     {
@@ -59,6 +64,12 @@ namespace NetdeskAgent.Common.Update
                 {
                     FileLogger.Error(
                         "SHA-256 provera paketa neuspešna (mogući problem integriteta) - update se odbacuje.", null);
+                    return;
+                }
+
+                if (!VerifySignatureIfPresent(packagePath, check))
+                {
+                    // VerifySignatureIfPresent je već ulogovao tačan razlog.
                     return;
                 }
 
@@ -154,6 +165,115 @@ namespace NetdeskAgent.Common.Update
                 var hex = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                 return string.Equals(hex, expectedHex.ToLowerInvariant(), StringComparison.Ordinal);
             }
+        }
+
+        /// <summary>
+        /// Vraća true ako je potpis validan ILI ako server nije poslao potpis
+        /// za ovaj release (spec ovo tretira kao "mogućnost", ne obavezu -
+        /// nastavljamo samo sa već potvrđenim SHA-256 integritetom). Vraća
+        /// false SAMO kad je potpis poslat, a verifikacija (lanac ili sam
+        /// potpis) ne uspe - tada se update pouzdano odbacuje.
+        /// </summary>
+        private static bool VerifySignatureIfPresent(string filePath, UpdateCheckResponse check)
+        {
+            if (string.IsNullOrEmpty(check.Signature) || string.IsNullOrEmpty(check.SignatureCertificatePem))
+            {
+                FileLogger.Warn(
+                    "Release nema digitalni potpis (server nema podešeno potpisivanje) - preskačem proveru potpisa.");
+                return true;
+            }
+
+            try
+            {
+                var certBytes = PemToDer(check.SignatureCertificatePem);
+
+                using (var cert = new X509Certificate2(certBytes))
+                {
+                    if (!VerifyChainToTrustedRoot(cert))
+                    {
+                        return false;
+                    }
+
+                    // Napomena o .NET Framework 4.5.2 kompatibilnosti: NE
+                    // koristimo X509Certificate2.GetRSAPublicKey() ni
+                    // RSA.VerifyData(byte[], byte[], HashAlgorithmName,
+                    // RSASignaturePadding) - obe su dodate tek u .NET 4.6.
+                    // Koristimo stariji RSACryptoServiceProvider API koji
+                    // postoji od .NET 1.0.
+                    var rsa = cert.PublicKey.Key as RSACryptoServiceProvider;
+                    if (rsa == null)
+                    {
+                        FileLogger.Error("Sertifikat za potpis paketa nema podržan RSA javni ključ.", null);
+                        return false;
+                    }
+
+                    var fileBytes = File.ReadAllBytes(filePath);
+                    var signatureBytes = Convert.FromBase64String(check.Signature);
+
+                    if (!rsa.VerifyData(fileBytes, "SHA256", signatureBytes))
+                    {
+                        FileLogger.Error(
+                            "Digitalni potpis paketa se ne poklapa sa sadržajem - update se odbacuje.", null);
+                        return false;
+                    }
+                }
+
+                FileLogger.Info("Digitalni potpis paketa uspešno verifikovan.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Verifikacija digitalnog potpisa paketa neuspešna - update se odbacuje.", ex);
+                return false;
+            }
+        }
+
+        private static bool VerifyChainToTrustedRoot(X509Certificate2 cert)
+        {
+            using (var chain = new X509Chain())
+            {
+                // NoCheck jer organizacija najverovatnije nema CRL/OCSP
+                // infrastrukturu za internu CA - sama provera lanca do
+                // trusted root ostaje i dalje smislena zaštita.
+                chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+                chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+
+                if (chain.Build(cert))
+                {
+                    return true;
+                }
+
+                var reasons = new List<string>();
+                foreach (var status in chain.ChainStatus)
+                {
+                    reasons.Add(status.Status + ": " + status.StatusInformation);
+                }
+
+                FileLogger.Error(
+                    "Sertifikat za potpis paketa ne vodi do trusted root CA: " + string.Join("; ", reasons), null);
+                return false;
+            }
+        }
+
+        private static byte[] PemToDer(string pem)
+        {
+            const string header = "-----BEGIN CERTIFICATE-----";
+            const string footer = "-----END CERTIFICATE-----";
+
+            var start = pem.IndexOf(header, StringComparison.Ordinal);
+            var end = pem.IndexOf(footer, StringComparison.Ordinal);
+            if (start < 0 || end < 0)
+            {
+                throw new FormatException("Neispravan PEM sertifikat.");
+            }
+
+            start += header.Length;
+            var base64 = pem.Substring(start, end - start)
+                .Replace("\r", "")
+                .Replace("\n", "")
+                .Trim();
+
+            return Convert.FromBase64String(base64);
         }
 
         private static void TryDelete(string path)

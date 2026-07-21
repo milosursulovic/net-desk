@@ -21,6 +21,11 @@ export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 export const AGENT_ENROLL_TOKEN = requireEnv("AGENT_ENROLL_TOKEN");
 
+// Opciono - ako nisu podešeni, release paketi se ne potpisuju (spec ovo
+// pominje kao "mogućnost", ne obavezu). Videti utils/agentSigning.js.
+export const AGENT_SIGNING_CERT_PATH = process.env.AGENT_SIGNING_CERT_PATH || null;
+export const AGENT_SIGNING_KEY_PATH = process.env.AGENT_SIGNING_KEY_PATH || null;
+
 export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
   .split(",")
   .map((s) => s.trim())

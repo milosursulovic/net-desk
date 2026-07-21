@@ -7,6 +7,14 @@ namespace NetdeskAgent.Common.Update
         public string Version { get; set; }
         public string Sha256 { get; set; }
         public string Signature { get; set; }
+
+        /// <summary>
+        /// PEM sertifikat kojim je paket potpisan (RSA-SHA256 preko sirovih
+        /// bajtova .zip fajla). Null ako server nema podešeno potpisivanje
+        /// za ovaj release - videti UpdateManager.VerifySignatureIfPresent.
+        /// </summary>
+        public string SignatureCertificatePem { get; set; }
+
         public string ReleaseNotes { get; set; }
         public string DownloadUrl { get; set; }
     }
