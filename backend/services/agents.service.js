@@ -18,6 +18,7 @@ import {
   findIpEntryIdByIp,
   insertIpEntry,
   updateIpEntryPatch,
+  listComputersWithoutAgent,
 } from "../repositories/ipEntries.repo.js";
 import { patchMetadataForIpEntry } from "./metadata.service.js";
 import {
@@ -106,6 +107,10 @@ export async function listAgentsService({ page, limit, search, status }) {
   }));
 
   return { items: itemsWithStatus, page: safePage, limit, total, totalPages, search, status };
+}
+
+export async function listComputersWithoutAgentService({ page, limit, search }) {
+  return await listComputersWithoutAgent({ search, page, limit });
 }
 
 export async function getAgentService(id) {

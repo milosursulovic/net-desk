@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
 import {
   listAgentsController,
+  listComputersWithoutAgentController,
   getAgentController,
   revokeAgentController,
 } from "../controllers/agents.controller.js";
@@ -20,6 +21,7 @@ const router = express.Router();
 router.use(cacheNoStore);
 
 router.get("/", asyncHandler(listAgentsController));
+router.get("/without-agent-computers", asyncHandler(listComputersWithoutAgentController));
 router.get("/:id", asyncHandler(getAgentController));
 router.post("/:id/revoke", asyncHandler(revokeAgentController));
 

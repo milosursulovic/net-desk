@@ -7,6 +7,7 @@ import {
   enrollAgent,
   heartbeat,
   listAgentsService,
+  listComputersWithoutAgentService,
   getAgentService,
   revokeAgentService,
   syncAgentInventory,
@@ -56,6 +57,15 @@ export async function listAgentsController(req, res) {
   const status = STATUS_FILTERS.has(req.query.status) ? req.query.status : "all";
 
   const out = await listAgentsService({ page, limit, search, status });
+  res.json(out);
+}
+
+export async function listComputersWithoutAgentController(req, res) {
+  const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+  const limit = clamp(toInt(req.query.limit, 50), 1, 200);
+  const search = String(req.query.search || "").trim();
+
+  const out = await listComputersWithoutAgentService({ page, limit, search });
   res.json(out);
 }
 

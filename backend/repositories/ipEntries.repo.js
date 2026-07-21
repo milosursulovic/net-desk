@@ -269,6 +269,54 @@ export async function listIpEntries({
   };
 }
 
+export async function listComputersWithoutAgent({ search, page, limit }) {
+  const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
+    prefixColumns: ["ip"],
+  });
+
+  const whereParts = [
+    "e.entry_type = 'computer'",
+    "NOT EXISTS (SELECT 1 FROM agents a WHERE a.ip_entry_id = e.id AND a.status = 'active')",
+  ];
+  const params = [];
+
+  if (searchClause.where) {
+    whereParts.push(searchClause.where);
+    params.push(...searchClause.params);
+  }
+
+  const whereSql = `WHERE ${whereParts.join(" AND ")}`;
+
+  const [[{ total }]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM ip_entries e ${whereSql}`,
+    params,
+  );
+
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+  const safePage = totalPages === 0 ? 1 : Math.max(1, Math.min(page, totalPages));
+  const offset = (safePage - 1) * limit;
+
+  const [entries] = await pool.execute(
+    `
+    SELECT
+      e.id,
+      e.ip,
+      e.computer_name AS computerName,
+      e.department,
+      e.os,
+      e.is_online AS isOnline,
+      e.last_checked AS lastChecked
+    FROM ip_entries e
+    ${whereSql}
+    ORDER BY e.ip_numeric ASC
+    LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset],
+  );
+
+  return { entries, total, totalPages, page: safePage, limit };
+}
+
 export async function duplicateComputerNameGroups({ search, status }) {
   const base = buildFastSearchSql(search || "");
   const whereParts = [];
