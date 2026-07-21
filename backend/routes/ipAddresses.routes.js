@@ -4,6 +4,7 @@ import {
   scanPortsController,
   duplicatesController,
   exportXlsxController,
+  filterOptionsController,
   listController,
   getByIdController,
   createController,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.get("/scan-ports", asyncHandler(scanPortsController));
 router.get("/duplicates", asyncHandler(duplicatesController));
 router.get("/export-xlsx", asyncHandler(exportXlsxController));
+router.get("/filter-options", asyncHandler(filterOptionsController));
 
 router.get("/", asyncHandler(listController));
 router.get("/:id", asyncHandler(getByIdController));

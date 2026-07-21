@@ -12,6 +12,8 @@ import {
   deleteIpEntry,
   duplicateComputerNameGroups,
   exportIpEntriesForXlsx,
+  listDistinctDepartments,
+  listDistinctOs,
 } from "../repositories/ipEntries.repo.js";
 
 const WELL_KNOWN_PORTS = {
@@ -204,6 +206,14 @@ export async function scanPorts({ ip, ports, timeoutMs, concurrency }) {
 
 export async function listService(filters) {
   return await listIpEntries(filters);
+}
+
+export async function filterOptionsService() {
+  const [departments, os] = await Promise.all([
+    listDistinctDepartments(),
+    listDistinctOs(),
+  ]);
+  return { departments, os };
 }
 
 export async function getByIdService(id) {

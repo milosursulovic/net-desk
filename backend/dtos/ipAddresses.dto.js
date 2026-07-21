@@ -49,4 +49,6 @@ export const ListSchema = z.object({
     .enum(["all", "computer", "device", "unknown"])
     .optional()
     .default("all"),
+  department: z.string().optional(),
+  os: z.string().optional(),
 });

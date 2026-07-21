@@ -35,6 +35,16 @@
           <option value="unknown">Nepoznato</option>
         </select>
 
+        <select v-model="department" class="app-input w-auto py-2 text-sm" :title="'Filter odeljenja'">
+          <option value="">Sva odeljenja</option>
+          <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
+        </select>
+
+        <select v-model="os" class="app-input w-auto py-2 text-sm" :title="'Filter operativnog sistema'">
+          <option value="">Svi OS</option>
+          <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
+        </select>
+
         <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
@@ -263,25 +273,57 @@ const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-const { page, limit, search, sortBy, sortOrder, status, entryType, nextPage, prevPage } =
-  usePaginatedRoute({
-    fields: {
-      page: { type: 'int', default: 1 },
-      limit: { type: 'int', default: 10 },
-      search: { type: 'string', default: '' },
-      sortBy: { type: 'string', default: 'ip' },
-      sortOrder: { type: 'string', default: 'asc' },
-      status: { type: 'string', default: 'all', oneOf: ['all', 'online', 'offline'] },
-      entryType: {
-        type: 'string',
-        default: 'computer',
-        oneOf: ['all', 'computer', 'device', 'unknown'],
-      },
+const {
+  page,
+  limit,
+  search,
+  sortBy,
+  sortOrder,
+  status,
+  entryType,
+  department,
+  os,
+  nextPage,
+  prevPage,
+} = usePaginatedRoute({
+  fields: {
+    page: { type: 'int', default: 1 },
+    limit: { type: 'int', default: 10 },
+    search: { type: 'string', default: '' },
+    sortBy: { type: 'string', default: 'ip' },
+    sortOrder: { type: 'string', default: 'asc' },
+    status: { type: 'string', default: 'all', oneOf: ['all', 'online', 'offline'] },
+    entryType: {
+      type: 'string',
+      default: 'computer',
+      oneOf: ['all', 'computer', 'device', 'unknown'],
     },
-    resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType'],
-  })
+    department: { type: 'string', default: '', omitIfEmpty: true },
+    os: { type: 'string', default: '', omitIfEmpty: true },
+  },
+  resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType', 'department', 'os'],
+})
 
-watch([page, limit, search, sortBy, sortOrder, status, entryType], fetchData, { immediate: true })
+watch(
+  [page, limit, search, sortBy, sortOrder, status, entryType, department, os],
+  fetchData,
+  { immediate: true },
+)
+
+const departmentOptions = ref([])
+const osOptions = ref([])
+
+async function fetchFilterOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/ip-addresses/filter-options')
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    departmentOptions.value = data.departments || []
+    osOptions.value = data.os || []
+  } catch (err) {
+    console.error('Neuspešno dohvatanje opcija filtera')
+  }
+}
 
 const entries = ref([])
 const total = ref(0)
@@ -317,6 +359,8 @@ async function fetchData() {
     status: status.value,
     entryType: entryType.value,
   })
+  if (department.value) params.set('department', department.value)
+  if (os.value) params.set('os', os.value)
 
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses?${params.toString()}`)
@@ -398,6 +442,7 @@ onMounted(() => {
     fetchData()
   }, AUTO_REFRESH_SEC * 1000)
   fetchDuplicateNames()
+  fetchFilterOptions()
 })
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)

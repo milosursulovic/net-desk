@@ -6,6 +6,7 @@ import {
 import {
   scanPorts,
   listService,
+  filterOptionsService,
   getByIdService,
   createService,
   updateService,
@@ -58,6 +59,11 @@ export async function exportXlsxController(req, res) {
       },
     ],
   });
+}
+
+export async function filterOptionsController(req, res) {
+  const out = await filterOptionsService();
+  res.json(out);
 }
 
 export async function listController(req, res) {

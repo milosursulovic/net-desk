@@ -149,6 +149,8 @@ export async function listIpEntries({
   sortOrder,
   status,
   entryType,
+  department,
+  os,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -164,6 +166,16 @@ export async function listIpEntries({
     baseParams.push(entryType);
   } else if (entryType === "unknown") {
     whereBaseParts.push("entry_type IS NULL");
+  }
+
+  if (department) {
+    whereBaseParts.push("department = ?");
+    baseParams.push(department);
+  }
+
+  if (os) {
+    whereBaseParts.push("os = ?");
+    baseParams.push(os);
   }
 
   const whereBaseSql = whereBaseParts.length
@@ -267,6 +279,20 @@ export async function listIpEntries({
     limit,
     counts: { online: onlineCount, offline: offlineCount },
   };
+}
+
+export async function listDistinctDepartments() {
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT department FROM ip_entries WHERE department IS NOT NULL AND department != '' ORDER BY department`,
+  );
+  return rows.map((r) => r.department);
+}
+
+export async function listDistinctOs() {
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT os FROM ip_entries WHERE os IS NOT NULL AND os != '' ORDER BY os`,
+  );
+  return rows.map((r) => r.os);
 }
 
 export async function listComputersWithoutAgent({ search, page, limit }) {
