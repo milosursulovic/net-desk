@@ -20,7 +20,14 @@
           Nema zabeležene istorije dostupnosti.
         </div>
 
-        <div v-else class="space-y-2">
+        <template v-else>
+          <UptimeTimeline :periods="uptimePeriods" class="mb-4" />
+
+          <details class="group">
+            <summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-700 select-none">
+              Detaljna lista perioda ({{ uptimePeriods.length }})
+            </summary>
+            <div class="mt-2 space-y-2">
           <div
             v-for="(period, idx) in uptimePeriods"
             :key="idx"
@@ -41,7 +48,9 @@
               </div>
             </div>
           </div>
-        </div>
+            </div>
+          </details>
+        </template>
       </section>
 
       <div v-if="metaLoading" class="text-slate-600">Učitavanje metapodataka…</div>
@@ -230,6 +239,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate, fmtGb, fmtMbps, safe } from '@/utils/format.js'
 import AppButton from '@/components/AppButton.vue'
+import UptimeTimeline from '@/components/UptimeTimeline.vue'
 
 const route = useRoute()
 const router = useRouter()
