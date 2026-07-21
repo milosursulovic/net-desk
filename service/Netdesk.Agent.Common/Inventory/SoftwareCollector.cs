@@ -81,10 +81,18 @@ namespace NetdeskAgent.Common.Inventory
             };
         }
 
-        /// <summary>Registry čuva InstallDate kao "yyyymmdd" - konvertuje u ISO datum.</summary>
+        /// <summary>
+        /// Registry obično čuva InstallDate kao "yyyymmdd", ali neki instaleri
+        /// pišu potpuno drugačiji/neispravan format (viđeno uživo: čist broj
+        /// poput "1784235052", ni nalik datumu). Backend upisuje ovo u MySQL
+        /// DATE kolonu - vraćanje sirove neprepoznate vrednosti bi srušilo ceo
+        /// insert (potvrđeno uživo testiranjem). Kad format nije prepoznat,
+        /// vraćamo null - "nepoznat datum instalacije" je legitimno stanje,
+        /// kolona je nullable.
+        /// </summary>
         private static string ParseInstallDate(string raw)
         {
-            if (string.IsNullOrEmpty(raw) || raw.Length != 8) return raw;
+            if (string.IsNullOrEmpty(raw) || raw.Length != 8) return null;
 
             DateTime parsed;
             if (DateTime.TryParseExact(raw, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
@@ -92,7 +100,7 @@ namespace NetdeskAgent.Common.Inventory
                 return parsed.ToString("yyyy-MM-dd");
             }
 
-            return raw;
+            return null;
         }
     }
 }

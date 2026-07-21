@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -35,6 +36,13 @@ namespace NetdeskAgent.Common.Http
 
         public NetdeskApiClient(string baseUrl)
         {
+            // .NET Framework 4.5.2 ne uključuje TLS 1.2 u podrazumevanom
+            // ServicePointManager.SecurityProtocol setu (za razliku od 4.6+) -
+            // bez ovoga HTTPS pozivi ka modernom serveru (Node/Express ovde)
+            // otkazuju sa "Could not create SSL/TLS secure channel." Otkriveno
+            // uživo na Windows mašini - videti backend memoriju za detalje.
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
             BaseUrl = baseUrl;
             _http = new HttpClient { BaseAddress = new Uri(baseUrl) };
             _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -140,8 +148,18 @@ namespace NetdeskAgent.Common.Http
             }
         }
 
+        // I dalje "camelCase" resolver (kao i JsonSettings) - eksplicitni
+        // [JsonProperty] nazivi na InventoryRequest (OS/System/NICs/...) i
+        // dalje pobeđuju resolver (Newtonsoft prioritet), ali ugnježdene
+        // liste (SoftwareItem/PrinterItem/EventLogItem/...) NEMAJU eksplicitne
+        // atribute i oslanjaju se na ovaj resolver da bi npr. DisplayName
+        // postalo "displayName" kako backend očekuje - bez ovoga se šalje
+        // "DisplayName" (PascalCase), backend polje ne prepozna, i upisuje se
+        // NULL za svako polje (otkriveno uživo testiranjem na pravoj mašini -
+        // videti backend/windows-service memoriju).
         private static readonly JsonSerializerSettings RawJsonSettings = new JsonSerializerSettings
         {
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
             NullValueHandling = NullValueHandling.Ignore,
         };
 

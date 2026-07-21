@@ -183,39 +183,43 @@ namespace NetdeskAgent.Common.Update
                 return true;
             }
 
+            // Napomena o .NET Framework 4.5.2 kompatibilnosti: X509Certificate2 i
+            // X509Chain NE implementiraju IDisposable pre .NET 4.6 - "using" na
+            // njima je kompajl greška na pravom net452 (otkriveno tek preko
+            // stvarnog MSBuild-a sa pravim reference assembly-jima; runtime GAC
+            // DLL-ovi korišćeni za raniju csc.exe proveru su bili blaži). Zato
+            // se ovde koristi try/finally + .Reset() umesto "using".
+            X509Certificate2 cert = null;
             try
             {
                 var certBytes = PemToDer(check.SignatureCertificatePem);
+                cert = new X509Certificate2(certBytes);
 
-                using (var cert = new X509Certificate2(certBytes))
+                if (!VerifyChainToTrustedRoot(cert))
                 {
-                    if (!VerifyChainToTrustedRoot(cert))
-                    {
-                        return false;
-                    }
+                    return false;
+                }
 
-                    // Napomena o .NET Framework 4.5.2 kompatibilnosti: NE
-                    // koristimo X509Certificate2.GetRSAPublicKey() ni
-                    // RSA.VerifyData(byte[], byte[], HashAlgorithmName,
-                    // RSASignaturePadding) - obe su dodate tek u .NET 4.6.
-                    // Koristimo stariji RSACryptoServiceProvider API koji
-                    // postoji od .NET 1.0.
-                    var rsa = cert.PublicKey.Key as RSACryptoServiceProvider;
-                    if (rsa == null)
-                    {
-                        FileLogger.Error("Sertifikat za potpis paketa nema podržan RSA javni ključ.", null);
-                        return false;
-                    }
+                // Ne koristimo X509Certificate2.GetRSAPublicKey() ni
+                // RSA.VerifyData(byte[], byte[], HashAlgorithmName,
+                // RSASignaturePadding) - obe su dodate tek u .NET 4.6.
+                // Koristimo stariji RSACryptoServiceProvider API koji
+                // postoji od .NET 1.0.
+                var rsa = cert.PublicKey.Key as RSACryptoServiceProvider;
+                if (rsa == null)
+                {
+                    FileLogger.Error("Sertifikat za potpis paketa nema podržan RSA javni ključ.", null);
+                    return false;
+                }
 
-                    var fileBytes = File.ReadAllBytes(filePath);
-                    var signatureBytes = Convert.FromBase64String(check.Signature);
+                var fileBytes = File.ReadAllBytes(filePath);
+                var signatureBytes = Convert.FromBase64String(check.Signature);
 
-                    if (!rsa.VerifyData(fileBytes, "SHA256", signatureBytes))
-                    {
-                        FileLogger.Error(
-                            "Digitalni potpis paketa se ne poklapa sa sadržajem - update se odbacuje.", null);
-                        return false;
-                    }
+                if (!rsa.VerifyData(fileBytes, "SHA256", signatureBytes))
+                {
+                    FileLogger.Error(
+                        "Digitalni potpis paketa se ne poklapa sa sadržajem - update se odbacuje.", null);
+                    return false;
                 }
 
                 FileLogger.Info("Digitalni potpis paketa uspešno verifikovan.");
@@ -226,11 +230,16 @@ namespace NetdeskAgent.Common.Update
                 FileLogger.Error("Verifikacija digitalnog potpisa paketa neuspešna - update se odbacuje.", ex);
                 return false;
             }
+            finally
+            {
+                if (cert != null) cert.Reset();
+            }
         }
 
         private static bool VerifyChainToTrustedRoot(X509Certificate2 cert)
         {
-            using (var chain = new X509Chain())
+            var chain = new X509Chain();
+            try
             {
                 // NoCheck jer organizacija najverovatnije nema CRL/OCSP
                 // infrastrukturu za internu CA - sama provera lanca do
@@ -252,6 +261,10 @@ namespace NetdeskAgent.Common.Update
                 FileLogger.Error(
                     "Sertifikat za potpis paketa ne vodi do trusted root CA: " + string.Join("; ", reasons), null);
                 return false;
+            }
+            finally
+            {
+                chain.Reset();
             }
         }
 

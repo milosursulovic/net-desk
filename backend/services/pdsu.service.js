@@ -1,4 +1,5 @@
 import { notFound } from "../utils/httpError.js";
+import { parseDateMaybe } from "../utils/dates.js";
 
 import {
   computerFindById,
@@ -72,7 +73,7 @@ export async function syncComputerSoftware(ipEntryId, software) {
 
     publisher: item.publisher ?? null,
 
-    install_date: item.installDate ?? null,
+    install_date: parseDateMaybe(item.installDate),
   }));
 
   await computerSoftwareInsert(rows);
@@ -104,7 +105,7 @@ export async function syncComputerDrivers(ipEntryId, drivers) {
 
     driver_version: item.driverVersion ?? null,
 
-    driver_date: item.driverDate ?? null,
+    driver_date: parseDateMaybe(item.driverDate),
 
     manufacturer: item.manufacturer ?? null,
 
@@ -178,7 +179,7 @@ export async function syncComputerUpdates(ipEntryId, updates) {
 
     hotfix_id: item.hotFixID ?? null,
 
-    installed_on: item.installedOn ?? null,
+    installed_on: parseDateMaybe(item.installedOn),
 
     installed_by: item.installedBy ?? null,
   }));

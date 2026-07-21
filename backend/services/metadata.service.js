@@ -1,4 +1,5 @@
 import { emptyToNull } from "../utils/strings.js";
+import { parseDateMaybe } from "../utils/dates.js";
 import { isValidIPv4 } from "../utils/ip.js";
 import { pool } from "../db/pool.js";
 import { withTransaction } from "../utils/withTransaction.js";
@@ -38,20 +39,6 @@ function pick(obj, keys) {
     if (obj && Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
   }
   return undefined;
-}
-
-function parseDateMaybe(v) {
-  if (v == null || v === "") return null;
-  if (typeof v === "string" || typeof v === "number") {
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof v === "object" && v.$date) {
-    const d = new Date(v.$date);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  if (v instanceof Date) return v;
-  return null;
 }
 
 function mapMeta(meta, children) {
