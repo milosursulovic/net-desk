@@ -1,0 +1,8 @@
+{
+  "ServerBaseUrl": "https://netdesk.example.local:3000",
+  "EnrollToken": "postavi-ovde-AGENT_ENROLL_TOKEN-sa-servera",
+  "HeartbeatIntervalSeconds": 30,
+  "InventoryIntervalSeconds": 3600,
+  "JobsPollIntervalSeconds": 15,
+  "UpdateCheckIntervalSeconds": 1800
+}

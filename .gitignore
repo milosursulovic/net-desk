@@ -14,6 +14,12 @@ frontend/dist-ssr/
 # Uploaded agent release packages
 backend/uploads/
 
+# .NET (service/)
+service/**/bin/
+service/**/obj/
+service/**/*.user
+.vs/
+
 # Logs
 logs/
 *.log

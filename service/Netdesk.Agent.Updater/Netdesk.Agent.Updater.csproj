@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net452</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>Netdesk.Agent.Updater</AssemblyName>
+    <RootNamespace>NetdeskAgent.Updater</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Netdesk.Agent.Common\Netdesk.Agent.Common.csproj" />
+  </ItemGroup>
+
+</Project>
