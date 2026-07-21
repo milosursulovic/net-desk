@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server",
     "dev": "nodemon server",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,7 @@
     "eslint-plugin-sonarjs": "^3.0.6",
     "globals": "^17.3.0",
     "nodemon": "^3.1.10",
-    "ts-api-utils": "^2.4.0"
+    "ts-api-utils": "^2.4.0",
+    "vitest": "^4.1.10"
   }
 }
