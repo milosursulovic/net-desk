@@ -66,11 +66,11 @@ namespace NetdeskAgent.Common.Http
         /// <summary>
         /// InventoryRequest ima sopstvene eksplicitne [JsonProperty] nazive
         /// (PascalCase/akronimska polja poput "NICs" moraju tačno da se poklope
-        /// sa backend pick() alternativama - videti InventoryModels.cs) pa se
-        /// namerno NE serijalizuje preko JsonSettings (koji bi override-ovao
-        /// [JsonProperty] camelCase-ovanjem imena bez atributa, ali ne dira
-        /// polja koja već imaju eksplicitan atribut - ipak, koristimo čist
-        /// serializer ovde radi jasnoće da je ovo poseban, strogo mapiran ugovor).
+        /// sa backend pick() alternativama - videti InventoryModels.cs), pa se
+        /// namerno NE serijalizuje preko JsonSettings nego preko RawJsonSettings
+        /// (poseban DefaultContractResolver koji eksplicitno čuva te nazive -
+        /// videti napomenu uz RawJsonSettings za detalje o uživo otkrivenom
+        /// bug-u koji je ovo motivisao).
         /// </summary>
         public Task<InventoryResponse> PostInventoryAsync(string agentId, string apiKey, InventoryRequest request)
         {
@@ -148,18 +148,32 @@ namespace NetdeskAgent.Common.Http
             }
         }
 
-        // I dalje "camelCase" resolver (kao i JsonSettings) - eksplicitni
-        // [JsonProperty] nazivi na InventoryRequest (OS/System/NICs/...) i
-        // dalje pobeđuju resolver (Newtonsoft prioritet), ali ugnježdene
-        // liste (SoftwareItem/PrinterItem/EventLogItem/...) NEMAJU eksplicitne
-        // atribute i oslanjaju se na ovaj resolver da bi npr. DisplayName
-        // postalo "displayName" kako backend očekuje - bez ovoga se šalje
-        // "DisplayName" (PascalCase), backend polje ne prepozna, i upisuje se
-        // NULL za svako polje (otkriveno uživo testiranjem na pravoj mašini -
-        // videti backend/windows-service memoriju).
+        // NAPOMENA (ispravljeno posle uživo otkrivenog bug-a): obična
+        // CamelCasePropertyNamesContractResolver OVERRIDE-UJE eksplicitne
+        // [JsonProperty] nazive (npr. "OS" postaje "os") - suprotno ranijoj
+        // pretpostavci da eksplicitni atribut uvek pobeđuje resolver. Ovo je
+        // potvrđeno uživo (izolovan test sa istom Newtonsoft.Json 13.0.3
+        // verzijom) i uzrokovalo je tih bug: InventoryRequest šalje "os"/
+        // "system"/... umesto "OS"/"System"/..., a backend-ov merge (
+        // patchMetadataForIpEntry) prvo proverava PascalCase ključ - kad
+        // metadata red već postoji (drugi i svaki sledeći sync), taj stari
+        // PascalCase ključ (prazan/null) "senči" sveže camelCase podatke pre
+        // nego što se uopšte stigne do njih, pa metapodaci ostaju trajno
+        // prazni posle prvog sync-a. Fix: eksplicitan DefaultContractResolver
+        // sa CamelCaseNamingStrategy { OverrideSpecifiedNames = false } -
+        // ovo ČUVA eksplicitne [JsonProperty] nazive (OS/System/NICs/GPUs/...)
+        // NETAKNUTE, dok i dalje camelCase-uje ugnježdene liste bez atributa
+        // (SoftwareItem/PrinterItem/EventLogItem/...) - verifikovano
+        // izolovanim testom da oba slučaja rade ispravno istovremeno.
         private static readonly JsonSerializerSettings RawJsonSettings = new JsonSerializerSettings
         {
-            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            ContractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy
+                {
+                    OverrideSpecifiedNames = false,
+                },
+            },
             NullValueHandling = NullValueHandling.Ignore,
         };
 
