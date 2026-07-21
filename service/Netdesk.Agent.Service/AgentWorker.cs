@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NetdeskAgent.Common;
@@ -26,6 +27,15 @@ namespace NetdeskAgent.Service
     public class AgentWorker
     {
         private static readonly TimeSpan LoopTick = TimeSpan.FromSeconds(5);
+
+        // Environment.TickCount je 32-bit signed - prelama se u negativnu
+        // vrednost posle ~24.9 dana rada mašine bez restarta, što je
+        // realističan slučaj za produkcione mašine. GetTickCount64 (dostupan
+        // od Windows Vista) je 64-bit i praktično se nikad ne prelama -
+        // otkriveno uživo: backend odbija heartbeat sa HTTP 400 čim
+        // uptimeSeconds postane negativan (zod schema zahteva >= 0).
+        [DllImport("kernel32.dll")]
+        private static extern ulong GetTickCount64();
 
         public async Task RunAsync(CancellationToken token)
         {
@@ -158,7 +168,7 @@ namespace NetdeskAgent.Service
                 {
                     Hostname = Environment.MachineName,
                     AgentVersion = AgentVersionInfo.Current,
-                    UptimeSeconds = Environment.TickCount / 1000,
+                    UptimeSeconds = (int)(GetTickCount64() / 1000),
                     Monitoring = MonitoringCollector.Collect(),
                 };
 
