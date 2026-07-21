@@ -229,6 +229,9 @@ const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
+// Duplicated in AgentReleasesView.vue (no shared constants module for this
+// yet) - also must match the backend's implicit "rest" default fallback in
+// agentReleases.service.js. Keep all three in sync if groups ever change.
 const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
 const COMMAND_TYPES = [

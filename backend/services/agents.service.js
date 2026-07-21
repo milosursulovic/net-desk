@@ -85,6 +85,11 @@ export async function heartbeat(agentId, dto, remoteIp) {
   };
 }
 
+// Both thresholds are generous multiples of the agent's default
+// HeartbeatIntervalSeconds (30s) - online tolerates several missed
+// heartbeats before flagging "stale" (network hiccup, not necessarily
+// down), and "offline" only kicks in well past that, to avoid false
+// alarms from a single slow/delayed check-in.
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 const STALE_THRESHOLD_MS = 30 * 60 * 1000;
 
@@ -144,6 +149,10 @@ export async function revokeAgentService(id) {
 
 async function resolveIpEntryId(agent, body) {
   if (agent.ipEntryId) {
+    // Once an agent is linked to an ip_entry, every sync unconditionally
+    // overwrites ip/ip_numeric on that same row rather than re-resolving by
+    // IP - this is what lets a DHCP lease change without spawning a
+    // duplicate ip_entries row for the same physical machine.
     const sets = ["ip = ?", "ip_numeric = ?", "entry_type = ?"];
     const params = [body.ip, ipToNumeric(body.ip), "computer"];
 

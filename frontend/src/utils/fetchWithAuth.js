@@ -1,6 +1,9 @@
 import router from '@/router'
 import { isTokenExpired } from '@/utils/auth.js'
 
+// Module-level (not per-call) guard: many concurrent requests can hit a 401
+// at once, and without this they'd each try to push('/login'), stacking
+// redundant router navigations/returnTo overwrites.
 let redirectingToLogin = false
 function safeRedirectToLogin() {
   if (redirectingToLogin) return

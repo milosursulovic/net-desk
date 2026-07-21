@@ -7,6 +7,10 @@ export const setupCors = (app) => {
       origin: (origin, cb) => {
         if (!origin) return cb(null, true);
 
+        // Dev convenience only: with no allowlist configured outside
+        // production, every origin is accepted. Relies entirely on IS_PROD
+        // being computed correctly (NODE_ENV=production) - if that's ever
+        // wrong in a real deployment, this silently opens CORS to anyone.
         if (!IS_PROD && CORS_ALLOWED_ORIGINS.length === 0)
           return cb(null, true);
         if (CORS_ALLOWED_ORIGINS.includes(origin)) return cb(null, true);

@@ -1,6 +1,10 @@
 import { getByIdService } from "./ipAddresses.service.js";
 import { getStatusHistory } from "../repositories/ipStatusHistory.repo.js";
 
+// historyDesc arrives newest-first (for display), but computing each period's
+// end requires looking at the NEXT change chronologically - so this flips to
+// ascending to pair each row with its successor, then flips the result back
+// to descending to match the order callers/UI expect.
 function buildPeriods(entry, historyDesc) {
   const ascending = [...historyDesc].reverse();
 

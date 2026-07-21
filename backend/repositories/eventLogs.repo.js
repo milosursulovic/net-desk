@@ -13,6 +13,9 @@ export async function insertEventLogsBulk(rows) {
     item.logged_at,
   ]);
 
+  // INSERT IGNORE deliberately swallows duplicate-key violations: agents can
+  // resend the same event-log batch on reconnect/retry, so this makes the
+  // bulk insert idempotent instead of failing the whole batch on a resend.
   await pool.query(
     `
     INSERT IGNORE INTO computer_event_logs

@@ -30,6 +30,10 @@ export async function inventoryFindById(id) {
   return rows?.[0] || null;
 }
 
+// sortKey/sortOrder get interpolated straight into the ORDER BY below (an
+// ORDER BY column can't be a bound parameter) - this function trusts its
+// caller to have already validated them against dtos/inventory.dto.js's
+// SORT_FIELDS whitelist. Never pass raw user input through here directly.
 export async function inventoryListWithCounts({
   whereSql,
   params,

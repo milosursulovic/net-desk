@@ -212,6 +212,11 @@ export async function connectPrinterComputer(printerId, ipEntryId) {
   ]);
 }
 
+// Deliberately does NOT reset `shared` back to 0 itself (unlike
+// connectPrinterComputer, which sets it to 1 directly) - the caller
+// (printers.service.js's disconnectComputerService) must follow up with
+// updateSharedFromConnections to recompute it from the remaining
+// connection count. Keep that pairing if this function gets a new caller.
 export async function disconnectPrinterComputer(printerId, ipEntryId) {
   await pool.execute(
     `DELETE FROM printer_connected_computers WHERE printer_id = ? AND ip_entry_id = ?`,

@@ -113,6 +113,10 @@ async function probeTCP(ip, port, timeoutMs = 100) {
           finish(true);
         });
 
+        // Protocol-detection heuristics, not an exhaustive service list -
+        // common TLS/HTTP/Redis ports get a lightweight active probe
+        // (TLS handshake, HTTP HEAD, Redis PING) to fill in a real banner;
+        // any other port just waits for the server to speak first.
         if ([443, 8443, 9443, 6443].includes(port)) {
           proto = "tls";
           try {
@@ -163,6 +167,9 @@ async function probeTCP(ip, port, timeoutMs = 100) {
 }
 
 export async function scanPorts({ ip, ports, timeoutMs, concurrency }) {
+  // Anti-SSRF guard: without this, an authenticated user could point the
+  // server at an arbitrary public IP and use it as an open port scanner
+  // against the internet, from the server's own network position.
   if (!isPrivateIPv4(ip)) {
     throw badRequest(
       "Skeniranje dozvoljeno samo za privatne IPv4 adrese (bez javnog skeniranja).",

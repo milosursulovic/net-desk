@@ -9,6 +9,11 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 
 export const createApp = () => {
   const app = express();
+  // Deliberately false, not just the default: with trust proxy on, a
+  // client could set X-Forwarded-For to spoof req.ip and dodge the
+  // per-IP enroll rate limiter (agents.routes.js). Trade-off: if this app
+  // is ever actually put behind a reverse proxy, every client will look
+  // like one IP to the rate limiter - revisit together if that happens.
   app.set("trust proxy", false);
 
   app.use(

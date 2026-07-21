@@ -10,5 +10,8 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  // mysql2's `charset` option actually takes a COLLATION name, not a
+  // charset - "utf8mb4_general_ci" here affects string sort/comparison
+  // order (including for Serbian text), not just byte encoding.
   charset: "utf8mb4_general_ci",
 });

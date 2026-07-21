@@ -45,6 +45,10 @@ const totalFreshnessComputers = computed(() => {
   ].reduce((sum, value) => sum + (Number(value) || 0), 0)
 })
 
+// Backend can return either a `freshnessBuckets` array (newer/richer shape)
+// or the flat `freshness.{last30Days,...}` fields (older shape) - this and
+// totalFreshnessComputers above both branch on which one is present so the
+// component renders correctly against either API response.
 const normalizedFreshnessBuckets = computed(() => {
   if (freshnessBuckets.value.length > 0) {
     return freshnessBuckets.value.map((item) => ({
@@ -89,6 +93,9 @@ const normalizedFreshnessBuckets = computed(() => {
   ]
 })
 
+// Name is misleading - this is just a v-for :key fallback built by joining
+// the item's own fields, not a cryptographic hash. Only used when the
+// backend doesn't supply an explicit key/bucket/label for a bucket.
 function cryptoSafeKey(item) {
   return [item.label, item.bucket, item.computers, item.count]
     .filter((value) => value !== undefined && value !== null)

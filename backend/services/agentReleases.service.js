@@ -74,6 +74,10 @@ export async function setReleaseActiveService(id, isActive) {
   return await findReleaseById(id);
 }
 
+// "rest" is the implicit default deployment group for agents that were never
+// assigned one. The same `agent.deploymentGroup || "rest"` fallback is
+// duplicated below in downloadReleaseService - both must match or an agent
+// could see an update as available but then be refused the download.
 export async function checkForUpdateService(agent) {
   const candidates = await findActiveReleasesForGroup(agent.deploymentGroup || "rest");
   if (!candidates.length) return { updateAvailable: false };

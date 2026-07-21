@@ -39,6 +39,9 @@ function driverAgeClass(value) {
 
   const ageInDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
 
+  // 3650d (10y) / 1825d (5y) - drivers this old are almost certainly
+  // pre-dating the current OS install, flagging them as a support risk
+  // rather than tied to any vendor-specific EOL schedule.
   if (ageInDays >= 3650) {
     return 'bg-red-600 text-white'
   }

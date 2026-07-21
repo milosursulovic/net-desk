@@ -1,6 +1,12 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
+// Two intentionally different search implementations for the same concept:
+// buildFastSearchSql (below) does prefix-matching so it can use the
+// ip_numeric/computer_name indexes on the paginated list endpoint, which
+// gets hit on every keystroke. buildLegacySearchSql does a plain
+// contains-match LIKE across more columns (rdp_app/os too) - fine for the
+// XLSX export path below, which runs once per click, not per keystroke.
 const LEGACY_SEARCH_COLUMNS = [
   "ip",
   "computer_name",
@@ -192,6 +198,10 @@ export async function listIpEntries({
     ? `WHERE ${whereListParts.join(" AND ")}`
     : "";
 
+  // This map doubles as the SQL injection defense for the ORDER BY below -
+  // the column name gets interpolated directly (can't be a bound param),
+  // so any sortBy value not in this map falls back to ip_numeric rather
+  // than ever reaching the query string.
   const sortMap = {
     ip: "ip_numeric",
     computerName: "computer_name",
@@ -222,6 +232,10 @@ export async function listIpEntries({
       description,
       agents.id AS agentId
     FROM ip_entries
+    -- Assumes at most one active agent per ip_entry - if that's ever
+    -- violated (e.g. re-enrollment leaves two active rows pointing at the
+    -- same computer) this JOIN fans out and silently corrupts pagination
+    -- counts/row order, not just agentId.
     LEFT JOIN agents ON agents.ip_entry_id = ip_entries.id AND agents.status = 'active'
     ${whereListSql}
     ORDER BY ${safeSort} ${dir}

@@ -7,6 +7,10 @@ export function totalRamGb(meta) {
   )
 }
 
+// These lookups fall back across several namespaces because metadata shape
+// has changed across agent versions (older agents wrote under `Processor`/
+// `System.*`, current ones under `CPU`) - older machines that haven't
+// re-synced since the shape changed still need to render correctly.
 export function cpuNameOf(x) {
   return (
     x?.CPU?.Name ||

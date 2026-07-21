@@ -47,6 +47,10 @@ export function stateBadgeClass(value) {
   return 'bg-slate-500 text-white'
 }
 
+// Matches both English (raw WMI StartMode values) and Serbian (already
+// translated/manually entered values) so this stays correct regardless of
+// which form the data arrived in; the ASCII rucno/iskljucen variants cover
+// values that lost diacritics somewhere in transit.
 export function startModeLabel(value) {
   const mode = normalizeStartMode(value)
 

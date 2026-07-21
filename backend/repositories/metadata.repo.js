@@ -496,6 +496,9 @@ export async function statsTopNicSpeedsRaw() {
   const [rows] = await pool.execute(
     `
     SELECT
+      -- Real 1 Gbps NICs report slightly off-nominal speeds (e.g. 990, 1024,
+      -- 1100) depending on driver/negotiation, which would otherwise split
+      -- one logical speed group into several near-duplicate buckets.
       CASE
         WHEN COALESCE(n.speed_mbps,0) >= 950 AND COALESCE(n.speed_mbps,0) <= 1100 THEN 1000
         ELSE COALESCE(n.speed_mbps,0)
@@ -573,6 +576,9 @@ export async function statsOldOsRows() {
   return rows || [];
 }
 
+// Flags Lexar SSDs specifically - this brand/model has a known firmware
+// reliability issue observed on this fleet, so it's called out separately
+// from the general low-RAM/old-OS red-flag lists rather than being generic.
 export async function statsLexarFlagRows() {
   const [rows] = await pool.execute(
     `

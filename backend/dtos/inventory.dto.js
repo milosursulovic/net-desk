@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { emptyToNull } from "../utils/strings.js";
 
+// This isn't just a camelCase->column display map - inventory.repo.js
+// interpolates the resolved column name directly into the SQL string
+// (can't parameterize an ORDER BY column), so this whitelist IS the SQL
+// injection defense. Never let an unvalidated sortKey reach the query.
 export const SORT_FIELDS = {
   type: "type",
   manufacturer: "manufacturer",

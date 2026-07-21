@@ -12,6 +12,11 @@ export function isValidIPv4(ip) {
 
 export function ipToNumeric(ip) {
   if (!isValidIPv4(ip)) throw new Error(`Invalid IPv4: ${ip}`);
+  // The trailing >>> 0 matters, not decoration: JS bitwise ops work on
+  // signed 32-bit ints, so any IP whose first octet is >= 128 would
+  // overflow into a negative number without this unsigned shift - it
+  // would still sort correctly relative to other IPs, but comparisons
+  // against a stored ip_numeric value would be wrong.
   return (
     ip.split(".").reduce((acc, octet) => (acc << 8) + Number(octet), 0) >>> 0
   );

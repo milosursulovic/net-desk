@@ -278,6 +278,12 @@ export async function getMetadataByIp(ip) {
   return { ipEntryId, metadata: meta };
 }
 
+// Merge/patch semantics, never a raw overwrite - upsertMetadataForIpEntry
+// fully DELETEs+INSERTs the RAMModules/Storage/GPUs/NICs child tables from
+// whatever it's given, so the second loop below is not optional cleanup:
+// omitting it would mean any partial sync (e.g. the agent's minimal
+// event-log-only payload, which sends none of these fields) silently wipes
+// a machine's RAM/storage/GPU/NIC rows.
 export async function patchMetadataForIpEntry(ipEntryId, patchBody) {
   const metaId = await findMetadataIdByIpEntryId(ipEntryId);
   const existing = metaId ? await loadMetadataById(metaId) : {};

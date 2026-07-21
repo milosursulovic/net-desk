@@ -15,6 +15,11 @@ export async function login(username, password) {
 
   let isMatch = false;
 
+  // Two comparison paths: bcrypt hashes always start with "$2" (bcryptjs
+  // format), so anything else is a legacy plaintext password from before
+  // bcrypt was introduced. On a successful plaintext match we transparently
+  // upgrade it to a bcrypt hash - a one-time, self-healing migration that
+  // needs no separate script or forced password reset for old accounts.
   if (typeof user.password === "string" && user.password.startsWith("$2")) {
     isMatch = await bcrypt.compare(password, user.password);
   } else {
@@ -29,6 +34,9 @@ export async function login(username, password) {
     throw unauthorized("Neispravni kredencijali");
   }
 
+  // No roles table/column exists yet - "admin" is the one hardcoded
+  // username treated as privileged, everyone else is a plain "user". Revisit
+  // if/when real per-user roles are needed.
   const role = user.username === "admin" ? "admin" : "user";
 
   const token = jwt.sign(

@@ -15,6 +15,10 @@ export function startPingLoop(
 
   const platform = os.platform();
 
+  // `deadline` isn't honored by Windows ping.exe (the `ping` package shells
+  // out to the OS binary), so it's only added on non-Windows to guarantee
+  // the probe doesn't hang past timeout+1s even if `timeout` itself is
+  // ignored by that platform's ping implementation.
   const pingOpts =
     platform === "win32"
       ? { timeout: pingTimeoutSeconds, min_reply: 1 }
@@ -58,6 +62,9 @@ export function startPingLoop(
                 alive: !!r.alive,
               };
             } catch (err) {
+              // Budget caps how many per-host errors get logged in a single
+              // tick - without it, a subnet-wide outage would spam hundreds
+              // of near-identical lines every interval.
               if (errorLogBudget-- > 0) {
                 console.error(
                   `❌ ping error for ${e.ip}:`,
@@ -96,6 +103,10 @@ export function startPingLoop(
         }
       }
 
+      // Bulk CASE-WHEN UPDATE writes every entry's new status/last_checked
+      // in one round-trip instead of one UPDATE per host - with hundreds of
+      // entries pinged every `intervalSeconds`, per-row updates would be a
+      // real throughput bottleneck.
       const idsAll = results.map((r) => r.id);
       if (idsAll.length) {
         const caseOnline = idsAll.map(() => "WHEN ? THEN ?").join(" ");
@@ -139,6 +150,10 @@ export function startPingLoop(
     } catch (err) {
       console.error("❌ Ping tick error:", err);
     } finally {
+      // Self-correcting schedule: subtract this tick's own duration from the
+      // interval so a slow sweep (large fleet, network stalls) doesn't
+      // compound into ever-increasing drift between ticks - a naive
+      // setInterval-style fixed delay would.
       const took = Date.now() - startedAt;
       const delay = Math.max(0, intervalSeconds * 1000 - took);
       if (!stopped) timer = setTimeout(tick, delay);
