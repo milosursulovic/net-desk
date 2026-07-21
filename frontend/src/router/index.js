@@ -17,6 +17,7 @@ const IpPortScanView = () => import('@/views/IpPortScanView.vue')
 const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
 const AgentsView = () => import('@/views/AgentsView.vue')
 const AgentDetailView = () => import('@/views/AgentDetailView.vue')
+const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -131,6 +132,16 @@ const router = createRouter({
             breadcrumbParent: { label: 'Agenti', to: '/agents' },
           },
           component: AgentDetailView,
+        },
+        {
+          path: 'agent-releases',
+          name: 'agent-releases',
+          meta: {
+            title: 'Verzije agenta - NetDesk',
+            breadcrumb: 'Verzije agenta',
+            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+          },
+          component: AgentReleasesView,
         },
       ],
     },

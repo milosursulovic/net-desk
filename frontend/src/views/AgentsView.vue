@@ -2,6 +2,7 @@
   <div class="glass-container space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-bold text-slate-800">Netdesk Agenti</h1>
+      <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
     </div>
 
     <div class="space-y-3">
@@ -150,6 +151,7 @@ import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const { toast, showToast, copyToClipboard } = useToast()
