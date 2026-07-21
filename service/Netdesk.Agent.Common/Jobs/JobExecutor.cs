@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using Newtonsoft.Json.Linq;
 using NetdeskAgent.Common.Logging;
@@ -44,7 +45,7 @@ namespace NetdeskAgent.Common.Jobs
                         return Finish(sw, RunShutdownExe("/s /t 15 /c \"Netdesk Agent - zakazano gašenje\" /f"));
 
                     case "logoff_user":
-                        return Finish(sw, RunShutdownExe("/l"));
+                        return Finish(sw, LogoffActiveSessions());
 
                     case "restart_service":
                         return Finish(sw, ControlService(RequireServiceName(payload), ServiceAction.Restart));
@@ -106,6 +107,86 @@ namespace NetdeskAgent.Common.Jobs
             // shutdown.exe samo ZAKAZUJE akciju i odmah vraća exit kod, pa se
             // ovaj proces poziv završava skoro trenutno.
             return ProcessRunner.Run("shutdown.exe", arguments, DefaultTimeout);
+        }
+
+        [DllImport("wtsapi32.dll", SetLastError = true)]
+        private static extern bool WTSEnumerateSessions(
+            IntPtr hServer, int Reserved, int Version, out IntPtr ppSessionInfo, out int pCount);
+
+        [DllImport("wtsapi32.dll")]
+        private static extern void WTSFreeMemory(IntPtr pMemory);
+
+        [DllImport("wtsapi32.dll", SetLastError = true)]
+        private static extern bool WTSLogoffSession(IntPtr hServer, int SessionId, bool bWait);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WTS_SESSION_INFO
+        {
+            public int SessionID;
+            [MarshalAs(UnmanagedType.LPStr)]
+            public string pWinStationName;
+            public int State;
+        }
+
+        private const int WTS_CURRENT_SERVER_HANDLE = 0;
+        private const int WTSActive = 0;
+
+        /// <summary>
+        /// "shutdown.exe /l" odjavljuje TRENUTNU sesiju pozivaoca - ali servis
+        /// pod LocalSystem nalogom radi u Session 0, koja nema svoju
+        /// interaktivnu korisničku sesiju, pa poziv odmah puca (ExitCode=1),
+        /// bez obzira na argumente. Otkriveno uživo. Ispravan način da servis
+        /// odjavi PRIJAVLJENOG korisnika je preko WTS (Windows Terminal
+        /// Services) API-ja - nabroji aktivne sesije i eksplicitno odjavi
+        /// svaku sa stanjem WTSActive (interaktivno prijavljen korisnik,
+        /// ne disconnected/listening/itd).
+        /// </summary>
+        private static ProcessRunner.ProcessResult LogoffActiveSessions()
+        {
+            var sessionInfoPtr = IntPtr.Zero;
+            int count;
+            var loggedOffCount = 0;
+
+            try
+            {
+                if (!WTSEnumerateSessions((IntPtr)WTS_CURRENT_SERVER_HANDLE, 0, 1, out sessionInfoPtr, out count))
+                {
+                    return new ProcessRunner.ProcessResult
+                    {
+                        ExitCode = -1,
+                        ErrorOutput = "WTSEnumerateSessions neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").",
+                        TimedOut = false,
+                    };
+                }
+
+                var entrySize = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
+                var current = sessionInfoPtr;
+
+                for (var i = 0; i < count; i++)
+                {
+                    var session = (WTS_SESSION_INFO)Marshal.PtrToStructure(current, typeof(WTS_SESSION_INFO));
+                    current = (IntPtr)((long)current + entrySize);
+
+                    if (session.State != WTSActive) continue;
+
+                    if (WTSLogoffSession((IntPtr)WTS_CURRENT_SERVER_HANDLE, session.SessionID, false))
+                    {
+                        loggedOffCount++;
+                    }
+                }
+            }
+            finally
+            {
+                if (sessionInfoPtr != IntPtr.Zero) WTSFreeMemory(sessionInfoPtr);
+            }
+
+            return new ProcessRunner.ProcessResult
+            {
+                ExitCode = loggedOffCount > 0 ? 0 : 1,
+                Output = loggedOffCount > 0 ? "Odjavljeno aktivnih sesija: " + loggedOffCount : null,
+                ErrorOutput = loggedOffCount > 0 ? null : "Nema aktivne interaktivne korisničke sesije za odjavu.",
+                TimedOut = false,
+            };
         }
 
         private enum ServiceAction
