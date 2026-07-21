@@ -1,12 +1,29 @@
 import { pool } from "../db/pool.js";
 
+// mysql2 auto-parsira `payload` u objekat SAMO ako je kolona pravi MariaDB
+// JSON tip (CHECK (json_valid(...))) - na okruženjima gde je kolona obična
+// LONGTEXT (šema se primenjuje ručno po serveru, bez migracionog alata, pa
+// se ovo lako razmimoiđe) mysql2 vraća sirov JSON string. Otkriveno uživo:
+// agent je dobijao string umesto objekta za payload i padao na
+// deserijalizaciji (Newtonsoft JObject vs JValue). Ova funkcija radi
+// ispravno u oba slučaja.
+function parsePayload(value) {
+  if (value == null) return null;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 function mapRow(row) {
   if (!row) return null;
   return {
     id: row.id,
     agentId: row.agentId,
     commandType: row.commandType,
-    payload: row.payload,
+    payload: parsePayload(row.payload),
     status: row.status,
     createdByUserId: row.createdByUserId,
     exitCode: row.exitCode,
