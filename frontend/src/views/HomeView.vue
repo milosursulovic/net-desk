@@ -274,7 +274,7 @@ const { page, limit, search, sortBy, sortOrder, status, entryType, nextPage, pre
       status: { type: 'string', default: 'all', oneOf: ['all', 'online', 'offline'] },
       entryType: {
         type: 'string',
-        default: 'all',
+        default: 'computer',
         oneOf: ['all', 'computer', 'device', 'unknown'],
       },
     },
