@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import crypto from "crypto";
 import {
   createService,
   updateService,
@@ -7,7 +8,8 @@ import {
   listService,
   filterOptionsService,
 } from "../../services/ipAddresses.service.js";
-import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
+import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
+import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
 
 describe("ipAddresses.service (integration, real DB)", () => {
   let ipEntryId;
@@ -121,5 +123,91 @@ describe("ipAddresses.service (integration, real DB)", () => {
     const out = await filterOptionsService();
     expect(out.departments).toContain(uniqueDept);
     expect(out.os).toContain(uniqueOs);
+  });
+
+  describe("agentId (home page -> agent link)", () => {
+    let agentId;
+
+    afterEach(async () => {
+      await deleteTestAgent(agentId);
+      agentId = undefined;
+    });
+
+    it("exposes agentId when an active agent is linked to the ip_entry", async () => {
+      const ip = testIp();
+      const entry = await createService({ ip, entryType: "computer" });
+      ipEntryId = entry.id;
+
+      agentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash",
+        hostname: testHostname(),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+      await linkAgentToIpEntry(agentId, ipEntryId);
+
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        search: ip,
+      });
+      const found = out.entries.find((e) => e.id === ipEntryId);
+      expect(found.agentId).toBe(agentId);
+    });
+
+    it("does not expose a revoked agent's id (only active agents link)", async () => {
+      const ip = testIp();
+      const entry = await createService({ ip, entryType: "computer" });
+      ipEntryId = entry.id;
+
+      agentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash",
+        hostname: testHostname(),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+      await linkAgentToIpEntry(agentId, ipEntryId);
+      await revokeAgentById(agentId);
+
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        search: ip,
+      });
+      const found = out.entries.find((e) => e.id === ipEntryId);
+      expect(found.agentId).toBeNull();
+    });
+
+    it("leaves agentId null for a computer with no agent at all", async () => {
+      const ip = testIp();
+      const entry = await createService({ ip, entryType: "computer" });
+      ipEntryId = entry.id;
+
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        search: ip,
+      });
+      const found = out.entries.find((e) => e.id === ipEntryId);
+      expect(found.agentId).toBeNull();
+    });
   });
 });

@@ -238,6 +238,14 @@
           <router-link :to="`/ip/${entry.id}/port-scan`" class="text-slate-600 hover:underline text-sm">
             Port scan
           </router-link>
+          <router-link
+            v-if="entry.agentId"
+            :to="`/agents/${entry.agentId}`"
+            class="text-emerald-600 hover:underline text-sm"
+            title="Otvori Netdesk Agent za ovaj računar"
+          >
+            🖥️ Agent
+          </router-link>
         </div>
       </article>
     </div>

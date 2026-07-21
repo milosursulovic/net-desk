@@ -206,7 +206,7 @@ export async function listIpEntries({
 
   const sqlEntries = `
     SELECT
-      id,
+      ip_entries.id,
       ip,
       ip_numeric AS ipNumeric,
       computer_name AS computerName,
@@ -219,8 +219,10 @@ export async function listIpEntries({
       last_checked AS lastChecked,
       last_status_change AS lastStatusChange,
       remote_script AS remoteScript,
-      description
+      description,
+      agents.id AS agentId
     FROM ip_entries
+    LEFT JOIN agents ON agents.ip_entry_id = ip_entries.id AND agents.status = 'active'
     ${whereListSql}
     ORDER BY ${safeSort} ${dir}
     LIMIT ? OFFSET ?
