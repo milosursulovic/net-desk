@@ -149,6 +149,7 @@ npm run dev
 | `AGENT_SIGNING_CERT_PATH`, `AGENT_SIGNING_KEY_PATH` | opciono - PEM sertifikat/ključ za potpisivanje agent release paketa (videti `service/README.md`) |
 | `SSL_CERT`, `SSL_KEY`    | putanje do SSL sertifikata za HTTPS        |
 | `CORS_ALLOWED_ORIGINS`   | dozvoljeni origin-i, odvojeni zarezom      |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | opciono - generiše se sa `npx web-push generate-vapid-keys`; ako nisu podešeni, push notifikacije su isključene |
 
 ### `frontend/.env`
 

@@ -3,7 +3,14 @@ import request from "supertest";
 import { createApp } from "../../app.js";
 import { AGENT_ENROLL_TOKEN } from "../../config/env.js";
 import { adminToken } from "../helpers/authToken.js";
-import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
+import {
+  deleteTestAgent,
+  deleteTestIpEntry,
+  testIp,
+  testHostname,
+  testPushEndpoint,
+  deleteTestPushSubscription,
+} from "../helpers/testDb.js";
 
 const app = createApp();
 
@@ -148,6 +155,77 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
       const res = await request(app)
         .get("/api/protected/ip-addresses?sortBy=1;%20DROP%20TABLE%20ip_entries")
         .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("push subscription endpoints", () => {
+    let endpoint;
+
+    afterEach(async () => {
+      await deleteTestPushSubscription(endpoint);
+      endpoint = undefined;
+    });
+
+    it("returns the VAPID public key", async () => {
+      const res = await request(app)
+        .get("/api/protected/push/public-key")
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty("publicKey");
+    });
+
+    it("subscribes, upserts on re-subscribe, then unsubscribes through the full HTTP stack", async () => {
+      endpoint = testPushEndpoint();
+      const token = adminToken();
+
+      const subscribeRes = await request(app)
+        .post("/api/protected/push/subscribe")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ endpoint, keys: { p256dh: "test-p256dh", auth: "test-auth" } });
+      expect(subscribeRes.status).toBe(201);
+
+      const { pool } = await import("../../db/pool.js");
+      const [[row]] = await pool.query(
+        "SELECT p256dh FROM push_subscriptions WHERE endpoint = ?",
+        [endpoint],
+      );
+      expect(row.p256dh).toBe("test-p256dh");
+
+      // Re-subscribing with the same endpoint (browser re-registers the same
+      // push registration) must update, not conflict/duplicate.
+      const resubscribeRes = await request(app)
+        .post("/api/protected/push/subscribe")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ endpoint, keys: { p256dh: "updated-p256dh", auth: "updated-auth" } });
+      expect(resubscribeRes.status).toBe(201);
+
+      const [[updatedRow]] = await pool.query(
+        "SELECT p256dh FROM push_subscriptions WHERE endpoint = ?",
+        [endpoint],
+      );
+      expect(updatedRow.p256dh).toBe("updated-p256dh");
+
+      const unsubscribeRes = await request(app)
+        .post("/api/protected/push/unsubscribe")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ endpoint });
+      expect(unsubscribeRes.status).toBe(200);
+
+      const [rowsAfterDelete] = await pool.query(
+        "SELECT * FROM push_subscriptions WHERE endpoint = ?",
+        [endpoint],
+      );
+      expect(rowsAfterDelete).toHaveLength(0);
+
+      endpoint = undefined; // already deleted, nothing left to clean up
+    });
+
+    it("rejects a subscribe payload with an invalid endpoint URL with 400, not 500", async () => {
+      const res = await request(app)
+        .post("/api/protected/push/subscribe")
+        .set("Authorization", `Bearer ${adminToken()}`)
+        .send({ endpoint: "not-a-url", keys: { p256dh: "x", auth: "y" } });
       expect(res.status).toBe(400);
     });
   });

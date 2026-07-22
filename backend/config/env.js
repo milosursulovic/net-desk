@@ -30,3 +30,9 @@ export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+// Opciono - ako nisu podešeni, push notifikacije su isključene (subscribe
+// endpoint i dalje postoji, ali watcher ne šalje ništa). Videti utils/webPush.js.
+export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || null;
+export const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || null;
+export const VAPID_SUBJECT = process.env.VAPID_SUBJECT || null;

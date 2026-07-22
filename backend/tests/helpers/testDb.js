@@ -44,6 +44,15 @@ export async function deleteTestAgent(agentId) {
   await pool.execute("DELETE FROM agents WHERE id = ?", [agentId]);
 }
 
+export function testPushEndpoint() {
+  return `https://fcm.googleapis.com/fcm/send/VITEST_TEST_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export async function deleteTestPushSubscription(endpoint) {
+  if (!endpoint) return;
+  await pool.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", [endpoint]);
+}
+
 export async function assertNoLeakedTestData() {
   const [[{ cnt: agentCnt }]] = await pool.query(
     "SELECT COUNT(*) AS cnt FROM agents WHERE hostname LIKE 'VITEST_TEST_%'",
