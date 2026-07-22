@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { createApp } from "../../app.js";
 import { AGENT_ENROLL_TOKEN } from "../../config/env.js";
 import { adminToken } from "../helpers/authToken.js";
@@ -14,6 +17,10 @@ import {
 } from "../helpers/testDb.js";
 
 const app = createApp();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FRONTEND_DIST_BUILT = fs.existsSync(
+  path.join(__dirname, "../../../frontend/dist/index.html"),
+);
 
 describe("HTTP routes (integration, real Express app + real DB)", () => {
   describe("public endpoints", () => {
@@ -23,10 +30,25 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
       expect(res.text).toBe("ok");
     });
 
-    it("GET /nonexistent-route returns 404", async () => {
-      const res = await request(app).get("/nonexistent-route");
+    it("GET /api/nonexistent-route always returns 404, regardless of whether frontend/dist is built (the SPA fallback in app.js explicitly excludes /api/*)", async () => {
+      const res = await request(app).get("/api/nonexistent-route");
       expect(res.status).toBe(404);
     });
+
+    it(
+      FRONTEND_DIST_BUILT
+        ? "GET /nonexistent-route serves the SPA shell (index.html) so Vue Router's own catch-all can 404 client-side"
+        : "GET /nonexistent-route returns 404 (frontend/dist not built in this environment - app.js's SPA fallback is conditional on it existing)",
+      async () => {
+        const res = await request(app).get("/nonexistent-route");
+        if (FRONTEND_DIST_BUILT) {
+          expect(res.status).toBe(200);
+          expect(res.text).toContain("<div id=\"app\">");
+        } else {
+          expect(res.status).toBe(404);
+        }
+      },
+    );
   });
 
   describe("protected routes require a valid JWT", () => {

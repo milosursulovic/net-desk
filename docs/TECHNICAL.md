@@ -15,6 +15,7 @@ mere. Za brzi start (instalacija, env varijable, skripte) videti
 - [Frontend](#frontend)
 - [Netdesk Agent (Windows Service)](#netdesk-agent-windows-service)
 - [API pregled](#api-pregled)
+- [Deployment](#deployment)
 - [Pozadinski procesi](#pozadinski-procesi)
 - [Bezbednost](#bezbednost)
 - [Poznata ograničenja](#poznata-ograničenja)
@@ -337,6 +338,30 @@ fajlovima. Zajednički obrasci kroz ceo API:
   (`http.routes.test.js`) posle bar dva stvarna incidenta ovog tipa.
 - `cacheNoStore` middleware je primenjen na sve `/api/protected/*` grupe —
   admin podaci se nikad ne keširaju u browseru.
+
+## Deployment
+
+**Lokalni dev** — dva porta, dva procesa: Vite dev server (frontend,
+podrazumevano `:5174`) i Express (backend, `:3000`), `VITE_API_URL` u
+`frontend/.env` je pun URL ka backend-u (npr. `https://localhost:3000`) jer
+su na različitim origin-ima — `CORS_ALLOWED_ORIGINS` mora da uključi
+frontend-ov origin.
+
+**Produkcija** — jedan port, jedan proces: nakon `npm run build` u
+`frontend/`, backend (`app.js`) sam servira `frontend/dist/` fajlove
+(`express.static` + SPA fallback ruta koja vraća `index.html` za svaki
+GET koji nije pod `/api/*` — Vue Router ima sopstveni catch-all koji tada
+preuzima i prikazuje 404 na klijentu). `VITE_API_URL` u produkcionom
+`.env` treba da bude **prazno** (relativni pozivi, isti origin). Ovo
+ponašanje je uslovljeno time da li `frontend/dist/index.html` stvarno
+postoji na disku — ako ne postoji (npr. lokalni dev bez build-a), backend
+se ponaša identično kao pre (samo `/api/*`, sve ostalo 404), tako da ovo
+ne menja lokalni dev workflow niti zahteva build za obično testiranje
+backend-a.
+
+Prednost: samo jedan port treba da bude dostupan spolja/kroz firewall
+(umesto dva), agent-facing API (`/api/agents/*`) ostaje potpuno nepromenjen
+u oba scenarija.
 
 ## Pozadinski procesi
 
