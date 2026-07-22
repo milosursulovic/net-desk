@@ -9,6 +9,9 @@ podatke, sinhronizuje pun hardverski/softverski inventar, izvršava
 administratorske komande na daljinu i ažurira se sam preko potpisanih
 paketa — videti [Netdesk Agent (RMM)](#netdesk-agent-rmm) ispod.
 
+Za dubinsku tehničku dokumentaciju (arhitektura, baza podataka, API,
+bezbednost) videti [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
+
 ## Sadržaj
 
 - [Struktura projekta](#struktura-projekta)
