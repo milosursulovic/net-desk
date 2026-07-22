@@ -15,8 +15,19 @@
       <input v-model="search" type="text" placeholder="Pretraga (model, serijski, proizvođač, lokacija…) "
         class="app-input w-full" />
 
-      <!-- Filteri, sortiranje, paginacija -->
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Filteri -->
+      <div class="flex items-center gap-2">
+        <button type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 sm:hidden"
+          @click="filtersOpen = !filtersOpen">
+          Filteri
+          <span v-if="activeFilterCount"
+            class="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white">{{ activeFilterCount }}</span>
+          <span class="text-xs">{{ filtersOpen ? '▲' : '▼' }}</span>
+        </button>
+      </div>
+
+      <div class="flex-wrap items-center gap-2" :class="filtersOpen ? 'flex' : 'hidden sm:flex'">
         <select v-model="filterType" class="app-input w-auto py-2 text-sm" :title="'Filter po tipu opreme'">
           <option value="all">Sve vrste</option>
           <option v-for="t in typeOptions" :key="t.value" :value="t.value">
@@ -38,7 +49,10 @@
           aria-label="Promeni redosled sortiranja">
           {{ sortOrder === 'asc' ? '↑' : '↓' }}
         </button>
+      </div>
 
+      <!-- Po strani i paginacija - uvek vidljivo -->
+      <div class="flex flex-wrap items-center gap-2">
         <select v-model.number="limit" class="app-input w-auto py-2 text-sm">
           <option :value="12">12 / strana</option>
           <option :value="24">24 / strana</option>
@@ -290,6 +304,10 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
+
+// Filter panel je na mobilnom skupljen po difoltu (ispod sm).
+const filtersOpen = ref(false)
+const activeFilterCount = computed(() => (filterType.value !== 'all' ? 1 : 0))
 const fmtDate = fmtDateOnly
 const labelForType = labelForInventoryType
 

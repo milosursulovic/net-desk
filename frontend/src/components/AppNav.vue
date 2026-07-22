@@ -20,12 +20,15 @@ function isActive(to) {
 
 <template>
   <nav class="w-full border-t border-slate-200 bg-white/70 px-4" aria-label="Glavna navigacija">
-    <div class="flex flex-wrap gap-1 py-2">
+    <!-- Ispod sm: horizontalni scroll umesto lomljenja u više redova - jedan
+         red koji se prevlači je čitljiviji na uskom ekranu od 2-3 zbijena
+         reda linkova. Na sm i više, ponaša se kao obična traka koja se lomi. -->
+    <div class="flex flex-nowrap gap-1 overflow-x-auto py-2 sm:flex-wrap sm:overflow-visible no-scrollbar">
       <RouterLink
         v-for="link in links"
         :key="link.to"
         :to="link.to"
-        class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+        class="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition"
         :class="
           isActive(link.to)
             ? 'bg-blue-600 text-white'

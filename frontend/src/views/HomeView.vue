@@ -20,8 +20,23 @@
         class="app-input w-full"
       />
 
-      <!-- Filteri, status, paginacija -->
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Filteri -->
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 sm:hidden"
+          @click="filtersOpen = !filtersOpen"
+        >
+          Filteri
+          <span
+            v-if="activeFilterCount"
+            class="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white"
+          >{{ activeFilterCount }}</span>
+          <span class="text-xs">{{ filtersOpen ? '▲' : '▼' }}</span>
+        </button>
+      </div>
+
+      <div class="flex-wrap items-center gap-2" :class="filtersOpen ? 'flex' : 'hidden sm:flex'">
         <select v-model="status" class="app-input w-auto py-2 text-sm" :title="'Filter statusa'">
           <option value="all">Svi statusi</option>
           <option value="online">Samo online</option>
@@ -57,9 +72,10 @@
         >
           {{ sortOrder === 'asc' ? '↑' : '↓' }}
         </button>
+      </div>
 
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
+      <!-- Statistika i paginacija - uvek vidljivo, nije deo filter panela -->
+      <div class="flex flex-wrap items-center gap-2">
         <span
           class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
         >
@@ -338,6 +354,19 @@ const total = ref(0)
 const totalPages = ref(0)
 const counts = ref({ online: 0, offline: 0 })
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
+
+// Filter panel je na mobilnom skupljen po difoltu (ispod sm) - broj na dugmetu
+// je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i dok je
+// panel zatvoren.
+const filtersOpen = ref(false)
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (status.value !== 'all') n++
+  if (entryType.value !== 'computer') n++
+  if (department.value) n++
+  if (os.value) n++
+  return n
+})
 
 const expandedDesc = ref({}) // ✅ novo: state za expand opisa
 

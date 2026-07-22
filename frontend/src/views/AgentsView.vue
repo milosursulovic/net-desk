@@ -28,47 +28,62 @@
           <option value="active">Aktivni</option>
           <option value="revoked">Povučeni</option>
         </select>
+
+        <button
+          type="button"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 sm:hidden"
+          @click="detailedFiltersOpen = !detailedFiltersOpen"
+        >
+          Detaljni filteri
+          <span
+            v-if="activeDetailedFilterCount"
+            class="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white"
+          >{{ activeDetailedFilterCount }}</span>
+          <span class="text-xs">{{ detailedFiltersOpen ? '▲' : '▼' }}</span>
+        </button>
       </div>
 
-      <!-- Detaljni filteri -->
-      <div class="flex flex-wrap items-center gap-2">
-        <select v-model="connectivityStatus" class="app-input w-auto" aria-label="Filter po konekciji">
-          <option value="">Sve konekcije</option>
-          <option value="online">Online</option>
-          <option value="stale">Neaktivan</option>
-          <option value="offline">Offline</option>
-          <option value="unknown">Nepoznato</option>
-        </select>
+      <!-- Detaljni filteri - skupljeno na mobilnom po difoltu -->
+      <div :class="detailedFiltersOpen ? 'block' : 'hidden sm:block'">
+        <div class="flex flex-wrap items-center gap-2">
+          <select v-model="connectivityStatus" class="app-input w-auto" aria-label="Filter po konekciji">
+            <option value="">Sve konekcije</option>
+            <option value="online">Online</option>
+            <option value="stale">Neaktivan</option>
+            <option value="offline">Offline</option>
+            <option value="unknown">Nepoznato</option>
+          </select>
 
-        <select v-model="deploymentGroup" class="app-input w-auto" aria-label="Filter po deployment grupi">
-          <option value="">Sve deployment grupe</option>
-          <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
-        </select>
+          <select v-model="deploymentGroup" class="app-input w-auto" aria-label="Filter po deployment grupi">
+            <option value="">Sve deployment grupe</option>
+            <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
+          </select>
 
-        <select v-model="os" class="app-input w-auto" aria-label="Filter po operativnom sistemu">
-          <option value="">Svi OS</option>
-          <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
-        </select>
-      </div>
+          <select v-model="os" class="app-input w-auto" aria-label="Filter po operativnom sistemu">
+            <option value="">Svi OS</option>
+            <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
+          </select>
+        </div>
 
-      <div class="flex flex-wrap items-end gap-2">
-        <div>
-          <label class="block text-xs text-slate-500 mb-1" for="enrolledFrom">Enroll od</label>
-          <input id="enrolledFrom" v-model="enrolledFrom" type="date" class="app-input w-auto text-sm" />
+        <div class="mt-2 flex flex-wrap items-end gap-2">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1" for="enrolledFrom">Enroll od</label>
+            <input id="enrolledFrom" v-model="enrolledFrom" type="date" class="app-input w-auto text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1" for="enrolledTo">Enroll do</label>
+            <input id="enrolledTo" v-model="enrolledTo" type="date" class="app-input w-auto text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1" for="heartbeatFrom">Heartbeat od</label>
+            <input id="heartbeatFrom" v-model="heartbeatFrom" type="date" class="app-input w-auto text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1" for="heartbeatTo">Heartbeat do</label>
+            <input id="heartbeatTo" v-model="heartbeatTo" type="date" class="app-input w-auto text-sm" />
+          </div>
+          <AppButton variant="neutral" @click="clearDetailedFilters">Poništi filtere</AppButton>
         </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1" for="enrolledTo">Enroll do</label>
-          <input id="enrolledTo" v-model="enrolledTo" type="date" class="app-input w-auto text-sm" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1" for="heartbeatFrom">Heartbeat od</label>
-          <input id="heartbeatFrom" v-model="heartbeatFrom" type="date" class="app-input w-auto text-sm" />
-        </div>
-        <div>
-          <label class="block text-xs text-slate-500 mb-1" for="heartbeatTo">Heartbeat do</label>
-          <input id="heartbeatTo" v-model="heartbeatTo" type="date" class="app-input w-auto text-sm" />
-        </div>
-        <AppButton variant="neutral" @click="clearDetailedFilters">Poništi filtere</AppButton>
       </div>
 
       <!-- Po strani i paginacija -->
@@ -185,7 +200,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
@@ -280,6 +295,22 @@ const totalPages = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
 const osOptions = ref([])
+
+// Detaljni filteri su na mobilnom skupljeni po difoltu (ispod sm) - broj na
+// dugmetu je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i
+// dok je panel zatvoren.
+const detailedFiltersOpen = ref(false)
+const activeDetailedFilterCount = computed(() => {
+  let n = 0
+  if (connectivityStatus.value) n++
+  if (deploymentGroup.value) n++
+  if (os.value) n++
+  if (enrolledFrom.value) n++
+  if (enrolledTo.value) n++
+  if (heartbeatFrom.value) n++
+  if (heartbeatTo.value) n++
+  return n
+})
 
 let searchT = null
 

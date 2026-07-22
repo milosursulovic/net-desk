@@ -273,6 +273,21 @@ textarea {
 }
 
 /* =========================================================
+   MOBILE - horizontal-scroll rows (nav, tabs)
+   ========================================================= */
+
+/* Used on rows that switch from wrapping to horizontal-scroll below sm
+   (nav links, tab bars) - scroll still works (touch swipe, trackpad,
+   shift+wheel), the scrollbar itself is just visual noise on a single-row
+   strip and is hidden. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================================================
    GLOBAL TRANSITIONS
    ========================================================= */
 

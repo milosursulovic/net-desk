@@ -11,11 +11,11 @@
     <div v-else-if="entryError" class="text-red-600">{{ entryError }}</div>
 
     <div v-else class="space-y-4">
-      <div class="flex flex-wrap gap-2 border-b pb-3">
+      <div class="flex flex-nowrap gap-2 overflow-x-auto border-b pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
           type="button"
           @click="selectTab('software')"
-          class="px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'software'
               ? 'bg-blue-600 text-white'
@@ -29,7 +29,7 @@
         <button
           type="button"
           @click="selectTab('drivers')"
-          class="px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'drivers'
               ? 'bg-blue-600 text-white'
@@ -43,7 +43,7 @@
         <button
           type="button"
           @click="selectTab('services')"
-          class="px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'services'
               ? 'bg-blue-600 text-white'
@@ -57,7 +57,7 @@
         <button
           type="button"
           @click="selectTab('updates')"
-          class="px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'updates'
               ? 'bg-blue-600 text-white'

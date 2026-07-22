@@ -100,13 +100,13 @@
       </div>
 
       <!-- Tabovi -->
-      <div class="flex flex-wrap gap-2 border-b pb-3">
+      <div class="flex flex-nowrap gap-2 overflow-x-auto border-b pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
           v-for="t in TAB_NAMES"
           :key="t"
           type="button"
           @click="selectTab(t)"
-          class="px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="tab === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
         >
           {{ TAB_LABELS[t] }}
