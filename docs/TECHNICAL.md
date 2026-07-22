@@ -367,6 +367,12 @@ Produkcioni `.env` mora imati `NODE_ENV=production` — od toga zavisi HSTS
 header (`helmet`) i CORS "deny-by-default" ponašanje (vidi Bezbednost
 ispod). Bez ovoga, backend se ponaša kao dev čak i na produkciji.
 
+`CORS_ALLOWED_ORIGINS` mora da sadrži backend-ov sopstveni origin (npr.
+`https://10.230.62.81:3000`) i kad on sam servira frontend — browser šalje
+`Origin` header i na same-origin fetch/XHR pozive, a provera u
+`config/cors.js` ne pravi izuzetak za to, samo poredi sa allowlist-om.
+Prazna lista u produkciji odbija i sopstvene pozive frontend-a.
+
 ## Pozadinski procesi
 
 Backend pokreće tri dugotrajna procesa pri startu (`server.js`), svaki sa
@@ -390,11 +396,13 @@ omogućava da svaki tick sačeka da se prethodni završi):
   gde kolona za `ORDER BY` mora biti interpolirana (ne može se
   parametrizovati), koristi se eksplicitna allowlist (`SORT_FIELDS`/
   `sortMap`) — nikad direktno korisnički unos.
-- **CORS** — eksplicitna allowlist origin-a (`CORS_ALLOWED_ORIGINS`); u
-  produkciji (`NODE_ENV=production`) prazna lista znači nijedan strani
-  origin nije dozvoljen (u dev modu, prazna lista = dozvoli sve, radi
-  lakšeg lokalnog rada) — zato je `NODE_ENV=production` obavezan na
-  produkciji, inače prazna lista slučajno znači "dozvoli sve".
+- **CORS** — eksplicitna allowlist origin-a (`CORS_ALLOWED_ORIGINS`),
+  uključujući backend-ov sopstveni origin kad on sam servira frontend
+  (browser šalje `Origin` header i na same-origin pozive); u produkciji
+  (`NODE_ENV=production`) prazna lista znači nijedan origin nije dozvoljen,
+  ni sopstveni (u dev modu, prazna lista = dozvoli sve, radi lakšeg
+  lokalnog rada) — zato je `NODE_ENV=production` obavezan na produkciji,
+  inače prazna lista slučajno znači "dozvoli sve".
 - **Rate limiting** — `express-rate-limit`, `trust proxy` eksplicitno
   isključen (sprečava X-Forwarded-For spoofing osim ako je stvarni reverse
   proxy ispred, u kom slučaju treba svesno uključiti).
