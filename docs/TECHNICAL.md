@@ -373,16 +373,6 @@ ispod). Bez ovoga, backend se ponaša kao dev čak i na produkciji.
 `config/cors.js` ne pravi izuzetak za to, samo poredi sa allowlist-om.
 Prazna lista u produkciji odbija i sopstvene pozive frontend-a.
 
-**Auto-deploy** — `scripts/auto-deploy.ps1` je opciona polling skripta za
-produkcioni server: proverava `origin/main` na nove commit-e, i ako ih ima,
-radi `git pull` + `npm install`/`npm run build` u `frontend/` + restart
-backend Task Scheduler job-a. Ništa ne radi ako nema promena (bez logovanja
-tog slučaja, da log ne raste). Zakazuje se kao poseban Task Scheduler job
-(npr. na svakih 5 min) — vrednosti `$RepoPath`/`$BackendTaskName`/`$LogFile`
-na vrhu skripte treba prilagoditi stvarnoj konfiguraciji servera. Pretpostavlja
-da git na tom serveru već ima podešenu autentikaciju bez interakcije
-(stored credentials/SSH ključ) pod korisnikom pod kojim se task pokreće.
-
 ## Pozadinski procesi
 
 Backend pokreće tri dugotrajna procesa pri startu (`server.js`), svaki sa
