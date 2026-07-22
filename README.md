@@ -105,6 +105,12 @@ komunicira sa backend-om preko HTTPS-a, odvojen stek/projekat od
 - **Alerting** — spojeno sa postojećim notifikacionim sistemom: offline
   mašine, pun disk, isključen antivirus/firewall, neuspeli jobovi, stao
   Windows Update servis
+- **Push notifikacije (PWA)** — frontend je instalabilan kao Progressive Web
+  App; kad se pojavi nov alarm, prijavljeni admin dobija push notifikaciju na
+  desktop/telefon i kad tab nije otvoren, preko `web-push`/VAPID-a i
+  service worker-a (`public/push-sw.js`). Watcher (`pushNotificationWatcher.js`)
+  šalje push samo za alarme koji se TEK pojave, ne ponavlja isti alarm na
+  svaki ciklus.
 
 Detaljna arhitektura, instalacija i konfiguracija: [`service/README.md`](service/README.md).
 Ideje za dalji razvoj (uživo remote pristup, konfigurabilan alerting,

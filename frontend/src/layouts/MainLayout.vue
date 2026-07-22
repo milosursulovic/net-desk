@@ -26,6 +26,8 @@
             </span>
           </div>
 
+          <PushNotificationToggle />
+
           <LogoutButton />
         </div>
       </div>
@@ -52,6 +54,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import AppNav from '@/components/AppNav.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import NotificationTicker from '@/components/NotificationTicker.vue'
+import PushNotificationToggle from '@/components/PushNotificationToggle.vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useAppInfo } from '@/composables/useAppInfo.js'
 

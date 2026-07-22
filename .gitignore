@@ -9,6 +9,7 @@ node_modules/
 # Build output
 frontend/dist/
 frontend/dist-ssr/
+frontend/dev-dist/
 *.local
 
 # Uploaded agent release packages
