@@ -5,6 +5,7 @@ import { HOST, PORT } from "./config/env.js";
 import { pool } from "./db/pool.js";
 import { startPingLoop } from "./utils/pingService.js";
 import { startPushNotificationWatcher } from "./utils/pushNotificationWatcher.js";
+import { startDailyReportScheduler } from "./utils/dailyReportScheduler.js";
 
 const connectMySql = async () => {
   try {
@@ -38,6 +39,7 @@ export const startServer = async () => {
 
   startPingLoop(30);
   startPushNotificationWatcher(60);
+  startDailyReportScheduler(7);
 
   const shutdown = async (signal) => {
     console.log(`🛑 Received ${signal}. Shutting down...`);

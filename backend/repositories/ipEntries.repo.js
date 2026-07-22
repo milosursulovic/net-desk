@@ -311,6 +311,33 @@ export async function listDistinctOs() {
   return rows.map((r) => r.os);
 }
 
+export async function listIpEntriesCreatedSince(since, limit = 20) {
+  const [rows] = await pool.execute(
+    `
+    SELECT id, ip, computer_name AS computerName, department, created_at AS createdAt
+    FROM ip_entries
+    WHERE created_at >= ?
+    ORDER BY created_at DESC
+    LIMIT ?
+    `,
+    [since, limit],
+  );
+  return rows;
+}
+
+export async function countIpEntriesTotal() {
+  const [[{ cnt }]] = await pool.execute(`SELECT COUNT(*) AS cnt FROM ip_entries`);
+  return Number(cnt) || 0;
+}
+
+export async function countIpEntriesCreatedSince(since) {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM ip_entries WHERE created_at >= ?`,
+    [since],
+  );
+  return Number(cnt) || 0;
+}
+
 export async function listComputersWithoutAgent({ search, page, limit }) {
   const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
     prefixColumns: ["ip"],

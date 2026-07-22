@@ -288,6 +288,76 @@ textarea {
 }
 
 /* =========================================================
+   PRINT
+   ========================================================= */
+
+/* Elements marked .no-print (header/nav/buttons/history list, etc.) only
+   make sense on-screen - hidden entirely when printing so the page only
+   shows the actual report content. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Force light colors regardless of the dark theme toggle - printing a
+     dark page wastes ink/toner and the background often doesn't print at
+     all, leaving unreadable light-on-nothing text. `!important` is needed
+     because the `.dark .bg-white` etc. overrides in the DARK MODE section
+     above target these same classes without `!important` - only an
+     `!important` rule reliably wins regardless of which loads later. */
+  html.dark {
+    color-scheme: light;
+  }
+
+  body {
+    background: #fff !important;
+    color: #1e293b !important;
+  }
+
+  .bg-white,
+  .bg-white\/90,
+  .bg-white\/70,
+  .bg-slate-50,
+  .bg-slate-100 {
+    background-color: #fff !important;
+  }
+
+  .text-slate-900 { color: #0f172a !important; }
+  .text-slate-800 { color: #1e293b !important; }
+  .text-slate-700 { color: #334155 !important; }
+  .text-slate-600 { color: #475569 !important; }
+  .text-slate-500 { color: #64748b !important; }
+  .text-slate-400 { color: #94a3b8 !important; }
+
+  .border-slate-200, .border-slate-100 { border-color: #e2e8f0 !important; }
+  .border-slate-300 { border-color: #cbd5e1 !important; }
+
+  .bg-emerald-50 { background-color: #ecfdf5 !important; }
+  .text-emerald-700 { color: #047857 !important; }
+  .border-emerald-200 { border-color: #a7f3d0 !important; }
+
+  .bg-red-50 { background-color: #fef2f2 !important; }
+  .text-red-700 { color: #b91c1c !important; }
+  .border-red-200 { border-color: #fecaca !important; }
+
+  .bg-amber-50 { background-color: #fffbeb !important; }
+  .text-amber-700 { color: #b45309 !important; }
+  .border-amber-200 { border-color: #fde68a !important; }
+
+  .bg-blue-50 { background-color: #eff6ff !important; }
+  .text-blue-700 { color: #1d4ed8 !important; }
+  .border-blue-200 { border-color: #bfdbfe !important; }
+
+  /* Blur/shadow/translucency are screen-only effects - flatten to a plain
+     white card so the printed page isn't washed out or grayish. */
+  .glass-container {
+    background-color: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* =========================================================
    GLOBAL TRANSITIONS
    ========================================================= */
 

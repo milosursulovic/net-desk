@@ -79,6 +79,11 @@ podrška), Windows Service, WMI/registry za inventar, Newtonsoft.Json.
 - **Inventar hardvera** — rezervni delovi/oprema van mreže
 - **PDSU analitika** — softver, drajveri, servisi i Windows update-i po
   računaru, sa pregledom i detaljnim tabelama
+- **Dnevni izveštaj** — automatski generisan svako jutro u 7 (i ručno na
+  zahtev): pregled flote (agenti online/stale/offline, IP status promene),
+  aktivna upozorenja, i šta je novo od prethodnog izveštaja (novi agenti/IP
+  adrese/štampači, neuspešne komande i ažuriranja) — sa istorijom prethodnih
+  izveštaja i push notifikacijom kad je spreman
 
 ## Netdesk Agent (RMM)
 

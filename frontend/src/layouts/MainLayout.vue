@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-100 to-white dark:from-slate-950 dark:to-slate-900 flex flex-col">
-    <header class="bg-white/90 shadow sticky top-0 z-50">
+    <header class="bg-white/90 shadow sticky top-0 z-50 no-print">
       <div class="w-full flex items-center gap-4 px-4 py-3">
         <div class="flex shrink-0 items-center gap-3">
           <Logo />
@@ -38,11 +38,11 @@
     </header>
 
     <main class="w-full px-4 py-6 flex-1">
-      <Breadcrumbs />
+      <Breadcrumbs class="no-print" />
       <router-view />
     </main>
 
-    <footer class="w-full text-center text-sm text-slate-500 py-4 border-t">
+    <footer class="w-full text-center text-sm text-slate-500 py-4 border-t no-print">
       <AppFooter />
     </footer>
   </div>

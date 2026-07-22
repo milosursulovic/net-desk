@@ -149,6 +149,28 @@ export async function listPrinters({ page, limit, search }) {
   };
 }
 
+export async function listPrintersCreatedSince(since, limit = 20) {
+  const [rows] = await pool.execute(
+    `
+    SELECT id, name, ip, department, created_at AS createdAt
+    FROM printers
+    WHERE created_at >= ?
+    ORDER BY created_at DESC
+    LIMIT ?
+    `,
+    [since, limit],
+  );
+  return rows;
+}
+
+export async function countPrintersCreatedSince(since) {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM printers WHERE created_at >= ?`,
+    [since],
+  );
+  return Number(cnt) || 0;
+}
+
 export async function insertPrinter(row) {
   const [r] = await pool.execute(
     `

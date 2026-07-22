@@ -201,6 +201,46 @@ export async function listDistinctAgentOs() {
   return rows.map((r) => r.os_caption);
 }
 
+// Fleet breakdown for the daily report - reuses the same CASE expression
+// (and thresholds) that listAgents()'s connectivityStatus filter matches
+// against, so the counts here are always consistent with what the filter
+// would return.
+export async function countAgentsByConnectivity() {
+  const [rows] = await pool.execute(
+    `
+    SELECT (${CONNECTIVITY_STATUS_SQL}) AS status, COUNT(*) AS cnt
+    FROM agents
+    WHERE status = 'active'
+    GROUP BY status
+    `,
+  );
+  const out = { online: 0, stale: 0, offline: 0, unknown: 0 };
+  for (const r of rows) out[r.status] = Number(r.cnt) || 0;
+  return out;
+}
+
+export async function listAgentsEnrolledSince(since, limit = 20) {
+  const [rows] = await pool.execute(
+    `
+    SELECT hostname, agent_uid AS agentUid, enrolled_at AS enrolledAt
+    FROM agents
+    WHERE enrolled_at >= ?
+    ORDER BY enrolled_at DESC
+    LIMIT ?
+    `,
+    [since, limit],
+  );
+  return rows;
+}
+
+export async function countAgentsEnrolledSince(since) {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM agents WHERE enrolled_at >= ?`,
+    [since],
+  );
+  return Number(cnt) || 0;
+}
+
 export async function revokeAgentById(id) {
   const [result] = await pool.execute(
     `UPDATE agents SET status = 'revoked' WHERE id = ?`,

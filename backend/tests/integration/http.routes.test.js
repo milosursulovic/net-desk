@@ -10,6 +10,7 @@ import {
   testHostname,
   testPushEndpoint,
   deleteTestPushSubscription,
+  deleteTestDailyReport,
 } from "../helpers/testDb.js";
 
 const app = createApp();
@@ -267,6 +268,110 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         .set("Authorization", `Bearer ${adminToken()}`)
         .send({ endpoint: "not-a-url", keys: { p256dh: "x", auth: "y" } });
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe(
+    "route ordering: /reports/latest and /reports/generate must not be swallowed by " +
+      "/reports/:id (same regression class as the agents route-ordering tests above)",
+    () => {
+      let reportId;
+
+      afterEach(async () => {
+        await deleteTestDailyReport(reportId);
+        reportId = undefined;
+      });
+
+      it("GET /reports/latest resolves to the latest-report lookup, not a parseIdParam 400", async () => {
+        const res = await request(app)
+          .get("/api/protected/reports/latest")
+          .set("Authorization", `Bearer ${adminToken()}`);
+
+        // 200 if a report already exists, 404 if none do yet - either way it
+        // must be the "no report found" 404, not a "bad :id" 400.
+        expect([200, 404]).toContain(res.status);
+      });
+
+      it("POST /reports/generate resolves to report generation, not a parseIdParam 400", async () => {
+        const res = await request(app)
+          .post("/api/protected/reports/generate")
+          .set("Authorization", `Bearer ${adminToken()}`);
+
+        expect(res.status).toBe(201);
+        expect(res.body).toHaveProperty("content");
+        reportId = res.body.id;
+      });
+    },
+  );
+
+  describe("reports endpoints over real HTTP", () => {
+    let reportId;
+
+    afterEach(async () => {
+      await deleteTestDailyReport(reportId);
+      reportId = undefined;
+    });
+
+    it("generates a report, fetches it by id, and lists it", async () => {
+      const token = adminToken();
+
+      const genRes = await request(app)
+        .post("/api/protected/reports/generate")
+        .set("Authorization", `Bearer ${token}`);
+      expect(genRes.status).toBe(201);
+      reportId = genRes.body.id;
+
+      const getRes = await request(app)
+        .get(`/api/protected/reports/${reportId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.id).toBe(reportId);
+
+      const listRes = await request(app)
+        .get("/api/protected/reports?limit=50")
+        .set("Authorization", `Bearer ${token}`);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.items.map((r) => r.id)).toContain(reportId);
+    });
+
+    it("rejects an unknown report id with 404, not 500", async () => {
+      const res = await request(app)
+        .get("/api/protected/reports/999999999")
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(404);
+    });
+
+    it("mark-read sets openedAt, and a GET afterwards reflects it (GET itself has no side effect)", async () => {
+      const token = adminToken();
+
+      const genRes = await request(app)
+        .post("/api/protected/reports/generate")
+        .set("Authorization", `Bearer ${token}`);
+      reportId = genRes.body.id;
+      expect(genRes.body.openedAt).toBeNull();
+
+      const beforeRes = await request(app)
+        .get(`/api/protected/reports/${reportId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(beforeRes.body.openedAt).toBeNull();
+
+      const markRes = await request(app)
+        .post(`/api/protected/reports/${reportId}/mark-read`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(markRes.status).toBe(200);
+      expect(markRes.body.openedAt).not.toBeNull();
+
+      const afterRes = await request(app)
+        .get(`/api/protected/reports/${reportId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(afterRes.body.openedAt).not.toBeNull();
+    });
+
+    it("rejects marking an unknown report id as read with 404, not 500", async () => {
+      const res = await request(app)
+        .post("/api/protected/reports/999999999/mark-read")
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(404);
     });
   });
 });

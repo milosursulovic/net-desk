@@ -9,6 +9,7 @@ import notificationsRoutes from "./notifications.routes.js";
 import agentsAdminRoutes from "./agentsAdmin.routes.js";
 import agentReleasesRoutes from "./agentReleases.routes.js";
 import pushSubscriptionsRoutes from "./pushSubscriptions.routes.js";
+import dailyReportsRoutes from "./dailyReports.routes.js";
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use("/notifications", notificationsRoutes);
 router.use("/agents", agentsAdminRoutes);
 router.use("/agent-releases", agentReleasesRoutes);
 router.use("/push", pushSubscriptionsRoutes);
+router.use("/reports", dailyReportsRoutes);
 
 export default router;

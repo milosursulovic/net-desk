@@ -8,6 +8,7 @@ const links = [
   { to: '/printers', label: 'Štampači' },
   { to: '/inventory', label: 'Inventar' },
   { to: '/agents', label: 'Agenti' },
+  { to: '/reports', label: 'Izveštaji' },
 ]
 
 const route = useRoute()

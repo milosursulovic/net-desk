@@ -109,6 +109,33 @@ export async function completeJob(id, { status, exitCode, output, errorOutput, d
   return result.affectedRows;
 }
 
+export async function listFailedJobsSince(since, limit = 20) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      a.hostname,
+      j.command_type AS commandType,
+      j.error_output AS errorOutput,
+      j.completed_at AS completedAt
+    FROM agent_jobs j
+    JOIN agents a ON a.id = j.agent_id
+    WHERE j.status = 'failed' AND j.completed_at >= ?
+    ORDER BY j.completed_at DESC
+    LIMIT ?
+    `,
+    [since, limit],
+  );
+  return rows;
+}
+
+export async function countFailedJobsSince(since) {
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM agent_jobs WHERE status = 'failed' AND completed_at >= ?`,
+    [since],
+  );
+  return Number(cnt) || 0;
+}
+
 export async function listJobsForAgent({ agentId, status, limit, offset }) {
   const whereParts = ["agent_id = ?"];
   const params = [agentId];

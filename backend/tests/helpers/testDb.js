@@ -53,6 +53,11 @@ export async function deleteTestPushSubscription(endpoint) {
   await pool.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", [endpoint]);
 }
 
+export async function deleteTestDailyReport(id) {
+  if (!id) return;
+  await pool.execute("DELETE FROM daily_reports WHERE id = ?", [id]);
+}
+
 export async function assertNoLeakedTestData() {
   const [[{ cnt: agentCnt }]] = await pool.query(
     "SELECT COUNT(*) AS cnt FROM agents WHERE hostname LIKE 'VITEST_TEST_%'",

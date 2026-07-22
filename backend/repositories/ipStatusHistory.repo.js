@@ -19,6 +19,24 @@ export async function insertStatusHistoryBulk(rows) {
   );
 }
 
+export async function countStatusTransitionsSince(since) {
+  const [rows] = await pool.execute(
+    `
+    SELECT is_online AS isOnline, COUNT(*) AS cnt
+    FROM ip_status_history
+    WHERE changed_at >= ?
+    GROUP BY is_online
+    `,
+    [since],
+  );
+  const out = { wentOffline: 0, cameOnline: 0 };
+  for (const r of rows) {
+    if (Number(r.isOnline)) out.cameOnline = Number(r.cnt) || 0;
+    else out.wentOffline = Number(r.cnt) || 0;
+  }
+  return out;
+}
+
 export async function getStatusHistory(ipEntryId, limit = 200) {
   const [rows] = await pool.query(
     `

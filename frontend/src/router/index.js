@@ -19,6 +19,7 @@ const AgentsView = () => import('@/views/AgentsView.vue')
 const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
 const ComputersWithoutAgentView = () => import('@/views/ComputersWithoutAgentView.vue')
+const ReportsView = () => import('@/views/ReportsView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -153,6 +154,22 @@ const router = createRouter({
             breadcrumbParent: { label: 'Agenti', to: '/agents' },
           },
           component: ComputersWithoutAgentView,
+        },
+        {
+          path: 'reports',
+          name: 'reports',
+          meta: { title: 'Dnevni izveštaj - NetDesk', breadcrumb: 'Izveštaji' },
+          component: ReportsView,
+        },
+        {
+          path: 'reports/:id',
+          name: 'report-detail',
+          meta: {
+            title: 'Izveštaj - NetDesk',
+            breadcrumb: 'Detalji izveštaja',
+            breadcrumbParent: { label: 'Izveštaji', to: '/reports' },
+          },
+          component: ReportsView,
         },
       ],
     },
