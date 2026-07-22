@@ -363,6 +363,10 @@ Prednost: samo jedan port treba da bude dostupan spolja/kroz firewall
 (umesto dva), agent-facing API (`/api/agents/*`) ostaje potpuno nepromenjen
 u oba scenarija.
 
+Produkcioni `.env` mora imati `NODE_ENV=production` — od toga zavisi HSTS
+header (`helmet`) i CORS "deny-by-default" ponašanje (vidi Bezbednost
+ispod). Bez ovoga, backend se ponaša kao dev čak i na produkciji.
+
 ## Pozadinski procesi
 
 Backend pokreće tri dugotrajna procesa pri startu (`server.js`), svaki sa
@@ -387,8 +391,10 @@ omogućava da svaki tick sačeka da se prethodni završi):
   parametrizovati), koristi se eksplicitna allowlist (`SORT_FIELDS`/
   `sortMap`) — nikad direktno korisnički unos.
 - **CORS** — eksplicitna allowlist origin-a (`CORS_ALLOWED_ORIGINS`); u
-  produkciji prazna lista znači nijedan strani origin nije dozvoljen (u
-  dev modu, prazna lista = dozvoli sve, radi lakšeg lokalnog rada).
+  produkciji (`NODE_ENV=production`) prazna lista znači nijedan strani
+  origin nije dozvoljen (u dev modu, prazna lista = dozvoli sve, radi
+  lakšeg lokalnog rada) — zato je `NODE_ENV=production` obavezan na
+  produkciji, inače prazna lista slučajno znači "dozvoli sve".
 - **Rate limiting** — `express-rate-limit`, `trust proxy` eksplicitno
   isključen (sprečava X-Forwarded-For spoofing osim ako je stvarni reverse
   proxy ispred, u kom slučaju treba svesno uključiti).
