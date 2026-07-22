@@ -63,6 +63,26 @@
         </div>
       </div>
 
+      <!-- Trendovi - stariji izveštaji (pre nego što je ovo dodato) nemaju
+           content.trends u sačuvanom JSON-u, otud opciono ulančavanje. -->
+      <div
+        v-if="diskFillProjections.length"
+        class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm"
+      >
+        <h2 class="font-semibold text-amber-900 mb-1">📈 Trend punjenja diska</h2>
+        <p class="text-sm text-amber-800 mb-3">
+          Na osnovu poslednjih {{ TREND_WINDOW_DAYS }} dana - ne znači da će se trend nastaviti
+          istom brzinom, samo da vredi proveriti.
+        </p>
+        <ul class="space-y-1 text-sm">
+          <li v-for="(t, idx) in diskFillProjections" :key="idx">
+            <span class="font-medium">{{ t.hostname || '—' }}</span>
+            — trenutno {{ t.currentPct.toFixed(1) }}%, raste ~{{ t.slopePctPerDay.toFixed(2) }}%/dan,
+            stiže do 90% za <span class="font-semibold">~{{ t.daysUntilThreshold }} dana</span>
+          </li>
+        </ul>
+      </div>
+
       <!-- Alerts -->
       <div v-if="report.content.alerts.length" class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Aktivna upozorenja</h2>
@@ -185,13 +205,15 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import AppButton from '@/components/AppButton.vue'
 
 const route = useRoute()
+
+const TREND_WINDOW_DAYS = 30
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 
@@ -208,6 +230,7 @@ const levelIcon = {
 
 const report = ref(null)
 const history = ref([])
+const diskFillProjections = computed(() => report.value?.content?.trends?.diskFillProjections || [])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)

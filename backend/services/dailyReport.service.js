@@ -29,10 +29,18 @@ import {
   countFailedUpdatesSince,
 } from "../repositories/agentUpdateLog.repo.js";
 import { countStatusTransitionsSince } from "../repositories/ipStatusHistory.repo.js";
+import {
+  listCurrentMonitoringForAllAgents,
+  insertMonitoringSnapshot,
+  listMonitoringHistorySince,
+} from "../repositories/agentMonitoringHistory.repo.js";
 import { listNotifications } from "./notifications.service.js";
 import { sendPushToAll } from "../utils/webPush.js";
 import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
+import { computeDiskFillProjection } from "../utils/trendAnalysis.js";
+
+const TREND_WINDOW_DAYS = 30;
 
 export async function generateDailyReport() {
   const periodEnd = new Date();
@@ -73,6 +81,35 @@ export async function generateDailyReport() {
     listNotifications(),
   ]);
 
+  // Snapshot everyone's current CPU/RAM/disk into history, tied to report
+  // generation (not every heartbeat - agent_monitoring already updates every
+  // ~30s, and that cadence forever would explode this table for no benefit).
+  const currentMonitoring = await listCurrentMonitoringForAllAgents();
+  await insertMonitoringSnapshot(
+    currentMonitoring.map((m) => ({ ...m, recordedAt: periodEnd })),
+  );
+
+  // Disk-fill trend, computed from the history just extended above (so
+  // today's fresh point is included) - most days this will be empty/near-
+  // empty since real trends take a while to accumulate; that's expected,
+  // not a bug, and computeDiskFillProjection returns null rather than a
+  // noisy row for agents with too little history or a flat/decreasing trend.
+  const windowStart = new Date(periodEnd - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const historyRows = await listMonitoringHistorySince(windowStart);
+  const historyByAgent = new Map();
+  for (const row of historyRows) {
+    if (!historyByAgent.has(row.agentId)) historyByAgent.set(row.agentId, []);
+    historyByAgent.get(row.agentId).push(row);
+  }
+  const diskFillProjections = [];
+  for (const rows of historyByAgent.values()) {
+    const projection = computeDiskFillProjection(rows);
+    if (projection) {
+      diskFillProjections.push({ hostname: rows[0].hostname, ...projection });
+    }
+  }
+  diskFillProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
+
   const totalAgents =
     connectivity.online + connectivity.stale + connectivity.offline + connectivity.unknown;
 
@@ -87,6 +124,9 @@ export async function generateDailyReport() {
       offlineIpEntries,
     },
     alerts: alerts.notifications,
+    trends: {
+      diskFillProjections,
+    },
     sinceLastReport: {
       newAgents,
       newAgentsCount,
@@ -127,6 +167,12 @@ function buildPushSummary(content) {
   }
   if (content.alerts.length) {
     parts.push(`${content.alerts.length} aktivnih upozorenja`);
+  }
+  if (content.trends.diskFillProjections.length) {
+    const soonest = content.trends.diskFillProjections[0];
+    parts.push(
+      `disk na ${soonest.hostname} stiže do 90% za ~${soonest.daysUntilThreshold} dana`,
+    );
   }
   if (!parts.length) {
     return "Sve mirno od poslednjeg izveštaja.";

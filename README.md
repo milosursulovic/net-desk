@@ -81,9 +81,11 @@ podrška), Windows Service, WMI/registry za inventar, Newtonsoft.Json.
   računaru, sa pregledom i detaljnim tabelama
 - **Dnevni izveštaj** — automatski generisan svako jutro u 7 (i ručno na
   zahtev): pregled flote (agenti online/stale/offline, IP status promene),
-  aktivna upozorenja, i šta je novo od prethodnog izveštaja (novi agenti/IP
-  adrese/štampači, neuspešne komande i ažuriranja) — sa istorijom prethodnih
-  izveštaja i push notifikacijom kad je spreman
+  aktivna upozorenja, trend punjenja diska (projekcija "stiže do 90% za ~N
+  dana" na osnovu istorije, kad ima dovoljno podataka), i šta je novo od
+  prethodnog izveštaja (novi agenti/IP adrese/štampači, neuspešne komande i
+  ažuriranja) — sa istorijom prethodnih izveštaja, oznakom pročitano/
+  nepročitano, štampanjem i push notifikacijom kad je spreman
 
 ## Netdesk Agent (RMM)
 
