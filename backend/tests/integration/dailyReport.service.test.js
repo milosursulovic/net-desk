@@ -191,4 +191,96 @@ describe("dailyReport.service (integration, real DB)", () => {
       }
     },
   );
+
+  it("generateDailyReport surfaces CPU/RAM trend projections the same way as disk", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    const agentId = found.id;
+
+    try {
+      const daysAgo = (n) => new Date(Date.now() - n * 86400000);
+      await pool.query(
+        `
+        INSERT INTO agent_monitoring_history
+        (agent_id, cpu_load_pct, ram_load_pct, recorded_at)
+        VALUES ?
+        `,
+        [
+          [
+            [agentId, 40, 40, daysAgo(4)],
+            [agentId, 45, 45, daysAgo(3)],
+            [agentId, 50, 50, daysAgo(2)],
+            [agentId, 55, 55, daysAgo(1)],
+          ],
+        ],
+      );
+      await heartbeat(
+        agentId,
+        { monitoring: { cpuLoadPct: 60, ramLoadPct: 60 } },
+        "10.230.62.81",
+      );
+
+      const generated = await generateDailyReport();
+      reportId = generated.id;
+
+      const cpuForAgent = generated.content.trends.cpuLoadProjections.find(
+        (p) => p.hostname === hostname,
+      );
+      const ramForAgent = generated.content.trends.ramLoadProjections.find(
+        (p) => p.hostname === hostname,
+      );
+      expect(cpuForAgent).toBeTruthy();
+      expect(ramForAgent).toBeTruthy();
+      expect(cpuForAgent.slopePctPerDay).toBeGreaterThan(0);
+      expect(ramForAgent.slopePctPerDay).toBeGreaterThan(0);
+    } finally {
+      await deleteTestAgent(agentId);
+    }
+  });
+
+  it("generateDailyReport surfaces an anomaly when today's value spikes far outside an agent's historical baseline", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    const agentId = found.id;
+
+    try {
+      const daysAgo = (n) => new Date(Date.now() - n * 86400000);
+      await pool.query(
+        `
+        INSERT INTO agent_monitoring_history
+        (agent_id, ram_load_pct, recorded_at)
+        VALUES ?
+        `,
+        [
+          [
+            [agentId, 30, daysAgo(7)],
+            [agentId, 31, daysAgo(6)],
+            [agentId, 29, daysAgo(5)],
+            [agentId, 30, daysAgo(4)],
+            [agentId, 31, daysAgo(3)],
+            [agentId, 29, daysAgo(2)],
+            [agentId, 30, daysAgo(1)],
+          ],
+        ],
+      );
+      // Today's real snapshot (taken inside generateDailyReport) is the spike.
+      await heartbeat(agentId, { monitoring: { ramLoadPct: 95 } }, "10.230.62.81");
+
+      const generated = await generateDailyReport();
+      reportId = generated.id;
+
+      const anomaly = generated.content.trends.anomalies.find(
+        (a) => a.hostname === hostname && a.metric === "ram",
+      );
+      expect(anomaly).toBeTruthy();
+      expect(anomaly.currentValue).toBe(95);
+      expect(Math.abs(anomaly.zScore)).toBeGreaterThan(3);
+    } finally {
+      await deleteTestAgent(agentId);
+    }
+  });
 });

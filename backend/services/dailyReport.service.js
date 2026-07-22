@@ -38,9 +38,19 @@ import { listNotifications } from "./notifications.service.js";
 import { sendPushToAll } from "../utils/webPush.js";
 import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
-import { computeDiskFillProjection } from "../utils/trendAnalysis.js";
+import {
+  computeDiskFillProjection,
+  computeCpuLoadProjection,
+  computeRamLoadProjection,
+  computeDiskAnomaly,
+  computeCpuAnomaly,
+  computeRamAnomaly,
+} from "../utils/trendAnalysis.js";
 
-const TREND_WINDOW_DAYS = 30;
+// 90 days (not 30) - anomaly detection's baseline (mean/stddev) needs a
+// richer window than a threshold projection's slope does, and there's no
+// downside to keeping more history around now while data is still sparse.
+const TREND_WINDOW_DAYS = 90;
 
 export async function generateDailyReport() {
   const periodEnd = new Date();
@@ -102,13 +112,34 @@ export async function generateDailyReport() {
     historyByAgent.get(row.agentId).push(row);
   }
   const diskFillProjections = [];
+  const cpuLoadProjections = [];
+  const ramLoadProjections = [];
+  const anomalies = [];
   for (const rows of historyByAgent.values()) {
-    const projection = computeDiskFillProjection(rows);
-    if (projection) {
-      diskFillProjections.push({ hostname: rows[0].hostname, ...projection });
-    }
+    const hostname = rows[0].hostname;
+
+    const diskProjection = computeDiskFillProjection(rows);
+    if (diskProjection) diskFillProjections.push({ hostname, ...diskProjection });
+
+    const cpuProjection = computeCpuLoadProjection(rows);
+    if (cpuProjection) cpuLoadProjections.push({ hostname, ...cpuProjection });
+
+    const ramProjection = computeRamLoadProjection(rows);
+    if (ramProjection) ramLoadProjections.push({ hostname, ...ramProjection });
+
+    const diskAnomaly = computeDiskAnomaly(rows);
+    if (diskAnomaly) anomalies.push({ hostname, metric: "disk", ...diskAnomaly });
+
+    const cpuAnomaly = computeCpuAnomaly(rows);
+    if (cpuAnomaly) anomalies.push({ hostname, metric: "cpu", ...cpuAnomaly });
+
+    const ramAnomaly = computeRamAnomaly(rows);
+    if (ramAnomaly) anomalies.push({ hostname, metric: "ram", ...ramAnomaly });
   }
   diskFillProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
+  cpuLoadProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
+  ramLoadProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
+  anomalies.sort((a, b) => Math.abs(b.zScore) - Math.abs(a.zScore));
 
   const totalAgents =
     connectivity.online + connectivity.stale + connectivity.offline + connectivity.unknown;
@@ -126,6 +157,9 @@ export async function generateDailyReport() {
     alerts: alerts.notifications,
     trends: {
       diskFillProjections,
+      cpuLoadProjections,
+      ramLoadProjections,
+      anomalies,
     },
     sinceLastReport: {
       newAgents,
@@ -173,6 +207,9 @@ function buildPushSummary(content) {
     parts.push(
       `disk na ${soonest.hostname} stiže do 90% za ~${soonest.daysUntilThreshold} dana`,
     );
+  }
+  if (content.trends.anomalies.length) {
+    parts.push(`${content.trends.anomalies.length} anomalija u ponašanju agenata`);
   }
   if (!parts.length) {
     return "Sve mirno od poslednjeg izveštaja.";

@@ -172,8 +172,8 @@ svaki sync)
 
 **RMM/agenti:**
 `agents`, `agent_monitoring` (1:1 upsert-latest snapshot),
-`agent_monitoring_history` (dnevni snapshot, akumulira se za buduću
-trend/anomalija analizu), `agent_jobs`, `agent_releases`, `agent_update_log`
+`agent_monitoring_history` (dnevni snapshot, koristi se za trend/anomalija
+analizu — vidi ispod), `agent_jobs`, `agent_releases`, `agent_update_log`
 
 **Dnevni izveštaj i push:**
 `daily_reports` (JSON sadržaj, `opened_at` za pročitano/nepročitano),
@@ -373,6 +373,16 @@ ispod). Bez ovoga, backend se ponaša kao dev čak i na produkciji.
 `config/cors.js` ne pravi izuzetak za to, samo poredi sa allowlist-om.
 Prazna lista u produkciji odbija i sopstvene pozive frontend-a.
 
+**Auto-deploy** — `scripts/auto-deploy.ps1` je opciona polling skripta za
+produkcioni server: proverava `origin/main` na nove commit-e, i ako ih ima,
+radi `git pull` + `npm install`/`npm run build` u `frontend/` + restart
+backend Task Scheduler job-a. Ništa ne radi ako nema promena (bez logovanja
+tog slučaja, da log ne raste). Zakazuje se kao poseban Task Scheduler job
+(npr. na svakih 5 min) — vrednosti `$RepoPath`/`$BackendTaskName`/`$LogFile`
+na vrhu skripte treba prilagoditi stvarnoj konfiguraciji servera. Pretpostavlja
+da git na tom serveru već ima podešenu autentikaciju bez interakcije
+(stored credentials/SSH ključ) pod korisnikom pod kojim se task pokreće.
+
 ## Pozadinski procesi
 
 Backend pokreće tri dugotrajna procesa pri startu (`server.js`), svaki sa
@@ -384,6 +394,18 @@ omogućava da svaki tick sačeka da se prethodni završi):
 | `pingService.js` | 30s (podešeno) | ICMP ping svih `ip_entries`, upisuje online/offline status i istoriju promena |
 | `pushNotificationWatcher.js` | 60s | Poredi trenutni skup aktivnih upozorenja sa prethodnim tick-om, šalje push SAMO za novopojavljena (ne ponavlja isti alarm svaki ciklus) |
 | `dailyReportScheduler.js` | dnevno u 7:00 (self-rescheduling, DST-safe) | Generiše dnevni izveštaj, snima monitoring snapshot, šalje push |
+
+**Trend i anomalija analiza** (`utils/trendAnalysis.js`, čiste funkcije bez
+I/O) — pri svakoj generaciji dnevnog izveštaja, za svakog agenta se nad
+poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
+- **Threshold projekcija** (linearna regresija) — "za ~N dana stiže do
+  90%" po metrici; vraća `null` za ravan/opadajući trend, premalo tačaka,
+  ili već-iznad-praga vrednost (to pokriva postojeći alert, ne trend).
+- **Anomalija** (z-score) — današnja vrednost naspram agent-ove sopstvene
+  istorijske sredine/standardne devijacije (bez današnje tačke) — hvata
+  jednokratni skok/pad koji linearna regresija ne vidi, bez obzira na
+  trend. Dvosmerno (i neuobičajeno nisko i neuobičajeno visoko), prag
+  `|z| >= 3`, minimum 7 tačaka za baseline.
 
 ## Bezbednost
 
@@ -419,10 +441,6 @@ omogućava da svaki tick sačeka da se prethodni završi):
 - Nema migration alata — šema se ručno primenjuje po okruženju (rizik od
   drift-a između dev/produkcije, video se uživo bar jednom sa
   `agent_jobs.payload` JSON tipom).
-- `agent_monitoring_history` trend analiza pokriva samo disk (linearna
-  regresija, projekcija dana do 90%) — CPU/RAM trend, prava anomalija
-  detekcija (odstupanje od uobičajenog obrasca, ne samo linearni trend), i
-  duži istorijski prozor nisu implementirani.
 - Nema RBAC-a — svaki ulogovan korisnik ima pun pristup, nema uloga/
   ograničenja po odeljenju.
 - Nema audit log-a administratorskih akcija (ko je šta uradio, kada).

@@ -53,6 +53,8 @@ export async function listMonitoringHistorySince(since) {
     SELECT
       h.agent_id AS agentId,
       a.hostname,
+      h.cpu_load_pct AS cpuLoadPct,
+      h.ram_load_pct AS ramLoadPct,
       h.disk_used_pct AS diskUsedPct,
       h.recorded_at AS recordedAt
     FROM agent_monitoring_history h

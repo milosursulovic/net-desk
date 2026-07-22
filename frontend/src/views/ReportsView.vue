@@ -66,19 +66,39 @@
       <!-- Trendovi - stariji izveštaji (pre nego što je ovo dodato) nemaju
            content.trends u sačuvanom JSON-u, otud opciono ulančavanje. -->
       <div
-        v-if="diskFillProjections.length"
+        v-for="group in trendGroups"
+        :key="group.key"
         class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm"
       >
-        <h2 class="font-semibold text-amber-900 mb-1">📈 Trend punjenja diska</h2>
+        <h2 class="font-semibold text-amber-900 mb-1">📈 {{ group.label }}</h2>
         <p class="text-sm text-amber-800 mb-3">
           Na osnovu poslednjih {{ TREND_WINDOW_DAYS }} dana - ne znači da će se trend nastaviti
           istom brzinom, samo da vredi proveriti.
         </p>
         <ul class="space-y-1 text-sm">
-          <li v-for="(t, idx) in diskFillProjections" :key="idx">
+          <li v-for="(t, idx) in group.items" :key="idx">
             <span class="font-medium">{{ t.hostname || '—' }}</span>
             — trenutno {{ t.currentPct.toFixed(1) }}%, raste ~{{ t.slopePctPerDay.toFixed(2) }}%/dan,
-            stiže do 90% za <span class="font-semibold">~{{ t.daysUntilThreshold }} dana</span>
+            stiže do {{ group.threshold }}% za <span class="font-semibold">~{{ t.daysUntilThreshold }} dana</span>
+          </li>
+        </ul>
+      </div>
+
+      <div
+        v-if="anomalies.length"
+        class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm"
+      >
+        <h2 class="font-semibold text-red-900 mb-1">🚨 Anomalije</h2>
+        <p class="text-sm text-red-800 mb-3">
+          Vrednosti koje značajno odstupaju od uobičajenog obrasca agenta (poslednjih
+          {{ TREND_WINDOW_DAYS }} dana), bez obzira na trend — može biti jednokratni skok,
+          ne mora značiti trajni problem.
+        </p>
+        <ul class="space-y-1 text-sm">
+          <li v-for="(a, idx) in anomalies" :key="idx">
+            <span class="font-medium">{{ a.hostname || '—' }}</span>
+            — {{ metricLabel[a.metric] || a.metric }}: {{ a.currentValue.toFixed(1) }}%
+            (uobičajeno ~{{ a.baselineMean.toFixed(1) }}%, odstupanje {{ a.zScore.toFixed(1) }}σ)
           </li>
         </ul>
       </div>
@@ -213,7 +233,7 @@ import AppButton from '@/components/AppButton.vue'
 
 const route = useRoute()
 
-const TREND_WINDOW_DAYS = 30
+const TREND_WINDOW_DAYS = 90
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 
@@ -227,10 +247,35 @@ const levelIcon = {
   warning: '⚠️',
   info: 'ℹ️',
 }
+const metricLabel = {
+  disk: 'Disk',
+  cpu: 'CPU',
+  ram: 'RAM',
+}
 
 const report = ref(null)
 const history = ref([])
-const diskFillProjections = computed(() => report.value?.content?.trends?.diskFillProjections || [])
+const trendGroups = computed(() => [
+  {
+    key: 'disk',
+    label: 'Trend punjenja diska',
+    threshold: 90,
+    items: report.value?.content?.trends?.diskFillProjections || [],
+  },
+  {
+    key: 'cpu',
+    label: 'Trend CPU opterećenja',
+    threshold: 90,
+    items: report.value?.content?.trends?.cpuLoadProjections || [],
+  },
+  {
+    key: 'ram',
+    label: 'Trend RAM opterećenja',
+    threshold: 90,
+    items: report.value?.content?.trends?.ramLoadProjections || [],
+  },
+].filter((g) => g.items.length))
+const anomalies = computed(() => report.value?.content?.trends?.anomalies || [])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)
