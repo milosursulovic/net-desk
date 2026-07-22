@@ -99,6 +99,46 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     },
   );
 
+  describe(
+    "route ordering: /agents/filter-options must not be swallowed by /agents/:id " +
+      "(same regression class as without-agent-computers above)",
+    () => {
+      it("resolves to the filter-options list, not a parseIdParam 400", async () => {
+        const res = await request(app)
+          .get("/api/protected/agents/filter-options")
+          .set("Authorization", `Bearer ${adminToken()}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty("os");
+        expect(Array.isArray(res.body.os)).toBe(true);
+      });
+    },
+  );
+
+  describe("agents list accepts the new detailed filter query params without erroring", () => {
+    it("ignores an invalid connectivityStatus/deploymentGroup instead of 500ing", async () => {
+      const res = await request(app)
+        .get(
+          "/api/protected/agents?connectivityStatus=bogus&deploymentGroup=bogus&enrolledFrom=not-a-date",
+        )
+        .set("Authorization", `Bearer ${adminToken()}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty("items");
+    });
+
+    it("accepts a valid combination of connectivityStatus/deploymentGroup/date range", async () => {
+      const res = await request(app)
+        .get(
+          "/api/protected/agents?connectivityStatus=offline&deploymentGroup=rest&enrolledFrom=2000-01-01&enrolledTo=2099-01-01",
+        )
+        .set("Authorization", `Bearer ${adminToken()}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty("items");
+    });
+  });
+
   describe("ip-addresses CRUD over real HTTP", () => {
     let entryId;
 

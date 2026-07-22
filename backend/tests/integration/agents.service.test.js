@@ -5,6 +5,8 @@ import {
   syncAgentInventory,
   getAgentService,
   revokeAgentService,
+  listAgentsService,
+  setAgentDeploymentGroupService,
 } from "../../services/agents.service.js";
 import { findAgentById } from "../../repositories/agents.repo.js";
 import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
@@ -172,5 +174,121 @@ describe("agents.service (integration, real DB)", () => {
     // OS/System fields must survive an event-log-only sync untouched.
     expect(minimalSync.metadata.OS.Caption).toBe("Microsoft Windows 10 Pro");
     expect(minimalSync.metadata.System.Manufacturer).toBe("HP");
+  });
+
+  describe("listAgentsService detailed filters", () => {
+    it("filters by connectivityStatus=online after a heartbeat, and excludes it under offline", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      await heartbeat(agentId, {}, "10.230.62.81");
+
+      const online = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        connectivityStatus: "online",
+      });
+      expect(online.items.map((a) => a.id)).toContain(agentId);
+
+      const offline = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        connectivityStatus: "offline",
+      });
+      expect(offline.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by deploymentGroup", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      await setAgentDeploymentGroupService(agentId, "pilot");
+
+      const pilot = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        deploymentGroup: "pilot",
+      });
+      expect(pilot.items.map((a) => a.id)).toContain(agentId);
+
+      const test = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        deploymentGroup: "test",
+      });
+      expect(test.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by os (exact match on osCaption)", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({
+        hostname,
+        osCaption: "VITEST_TEST_OS_Marker",
+      });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const matched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        os: "VITEST_TEST_OS_Marker",
+      });
+      expect(matched.items.map((a) => a.id)).toContain(agentId);
+
+      const notMatched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        os: "Some Other OS",
+      });
+      expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by enrolledFrom/enrolledTo date range", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      const withinRange = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        enrolledFrom: today,
+        enrolledTo: today,
+      });
+      expect(withinRange.items.map((a) => a.id)).toContain(agentId);
+
+      const outsideRange = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        enrolledTo: "2000-01-01",
+      });
+      expect(outsideRange.items.map((a) => a.id)).not.toContain(agentId);
+    });
   });
 });

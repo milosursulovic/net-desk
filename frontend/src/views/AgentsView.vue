@@ -30,6 +30,47 @@
         </select>
       </div>
 
+      <!-- Detaljni filteri -->
+      <div class="flex flex-wrap items-center gap-2">
+        <select v-model="connectivityStatus" class="app-input w-auto" aria-label="Filter po konekciji">
+          <option value="">Sve konekcije</option>
+          <option value="online">Online</option>
+          <option value="stale">Neaktivan</option>
+          <option value="offline">Offline</option>
+          <option value="unknown">Nepoznato</option>
+        </select>
+
+        <select v-model="deploymentGroup" class="app-input w-auto" aria-label="Filter po deployment grupi">
+          <option value="">Sve deployment grupe</option>
+          <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
+        </select>
+
+        <select v-model="os" class="app-input w-auto" aria-label="Filter po operativnom sistemu">
+          <option value="">Svi OS</option>
+          <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
+        </select>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-2">
+        <div>
+          <label class="block text-xs text-slate-500 mb-1" for="enrolledFrom">Enroll od</label>
+          <input id="enrolledFrom" v-model="enrolledFrom" type="date" class="app-input w-auto text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1" for="enrolledTo">Enroll do</label>
+          <input id="enrolledTo" v-model="enrolledTo" type="date" class="app-input w-auto text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1" for="heartbeatFrom">Heartbeat od</label>
+          <input id="heartbeatFrom" v-model="heartbeatFrom" type="date" class="app-input w-auto text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500 mb-1" for="heartbeatTo">Heartbeat do</label>
+          <input id="heartbeatTo" v-model="heartbeatTo" type="date" class="app-input w-auto text-sm" />
+        </div>
+        <AppButton variant="neutral" @click="clearDetailedFilters">Poništi filtere</AppButton>
+      </div>
+
       <!-- Po strani i paginacija -->
       <div class="flex flex-wrap items-center gap-2">
         <label class="text-sm text-slate-600" for="pp">Po strani</label>
@@ -161,27 +202,107 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-const { page, limit, search, status, nextPage, prevPage, applyServerPagination } =
-  usePaginatedRoute({
-    fields: {
-      page: { type: 'int', default: 1 },
-      limit: { type: 'int', default: 20 },
-      search: { type: 'string', default: '', omitIfEmpty: true },
-      status: { default: 'all', oneOf: ['all', 'active', 'revoked'] },
-    },
-    resetPageOn: ['search', 'status'],
-    useReplace: true,
-  })
+const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
-watch([page, limit, search, status], fetchData)
+const {
+  page,
+  limit,
+  search,
+  status,
+  connectivityStatus,
+  deploymentGroup,
+  os,
+  enrolledFrom,
+  enrolledTo,
+  heartbeatFrom,
+  heartbeatTo,
+  nextPage,
+  prevPage,
+  applyServerPagination,
+} = usePaginatedRoute({
+  fields: {
+    page: { type: 'int', default: 1 },
+    limit: { type: 'int', default: 20 },
+    search: { type: 'string', default: '', omitIfEmpty: true },
+    status: { default: 'all', oneOf: ['all', 'active', 'revoked'] },
+    connectivityStatus: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', 'online', 'stale', 'offline', 'unknown'],
+    },
+    deploymentGroup: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', ...DEPLOYMENT_GROUPS],
+    },
+    os: { type: 'string', default: '', omitIfEmpty: true },
+    enrolledFrom: { type: 'string', default: '', omitIfEmpty: true },
+    enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
+    heartbeatFrom: { type: 'string', default: '', omitIfEmpty: true },
+    heartbeatTo: { type: 'string', default: '', omitIfEmpty: true },
+  },
+  resetPageOn: [
+    'search',
+    'status',
+    'connectivityStatus',
+    'deploymentGroup',
+    'os',
+    'enrolledFrom',
+    'enrolledTo',
+    'heartbeatFrom',
+    'heartbeatTo',
+  ],
+  useReplace: true,
+})
+
+watch(
+  [
+    page,
+    limit,
+    search,
+    status,
+    connectivityStatus,
+    deploymentGroup,
+    os,
+    enrolledFrom,
+    enrolledTo,
+    heartbeatFrom,
+    heartbeatTo,
+  ],
+  fetchData,
+)
 
 const items = ref([])
 const total = ref(0)
 const totalPages = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
+const osOptions = ref([])
 
 let searchT = null
+
+async function fetchFilterOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/agents/filter-options')
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    osOptions.value = data.os || []
+  } catch (e) {
+    console.error('Neuspešno dohvatanje opcija filtera', e)
+  }
+}
+
+function clearDetailedFilters() {
+  connectivityStatus.value = ''
+  deploymentGroup.value = ''
+  os.value = ''
+  enrolledFrom.value = ''
+  enrolledTo.value = ''
+  heartbeatFrom.value = ''
+  heartbeatTo.value = ''
+}
 
 async function fetchData() {
   loading.value = true
@@ -192,6 +313,13 @@ async function fetchData() {
       search: search.value,
       status: status.value,
     })
+    if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
+    if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
+    if (os.value) params.set('os', os.value)
+    if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
+    if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
+    if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)
+    if (heartbeatTo.value) params.set('heartbeatTo', heartbeatTo.value)
 
     const res = await fetchWithAuth(`/api/protected/agents?${params.toString()}`, {
       signal: getSignal(),
@@ -254,6 +382,7 @@ onBeforeUnmount(() => {
 })
 
 onMounted(() => {
+  fetchFilterOptions()
   fetchData()
 })
 </script>

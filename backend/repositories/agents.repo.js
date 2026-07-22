@@ -91,7 +91,32 @@ export async function updateHeartbeat(id, { hostname, agentVersion, lastIp }) {
   return result.affectedRows;
 }
 
-export async function listAgents({ search, status, limit, offset }) {
+// Mirrors agents.service.js's ONLINE_THRESHOLD_MS (300s) / STALE_THRESHOLD_MS
+// (1800s) computeConnectivityStatus() logic, but as SQL so it can be
+// filtered/paginated in the same query instead of after the fact in JS -
+// keep both in sync if the thresholds ever change.
+const CONNECTIVITY_STATUS_SQL = `
+  CASE
+    WHEN last_heartbeat_at IS NULL THEN 'unknown'
+    WHEN TIMESTAMPDIFF(SECOND, last_heartbeat_at, NOW()) <= 300 THEN 'online'
+    WHEN TIMESTAMPDIFF(SECOND, last_heartbeat_at, NOW()) <= 1800 THEN 'stale'
+    ELSE 'offline'
+  END
+`;
+
+export async function listAgents({
+  search,
+  status,
+  connectivityStatus,
+  deploymentGroup,
+  os,
+  enrolledFrom,
+  enrolledTo,
+  heartbeatFrom,
+  heartbeatTo,
+  limit,
+  offset,
+}) {
   const searchClause = buildLikeSearch(["hostname", "agent_uid"], search);
   const whereParts = [];
   const params = [];
@@ -103,6 +128,34 @@ export async function listAgents({ search, status, limit, offset }) {
   if (status === "active" || status === "revoked") {
     whereParts.push("status = ?");
     params.push(status);
+  }
+  if (connectivityStatus) {
+    whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) = ?`);
+    params.push(connectivityStatus);
+  }
+  if (deploymentGroup) {
+    whereParts.push("deployment_group = ?");
+    params.push(deploymentGroup);
+  }
+  if (os) {
+    whereParts.push("os_caption = ?");
+    params.push(os);
+  }
+  if (enrolledFrom) {
+    whereParts.push("DATE(enrolled_at) >= ?");
+    params.push(enrolledFrom);
+  }
+  if (enrolledTo) {
+    whereParts.push("DATE(enrolled_at) <= ?");
+    params.push(enrolledTo);
+  }
+  if (heartbeatFrom) {
+    whereParts.push("DATE(last_heartbeat_at) >= ?");
+    params.push(heartbeatFrom);
+  }
+  if (heartbeatTo) {
+    whereParts.push("DATE(last_heartbeat_at) <= ?");
+    params.push(heartbeatTo);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
@@ -139,6 +192,13 @@ export async function listAgents({ search, status, limit, offset }) {
   );
 
   return { items, total: Number(total) || 0 };
+}
+
+export async function listDistinctAgentOs() {
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT os_caption FROM agents WHERE os_caption IS NOT NULL AND os_caption != '' ORDER BY os_caption`,
+  );
+  return rows.map((r) => r.os_caption);
 }
 
 export async function revokeAgentById(id) {

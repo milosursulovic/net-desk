@@ -8,6 +8,7 @@ import {
   findAgentById,
   updateHeartbeat,
   listAgents,
+  listDistinctAgentOs,
   revokeAgentById,
   linkAgentToIpEntry,
   upsertAgentMonitoring,
@@ -101,9 +102,33 @@ function computeConnectivityStatus(lastHeartbeatAt) {
   return "offline";
 }
 
-export async function listAgentsService({ page, limit, search, status }) {
+export async function listAgentsService({
+  page,
+  limit,
+  search,
+  status,
+  connectivityStatus,
+  deploymentGroup,
+  os,
+  enrolledFrom,
+  enrolledTo,
+  heartbeatFrom,
+  heartbeatTo,
+}) {
   const offset = (page - 1) * limit;
-  const { items, total } = await listAgents({ search, status, limit, offset });
+  const { items, total } = await listAgents({
+    search,
+    status,
+    connectivityStatus,
+    deploymentGroup,
+    os,
+    enrolledFrom,
+    enrolledTo,
+    heartbeatFrom,
+    heartbeatTo,
+    limit,
+    offset,
+  });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
   const itemsWithStatus = items.map((a) => ({
@@ -112,6 +137,11 @@ export async function listAgentsService({ page, limit, search, status }) {
   }));
 
   return { items: itemsWithStatus, page: safePage, limit, total, totalPages, search, status };
+}
+
+export async function agentFilterOptionsService() {
+  const os = await listDistinctAgentOs();
+  return { os };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search }) {
