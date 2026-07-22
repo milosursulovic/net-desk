@@ -74,6 +74,10 @@ onBeforeUnmount(() => {
   );
 }
 
+.dark .notification-ticker {
+  background-color: #1e293b;
+}
+
 .notification-ticker-track {
   display: flex;
   width: max-content;

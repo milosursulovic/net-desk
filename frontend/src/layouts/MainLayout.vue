@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-100 to-white flex flex-col">
+  <div class="min-h-screen bg-gradient-to-br from-slate-100 to-white dark:from-slate-950 dark:to-slate-900 flex flex-col">
     <header class="bg-white/90 shadow sticky top-0 z-50">
       <div class="w-full flex items-center gap-4 px-4 py-3">
         <div class="flex shrink-0 items-center gap-3">
@@ -25,6 +25,8 @@
               {{ currentUser?.username || 'Nepoznat' }}
             </span>
           </div>
+
+          <ThemeToggle />
 
           <PushNotificationToggle />
 
@@ -55,6 +57,7 @@ import AppNav from '@/components/AppNav.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import NotificationTicker from '@/components/NotificationTicker.vue'
 import PushNotificationToggle from '@/components/PushNotificationToggle.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useAppInfo } from '@/composables/useAppInfo.js'
 

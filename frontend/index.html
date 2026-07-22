@@ -4,7 +4,17 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vite App</title>
+    <title>NetDesk</title>
+    <script>
+      // Applied synchronously, before first paint, so the page doesn't
+      // flash light-then-dark (or vice versa) while main.js is still
+      // loading - must stay in sync with useTheme.js's own logic.
+      (function () {
+        var stored = localStorage.getItem('netdesk-theme') || 'system'
+        var isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (isDark) document.documentElement.classList.add('dark')
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
