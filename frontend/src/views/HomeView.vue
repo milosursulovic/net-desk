@@ -121,18 +121,18 @@
         class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
       >
         <div class="flex items-start justify-between gap-3">
-          <div>
+          <div class="min-w-0">
             <div class="text-sm text-slate-500">IP adresa</div>
             <div class="text-lg font-semibold tracking-tight">
               {{ entry.ip }}
             </div>
 
-            <div class="mt-1 text-xs text-slate-500">
+            <div class="mt-1 text-xs text-slate-500 break-words">
               {{ entry.computerName || '—' }}
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center justify-end gap-2">
             <span
               class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
               :class="
