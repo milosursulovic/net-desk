@@ -82,21 +82,54 @@ describe("activity-log routes (integration, real DB)", () => {
     expect(match.statusCode).toBe(201);
   });
 
-  it("GET requests are not logged (reads aren't audited actions)", async () => {
-    const token = adminToken();
+  it("a list/search GET is not logged (routine browsing, not a record view)", async () => {
+    const { id, username, token } = await tokenForRealUser("viewer");
+    realUserId = id;
 
     await request(app)
       .get("/api/protected/ip-addresses")
       .set("Authorization", `Bearer ${token}`);
+    await request(app)
+      .get("/api/protected/ip-addresses?search=whatever")
+      .set("Authorization", `Bearer ${token}`);
+
+    const logRes = await request(app)
+      .get(`/api/protected/activity-log?username=${username}&limit=200`)
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    // Exact match, not startsWith - "GET .../ip-addresses/47" (a single-
+    // record view, logged on purpose) would also start with this prefix.
+    const match = logRes.body.items.find(
+      (e) => e.action === "GET /api/protected/ip-addresses" || e.action.startsWith("GET /api/protected/ip-addresses?"),
+    );
+    expect(match).toBeUndefined();
+  });
+
+  it("a single-record GET (path ending in an id) IS logged as a view", async () => {
+    const { id, username, token } = await tokenForRealUser("viewer");
+    realUserId = id;
+    const ip = testIp();
+
+    const createRes = await request(app)
+      .post("/api/protected/ip-addresses")
+      .set("Authorization", `Bearer ${adminToken()}`)
+      .send({ ip, computerName: "AUDIT-TEST-PC", entryType: "computer" });
+    entryId = createRes.body.id;
+
+    const viewRes = await request(app)
+      .get(`/api/protected/ip-addresses/${entryId}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(viewRes.status).toBe(200);
 
     const logRes = await request(app)
       .get("/api/protected/activity-log?limit=200")
-      .set("Authorization", `Bearer ${token}`);
+      .set("Authorization", `Bearer ${adminToken()}`);
 
     const match = logRes.body.items.find(
-      (e) => e.action === "GET /api/protected/ip-addresses",
+      (e) => e.action === `GET /api/protected/ip-addresses/${entryId}` && e.username === username,
     );
-    expect(match).toBeUndefined();
+    expect(match).toBeTruthy();
+    expect(match.statusCode).toBe(200);
   });
 
   it("filters by username", async () => {

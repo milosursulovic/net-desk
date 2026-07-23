@@ -433,7 +433,9 @@ poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
   i report mark-read (lične akcije, ne organizacione mutacije).
 - **Audit log** (`activity_log` tabela) — generički HTTP-nivo trag: svaki
   ne-GET zahtev na `/api/protected/*` (bez obzira na ishod - i 403/400 se
-  beleže) plus `login_success`/`login_failed` sa IP adresom. Vidljivo samo
+  beleže), plus GET zahtevi koji gledaju jedan konkretan zapis (putanja se
+  završava brojem, npr. `/agents/47` - liste/pretraga/paginacija se ne
+  beleže), plus `login_success`/`login_failed` sa IP adresom. Vidljivo samo
   adminu na `/logs`. Beleženje je fire-and-forget (`res.on("finish")`,
   greška se guta) - ne sme da obori pravi zahtev.
 
