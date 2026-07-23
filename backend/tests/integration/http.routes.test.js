@@ -395,5 +395,36 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         .set("Authorization", `Bearer ${adminToken()}`);
       expect(res.status).toBe(404);
     });
+
+    it("GET /reports/:id/pdf streams a real PDF, not JSON", async () => {
+      const token = adminToken();
+
+      const genRes = await request(app)
+        .post("/api/protected/reports/generate")
+        .set("Authorization", `Bearer ${token}`);
+      reportId = genRes.body.id;
+
+      const pdfRes = await request(app)
+        .get(`/api/protected/reports/${reportId}/pdf`)
+        .set("Authorization", `Bearer ${token}`)
+        .buffer(true)
+        .parse((res, callback) => {
+          res.setEncoding("binary");
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => callback(null, Buffer.from(data, "binary")));
+        });
+
+      expect(pdfRes.status).toBe(200);
+      expect(pdfRes.headers["content-type"]).toBe("application/pdf");
+      expect(pdfRes.body.subarray(0, 5).toString()).toBe("%PDF-");
+    });
+
+    it("rejects a PDF request for an unknown report id with 404, not 500", async () => {
+      const res = await request(app)
+        .get("/api/protected/reports/999999999/pdf")
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(404);
+    });
   });
 });

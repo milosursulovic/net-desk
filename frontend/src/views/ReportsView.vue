@@ -1,5 +1,6 @@
 <template>
   <div class="glass-container space-y-4">
+    <ToastNotification :message="toast" />
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <div class="flex items-center gap-2">
@@ -19,7 +20,9 @@
         </p>
       </div>
       <div class="flex gap-2 no-print">
-        <AppButton v-if="report" variant="neutral" @click="printReport">🖨️ Štampaj</AppButton>
+        <AppButton v-if="report" variant="neutral" :disabled="downloadingPdf" @click="downloadPdf">
+          {{ downloadingPdf ? 'Pripremam…' : '📄 Preuzmi PDF' }}
+        </AppButton>
         <AppButton variant="secondary" :disabled="generating" @click="generateNow">
           {{ generating ? 'Generišem…' : 'Generiši sada' }}
         </AppButton>
@@ -229,9 +232,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
+import { downloadFromResponse } from '@/utils/download.js'
+import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 const route = useRoute()
+const { toast, showToast } = useToast()
 
 const TREND_WINDOW_DAYS = 90
 
@@ -279,6 +286,7 @@ const anomalies = computed(() => report.value?.content?.trends?.anomalies || [])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)
+const downloadingPdf = ref(false)
 
 async function loadReport() {
   loading.value = true
@@ -320,8 +328,20 @@ async function markAsRead(id) {
   }
 }
 
-function printReport() {
-  window.print()
+async function downloadPdf() {
+  if (!report.value) return
+  downloadingPdf.value = true
+  try {
+    await downloadFromResponse(
+      await fetchWithAuth(`/api/protected/reports/${report.value.id}/pdf`),
+      `netdesk-izvestaj-${report.value.id}.pdf`,
+    )
+  } catch (err) {
+    console.error('Neuspešno preuzimanje PDF-a:', err)
+    showToast('Neuspešno preuzimanje PDF-a', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    downloadingPdf.value = false
+  }
 }
 
 async function loadHistory() {

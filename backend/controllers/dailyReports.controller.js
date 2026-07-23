@@ -7,6 +7,7 @@ import {
 } from "../services/dailyReport.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
+import { sendReportPdf } from "../utils/reportPdf.js";
 
 export async function listReportsController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
@@ -25,6 +26,12 @@ export async function getReportByIdController(req, res) {
   const id = parseIdParam(req, "id", "ID izveštaja");
   const out = await getReportByIdService(id);
   res.json(out);
+}
+
+export async function getReportPdfController(req, res) {
+  const id = parseIdParam(req, "id", "ID izveštaja");
+  const report = await getReportByIdService(id);
+  sendReportPdf(res, report);
 }
 
 // Ručno okidanje generisanja - koristi se za testiranje pre nego što se
