@@ -16,6 +16,14 @@ export async function findUserById(id) {
   return rows?.[0] || null;
 }
 
+export async function findUserByIdWithPassword(id) {
+  const [rows] = await pool.execute(
+    "SELECT id, username, password, role FROM users WHERE id = ? LIMIT 1",
+    [id],
+  );
+  return rows?.[0] || null;
+}
+
 export async function listUsers() {
   const [rows] = await pool.execute(
     "SELECT id, username, role, created_at AS createdAt FROM users ORDER BY username ASC",

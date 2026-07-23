@@ -30,6 +30,8 @@
 
           <PushNotificationToggle />
 
+          <ChangePasswordButton />
+
           <LogoutButton />
         </div>
       </div>
@@ -58,6 +60,7 @@ import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import NotificationTicker from '@/components/NotificationTicker.vue'
 import PushNotificationToggle from '@/components/PushNotificationToggle.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import ChangePasswordButton from '@/components/ChangePasswordButton.vue'
 import { useAppInfo } from '@/composables/useAppInfo.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 

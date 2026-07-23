@@ -21,6 +21,7 @@ const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
 const ComputersWithoutAgentView = () => import('@/views/ComputersWithoutAgentView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
 const UsersView = () => import('@/views/UsersView.vue')
+const LogsView = () => import('@/views/LogsView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -177,6 +178,12 @@ const router = createRouter({
           name: 'users',
           meta: { title: 'Korisnici - NetDesk', breadcrumb: 'Korisnici', requiresAdmin: true },
           component: UsersView,
+        },
+        {
+          path: 'logs',
+          name: 'logs',
+          meta: { title: 'Logovi - NetDesk', breadcrumb: 'Logovi', requiresAdmin: true },
+          component: LogsView,
         },
       ],
     },

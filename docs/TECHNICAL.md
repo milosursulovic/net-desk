@@ -425,15 +425,23 @@ poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
 - **Agent update paketi** — SHA-256 se računa server-side od stvarno
   uploaded bajtova (nikad se ne veruje klijentu), opciono RSA-SHA256
   potpisivanje preko interne CA.
+- **RBAC** — tri role (`admin`/`operator`/`viewer`) u `users.role`. Default
+  politika (`middlewares/requireRole.middleware.js`): GET otvoren svakoj
+  ulozi, sve što menja stanje traži bar `operator`. Admin-only: Users
+  management i Agent Releases (upload/aktivacija verzije - pogađa celu
+  flotu). Izuzeci gde je `viewer` ipak dozvoljen: push subscribe/unsubscribe
+  i report mark-read (lične akcije, ne organizacione mutacije).
+- **Audit log** (`activity_log` tabela) — generički HTTP-nivo trag: svaki
+  ne-GET zahtev na `/api/protected/*` (bez obzira na ishod - i 403/400 se
+  beleže) plus `login_success`/`login_failed` sa IP adresom. Vidljivo samo
+  adminu na `/logs`. Beleženje je fire-and-forget (`res.on("finish")`,
+  greška se guta) - ne sme da obori pravi zahtev.
 
 ## Poznata ograničenja
 
 - Nema migration alata — šema se ručno primenjuje po okruženju (rizik od
   drift-a između dev/produkcije, video se uživo bar jednom sa
   `agent_jobs.payload` JSON tipom).
-- Nema RBAC-a — svaki ulogovan korisnik ima pun pristup, nema uloga/
-  ograničenja po odeljenju.
-- Nema audit log-a administratorskih akcija (ko je šta uradio, kada).
 - Job queue je async/polling (agent povlači na sledećem ciklusu, ne
   odmah) — nema uživo/real-time kanala za komande.
 

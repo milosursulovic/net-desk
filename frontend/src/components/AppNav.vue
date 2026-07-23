@@ -15,7 +15,9 @@ const baseLinks = [
 
 const { isAdmin } = useCurrentUser()
 const links = computed(() =>
-  isAdmin.value ? [...baseLinks, { to: '/users', label: 'Korisnici' }] : baseLinks,
+  isAdmin.value
+    ? [...baseLinks, { to: '/users', label: 'Korisnici' }, { to: '/logs', label: 'Logovi' }]
+    : baseLinks,
 )
 
 const route = useRoute()
