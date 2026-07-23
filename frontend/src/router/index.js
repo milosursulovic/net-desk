@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { isTokenExpired } from '@/utils/auth.js'
+import { isTokenExpired, decodeJwt } from '@/utils/auth.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
@@ -20,6 +20,7 @@ const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
 const ComputersWithoutAgentView = () => import('@/views/ComputersWithoutAgentView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
+const UsersView = () => import('@/views/UsersView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -171,6 +172,12 @@ const router = createRouter({
           },
           component: ReportsView,
         },
+        {
+          path: 'users',
+          name: 'users',
+          meta: { title: 'Korisnici - NetDesk', breadcrumb: 'Korisnici', requiresAdmin: true },
+          component: UsersView,
+        },
       ],
     },
     {
@@ -196,6 +203,9 @@ router.beforeEach((to, from, next) => {
       localStorage.removeItem('token')
       const returnTo = encodeURIComponent(to.fullPath || '/')
       return next(`/login?returnTo=${returnTo}`)
+    }
+    if (to.meta.requiresAdmin && decodeJwt(token)?.role !== 'admin') {
+      return next('/')
     }
   }
 

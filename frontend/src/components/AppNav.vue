@@ -1,7 +1,9 @@
 <script setup>
+import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 
-const links = [
+const baseLinks = [
   { to: '/', label: 'IP Adrese' },
   { to: '/metadata', label: 'Metapodaci' },
   { to: '/pdsu', label: 'PDSU' },
@@ -10,6 +12,11 @@ const links = [
   { to: '/agents', label: 'Agenti' },
   { to: '/reports', label: 'Izveštaji' },
 ]
+
+const { isAdmin } = useCurrentUser()
+const links = computed(() =>
+  isAdmin.value ? [...baseLinks, { to: '/users', label: 'Korisnici' }] : baseLinks,
+)
 
 const route = useRoute()
 

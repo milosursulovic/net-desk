@@ -34,10 +34,7 @@ export async function login(username, password) {
     throw unauthorized("Neispravni kredencijali");
   }
 
-  // No roles table/column exists yet - "admin" is the one hardcoded
-  // username treated as privileged, everyone else is a plain "user". Revisit
-  // if/when real per-user roles are needed.
-  const role = user.username === "admin" ? "admin" : "user";
+  const role = user.role;
 
   const token = jwt.sign(
     { userId: user.id, username: user.username, role },
@@ -54,7 +51,7 @@ export function getMeFromToken(token) {
     return {
       userId: payload.userId,
       username: payload.username,
-      role: payload.role || "user",
+      role: payload.role || "viewer",
     };
   } catch {
     throw unauthorized("Nevažeći ili istekao token");

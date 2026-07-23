@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import Logo from '@/components/Logo.vue'
 import LogoutButton from '@/components/LogoutButton.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -58,24 +58,14 @@ import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import NotificationTicker from '@/components/NotificationTicker.vue'
 import PushNotificationToggle from '@/components/PushNotificationToggle.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
-import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useAppInfo } from '@/composables/useAppInfo.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 
 const { copyright } = useAppInfo()
-
-const currentUser = ref(null)
+const { currentUser } = useCurrentUser()
 
 const userInitial = computed(() => {
   const name = currentUser.value?.username || ''
   return name ? name.charAt(0).toUpperCase() : '?'
-})
-
-onMounted(async () => {
-  try {
-    const res = await fetchWithAuth('/api/auth/me')
-    if (res.ok) currentUser.value = await res.json()
-  } catch (err) {
-    console.error('Greška pri učitavanju korisnika', err)
-  }
 })
 </script>

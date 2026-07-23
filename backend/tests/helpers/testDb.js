@@ -58,6 +58,15 @@ export async function deleteTestDailyReport(id) {
   await pool.execute("DELETE FROM daily_reports WHERE id = ?", [id]);
 }
 
+export function testUsername() {
+  return `vitest_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export async function deleteTestUser(id) {
+  if (!id) return;
+  await pool.execute("DELETE FROM users WHERE id = ?", [id]);
+}
+
 export async function assertNoLeakedTestData() {
   const [[{ cnt: agentCnt }]] = await pool.query(
     "SELECT COUNT(*) AS cnt FROM agents WHERE hostname LIKE 'VITEST_TEST_%'",

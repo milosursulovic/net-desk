@@ -14,3 +14,19 @@ export function adminToken() {
     { expiresIn: "1h", algorithm: "HS256" },
   );
 }
+
+export function operatorToken() {
+  return jwt.sign(
+    { userId: 2, username: "vitest-operator", role: "operator" },
+    JWT_SECRET,
+    { expiresIn: "1h", algorithm: "HS256" },
+  );
+}
+
+export function viewerToken() {
+  return jwt.sign(
+    { userId: 3, username: "vitest-viewer", role: "viewer" },
+    JWT_SECRET,
+    { expiresIn: "1h", algorithm: "HS256" },
+  );
+}
