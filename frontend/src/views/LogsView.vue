@@ -32,7 +32,16 @@
           <tr v-for="entry in entries" :key="entry.id">
             <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ fmtDate(entry.createdAt) }}</td>
             <td class="px-4 py-3 font-medium">{{ entry.username || '—' }}</td>
-            <td class="px-4 py-3 font-mono text-xs">{{ entry.action }}</td>
+            <td class="px-4 py-3 font-mono text-xs">
+              <div>{{ entry.action }}</div>
+              <div
+                v-if="entry.details"
+                class="mt-0.5 max-w-xs truncate text-slate-400"
+                :title="entry.details"
+              >
+                {{ entry.details }}
+              </div>
+            </td>
             <td class="px-4 py-3 text-slate-500">{{ entry.ipAddress || '—' }}</td>
             <td class="px-4 py-3">
               <span

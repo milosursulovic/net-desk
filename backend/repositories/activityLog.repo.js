@@ -3,13 +3,20 @@ import { pool } from "../db/pool.js";
 // Fire-and-forget from the caller's perspective (callers .catch() this, per
 // auditLog.middleware.js) - a logging failure must never break the actual
 // request it's describing.
-export async function insertActivityLog({ userId, username, action, ipAddress, statusCode }) {
+export async function insertActivityLog({
+  userId,
+  username,
+  action,
+  ipAddress,
+  statusCode,
+  details,
+}) {
   await pool.execute(
     `
-    INSERT INTO activity_log (user_id, username, action, ip_address, status_code)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO activity_log (user_id, username, action, ip_address, status_code, details)
+    VALUES (?, ?, ?, ?, ?, ?)
     `,
-    [userId ?? null, username ?? null, action, ipAddress ?? null, statusCode ?? null],
+    [userId ?? null, username ?? null, action, ipAddress ?? null, statusCode ?? null, details ?? null],
   );
 }
 
@@ -20,6 +27,7 @@ const SELECT_FIELDS = `
   action,
   ip_address AS ipAddress,
   status_code AS statusCode,
+  details,
   created_at AS createdAt
 `;
 

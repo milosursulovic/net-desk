@@ -132,6 +132,50 @@ describe("activity-log routes (integration, real DB)", () => {
     expect(match.statusCode).toBe(200);
   });
 
+  it("captures the request body as details for a write", async () => {
+    const { id, username, token } = await tokenForRealUser("viewer");
+    realUserId = id;
+
+    const res = await request(app)
+      .patch(`/api/protected/users/${id}/role`)
+      .set("Authorization", `Bearer ${adminToken()}`)
+      .send({ role: "operator" });
+    expect(res.status).toBe(200);
+
+    const logRes = await request(app)
+      .get("/api/protected/activity-log?limit=200")
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    const match = logRes.body.items.find(
+      (e) => e.action === `PATCH /api/protected/users/${id}/role`,
+    );
+    expect(match).toBeTruthy();
+    expect(JSON.parse(match.details)).toEqual({ role: "operator" });
+  });
+
+  it("redacts password fields in details instead of storing them in the clear", async () => {
+    const { id, username, token } = await tokenForRealUser("viewer");
+    realUserId = id;
+
+    const res = await request(app)
+      .post("/api/auth/change-password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "unused-test-password", newPassword: "brand-new-password-1" });
+    expect(res.status).toBe(204);
+
+    const logRes = await request(app)
+      .get(`/api/protected/activity-log?username=${username}&limit=200`)
+      .set("Authorization", `Bearer ${adminToken()}`);
+
+    const match = logRes.body.items.find(
+      (e) => e.action === "POST /api/auth/change-password",
+    );
+    expect(match).toBeTruthy();
+    const details = JSON.parse(match.details);
+    expect(details.currentPassword).toBe("[REDACTED]");
+    expect(details.newPassword).toBe("[REDACTED]");
+  });
+
   it("filters by username", async () => {
     const { id, username, token } = await tokenForRealUser("operator");
     realUserId = id;
