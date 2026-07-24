@@ -12,6 +12,7 @@ using NetdeskAgent.Common.Jobs;
 using NetdeskAgent.Common.Monitoring;
 using NetdeskAgent.Common.EventLogs;
 using NetdeskAgent.Common.Update;
+using NetdeskAgent.Common.Vnc;
 
 namespace NetdeskAgent.Service
 {
@@ -78,7 +79,7 @@ namespace NetdeskAgent.Service
                         }
                         else if ((DateTime.UtcNow - lastJobsPoll).TotalSeconds >= settings.JobsPollIntervalSeconds)
                         {
-                            await DoJobsPollAsync(client, state).ConfigureAwait(false);
+                            await DoJobsPollAsync(client, state, token).ConfigureAwait(false);
                             lastJobsPoll = DateTime.UtcNow;
                         }
                         else if ((DateTime.UtcNow - lastEventLogSync).TotalSeconds >= settings.EventLogIntervalSeconds)
@@ -254,7 +255,7 @@ namespace NetdeskAgent.Service
             }
         }
 
-        private static async Task DoJobsPollAsync(NetdeskApiClient client, AgentState state)
+        private static async Task DoJobsPollAsync(NetdeskApiClient client, AgentState state, CancellationToken token)
         {
             JobsResponse jobsResponse;
 
@@ -275,13 +276,24 @@ namespace NetdeskAgent.Service
 
             foreach (var job in jobsResponse.Jobs)
             {
-                await ProcessJobAsync(client, state, job).ConfigureAwait(false);
+                await ProcessJobAsync(client, state, job, token).ConfigureAwait(false);
             }
         }
 
-        private static async Task ProcessJobAsync(NetdeskApiClient client, AgentState state, JobItem job)
+        private static async Task ProcessJobAsync(NetdeskApiClient client, AgentState state, JobItem job, CancellationToken token)
         {
             FileLogger.Info("Izvršavam komandu #" + job.Id + " (" + job.CommandType + ")...");
+
+            if (job.CommandType == "start_vnc_stream")
+            {
+                // Dugotrajna komanda - za razliku od svih ostalih (izvrši i
+                // prijavi rezultat), ova pokreće pozadinski streaming koji
+                // traje dok se sesija ne zatvori. Ne sme da ide kroz
+                // JobExecutor.Execute (sinhrono) jer bi blokiralo ovu poll
+                // petlju (i time heartbeat/inventory) za celo trajanje sesije.
+                await ProcessVncStreamJobAsync(client, state, job, token).ConfigureAwait(false);
+                return;
+            }
 
             JobExecutor.ExecutionResult result;
 
@@ -300,6 +312,50 @@ namespace NetdeskAgent.Service
             FileLogger.Info(
                 "Komanda #" + job.Id + " završena. Success=" + result.Success + " ExitCode=" + result.ExitCode);
 
+            await ReportJobResultAsync(client, state, job.Id, result).ConfigureAwait(false);
+        }
+
+        private static async Task ProcessVncStreamJobAsync(
+            NetdeskApiClient client, AgentState state, JobItem job, CancellationToken token)
+        {
+            long sessionId;
+            try
+            {
+                sessionId = (long)job.Payload["sessionId"];
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("start_vnc_stream komanda #" + job.Id + " ima neispravan payload", ex);
+                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+                {
+                    Success = false,
+                    ExitCode = -1,
+                    ErrorOutput = "Neispravan payload (nedostaje sessionId).",
+                    DurationMs = 0,
+                }).ConfigureAwait(false);
+                return;
+            }
+
+            // Namerno fire-and-forget - traje dok se sesija ne zatvori (server
+            // ili viewer strana), ne sme da blokira ovu metodu/poll petlju.
+            // Isti obrazac kao NetdeskAgentService.OnStart (jedini postojeći
+            // presedan za pozadinski Task u ovom agentu). Dodeljeno promenljivoj
+            // (čak i neiskorišćenoj) da CS4014 ne prijavljuje ovo kao slučajno
+            // zaboravljen await.
+            var vncStreamTask = Task.Run(() => VncStreamer.RunAsync(sessionId, client.BaseUrl, state.AgentId, state.ApiKey, token));
+
+            await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+            {
+                Success = true,
+                ExitCode = 0,
+                Output = "VNC sesija #" + sessionId + " pokrenuta.",
+                DurationMs = 0,
+            }).ConfigureAwait(false);
+        }
+
+        private static async Task ReportJobResultAsync(
+            NetdeskApiClient client, AgentState state, long jobId, JobExecutor.ExecutionResult result)
+        {
             try
             {
                 var reportRequest = new JobResultRequest
@@ -311,11 +367,11 @@ namespace NetdeskAgent.Service
                     Success = result.Success,
                 };
 
-                await client.SubmitJobResultAsync(state.AgentId, state.ApiKey, job.Id, reportRequest).ConfigureAwait(false);
+                await client.SubmitJobResultAsync(state.AgentId, state.ApiKey, jobId, reportRequest).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                FileLogger.Error("Slanje rezultata za komandu #" + job.Id + " neuspešno", ex);
+                FileLogger.Error("Slanje rezultata za komandu #" + jobId + " neuspešno", ex);
             }
         }
 
