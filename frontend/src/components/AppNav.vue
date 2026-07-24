@@ -16,7 +16,12 @@ const baseLinks = [
 const { isAdmin } = useCurrentUser()
 const links = computed(() =>
   isAdmin.value
-    ? [...baseLinks, { to: '/users', label: 'Korisnici' }, { to: '/logs', label: 'Logovi' }]
+    ? [
+        ...baseLinks,
+        { to: '/users', label: 'Korisnici' },
+        { to: '/logs', label: 'Logovi' },
+        { to: '/config', label: 'Konfiguracija' },
+      ]
     : baseLinks,
 )
 

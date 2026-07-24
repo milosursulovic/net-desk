@@ -26,12 +26,17 @@ alerting preko postojećeg notifikacionog sistema).
 ### 1. Uživo pristup / remote support
 Trenutni job queue je async (agent povlači komande na svaki poll ciklus, ne
 odmah). Za pravu IT podršku uživo bi imalo smisla:
-- **Real-time kanal** (WebSocket/SignalR ili slično) umesto pollinga — komande
-  bi stizale odmah, ne na sledeći interval.
-- **Live PowerShell/CMD sesija** iz browsera (kao "remote shell" prozor), ne
-  samo fire-and-forget skripta bez interakcije.
-- Eventualno remote screen view (VNC-like) — najveći poduhvat na listi, ali
-  najviše bi smanjio potrebu za WinRM/AnyDesk/TeamViewer fallback-om.
+- ✅ **Urađeno** — remote screen view + kontrola miša/tastature (VNC-like),
+  preko posebnog WebSocket kanala (ne poll-a) — vidi `docs/TECHNICAL.md`,
+  sekcija "Remote screen control (VNC)". Sam START signal i dalje ide kroz
+  postojeći 15s job-poll (namerno - videti tu sekciju), ali jednom
+  uspostavljen, sam kanal je real-time u oba smera.
+- **Real-time kanal** za OBIČNE komande (ne VNC) i dalje ne postoji — svaka
+  ne-VNC komanda i dalje čeka sledeći 15s poll ciklus.
+- **Live PowerShell/CMD sesija** (tekstualni "remote shell" prozor, odvojeno
+  od VNC-a) i dalje nije urađeno — VNC kontrola sad delimično pokriva istu
+  potrebu (može se otvoriti terminal unutar VNC sesije), ali nema namenskog
+  tekstualnog remote shell-a.
 
 ### 2. Odobravanje instalacije paketa i sertifikata
 Namerno ostavljeno neurađeno u ovoj fazi (nedostaje katalog odobrenih paketa).

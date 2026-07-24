@@ -6,6 +6,7 @@ import { pool } from "./db/pool.js";
 import { startPingLoop } from "./utils/pingService.js";
 import { startPushNotificationWatcher } from "./utils/pushNotificationWatcher.js";
 import { startDailyReportScheduler } from "./utils/dailyReportScheduler.js";
+import { attachVncRelay } from "./ws/vncRelay.js";
 
 const connectMySql = async () => {
   try {
@@ -27,6 +28,7 @@ export const startServer = async () => {
   const app = createApp();
   const sslOptions = getSslOptions();
   const server = https.createServer(sslOptions, app);
+  attachVncRelay(server);
 
   const ok = await connectMySql();
   if (!ok) process.exit(1);

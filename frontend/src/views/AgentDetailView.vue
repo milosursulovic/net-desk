@@ -106,11 +106,23 @@
           :key="t"
           type="button"
           @click="selectTab(t)"
-          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="tab === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
         >
           {{ TAB_LABELS[t] }}
+          <span
+            v-if="t === 'screen'"
+            class="rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+            :class="tab === t ? 'border-white/40 text-white' : 'border-amber-200 bg-amber-50 text-amber-700'"
+          >
+            BETA
+          </span>
         </button>
+      </div>
+
+      <!-- Ekran -->
+      <div v-if="tab === 'screen'">
+        <VncViewer :agent-id="route.params.id" />
       </div>
 
       <!-- Komande -->
@@ -230,6 +242,7 @@ import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import VncViewer from '@/components/VncViewer.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`)
@@ -246,8 +259,8 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
 
-const TAB_NAMES = ['jobs', 'updates', 'events']
-const TAB_LABELS = { jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
+const TAB_NAMES = ['screen', 'jobs', 'updates', 'events']
+const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
 
 const { tab } = usePaginatedRoute({
   fields: { tab: { type: 'string', default: 'jobs', oneOf: TAB_NAMES } },

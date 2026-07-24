@@ -11,6 +11,11 @@ export const COMMAND_TYPES = [
   "collect_inventory",
   "refresh_software_list",
   "delete_temp_files",
+  // Created programmatically by vncSessions.service.js (via insertJob
+  // directly, not through CreateJobSchema below) - never offered in the
+  // frontend's generic "Nova komanda" dropdown, which has its own separate
+  // constants list (frontend/src/constants/agentCommands.js).
+  "start_vnc_stream",
 ];
 
 const SERVICE_COMMANDS = new Set([
