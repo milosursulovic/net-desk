@@ -225,6 +225,7 @@ import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
+import { COMMAND_TYPES, COMMAND_LABELS, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -244,33 +245,6 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 // agentReleases.service.js. Keep all three in sync if groups ever change.
 const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
-const COMMAND_TYPES = [
-  'restart_computer',
-  'shutdown_computer',
-  'logoff_user',
-  'restart_service',
-  'start_service',
-  'stop_service',
-  'run_powershell_script',
-  'collect_inventory',
-  'refresh_software_list',
-  'delete_temp_files',
-]
-
-const COMMAND_LABELS = {
-  restart_computer: 'Restart računara',
-  shutdown_computer: 'Gašenje računara',
-  logoff_user: 'Odjava korisnika',
-  restart_service: 'Restart servisa',
-  start_service: 'Pokretanje servisa',
-  stop_service: 'Zaustavljanje servisa',
-  run_powershell_script: 'PowerShell skripta',
-  collect_inventory: 'Prikupljanje inventara',
-  refresh_software_list: 'Osvežavanje softverske liste',
-  delete_temp_files: 'Brisanje privremenih fajlova',
-}
-
-const SERVICE_COMMANDS = new Set(['restart_service', 'start_service', 'stop_service'])
 
 const TAB_NAMES = ['jobs', 'updates', 'events']
 const TAB_LABELS = { jobs: 'Komande', updates: 'Update log', events: 'Event Log' }

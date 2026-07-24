@@ -112,6 +112,46 @@
       </div>
 
       <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} agenata</p>
+
+      <label v-if="items.length" class="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAllVisible" />
+        Selektuj sve prikazane ({{ selectedIds.size }} izabrano)
+      </label>
+    </div>
+
+    <!-- Batch komanda - vidljivo samo kad je bar 1 agent selektovan -->
+    <div v-if="selectedIds.size" class="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+      <div class="font-medium text-blue-900">
+        Pošalji komandu na {{ selectedIds.size }} izabranih agenata
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm text-slate-600">Tip komande</label>
+          <select v-model="batchForm.commandType" class="app-input w-full">
+            <option v-for="c in COMMAND_TYPES" :key="c" :value="c">{{ COMMAND_LABELS[c] }}</option>
+          </select>
+        </div>
+        <FormInput v-if="isBatchServiceCommand" v-model.trim="batchForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
+      </div>
+      <div v-if="batchForm.commandType === 'run_powershell_script'" class="space-y-2">
+        <div>
+          <label class="text-sm text-slate-600">Gotova skripta (opciono)</label>
+          <select v-model="batchSelectedPresetId" class="app-input w-full" @change="applyBatchPreset">
+            <option value="">— Prilagođena skripta —</option>
+            <option v-for="p in POWERSHELL_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-600">PowerShell skripta</label>
+          <textarea v-model="batchForm.script" rows="6" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <AppButton variant="neutral" @click="clearSelection">Poništi selekciju</AppButton>
+        <AppButton variant="success" :disabled="sendingBatch" @click="sendBatchJob">
+          {{ sendingBatch ? 'Šaljem…' : `Pošalji na ${selectedIds.size} agenata` }}
+        </AppButton>
+      </div>
     </div>
 
     <div class="min-h-50">
@@ -132,15 +172,24 @@
         <div v-for="a in items" :key="a.id"
           class="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <RouterLink :to="`/agents/${a.id}`" class="text-lg font-semibold text-slate-800 truncate hover:underline block">
-                {{ a.hostname || '—' }}
-              </RouterLink>
-              <div class="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                <span class="truncate">{{ a.agentUid }}</span>
-                <button @click="copy(a.agentUid)" class="shrink-0 text-slate-400 hover:text-slate-600" aria-label="Kopiraj agent id">
-                  📋
-                </button>
+            <div class="min-w-0 flex items-start gap-2">
+              <input
+                type="checkbox"
+                class="mt-1.5 shrink-0"
+                :checked="selectedIds.has(a.id)"
+                @change="toggleSelect(a.id)"
+                aria-label="Selektuj agenta"
+              />
+              <div class="min-w-0">
+                <RouterLink :to="`/agents/${a.id}`" class="text-lg font-semibold text-slate-800 truncate hover:underline block">
+                  {{ a.hostname || '—' }}
+                </RouterLink>
+                <div class="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                  <span class="truncate">{{ a.agentUid }}</span>
+                  <button @click="copy(a.agentUid)" class="shrink-0 text-slate-400 hover:text-slate-600" aria-label="Kopiraj agent id">
+                    📋
+                  </button>
+                </div>
               </div>
             </div>
             <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
@@ -208,8 +257,12 @@ import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { parseError } from '@/utils/api.js'
+import { COMMAND_TYPES, COMMAND_LABELS, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
+import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
@@ -404,6 +457,92 @@ async function confirmRevoke(a) {
   } catch (e) {
     console.error(e)
     showToast('Greška pri povlačenju agenta', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+// Selekcija za batch komande - samo trenutno prikazana (paginirana) strana,
+// ne prelazi kroz stranice automatski.
+const selectedIds = ref(new Set())
+const allVisibleSelected = computed(
+  () => items.value.length > 0 && items.value.every((a) => selectedIds.value.has(a.id)),
+)
+
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleSelectAllVisible() {
+  if (allVisibleSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(items.value.map((a) => a.id))
+  }
+}
+
+function clearSelection() {
+  selectedIds.value = new Set()
+}
+
+const batchForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
+const isBatchServiceCommand = computed(() => SERVICE_COMMANDS.has(batchForm.value.commandType))
+const batchSelectedPresetId = ref('')
+const sendingBatch = ref(false)
+
+function applyBatchPreset() {
+  const preset = POWERSHELL_PRESETS.find((p) => p.id === batchSelectedPresetId.value)
+  batchForm.value.script = preset ? preset.script : ''
+}
+
+async function sendBatchJob() {
+  const payload = {}
+  if (isBatchServiceCommand.value) {
+    if (!batchForm.value.serviceName.trim()) {
+      showToast('Naziv servisa je obavezan', { prefix: '❌ ', duration: 3000 })
+      return
+    }
+    payload.serviceName = batchForm.value.serviceName.trim()
+  }
+  if (batchForm.value.commandType === 'run_powershell_script') {
+    if (!batchForm.value.script.trim()) {
+      showToast('Skripta je obavezna', { prefix: '❌ ', duration: 3000 })
+      return
+    }
+    payload.script = batchForm.value.script.trim()
+  }
+
+  const ok = await askConfirm(
+    `Poslati "${COMMAND_LABELS[batchForm.value.commandType]}" na ${selectedIds.value.size} agenata?`,
+    { title: 'Batch komanda' },
+  )
+  if (!ok) return
+
+  sendingBatch.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/agents/jobs/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commandType: batchForm.value.commandType,
+        payload,
+        agentIds: [...selectedIds.value],
+      }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju batch komande'))
+    const data = await res.json()
+
+    const parts = [`Poslato na ${data.created.length} agenata`]
+    if (data.skipped.length) parts.push(`preskočeno ${data.skipped.length}`)
+    showToast(parts.join(', '))
+
+    clearSelection()
+  } catch (e) {
+    console.error(e)
+    showToast(e?.message || 'Greška pri slanju batch komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    sendingBatch.value = false
   }
 }
 

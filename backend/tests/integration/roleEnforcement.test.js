@@ -1,10 +1,12 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { createApp } from "../../app.js";
 import { JWT_SECRET } from "../../config/env.js";
 import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { createUser } from "../../repositories/users.repo.js";
+import { insertAgent } from "../../repositories/agents.repo.js";
 import {
   testIp,
   deleteTestIpEntry,
@@ -13,6 +15,8 @@ import {
   deleteTestDailyReport,
   testUsername,
   deleteTestUser,
+  deleteTestAgent,
+  testHostname,
 } from "../helpers/testDb.js";
 
 const app = createApp();
@@ -121,5 +125,55 @@ describe("role enforcement across modules (integration, real DB)", () => {
       .set("Authorization", `Bearer ${viewerToken()}`);
     expect(res.status).toBe(200);
     expect(res.body.openedAt).not.toBeNull();
+  });
+
+  describe("batch job endpoint (POST /agents/jobs/batch)", () => {
+    let agentId;
+
+    afterEach(async () => {
+      await deleteTestAgent(agentId);
+      agentId = undefined;
+    });
+
+    it("viewer is blocked (403) from dispatching a batch job", async () => {
+      const res = await request(app)
+        .post("/api/protected/agents/jobs/batch")
+        .set("Authorization", `Bearer ${viewerToken()}`)
+        .send({ commandType: "delete_temp_files", agentIds: [1] });
+      expect(res.status).toBe(403);
+    });
+
+    it("operator can dispatch a batch job across multiple agents", async () => {
+      agentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash",
+        hostname: testHostname(),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+      // agent_jobs.created_by_user_id has a real FK to users.id -
+      // operatorToken()'s made-up userId would violate it here (unlike
+      // routes with no such FK), so this needs a real, temporary DB user.
+      const { id, token } = await tokenForRealUser("operator");
+      realUserId = id;
+
+      const res = await request(app)
+        .post("/api/protected/agents/jobs/batch")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ commandType: "delete_temp_files", agentIds: [agentId, 999999999] });
+      expect(res.status).toBe(201);
+      expect(res.body.created).toHaveLength(1);
+      expect(res.body.skipped).toHaveLength(1);
+    });
+
+    it("rejects an empty agentIds array with 400", async () => {
+      const res = await request(app)
+        .post("/api/protected/agents/jobs/batch")
+        .set("Authorization", `Bearer ${adminToken()}`)
+        .send({ commandType: "delete_temp_files", agentIds: [] });
+      expect(res.status).toBe(400);
+    });
   });
 });

@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import crypto from "crypto";
 import {
   createJobService,
+  createBatchJobService,
   pollJobsService,
   submitJobResultService,
 } from "../../services/agentJobs.service.js";
-import { insertAgent } from "../../repositories/agents.repo.js";
+import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 
 describe("agentJobs.service (integration, real DB)", () => {
@@ -126,5 +127,76 @@ describe("agentJobs.service (integration, real DB)", () => {
     await expect(
       createJobService(999999999, { commandType: "delete_temp_files" }, null),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  describe("createBatchJobService", () => {
+    it("creates a job for each active agent in the list", async () => {
+      const otherAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-batch",
+        hostname: testHostname("_batch"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+
+      try {
+        const out = await createBatchJobService(
+          [agentId, otherAgentId],
+          { commandType: "delete_temp_files", payload: null },
+          null,
+        );
+        expect(out.created).toHaveLength(2);
+        expect(out.skipped).toHaveLength(0);
+
+        const jobsForFirst = await pollJobsService(agentId);
+        const jobsForSecond = await pollJobsService(otherAgentId);
+        expect(jobsForFirst).toHaveLength(1);
+        expect(jobsForSecond).toHaveLength(1);
+      } finally {
+        await deleteTestAgent(otherAgentId);
+      }
+    });
+
+    it("skips a revoked (non-active) agent and a nonexistent one, reporting why", async () => {
+      const revokedAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-revoked",
+        hostname: testHostname("_revoked"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+      await revokeAgentById(revokedAgentId);
+
+      try {
+        const out = await createBatchJobService(
+          [agentId, revokedAgentId, 999999999],
+          { commandType: "delete_temp_files", payload: null },
+          null,
+        );
+        expect(out.created).toHaveLength(1);
+        expect(out.created[0].agentId).toBe(agentId);
+        expect(out.skipped).toHaveLength(2);
+        expect(out.skipped.find((s) => s.agentId === revokedAgentId).reason).toMatch(/nije aktivan/);
+        expect(out.skipped.find((s) => s.agentId === 999999999).reason).toMatch(/nije pronađen/);
+      } finally {
+        await deleteTestAgent(revokedAgentId);
+      }
+    });
+
+    it("de-duplicates repeated agent ids instead of creating multiple jobs", async () => {
+      const out = await createBatchJobService(
+        [agentId, agentId, agentId],
+        { commandType: "delete_temp_files", payload: null },
+        null,
+      );
+      expect(out.created).toHaveLength(1);
+
+      const jobs = await pollJobsService(agentId);
+      expect(jobs).toHaveLength(1);
+    });
   });
 });

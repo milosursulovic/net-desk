@@ -29,6 +29,37 @@ export async function createJobService(agentId, dto, createdByUserId) {
   return await findJobById(id);
 }
 
+// Sequential, not Promise.all - the pool caps at 10 connections
+// (db/pool.js), and a batch can target up to 500 agents at once; sequential
+// keeps this safely within that limit regardless of fleet size.
+export async function createBatchJobService(agentIds, dto, createdByUserId) {
+  const uniqueIds = [...new Set(agentIds)];
+  const created = [];
+  const skipped = [];
+
+  for (const agentId of uniqueIds) {
+    const agent = await findAgentById(agentId);
+    if (!agent) {
+      skipped.push({ agentId, reason: "Agent nije pronađen" });
+      continue;
+    }
+    if (agent.status !== "active") {
+      skipped.push({ agentId, hostname: agent.hostname, reason: "Agent nije aktivan" });
+      continue;
+    }
+
+    const id = await insertJob({
+      agentId,
+      commandType: dto.commandType,
+      payload: dto.payload ?? null,
+      createdByUserId,
+    });
+    created.push({ agentId, hostname: agent.hostname, jobId: id });
+  }
+
+  return { created, skipped };
+}
+
 export async function listJobsForAgentService(agentId, { page, limit, status }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listJobsForAgent({ agentId, status, limit, offset });

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { CreateJobSchema, JobResultSchema, COMMAND_TYPES } from "../../dtos/agentJobs.dto.js";
+import {
+  CreateJobSchema,
+  BatchCreateJobSchema,
+  JobResultSchema,
+  COMMAND_TYPES,
+} from "../../dtos/agentJobs.dto.js";
 
 describe("CreateJobSchema", () => {
   it("accepts every documented command type with no payload", () => {
@@ -49,6 +54,44 @@ describe("CreateJobSchema", () => {
     // type, never null/undefined - confirm that isn't accidentally rejected.
     const out = CreateJobSchema.safeParse({ commandType: "collect_inventory", payload: {} });
     expect(out.success).toBe(true);
+  });
+});
+
+describe("BatchCreateJobSchema", () => {
+  it("accepts a valid agentIds list alongside a valid command", () => {
+    const out = BatchCreateJobSchema.safeParse({
+      commandType: "delete_temp_files",
+      agentIds: [1, 2, 3],
+    });
+    expect(out.success).toBe(true);
+  });
+
+  it("rejects an empty agentIds array", () => {
+    expect(
+      BatchCreateJobSchema.safeParse({ commandType: "delete_temp_files", agentIds: [] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a missing agentIds field", () => {
+    expect(
+      BatchCreateJobSchema.safeParse({ commandType: "delete_temp_files" }).success,
+    ).toBe(false);
+  });
+
+  it("still enforces the same per-command payload rules as CreateJobSchema", () => {
+    expect(
+      BatchCreateJobSchema.safeParse({
+        commandType: "run_powershell_script",
+        agentIds: [1],
+      }).success,
+    ).toBe(false);
+    expect(
+      BatchCreateJobSchema.safeParse({
+        commandType: "run_powershell_script",
+        payload: { script: "Get-Process" },
+        agentIds: [1],
+      }).success,
+    ).toBe(true);
   });
 });
 

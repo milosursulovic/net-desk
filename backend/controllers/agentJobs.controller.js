@@ -1,10 +1,12 @@
 import {
   CreateJobSchema,
+  BatchCreateJobSchema,
   JobResultSchema,
   JobListQuerySchema,
 } from "../dtos/agentJobs.dto.js";
 import {
   createJobService,
+  createBatchJobService,
   listJobsForAgentService,
   pollJobsService,
   submitJobResultService,
@@ -22,6 +24,17 @@ export async function createJobController(req, res) {
 
   const job = await createJobService(agentId, parsed.data, req.user?.userId ?? null);
   res.status(201).json(job);
+}
+
+// Admin (JWT) — /api/protected/agents/jobs/batch
+
+export async function createBatchJobController(req, res) {
+  const parsed = BatchCreateJobSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const { agentIds, ...dto } = parsed.data;
+  const out = await createBatchJobService(agentIds, dto, req.user?.userId ?? null);
+  res.status(201).json(out);
 }
 
 export async function listJobsController(req, res) {

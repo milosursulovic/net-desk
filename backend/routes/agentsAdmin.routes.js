@@ -10,6 +10,7 @@ import {
 } from "../controllers/agents.controller.js";
 import {
   createJobController,
+  createBatchJobController,
   listJobsController,
 } from "../controllers/agentJobs.controller.js";
 import {
@@ -29,6 +30,9 @@ router.post("/:id/revoke", asyncHandler(revokeAgentController));
 
 router.get("/:id/jobs", asyncHandler(listJobsController));
 router.post("/:id/jobs", asyncHandler(createJobController));
+// "/jobs/batch" and "/:id/jobs" never collide (different second segment),
+// registration order doesn't matter.
+router.post("/jobs/batch", asyncHandler(createBatchJobController));
 
 router.patch("/:id/deployment-group", asyncHandler(setDeploymentGroupController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));

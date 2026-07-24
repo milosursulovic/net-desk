@@ -19,31 +19,44 @@ const SERVICE_COMMANDS = new Set([
   "stop_service",
 ]);
 
-export const CreateJobSchema = z
-  .object({
-    commandType: z.enum(COMMAND_TYPES),
-    payload: z.record(z.string(), z.any()).nullable().optional(),
-  })
-  .refine(
-    (data) =>
-      !SERVICE_COMMANDS.has(data.commandType) ||
-      (typeof data.payload?.serviceName === "string" &&
-        data.payload.serviceName.trim() !== ""),
-    {
-      message: "payload.serviceName je obavezan za ovu komandu",
-      path: ["payload", "serviceName"],
-    },
-  )
-  .refine(
-    (data) =>
-      data.commandType !== "run_powershell_script" ||
-      (typeof data.payload?.script === "string" &&
-        data.payload.script.trim() !== ""),
-    {
-      message: "payload.script je obavezan za run_powershell_script",
-      path: ["payload", "script"],
-    },
-  );
+const JobCommandFields = z.object({
+  commandType: z.enum(COMMAND_TYPES),
+  payload: z.record(z.string(), z.any()).nullable().optional(),
+});
+
+// Shared by CreateJobSchema and BatchCreateJobSchema so the two can't drift -
+// same commandType/payload rules regardless of how many agents it targets.
+function withCommandRefinements(schema) {
+  return schema
+    .refine(
+      (data) =>
+        !SERVICE_COMMANDS.has(data.commandType) ||
+        (typeof data.payload?.serviceName === "string" &&
+          data.payload.serviceName.trim() !== ""),
+      {
+        message: "payload.serviceName je obavezan za ovu komandu",
+        path: ["payload", "serviceName"],
+      },
+    )
+    .refine(
+      (data) =>
+        data.commandType !== "run_powershell_script" ||
+        (typeof data.payload?.script === "string" &&
+          data.payload.script.trim() !== ""),
+      {
+        message: "payload.script je obavezan za run_powershell_script",
+        path: ["payload", "script"],
+      },
+    );
+}
+
+export const CreateJobSchema = withCommandRefinements(JobCommandFields);
+
+export const BatchCreateJobSchema = withCommandRefinements(
+  JobCommandFields.extend({
+    agentIds: z.array(z.coerce.number().int().positive()).min(1).max(500),
+  }),
+);
 
 export const JobResultSchema = z.object({
   exitCode: z.coerce.number().int().nullable().optional(),
