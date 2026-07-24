@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import request from "supertest";
 import crypto from "crypto";
 import { createApp } from "../../app.js";
@@ -6,8 +6,20 @@ import { adminToken, viewerToken } from "../helpers/authToken.js";
 import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
+import { upsertSetting } from "../../repositories/appSettings.repo.js";
 
 const app = createApp();
+
+// This file's tests exercise session lifecycle assuming the feature is on -
+// gating itself (vnc_enabled=false) is covered separately below. Restored
+// to the real default (off) afterward so later test files see a clean slate
+// (vitest.config.js disables file parallelism, so this can't race).
+beforeAll(async () => {
+  await upsertSetting("vnc_enabled", "true", null);
+});
+afterAll(async () => {
+  await pool.execute("DELETE FROM app_settings WHERE setting_key = 'vnc_enabled'");
+});
 
 async function insertTestAgent() {
   return await insertAgent({
@@ -106,5 +118,20 @@ describe("vnc session routes (integration, real DB)", () => {
       .set("Authorization", `Bearer ${adminToken()}`)
       .send({ sessionId: 999999999 });
     expect(res.status).toBe(404);
+  });
+
+  it("refuses to start a session (403) when vnc_enabled is turned off, even for an admin", async () => {
+    agentId = await insertTestAgent();
+    await upsertSetting("vnc_enabled", "false", null);
+
+    try {
+      const res = await request(app)
+        .post(`/api/protected/agents/${agentId}/vnc/start`)
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(403);
+    } finally {
+      // Restore for the rest of this file's tests.
+      await upsertSetting("vnc_enabled", "true", null);
+    }
   });
 });

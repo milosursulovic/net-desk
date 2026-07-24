@@ -15,6 +15,7 @@ mere. Za brzi start (instalacija, env varijable, skripte) videti
 - [Frontend](#frontend)
 - [Netdesk Agent (Windows Service)](#netdesk-agent-windows-service)
 - [Remote screen control (VNC)](#remote-screen-control-vnc)
+- [Konfiguracija / feature flags](#konfiguracija--feature-flags)
 - [API pregled](#api-pregled)
 - [Deployment](#deployment)
 - [Pozadinski procesi](#pozadinski-procesi)
@@ -367,12 +368,31 @@ zahteva otvoren port na target mašini.
    drugu, markira `vnc_sessions.status = 'ended'`. Server-side 30-min
    hard cap sprečava zaboravljenu sesiju da radi unedogled.
 
-**Frontend**: `VncViewer.vue` (na `AgentDetailView`, tab "Ekran") -
-binary frame → `Blob` → `<img>` (zamenjuje prethodni `URL.createObjectURL`,
-revoke stari da ne curi memorija). Miš/tastatura na `<img>` elementu →
-throttle-ovan JSON preko iste WebSocket veze (`frontend/src/constants/
-vkCodes.js` prevodi browser `KeyboardEvent.code` u Windows VK kod pre
-slanja).
+**Frontend**: `VncViewer.vue` (na `AgentDetailView`, tab "Ekran", obeležen
+BETA bedžom) - binary frame → `Blob` → `<img>` (zamenjuje prethodni
+`URL.createObjectURL`, revoke stari da ne curi memorija). Miš/tastatura na
+`<img>` elementu → throttle-ovan JSON preko iste WebSocket veze
+(`frontend/src/constants/vkCodes.js` prevodi browser `KeyboardEvent.code`
+u Windows VK kod pre slanja).
+
+**Feature flag**: `startVncSessionService` proverava `vnc_enabled`
+podešavanje (vidi "Konfiguracija / feature flags" ispod) pre kreiranja
+sesije - podrazumevano isključeno (`default: "false"`), admin ga uključuje
+na `/config` strani. Nije još potvrđeno uživo na pravoj mašini - vidi
+"Poznata ograničenja".
+
+## Konfiguracija / feature flags
+
+Generički registar uklopivih podešavanja (`app_settings` tabela,
+key/value po redu) - `backend/dtos/appSettings.dto.js`'s `APP_SETTINGS`
+lista je jedino mesto koje treba dopuniti za novi checkbox (label,
+opis, default) - repo/service/controller/`/config` frontend stranica su
+generički i automatski ga podignu, bez posebnog koda po podešavanju.
+Admin-only za čitanje i pisanje (`/api/protected/settings`) - koja je
+funkcionalnost uključena je samo po sebi administrativna informacija,
+ista logika kao `users.routes.js`/`activityLog.routes.js`. Drugi servisi
+proveravaju flag preko `appSettings.service.js`'s `isFeatureEnabled(key)`
+helper-a (trenutno jedini potrošač: VNC start, iznad).
 
 ## API pregled
 
@@ -498,6 +518,18 @@ poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
   `agent_jobs.payload` JSON tipom).
 - Job queue je async/polling (agent povlači na sledećem ciklusu, ne
   odmah) — nema uživo/real-time kanala za komande.
+- **VNC (remote screen control) nije potvrđen uživo na pravoj mašini.**
+  Agent servis radi pod LocalSystem nalogom, što znači da živi u Session 0
+  — Windows (od Viste naovamo) izoluje Session 0 od interaktivne
+  korisničke sesije. Postoji realan rizik da `Graphics.CopyFromScreen`
+  pozvan iz Session 0 snima praznu Session-0 pozadinu, ne stvarni
+  korisnički ekran (isti tip problema kao `LogoffActiveSessions` u
+  `JobExecutor.cs`, koji baš zato koristi WTS API umesto direktnog poziva).
+  Ako se ovo potvrdi uživo, pravo rešenje je pomoćni proces pokrenut
+  UNUTAR korisničke sesije (`WTSQueryUserToken` + `CreateProcessAsUser`),
+  ne direktan capture/injection iz samog servisa. Zato je funkcija iza
+  `vnc_enabled` feature flag-a (podrazumevano isključeno) - videti
+  "Konfiguracija / feature flags".
 
 Za širi pregled ideja za sledeću verziju (uključujući razmatranje mobilne
 aplikacije i lokalnog AI-ja), videti [`agent-roadmap.md`](agent-roadmap.md).

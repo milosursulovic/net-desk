@@ -106,10 +106,17 @@
           :key="t"
           type="button"
           @click="selectTab(t)"
-          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
+          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="tab === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
         >
           {{ TAB_LABELS[t] }}
+          <span
+            v-if="t === 'screen'"
+            class="rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+            :class="tab === t ? 'border-white/40 text-white' : 'border-amber-200 bg-amber-50 text-amber-700'"
+          >
+            BETA
+          </span>
         </button>
       </div>
 

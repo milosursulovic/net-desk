@@ -5,9 +5,15 @@ import {
 } from "../repositories/vncSessions.repo.js";
 import { insertJob } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
-import { badRequest, notFound } from "../utils/httpError.js";
+import { isFeatureEnabled } from "./appSettings.service.js";
+import { badRequest, forbidden, notFound } from "../utils/httpError.js";
 
 export async function startVncSessionService(agentId, requestedByUserId) {
+  const vncEnabled = await isFeatureEnabled("vnc_enabled");
+  if (!vncEnabled) {
+    throw forbidden("VNC funkcionalnost je trenutno onemogućena u podešavanjima aplikacije");
+  }
+
   const agent = await findAgentById(agentId);
   if (!agent) {
     throw notFound("Agent nije pronađen");
