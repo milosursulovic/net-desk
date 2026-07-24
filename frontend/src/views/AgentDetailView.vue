@@ -126,9 +126,18 @@
             </div>
             <FormInput v-if="isServiceCommand" v-model.trim="jobForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
           </div>
-          <div v-if="jobForm.commandType === 'run_powershell_script'">
-            <label class="text-sm text-slate-600">PowerShell skripta</label>
-            <textarea v-model="jobForm.script" rows="4" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
+          <div v-if="jobForm.commandType === 'run_powershell_script'" class="space-y-2">
+            <div>
+              <label class="text-sm text-slate-600">Gotova skripta (opciono)</label>
+              <select v-model="selectedPresetId" class="app-input w-full" @change="applyPreset">
+                <option value="">— Prilagođena skripta —</option>
+                <option v-for="p in POWERSHELL_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">PowerShell skripta</label>
+              <textarea v-model="jobForm.script" rows="6" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
+            </div>
           </div>
           <div class="flex justify-end">
             <AppButton variant="success" :disabled="creatingJob" @click="createJob">
@@ -215,6 +224,7 @@ import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -290,6 +300,12 @@ const eventLogsLoaded = ref(false)
 const jobForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
 const creatingJob = ref(false)
 const isServiceCommand = computed(() => SERVICE_COMMANDS.has(jobForm.value.commandType))
+
+const selectedPresetId = ref('')
+function applyPreset() {
+  const preset = POWERSHELL_PRESETS.find((p) => p.id === selectedPresetId.value)
+  jobForm.value.script = preset ? preset.script : ''
+}
 
 const connectivityLabel = computed(() => {
   const map = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
