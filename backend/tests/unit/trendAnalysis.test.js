@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   computeDiskFillProjection,
-  computeCpuLoadProjection,
-  computeRamLoadProjection,
   computeDiskAnomaly,
   computeCpuAnomaly,
   computeRamAnomaly,
@@ -101,44 +99,6 @@ describe("computeDiskFillProjection", () => {
     const result = computeDiskFillProjection(rows);
     expect(result).not.toBeNull();
     expect(result.currentPct).toBe(70);
-  });
-});
-
-describe("computeCpuLoadProjection / computeRamLoadProjection", () => {
-  it("projects a rising CPU trend using cpuLoadPct instead of diskUsedPct", () => {
-    const rows = [
-      { cpuLoadPct: 50, recordedAt: daysAgo(4) },
-      { cpuLoadPct: 55, recordedAt: daysAgo(3) },
-      { cpuLoadPct: 60, recordedAt: daysAgo(2) },
-      { cpuLoadPct: 65, recordedAt: daysAgo(1) },
-      { cpuLoadPct: 70, recordedAt: daysAgo(0) },
-    ];
-    const result = computeCpuLoadProjection(rows);
-    expect(result).not.toBeNull();
-    expect(result.currentPct).toBe(70);
-    expect(result.daysUntilThreshold).toBe(4);
-  });
-
-  it("projects a rising RAM trend using ramLoadPct instead of diskUsedPct", () => {
-    const rows = [
-      { ramLoadPct: 50, recordedAt: daysAgo(4) },
-      { ramLoadPct: 55, recordedAt: daysAgo(3) },
-      { ramLoadPct: 60, recordedAt: daysAgo(2) },
-      { ramLoadPct: 65, recordedAt: daysAgo(1) },
-      { ramLoadPct: 70, recordedAt: daysAgo(0) },
-    ];
-    const result = computeRamLoadProjection(rows);
-    expect(result).not.toBeNull();
-    expect(result.currentPct).toBe(70);
-  });
-
-  it("returns null for a flat CPU trend, same rules as disk", () => {
-    const rows = [
-      { cpuLoadPct: 20, recordedAt: daysAgo(2) },
-      { cpuLoadPct: 20, recordedAt: daysAgo(1) },
-      { cpuLoadPct: 20, recordedAt: daysAgo(0) },
-    ];
-    expect(computeCpuLoadProjection(rows)).toBeNull();
   });
 });
 

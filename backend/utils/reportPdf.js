@@ -88,11 +88,7 @@ export function sendReportPdf(res, report) {
   heading(doc, `Aktivna upozorenja (${alerts.length})`);
   bulletOrEmpty(doc, alerts, "Nema aktivnih upozorenja.", (a) => `[${a.level}] ${a.message}`);
 
-  const trendSections = [
-    ["Trend punjenja diska", trends.diskFillProjections],
-    ["Trend CPU opterećenja", trends.cpuLoadProjections],
-    ["Trend RAM opterećenja", trends.ramLoadProjections],
-  ];
+  const trendSections = [["Trend punjenja diska", trends.diskFillProjections]];
   for (const [label, items] of trendSections) {
     if (!items?.length) continue;
     heading(doc, label);

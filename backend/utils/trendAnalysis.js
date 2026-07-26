@@ -69,14 +69,6 @@ export function computeDiskFillProjection(historyRows, options) {
   return computeThresholdProjection(historyRows, "diskUsedPct", options);
 }
 
-export function computeCpuLoadProjection(historyRows, options) {
-  return computeThresholdProjection(historyRows, "cpuLoadPct", options);
-}
-
-export function computeRamLoadProjection(historyRows, options) {
-  return computeThresholdProjection(historyRows, "ramLoadPct", options);
-}
-
 /**
  * Anomaly = today's value deviates from THIS agent's own historical pattern
  * (mean +/- stddev over the window, excluding today's point), regardless of

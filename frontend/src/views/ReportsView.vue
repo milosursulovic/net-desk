@@ -269,18 +269,6 @@ const trendGroups = computed(() => [
     threshold: 90,
     items: report.value?.content?.trends?.diskFillProjections || [],
   },
-  {
-    key: 'cpu',
-    label: 'Trend CPU opterećenja',
-    threshold: 90,
-    items: report.value?.content?.trends?.cpuLoadProjections || [],
-  },
-  {
-    key: 'ram',
-    label: 'Trend RAM opterećenja',
-    threshold: 90,
-    items: report.value?.content?.trends?.ramLoadProjections || [],
-  },
 ].filter((g) => g.items.length))
 const anomalies = computed(() => report.value?.content?.trends?.anomalies || [])
 const loading = ref(false)

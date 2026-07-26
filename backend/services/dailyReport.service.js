@@ -40,8 +40,6 @@ import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
 import {
   computeDiskFillProjection,
-  computeCpuLoadProjection,
-  computeRamLoadProjection,
   computeDiskAnomaly,
   computeCpuAnomaly,
   computeRamAnomaly,
@@ -112,20 +110,12 @@ export async function generateDailyReport() {
     historyByAgent.get(row.agentId).push(row);
   }
   const diskFillProjections = [];
-  const cpuLoadProjections = [];
-  const ramLoadProjections = [];
   const anomalies = [];
   for (const rows of historyByAgent.values()) {
     const hostname = rows[0].hostname;
 
     const diskProjection = computeDiskFillProjection(rows);
     if (diskProjection) diskFillProjections.push({ hostname, ...diskProjection });
-
-    const cpuProjection = computeCpuLoadProjection(rows);
-    if (cpuProjection) cpuLoadProjections.push({ hostname, ...cpuProjection });
-
-    const ramProjection = computeRamLoadProjection(rows);
-    if (ramProjection) ramLoadProjections.push({ hostname, ...ramProjection });
 
     const diskAnomaly = computeDiskAnomaly(rows);
     if (diskAnomaly) anomalies.push({ hostname, metric: "disk", ...diskAnomaly });
@@ -137,8 +127,6 @@ export async function generateDailyReport() {
     if (ramAnomaly) anomalies.push({ hostname, metric: "ram", ...ramAnomaly });
   }
   diskFillProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
-  cpuLoadProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
-  ramLoadProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
   anomalies.sort((a, b) => Math.abs(b.zScore) - Math.abs(a.zScore));
 
   const totalAgents =
@@ -157,8 +145,6 @@ export async function generateDailyReport() {
     alerts: alerts.notifications,
     trends: {
       diskFillProjections,
-      cpuLoadProjections,
-      ramLoadProjections,
       anomalies,
     },
     sinceLastReport: {
