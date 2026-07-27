@@ -2,6 +2,9 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using NetdeskAgent.Common.Configuration;
 using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Vnc
@@ -110,6 +113,17 @@ namespace NetdeskAgent.Common.Vnc
         /// </summary>
         public static bool LaunchInUserSession(long sessionId, string serverBaseUrl, string agentId, string apiKey)
         {
+            // Netdesk.Agent.VncHelper.exe radi kao obični interaktivni
+            // korisnik, ne LocalSystem - a agent.log fajl je originalno
+            // napravio LocalSystem (ovaj servis), sa ACL-om koji obično ne
+            // dozvoljava pisanje običnim korisnicima. Bez ovoga, VncHelper
+            // radi (ili ne radi) potpuno "u tami" - FileLogger.Write guta
+            // grešku pisanja isto kao i svaku drugu, pa se ne vidi apsolutno
+            // ništa u log fajlu bez obzira šta se stvarno dešava iznutra
+            // (potvrđeno uživo). Ovaj servis (LocalSystem) ima prava da to
+            // ispravi, VncHelper sam nema.
+            EnsureLogDirWritableByInteractiveUsers();
+
             var consoleSessionId = WTSGetActiveConsoleSessionId();
             if (consoleSessionId == NO_ACTIVE_SESSION)
             {
@@ -212,6 +226,56 @@ namespace NetdeskAgent.Common.Vnc
         {
             var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             return installDir == null ? null : Path.Combine(installDir, "Netdesk.Agent.VncHelper.exe");
+        }
+
+        /// <summary>
+        /// Best-effort - ako ovo ne uspe, VncHelper i dalje pokušava da radi,
+        /// samo njegovo logovanje ostaje tiho (isti fallback kao svaka druga
+        /// FileLogger greška). Idempotentno - bezbedno se poziva na svaki
+        /// VNC start, ne samo jednom pri instalaciji.
+        /// </summary>
+        private static void EnsureLogDirWritableByInteractiveUsers()
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(Paths.LogFile);
+                if (string.IsNullOrEmpty(dir)) return;
+                Directory.CreateDirectory(dir);
+
+                var dirInfo = new DirectoryInfo(dir);
+                var security = dirInfo.GetAccessControl();
+                var usersSid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+                var rule = new FileSystemAccessRule(
+                    usersSid,
+                    FileSystemRights.Modify | FileSystemRights.Synchronize,
+                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                    PropagationFlags.None,
+                    AccessControlType.Allow);
+
+                security.AddAccessRule(rule);
+                dirInfo.SetAccessControl(security);
+
+                // Folder ACL sa nasleđivanjem važi samo za NOVE fajlove -
+                // agent.log već postoji (Service.exe ga piše od pre ovog
+                // fix-a) i zadržava svoj stari ACL dok se eksplicitno ne
+                // promeni i na njemu direktno (potvrđeno uživo - folder-only
+                // fix nije bio dovoljan).
+                if (File.Exists(Paths.LogFile))
+                {
+                    var fileInfo = new FileInfo(Paths.LogFile);
+                    var fileSecurity = fileInfo.GetAccessControl();
+                    var fileRule = new FileSystemAccessRule(
+                        usersSid,
+                        FileSystemRights.Modify | FileSystemRights.Synchronize,
+                        AccessControlType.Allow);
+                    fileSecurity.AddAccessRule(fileRule);
+                    fileInfo.SetAccessControl(fileSecurity);
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Ne mogu da podesim dozvole na log folderu/fajlu za VncHelper", ex);
+            }
         }
     }
 }
