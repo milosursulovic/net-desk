@@ -5,6 +5,8 @@ import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   getLiveServerHealthController,
   listServerHealthHistoryController,
+  auditGhostReferencesController,
+  cleanGhostReferencesController,
 } from "../controllers/serverHealth.controller.js";
 
 const router = express.Router();
@@ -18,5 +20,7 @@ router.use(requireRole("admin"));
 
 router.get("/live", asyncHandler(getLiveServerHealthController));
 router.get("/history", asyncHandler(listServerHealthHistoryController));
+router.get("/ghost-audit", asyncHandler(auditGhostReferencesController));
+router.post("/ghost-cleanup", asyncHandler(cleanGhostReferencesController));
 
 export default router;

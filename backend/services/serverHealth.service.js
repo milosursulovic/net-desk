@@ -1,17 +1,23 @@
 import { getSystemSnapshot, getProcessSnapshot } from "../utils/systemMetrics.js";
 import { getLiveRequestStats } from "../utils/requestMetrics.js";
+import { getLiveQueryStats } from "../utils/dbQueryMetrics.js";
 import {
   getDbSnapshot,
+  getDbSizeSnapshot,
   insertServerSnapshot,
   listServerHistory,
 } from "../repositories/serverMonitoring.repo.js";
 
 export async function getLiveServerHealthService() {
-  const [system, db] = await Promise.all([getSystemSnapshot(), getDbSnapshot()]);
+  const [system, db, dbSize] = await Promise.all([
+    getSystemSnapshot(),
+    getDbSnapshot(),
+    getDbSizeSnapshot(),
+  ]);
 
   return {
     system,
-    db,
+    db: { ...db, ...getLiveQueryStats(), size: dbSize },
     process: getProcessSnapshot(),
     requests: getLiveRequestStats(),
   };
@@ -35,6 +41,8 @@ export async function captureServerSnapshot() {
     requestsPerMin: live.requests.requestsPerMin,
     avgResponseMs: live.requests.avgResponseMs,
     errorRatePct: live.requests.errorRatePct,
+    dbSizeMb: live.db.size.totalSizeMb,
+    avgQueryMs: live.db.avgQueryMs,
   });
 }
 

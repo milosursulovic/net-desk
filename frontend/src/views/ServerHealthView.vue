@@ -1,7 +1,15 @@
 <script setup>
 import { ref, computed, h, defineComponent, onMounted, onBeforeUnmount } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { parseError } from '@/utils/api.js'
+import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import AppButton from '@/components/AppButton.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
+const { toast, showToast } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const LIVE_POLL_MS = 4000
 
@@ -131,16 +139,60 @@ const cpuPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y:
 const ramPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.ramUsedPct })))
 const reqPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.requestsPerMin })))
 const respPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.avgResponseMs })))
+const dbSizePoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.dbSizeMb })))
+const queryMsPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.avgQueryMs })))
 
 function selectHours(h) {
   historyHours.value = h
   loadHistory()
 }
 
+const ghostAudit = ref(null)
+const ghostAuditLoading = ref(false)
+const ghostCleaning = ref(false)
+
+async function runGhostAudit() {
+  ghostAuditLoading.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/server-health/ghost-audit')
+    if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
+    ghostAudit.value = await res.json()
+  } catch (err) {
+    console.error('Greška pri proveri ghost referenci:', err)
+    showToast('Greška pri proveri baze.', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    ghostAuditLoading.value = false
+  }
+}
+
+async function cleanGhostReferences() {
+  const ok = await askConfirm(
+    `Nađeno je ${ghostAudit.value?.totalOrphans ?? 0} ghost referenci/desinhronizacija. Da li želiš da ih očistiš? Ova akcija se ne može poništiti.`,
+    { title: 'Čišćenje baze' },
+  )
+  if (!ok) return
+
+  ghostCleaning.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/server-health/ghost-cleanup', { method: 'POST' })
+    if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
+    const data = await res.json()
+    const total = data.cleaned.reduce((sum, c) => sum + (c.deleted || c.fixed || 0), 0)
+    showToast(total ? `Očišćeno/ispravljeno ${total} redova.` : 'Nije bilo šta da se očisti.')
+    await runGhostAudit()
+  } catch (err) {
+    console.error('Greška pri čišćenju baze:', err)
+    showToast('Greška pri čišćenju baze.', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    ghostCleaning.value = false
+  }
+}
+
 let liveTimer = null
 onMounted(() => {
   loadLive()
   loadHistory()
+  runGhostAudit()
   liveTimer = setInterval(loadLive, LIVE_POLL_MS)
 })
 onBeforeUnmount(() => {
@@ -190,10 +242,6 @@ onBeforeUnmount(() => {
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          title="DB konekcije"
-          :value="`${live.db.threadsConnected} / ${live.db.maxConnections}`"
-        />
-        <KpiCard
           title="Requestova/min"
           :value="live.requests.requestsPerMin"
         />
@@ -205,6 +253,10 @@ onBeforeUnmount(() => {
           title="Stopa grešaka (5xx)"
           :value="live.requests.errorRatePct + '%'"
           :warn="live.requests.errorRatePct > 5"
+        />
+        <KpiCard
+          title="Veličina baze"
+          :value="live.db.size.totalSizeMb + ' MB'"
         />
       </div>
 
@@ -235,6 +287,126 @@ onBeforeUnmount(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- ================= BAZA ================= -->
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 pt-2">Baza</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiCard
+          title="DB konekcije"
+          :value="`${live.db.threadsConnected} / ${live.db.maxConnections}`"
+        />
+        <KpiCard
+          title="Upita/min"
+          :value="live.db.queriesPerMin"
+        />
+        <KpiCard
+          title="Prosečno trajanje upita"
+          :value="live.db.avgQueryMs + ' ms'"
+        />
+        <KpiCard
+          title="Spori upiti (≥200ms, poslednji minut)"
+          :value="live.db.slowQueryCount"
+          :warn="live.db.slowQueryCount > 0"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
+          <h3 class="font-semibold text-slate-800 mb-3">Najveće tabele</h3>
+          <table class="min-w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Veličina</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in live.db.size.topTables" :key="t.table" class="border-b">
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ t.table }}</td>
+                <td class="px-3 py-2 whitespace-nowrap">{{ t.sizeMb }} MB</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
+          <h3 class="font-semibold text-slate-800 mb-3">Najsporiji upiti (poslednji minut)</h3>
+          <div v-if="!live.db.slowestQueries.length" class="text-sm text-slate-500">
+            Nema zabeleženih upita u poslednjem minutu.
+          </div>
+          <table v-else class="min-w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Upit</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">ms</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(q, idx) in live.db.slowestQueries" :key="idx" class="border-b">
+                <td class="px-3 py-2 font-mono text-xs">{{ q.sql }}</td>
+                <td class="px-3 py-2 whitespace-nowrap" :class="q.durationMs >= 200 ? 'text-red-600 font-medium' : ''">
+                  {{ q.durationMs }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <div>
+            <h3 class="font-semibold text-slate-800">Ghost reference / desinhronizacije</h3>
+            <p class="text-xs text-slate-500 mt-1">
+              Redovi koji pokazuju na obrisane zapise (npr. metapodaci vezani za obrisan IP unos), ili
+              zapisi kojima je izgubljen pokazivač iako podatak postoji.
+            </p>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <AppButton variant="secondary" :disabled="ghostAuditLoading" @click="runGhostAudit">
+              {{ ghostAuditLoading ? 'Proveravam…' : 'Proveri ponovo' }}
+            </AppButton>
+            <AppButton
+              v-if="ghostAudit && ghostAudit.totalOrphans > 0"
+              variant="danger"
+              :disabled="ghostCleaning"
+              @click="cleanGhostReferences"
+            >
+              {{ ghostCleaning ? 'Čistim…' : `Očisti (${ghostAudit.totalOrphans})` }}
+            </AppButton>
+          </div>
+        </div>
+
+        <div v-if="ghostAudit">
+          <div
+            v-if="ghostAudit.totalOrphans === 0"
+            class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"
+          >
+            ✓ Baza je čista — nema ghost referenci ni desinhronizacija.
+          </div>
+          <table v-else class="min-w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela.kolona</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Referencira</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">Broj</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="r in ghostAudit.results.filter((r) => r.orphanCount > 0)"
+                :key="r.table + r.column"
+                class="border-b"
+              >
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.table }}.{{ r.column }}</td>
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.references }}</td>
+                <td class="px-3 py-2 whitespace-nowrap text-red-600 font-medium">{{ r.orphanCount }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </template>
 
@@ -273,6 +445,24 @@ onBeforeUnmount(() => {
         <h3 class="font-semibold text-slate-800 mb-3">Prosečno vreme odgovora (ms)</h3>
         <TrendLine :points="respPoints" unit="ms" />
       </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-slate-800 mb-3">Veličina baze (MB)</h3>
+        <TrendLine :points="dbSizePoints" unit="MB" />
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-slate-800 mb-3">Prosečno trajanje upita (ms)</h3>
+        <TrendLine :points="queryMsPoints" unit="ms" />
+      </div>
     </div>
+
+    <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>

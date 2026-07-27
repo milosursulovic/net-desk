@@ -12,6 +12,41 @@ export async function getDbSnapshot() {
   };
 }
 
+// Table sizes change slowly (nothing like request/query rates) - cached
+// with a longer TTL than systemMetrics.js's CPU/RAM so a page full of
+// admins polling live/ doesn't re-scan information_schema every 4s.
+const SIZE_CACHE_MS = 60_000;
+let sizeCache = null;
+let sizeCacheAt = 0;
+
+export async function getDbSizeSnapshot() {
+  const now = Date.now();
+  if (sizeCache && now - sizeCacheAt < SIZE_CACHE_MS) return sizeCache;
+
+  const [rows] = await pool.query(
+    `
+    SELECT
+      table_name AS tableName,
+      (data_length + index_length) AS sizeBytes
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+    ORDER BY sizeBytes DESC
+    `,
+  );
+
+  const totalBytes = rows.reduce((sum, r) => sum + (Number(r.sizeBytes) || 0), 0);
+
+  sizeCache = {
+    totalSizeMb: Math.round((totalBytes / 1024 / 1024) * 10) / 10,
+    topTables: rows.slice(0, 5).map((r) => ({
+      table: r.tableName,
+      sizeMb: Math.round(((Number(r.sizeBytes) || 0) / 1024 / 1024) * 10) / 10,
+    })),
+  };
+  sizeCacheAt = now;
+  return sizeCache;
+}
+
 export async function insertServerSnapshot(s) {
   await pool.execute(
     `
@@ -19,9 +54,10 @@ export async function insertServerSnapshot(s) {
     (
       cpu_load_pct, ram_used_pct, ram_used_mb, ram_total_mb, disk_used_pct,
       process_rss_mb, process_heap_used_mb, db_threads_connected,
-      requests_per_min, avg_response_ms, error_rate_pct
+      requests_per_min, avg_response_ms, error_rate_pct,
+      db_size_mb, avg_query_ms
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       s.cpuLoadPct,
@@ -35,6 +71,8 @@ export async function insertServerSnapshot(s) {
       s.requestsPerMin,
       s.avgResponseMs,
       s.errorRatePct,
+      s.dbSizeMb,
+      s.avgQueryMs,
     ],
   );
 }
@@ -54,7 +92,9 @@ export async function listServerHistory(hours) {
       db_threads_connected AS dbThreadsConnected,
       requests_per_min AS requestsPerMin,
       avg_response_ms AS avgResponseMs,
-      error_rate_pct AS errorRatePct
+      error_rate_pct AS errorRatePct,
+      db_size_mb AS dbSizeMb,
+      avg_query_ms AS avgQueryMs
     FROM server_monitoring_history
     WHERE recorded_at >= NOW() - INTERVAL ? HOUR
     ORDER BY recorded_at ASC
