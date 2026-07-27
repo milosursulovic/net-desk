@@ -33,6 +33,7 @@ import {
   statsLowRamRows,
   statsOldOsRows,
   statsLexarFlagRows,
+  listEntriesWithoutMetadata,
 } from "../repositories/metadata.repo.js";
 
 function pick(obj, keys) {
@@ -116,6 +117,11 @@ export async function listMetadataPage({ page, limit }) {
   }
 
   return { items, total, totalPages, page: safePage, limit };
+}
+
+export async function listEntriesWithoutMetadataService() {
+  const items = await listEntriesWithoutMetadata();
+  return { items, total: items.length };
 }
 
 export async function searchMetadataService(term) {

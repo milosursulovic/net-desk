@@ -322,7 +322,6 @@ export async function exportXlsxRowsService(search) {
     department: e.department || "",
     entryType: labelForEntryType(e.entryType),
     remoteScript: e.remoteScript || "",
-    hasMetadata: e.metadataId ? "Da" : "Ne",
     description: e.description || "",
   }));
 }

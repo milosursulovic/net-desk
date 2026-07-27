@@ -20,6 +20,7 @@ import {
   insertIpEntry,
   updateIpEntryPatch,
   listComputersWithoutAgent,
+  listAllComputersWithoutAgent,
 } from "../repositories/ipEntries.repo.js";
 import { patchMetadataForIpEntry } from "./metadata.service.js";
 import {
@@ -146,6 +147,10 @@ export async function agentFilterOptionsService() {
 
 export async function listComputersWithoutAgentService({ page, limit, search }) {
   return await listComputersWithoutAgent({ search, page, limit });
+}
+
+export async function listAllComputersWithoutAgentService(search) {
+  return await listAllComputersWithoutAgent(search);
 }
 
 export async function getAgentService(id) {

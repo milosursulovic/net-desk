@@ -399,6 +399,21 @@ export async function statsTotalWithMeta() {
   return Number(totalWithMeta) || 0;
 }
 
+// metadata_id je denormalizovana FK na ip_entries (postavlja je
+// txAttachMetadataToIpEntry) - "bez metapodataka" je prosto IS NULL, ne
+// treba JOIN/EXISTS provera kao za PDSU (koji nema takvu denormalizaciju).
+export async function listEntriesWithoutMetadata() {
+  const [rows] = await pool.execute(
+    `
+    SELECT id, ip, computer_name AS computerName, department, os
+    FROM ip_entries
+    WHERE entry_type = 'computer' AND metadata_id IS NULL
+    ORDER BY computer_name ASC, ip ASC
+    `,
+  );
+  return rows || [];
+}
+
 export async function statsRamTotals() {
   const [rows] = await pool.execute(
     `

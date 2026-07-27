@@ -9,6 +9,7 @@ import {
   listAgentsService,
   agentFilterOptionsService,
   listComputersWithoutAgentService,
+  listAllComputersWithoutAgentService,
   getAgentService,
   revokeAgentService,
   syncAgentInventory,
@@ -17,6 +18,7 @@ import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { badRequest } from "../utils/httpError.js";
+import { sendTablePdf } from "../utils/pdfTable.js";
 
 const STATUS_FILTERS = new Set(["active", "revoked"]);
 const CONNECTIVITY_FILTERS = new Set(["online", "stale", "offline", "unknown"]);
@@ -104,6 +106,30 @@ export async function listComputersWithoutAgentController(req, res) {
 
   const out = await listComputersWithoutAgentService({ page, limit, search });
   res.json(out);
+}
+
+export async function exportComputersWithoutAgentPdfController(req, res) {
+  const search = String(req.query.search || "").trim();
+  const entries = await listAllComputersWithoutAgentService(search);
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendTablePdf(res, {
+    title: "NetDesk — Računari bez agenta",
+    subtitle: `Ukupno: ${entries.length} — generisano ${dateStamp}`,
+    filename: `NetDesk_bez_agenta_${dateStamp}.pdf`,
+    columns: [
+      { header: "Računar", key: "computerName", width: 160 },
+      { header: "IP", key: "ip", width: 100 },
+      { header: "Odeljenje", key: "department", width: 140 },
+      { header: "OS", key: "os", width: 200 },
+      { header: "Status", key: "onlineLabel", width: 100 },
+    ],
+    rows: entries.map((e) => ({
+      ...e,
+      onlineLabel: e.isOnline ? "Online" : "Offline",
+    })),
+    emptyText: "Svi računari imaju agenta.",
+  });
 }
 
 export async function getAgentController(req, res) {

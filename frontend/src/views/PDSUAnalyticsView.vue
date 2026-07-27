@@ -20,6 +20,8 @@ const loading = ref(false)
 const exporting = ref(false)
 const error = ref('')
 const stats = ref(null)
+const missingPdsu = ref([])
+const exportingMissingPdf = ref(false)
 
 const activeTab = ref('overview')
 const { search } = usePaginatedRoute({
@@ -147,12 +149,38 @@ async function loadStats() {
     }
 
     stats.value = await response.json()
+    await fetchMissingPdsu()
   } catch (err) {
     console.error('PDSU analytics error:', err)
 
     error.value = err?.message || 'Greška prilikom učitavanja PDSU analitike.'
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchMissingPdsu() {
+  try {
+    const res = await fetchWithAuth('/api/protected/pdsu-analytics/missing')
+    if (!res.ok) return
+    const data = await res.json()
+    missingPdsu.value = Array.isArray(data.items) ? data.items : []
+  } catch {
+  }
+}
+
+async function exportMissingPdsuPdf() {
+  exportingMissingPdf.value = true
+  try {
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    await downloadFromResponse(
+      await fetchWithAuth('/api/protected/pdsu-analytics/missing/export-pdf'),
+      `NetDesk_bez_PDSU_${dateStamp}.pdf`
+    )
+  } catch (err) {
+    console.error('Export bez PDSU greška:', err)
+  } finally {
+    exportingMissingPdf.value = false
   }
 }
 
@@ -383,6 +411,9 @@ onMounted(loadStats)
               :drivers="drivers"
               :services="services"
               :updates="updates"
+              :missing-computers="missingPdsu"
+              :exporting-missing="exportingMissingPdf"
+              @export-missing="exportMissingPdsuPdf"
             />
 
             <PDSUSoftware

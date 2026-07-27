@@ -2,7 +2,16 @@
   <div class="glass-container space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-bold text-slate-800">Računari bez agenta</h1>
-      <AppButton variant="secondary" to="/agents">Nazad na agente</AppButton>
+      <div class="flex flex-wrap items-center gap-2">
+        <AppButton
+          variant="secondary"
+          :disabled="!total || exportingPdf"
+          @click="exportPdf"
+        >
+          {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+        </AppButton>
+        <AppButton variant="secondary" to="/agents">Nazad na agente</AppButton>
+      </div>
     </div>
 
     <div class="space-y-3">
@@ -98,6 +107,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import AppButton from '@/components/AppButton.vue'
@@ -122,6 +132,23 @@ const total = ref(0)
 const totalPages = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
+const exportingPdf = ref(false)
+
+async function exportPdf() {
+  exportingPdf.value = true
+  try {
+    const params = new URLSearchParams({ search: search.value })
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    await downloadFromResponse(
+      await fetchWithAuth(`/api/protected/agents/without-agent-computers/export-pdf?${params.toString()}`),
+      `NetDesk_bez_agenta_${dateStamp}.pdf`
+    )
+  } catch (e) {
+    console.error('Export bez agenta greška:', e)
+  } finally {
+    exportingPdf.value = false
+  }
+}
 
 let searchT = null
 

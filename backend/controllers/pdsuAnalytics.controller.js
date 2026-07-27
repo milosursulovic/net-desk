@@ -2,8 +2,10 @@ import {
   pdsuAnalyticsStatsService,
   exportPdsuAnalyticsXlsx,
   searchPdsuAnalytics,
+  listComputersWithoutPdsuService,
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
+import { sendTablePdf } from "../utils/pdfTable.js";
 
 export async function pdsuAnalyticsStatsController(req, res) {
   const result = await pdsuAnalyticsStatsService();
@@ -22,6 +24,31 @@ export async function searchPdsuAnalyticsController(req, res) {
   }
 
   res.json({ results: result });
+}
+
+export async function listWithoutPdsuController(req, res) {
+  const result = await listComputersWithoutPdsuService();
+
+  res.json(result);
+}
+
+export async function exportWithoutPdsuPdfController(req, res) {
+  const { items } = await listComputersWithoutPdsuService();
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendTablePdf(res, {
+    title: "NetDesk — Računari bez PDSU podataka",
+    subtitle: `Nema nijedan zapis (programi/drajveri/servisi/update-i) — ukupno: ${items.length}, generisano ${dateStamp}`,
+    filename: `NetDesk_bez_PDSU_${dateStamp}.pdf`,
+    columns: [
+      { header: "Računar", key: "computerName", width: 180 },
+      { header: "IP", key: "ip", width: 110 },
+      { header: "Odeljenje", key: "department", width: 160 },
+      { header: "OS", key: "os", width: 220 },
+    ],
+    rows: items,
+    emptyText: "Svi računari imaju bar neki PDSU podatak.",
+  });
 }
 
 export async function exportPdsuAnalyticsController(req, res) {

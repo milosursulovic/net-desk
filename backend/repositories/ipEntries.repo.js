@@ -386,6 +386,46 @@ export async function listComputersWithoutAgent({ search, page, limit }) {
   return { entries, total, totalPages, page: safePage, limit };
 }
 
+// Puna (nepaginirana) verzija listComputersWithoutAgent - za PDF export, gde
+// treba kompletna lista, ne samo trenutna stranica.
+export async function listAllComputersWithoutAgent(search) {
+  const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
+    prefixColumns: ["ip"],
+  });
+
+  const whereParts = [
+    "e.entry_type = 'computer'",
+    "NOT EXISTS (SELECT 1 FROM agents a WHERE a.ip_entry_id = e.id AND a.status = 'active')",
+  ];
+  const params = [];
+
+  if (searchClause.where) {
+    whereParts.push(searchClause.where);
+    params.push(...searchClause.params);
+  }
+
+  const whereSql = `WHERE ${whereParts.join(" AND ")}`;
+
+  const [entries] = await pool.execute(
+    `
+    SELECT
+      e.id,
+      e.ip,
+      e.computer_name AS computerName,
+      e.department,
+      e.os,
+      e.is_online AS isOnline,
+      e.last_checked AS lastChecked
+    FROM ip_entries e
+    ${whereSql}
+    ORDER BY e.ip_numeric ASC
+    `,
+    params,
+  );
+
+  return entries;
+}
+
 export async function duplicateComputerNameGroups({ search, status }) {
   const base = buildFastSearchSql(search || "");
   const whereParts = [];

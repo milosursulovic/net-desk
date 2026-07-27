@@ -54,7 +54,6 @@ export async function exportXlsxController(req, res) {
           { header: "department", key: "department", width: 16 },
           { header: "entryType", key: "entryType", width: 14 },
           { header: "remoteScript", key: "remoteScript", width: 20 },
-          { header: "hasMetadata", key: "hasMetadata", width: 14 },
           { header: "description", key: "description", width: 24 },
         ],
         rows,

@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+import AppButton from '@/components/AppButton.vue'
 
 const { formatNumber, formatDate: formatDateBase } = usePdsuFormatters()
 
@@ -33,7 +35,19 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+
+  missingComputers: {
+    type: Array,
+    default: () => [],
+  },
+
+  exportingMissing: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+const emit = defineEmits(['export-missing'])
 
 const softwareStats = computed(() => props.software?.stats ?? {})
 const driverStats = computed(() => props.drivers?.stats ?? {})
@@ -303,6 +317,61 @@ function percentageClass(percent) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Bez PDSU podataka -->
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
+        <div>
+          <h5 class="pdsu-card-title">
+            Računari bez PDSU podataka ({{ missingComputers.length }})
+          </h5>
+          <div class="text-xs text-slate-500">
+            Nema nijedan zapis (ni programi, ni drajveri, ni servisi, ni update-i)
+          </div>
+        </div>
+        <AppButton
+          variant="secondary"
+          :disabled="!missingComputers.length || exportingMissing"
+          @click="emit('export-missing')"
+        >
+          {{ exportingMissing ? 'Izvoz…' : 'Izvezi PDF' }}
+        </AppButton>
+      </div>
+
+      <div
+        v-if="!missingComputers.length"
+        class="p-4 text-sm text-slate-500"
+      >
+        Svi računari imaju bar neki PDSU podatak.
+      </div>
+      <div
+        v-else
+        class="pdsu-table-wrap"
+      >
+        <table class="pdsu-table">
+          <thead>
+            <tr>
+              <th>Računar</th>
+              <th>IP</th>
+              <th>Odeljenje</th>
+              <th>OS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in missingComputers" :key="row.id">
+              <td class="font-semibold text-slate-900">
+                <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
+                  {{ row.computerName || 'Nepoznat računar' }}
+                </RouterLink>
+              </td>
+              <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
+              <td>{{ row.department || '—' }}</td>
+              <td>{{ row.os || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

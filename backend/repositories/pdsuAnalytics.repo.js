@@ -47,6 +47,23 @@ export async function getPdsuCoverage() {
   };
 }
 
+// "Bez PDSU" = nema baš nijedan zapis ni u jednoj od 4 tabele (stroži
+// kriterijum od "nedostaje bar jedna kategorija") - videti getPdsuCoverage
+// za per-tabelu brojeve.
+export async function listComputersWithoutPdsu() {
+  const [rows] = await pool.execute(`
+    SELECT ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os
+    FROM ip_entries ip
+    WHERE ip.entry_type = 'computer'
+      AND NOT EXISTS (SELECT 1 FROM computer_software cs WHERE cs.ip_entry_id = ip.id)
+      AND NOT EXISTS (SELECT 1 FROM computer_drivers cd WHERE cd.ip_entry_id = ip.id)
+      AND NOT EXISTS (SELECT 1 FROM computer_services csv WHERE csv.ip_entry_id = ip.id)
+      AND NOT EXISTS (SELECT 1 FROM computer_updates cu WHERE cu.ip_entry_id = ip.id)
+    ORDER BY ip.computer_name ASC, ip.ip ASC
+  `);
+  return rows || [];
+}
+
 /* =========================================================
    SOFTWARE
    ========================================================= */

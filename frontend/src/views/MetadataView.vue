@@ -192,6 +192,63 @@
         />
       </div>
 
+      <!-- ================= BEZ METAPODATAKA ================= -->
+      <SectionHeader title="Bez metapodataka" />
+      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="font-semibold text-slate-800">
+            Računari bez prikupljenih metapodataka ({{ missingMetadata.length }})
+          </h2>
+          <AppButton
+            variant="secondary"
+            :disabled="!missingMetadata.length || exportingMissingPdf"
+            @click="exportMissingMetadataPdf"
+          >
+            {{ exportingMissingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+          </AppButton>
+        </div>
+        <div
+          v-if="!missingMetadata.length"
+          class="text-sm text-slate-500"
+        >
+          Svi računari imaju prikupljene metapodatke.
+        </div>
+        <table
+          v-else
+          class="min-w-full text-left text-sm"
+        >
+          <thead class="bg-slate-100 text-slate-700">
+            <tr>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">Računar</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">IP</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">Odeljenje</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">OS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in missingMetadata"
+              :key="row.id"
+              class="border-b hover:bg-slate-50 cursor-pointer"
+              @click="router.push(`/ip/${row.id}/meta`)"
+            >
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-blue-700">
+                {{ row.computerName || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs">
+                {{ row.ip || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.department || '—' }}
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                {{ row.os || '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- ================= PREGLED ================= -->
       <SectionHeader title="Pregled" />
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -508,6 +565,7 @@
 import { ref, computed, watch, onMounted, h, defineComponent, onBeforeUnmount } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { downloadFromResponse } from '@/utils/download.js'
 import { fmtGb, fmtTb, fmtPct, fmtMbps } from '@/utils/format.js'
 import { sum, avg, median, round1, joinNonEmpty, groupCount } from '@/utils/math.js'
 import {
@@ -803,6 +861,34 @@ const serverFlags = ref(null)
 const displayTables = computed(() => serverTables.value || tables.value)
 const { getSignal, abort } = useAbortableFetch()
 
+const missingMetadata = ref([])
+const exportingMissingPdf = ref(false)
+
+async function fetchMissingMetadata() {
+  try {
+    const res = await fetchWithAuth('/api/protected/metadata/missing')
+    if (!res.ok) return
+    const data = await res.json()
+    missingMetadata.value = Array.isArray(data.items) ? data.items : []
+  } catch {
+  }
+}
+
+async function exportMissingMetadataPdf() {
+  exportingMissingPdf.value = true
+  try {
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    await downloadFromResponse(
+      await fetchWithAuth('/api/protected/metadata/missing/export-pdf'),
+      `NetDesk_bez_metapodataka_${dateStamp}.pdf`
+    )
+  } catch (err) {
+    console.error('Export bez metapodataka greška:', err)
+  } finally {
+    exportingMissingPdf.value = false
+  }
+}
+
 // Pretraga preko CELE baze (isti obrazac kao PDSUAnalyticsView) - namerno
 // odvojena od klijentski učitanog `meta` (koji je samo trenutna stranica po
 // 200) i gađa /api/protected/metadata/search, koje pretražuje direktno u
@@ -913,7 +999,7 @@ async function refreshAll() {
   serverTables.value = null
   serverFlags.value = null
   meta.value = []
-  await fetchStatsPreferServer()
+  await Promise.all([fetchStatsPreferServer(), fetchMissingMetadata()])
   loading.value = false
 }
 

@@ -5,6 +5,7 @@ import {
   listAgentsController,
   agentFilterOptionsController,
   listComputersWithoutAgentController,
+  exportComputersWithoutAgentPdfController,
   getAgentController,
   revokeAgentController,
 } from "../controllers/agents.controller.js";
@@ -29,6 +30,7 @@ router.use(cacheNoStore);
 router.get("/", asyncHandler(listAgentsController));
 router.get("/filter-options", asyncHandler(agentFilterOptionsController));
 router.get("/without-agent-computers", asyncHandler(listComputersWithoutAgentController));
+router.get("/without-agent-computers/export-pdf", asyncHandler(exportComputersWithoutAgentPdfController));
 router.get("/:id", asyncHandler(getAgentController));
 router.post("/:id/revoke", asyncHandler(revokeAgentController));
 
