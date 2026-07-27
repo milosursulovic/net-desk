@@ -145,6 +145,62 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     expect(rows[0].status).toBe("ended");
   });
 
+  it("does not crash the server when the viewer sends input before the agent has connected", async () => {
+    apiKey = generateApiKey();
+    agentId = await insertAgent({
+      agentUid: crypto.randomUUID(),
+      apiKeyHash: hashApiKey(apiKey),
+      hostname: testHostname(),
+      osCaption: null,
+      osVersion: null,
+      osBuild: null,
+      agentVersion: null,
+    });
+    sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+
+    const viewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}?token=${adminJwt()}`);
+    try {
+      await waitForOpen(viewerWs);
+      // No agent socket exists yet for this session - this used to throw
+      // "Cannot read properties of undefined (reading 'OPEN')" and crash
+      // the whole process via the uncaughtException handler in server.js.
+      viewerWs.send(JSON.stringify({ type: "mousemove", x: 0.1, y: 0.1 }));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(viewerWs.readyState).toBe(WebSocket.OPEN);
+    } finally {
+      viewerWs.close();
+    }
+  });
+
+  it("does not crash the server when the agent sends a frame before the viewer has connected", async () => {
+    apiKey = generateApiKey();
+    agentId = await insertAgent({
+      agentUid: crypto.randomUUID(),
+      apiKeyHash: hashApiKey(apiKey),
+      hostname: testHostname(),
+      osCaption: null,
+      osVersion: null,
+      osBuild: null,
+      agentVersion: null,
+    });
+    const { findAgentById } = await import("../../repositories/agents.repo.js");
+    agentUid = (await findAgentById(agentId)).agentUid;
+    sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+
+    const agentWs = new WebSocket(`${baseUrl}/api/agents/vnc-stream?sessionId=${sessionId}`, {
+      headers: { Authorization: `Bearer ${agentUid}:${apiKey}` },
+    });
+    try {
+      await waitForOpen(agentWs);
+      // No viewer socket exists yet for this session - same crash class as above.
+      agentWs.send(Buffer.from([0xff, 0xd8, 0xff]));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(agentWs.readyState).toBe(WebSocket.OPEN);
+    } finally {
+      agentWs.close();
+    }
+  });
+
   it("rejects an agent connection with the wrong API key", async () => {
     apiKey = generateApiKey();
     agentId = await insertAgent({

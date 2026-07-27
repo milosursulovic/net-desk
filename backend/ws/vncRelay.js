@@ -1,4 +1,4 @@
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/env.js";
@@ -152,7 +152,7 @@ export function attachVncRelay(server) {
 
         ws.on("message", (data, isBinary) => {
           const viewer = sessions.get(sessionId)?.viewerSocket;
-          if (viewer?.readyState === viewer.OPEN) viewer.send(data, { binary: isBinary });
+          if (viewer?.readyState === WebSocket.OPEN) viewer.send(data, { binary: isBinary });
         });
         ws.on("close", () => closeSession(sessionId, "agent_disconnected"));
         ws.on("error", () => closeSession(sessionId, "agent_error"));
@@ -180,7 +180,7 @@ export function attachVncRelay(server) {
 
         ws.on("message", (data) => {
           const agentSocket = sessions.get(sessionId)?.agentSocket;
-          if (agentSocket?.readyState === agentSocket.OPEN) agentSocket.send(data);
+          if (agentSocket?.readyState === WebSocket.OPEN) agentSocket.send(data);
         });
         ws.on("close", () => closeSession(sessionId, "viewer_disconnected"));
         ws.on("error", () => closeSession(sessionId, "viewer_error"));
