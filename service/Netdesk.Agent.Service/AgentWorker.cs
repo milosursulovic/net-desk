@@ -336,19 +336,22 @@ namespace NetdeskAgent.Service
                 return;
             }
 
-            // Namerno fire-and-forget - traje dok se sesija ne zatvori (server
-            // ili viewer strana), ne sme da blokira ovu metodu/poll petlju.
-            // Isti obrazac kao NetdeskAgentService.OnStart (jedini postojeći
-            // presedan za pozadinski Task u ovom agentu). Dodeljeno promenljivoj
-            // (čak i neiskorišćenoj) da CS4014 ne prijavljuje ovo kao slučajno
-            // zaboravljen await.
-            var vncStreamTask = Task.Run(() => VncStreamer.RunAsync(sessionId, client.BaseUrl, state.AgentId, state.ApiKey, token));
+            // Servis radi kao LocalSystem (Session 0) - Graphics.CopyFromScreen
+            // odatle baca "The handle is invalid" (potvrđeno uživo), jer Session
+            // 0 nema pravi korisnički desktop. Zato se capture/streaming NE
+            // pokreće direktno ovde (kao ranije), nego u posebnom procesu
+            // (Netdesk.Agent.VncHelper.exe) koji se pokreće UNUTAR aktivne
+            // interaktivne korisničke sesije - videti VncHelperLauncher.
+            var launched = VncHelperLauncher.LaunchInUserSession(sessionId, client.BaseUrl, state.AgentId, state.ApiKey);
 
             await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
             {
-                Success = true,
-                ExitCode = 0,
-                Output = "VNC sesija #" + sessionId + " pokrenuta.",
+                Success = launched,
+                ExitCode = launched ? 0 : -1,
+                Output = launched ? "VNC sesija #" + sessionId + " pokrenuta." : null,
+                ErrorOutput = launched
+                    ? null
+                    : "Pokretanje VncHelper-a u korisničkoj sesiji nije uspelo (videti agent.log).",
                 DurationMs = 0,
             }).ConfigureAwait(false);
         }

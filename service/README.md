@@ -90,6 +90,7 @@ Netdesk.Agent.Updater/    Netdesk.Agent.Updater.exe - odvojen proces koji
 C:\Program Files\NetdeskAgent\
 ├── Service\
 │   ├── Netdesk.Agent.Service.exe
+│   ├── Netdesk.Agent.VncHelper.exe
 │   ├── Netdesk.Agent.Common.dll
 │   └── Newtonsoft.Json.dll
 └── Updater\
@@ -104,6 +105,30 @@ Updater ne sme (i ne može, zbog file lock-a) da prepisuje sopstvene fajlove
 dok je pokrenut. `Netdesk.Agent.Service.exe` pronalazi Updater po ovoj
 konvenciji (rođeni folder pored svog installDir-a) — videti
 `UpdateManager.ResolveUpdaterExePath`.
+
+**`Netdesk.Agent.VncHelper.exe` ide u ISTI `Service\` folder** (za razliku
+od Updater-a) — ne prepisuje sopstvene fajlove dok radi, pa nema razloga da
+bude odvojen, i auto-update paket ga automatski nosi zajedno sa
+Service.exe/Common.dll bez ikakve posebne logike. Vidi "VNC i Session 0"
+ispod za zašto ovaj proces uopšte postoji.
+
+## VNC i Session 0
+
+`Netdesk.Agent.Service.exe` radi kao `LocalSystem`, u Session 0 - Windows
+izoluje tu sesiju od prijavljenog korisnika, pa `Graphics.CopyFromScreen`
+odatle baca `Win32Exception: The handle is invalid` umesto da vrati stvarni
+desktop (**potvrđeno uživo**, ne samo teorijski rizik). Zato VNC streaming
+NE radi direktno u servisu - `AgentWorker.ProcessVncStreamJobAsync` umesto
+toga poziva `VncHelperLauncher.LaunchInUserSession`, koji preko
+`WTSQueryUserToken` + `CreateProcessAsUser` (isti mehanizam kao
+`psexec -i`/RDP shadow alati) pokreće `Netdesk.Agent.VncHelper.exe` UNUTAR
+aktivne interaktivne korisničke sesije. Taj proces samo poziva postojeći
+`VncStreamer` - capture/injection kod je nepromenjen, radi ispravno čim se
+izvršava iz procesa koji stvarno vidi korisnikov desktop.
+
+Ako nema nijednog prijavljenog korisnika na konzoli (`WTSGetActiveConsoleSessionId`
+vraća "nema aktivne sesije"), pokretanje se odbija sa jasnom porukom u
+`agent.log` - nema šta da se snima bez interaktivne sesije.
 
 ## Preduslovi za build
 

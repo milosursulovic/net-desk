@@ -518,18 +518,21 @@ poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
   `agent_jobs.payload` JSON tipom).
 - Job queue je async/polling (agent povlači na sledećem ciklusu, ne
   odmah) — nema uživo/real-time kanala za komande.
-- **VNC (remote screen control) nije potvrđen uživo na pravoj mašini.**
-  Agent servis radi pod LocalSystem nalogom, što znači da živi u Session 0
-  — Windows (od Viste naovamo) izoluje Session 0 od interaktivne
-  korisničke sesije. Postoji realan rizik da `Graphics.CopyFromScreen`
-  pozvan iz Session 0 snima praznu Session-0 pozadinu, ne stvarni
-  korisnički ekran (isti tip problema kao `LogoffActiveSessions` u
-  `JobExecutor.cs`, koji baš zato koristi WTS API umesto direktnog poziva).
-  Ako se ovo potvrdi uživo, pravo rešenje je pomoćni proces pokrenut
-  UNUTAR korisničke sesije (`WTSQueryUserToken` + `CreateProcessAsUser`),
-  ne direktan capture/injection iz samog servisa. Zato je funkcija iza
-  `vnc_enabled` feature flag-a (podrazumevano isključeno) - videti
-  "Konfiguracija / feature flags".
+- **VNC Session 0 problem - potvrđen uživo i ispravljen.** Agent servis
+  radi pod LocalSystem nalogom (Session 0, izolovan od interaktivne
+  korisničke sesije od Viste naovamo). `Graphics.CopyFromScreen` pozvan
+  direktno iz servisa je uživo bacao `Win32Exception: The handle is
+  invalid` — isti tip problema kao `LogoffActiveSessions` u
+  `JobExecutor.cs`, koji baš zato koristi WTS API umesto direktnog poziva.
+  Ispravljeno dodavanjem `Netdesk.Agent.VncHelper.exe` — servis ga preko
+  `VncHelperLauncher.LaunchInUserSession` (`WTSQueryUserToken` +
+  `CreateProcessAsUser`) pokreće UNUTAR aktivne interaktivne korisničke
+  sesije, gde `VncStreamer`/`ScreenCaptureService` rade nepromenjeno i
+  ispravno. Vidi `service/README.md`, "VNC i Session 0". **Sam mehanizam
+  pokretanja procesa u korisničkoj sesiji (WTS/CreateProcessAsUser) još
+  nije potvrđen uživo** (samo je Session-0 capture problem bio uživo
+  potvrđen pre fixa) - proveriti da VncHelper.exe stvarno starta i da
+  screen capture radi na test mašini pre šireg rollout-a.
 
 Za širi pregled ideja za sledeću verziju (uključujući razmatranje mobilne
 aplikacije i lokalnog AI-ja), videti [`agent-roadmap.md`](agent-roadmap.md).
