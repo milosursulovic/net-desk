@@ -7,6 +7,7 @@ import {
   searchMetadataController,
   listWithoutMetadataController,
   exportWithoutMetadataPdfController,
+  clearMetadataController,
 } from "../controllers/metadata.controller.js";
 
 const router = express.Router();
@@ -18,5 +19,6 @@ router.get("/stats", asyncHandler(statsController));
 router.get("/search", asyncHandler(searchMetadataController));
 router.get("/missing", asyncHandler(listWithoutMetadataController));
 router.get("/missing/export-pdf", asyncHandler(exportWithoutMetadataPdfController));
+router.delete("/:ipEntryId", asyncHandler(clearMetadataController));
 
 export default router;

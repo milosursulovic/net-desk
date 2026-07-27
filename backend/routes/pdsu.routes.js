@@ -5,6 +5,7 @@ import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
 import {
   listComputersController,
   getComputerController,
+  clearPdsuController,
   getSoftwareController,
   syncSoftwareController,
   getDriversController,
@@ -31,6 +32,8 @@ router.get("/", asyncHandler(listComputersController));
 router.get("/by-ip/:ip", asyncHandler(getComputerByIpController));
 
 router.get("/:id", asyncHandler(getComputerController));
+
+router.delete("/:id", asyncHandler(clearPdsuController));
 
 // Software
 router.get("/:id/software", asyncHandler(getSoftwareController));

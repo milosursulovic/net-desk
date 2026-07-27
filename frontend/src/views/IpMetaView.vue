@@ -4,7 +4,12 @@
       <h1 class="text-2xl font-bold text-slate-800">
         Metapodaci — {{ entry?.computerName || entry?.ip || 'Nepoznato' }}
       </h1>
-      <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      <div class="flex items-center gap-2">
+        <AppButton v-if="meta" variant="danger" @click="clearMetadata">
+          Očisti metapodatke
+        </AppButton>
+        <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      </div>
     </div>
 
     <div v-if="entryLoading" class="text-slate-600">Učitavanje…</div>
@@ -230,6 +235,16 @@
         </div>
       </div>
     </template>
+
+    <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>
 
@@ -237,9 +252,17 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { parseError } from '@/utils/api.js'
 import { fmtDate, fmtGb, fmtMbps, safe } from '@/utils/format.js'
+import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import AppButton from '@/components/AppButton.vue'
 import UptimeTimeline from '@/components/UptimeTimeline.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
+const { toast, showToast } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const route = useRoute()
 const router = useRouter()
@@ -258,6 +281,24 @@ const uptimeError = ref('')
 
 function goBack() {
   router.push('/')
+}
+
+async function clearMetadata() {
+  const ok = await askConfirm(
+    'Da li želiš da obrišeš SVE prikupljene metapodatke za ovaj računar? Ova akcija se ne može poništiti.',
+    { title: 'Brisanje metapodataka' },
+  )
+  if (!ok) return
+
+  try {
+    const res = await fetchWithAuth(`/api/protected/metadata/${route.params.id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
+    meta.value = null
+    showToast('Metapodaci obrisani.')
+  } catch (err) {
+    console.error('Greška pri brisanju metapodataka:', err)
+    showToast('Greška pri brisanju metapodataka.', { prefix: '❌ ', duration: 3000 })
+  }
 }
 
 function formatDuration(fromValue, toValue) {

@@ -1,11 +1,13 @@
 import { toInt, clamp } from "../utils/numbers.js";
 import { parseBool } from "../utils/queryCoercion.js";
+import { parseIdParam } from "../utils/idParam.js";
 import { sendTablePdf } from "../utils/pdfTable.js";
 import {
   listMetadataPage,
   statsService,
   searchMetadataService,
   listEntriesWithoutMetadataService,
+  clearMetadataForIpEntryService,
 } from "../services/metadata.service.js";
 
 export async function listMetadataController(req, res) {
@@ -30,6 +32,12 @@ export async function statsController(req, res) {
 
 export async function listWithoutMetadataController(req, res) {
   const out = await listEntriesWithoutMetadataService();
+  res.json(out);
+}
+
+export async function clearMetadataController(req, res) {
+  const ipEntryId = parseIdParam(req, "ipEntryId", "ID računara");
+  const out = await clearMetadataForIpEntryService(ipEntryId);
   res.json(out);
 }
 

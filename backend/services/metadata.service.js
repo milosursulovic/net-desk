@@ -34,6 +34,7 @@ import {
   statsOldOsRows,
   statsLexarFlagRows,
   listEntriesWithoutMetadata,
+  deleteMetadataForIpEntry,
 } from "../repositories/metadata.repo.js";
 
 function pick(obj, keys) {
@@ -122,6 +123,11 @@ export async function listMetadataPage({ page, limit }) {
 export async function listEntriesWithoutMetadataService() {
   const items = await listEntriesWithoutMetadata();
   return { items, total: items.length };
+}
+
+export async function clearMetadataForIpEntryService(ipEntryId) {
+  const affected = await deleteMetadataForIpEntry(ipEntryId);
+  return { cleared: affected > 0 };
 }
 
 export async function searchMetadataService(term) {

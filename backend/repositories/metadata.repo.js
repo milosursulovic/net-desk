@@ -402,6 +402,18 @@ export async function statsTotalWithMeta() {
 // metadata_id je denormalizovana FK na ip_entries (postavlja je
 // txAttachMetadataToIpEntry) - "bez metapodataka" je prosto IS NULL, ne
 // treba JOIN/EXISTS provera kao za PDSU (koji nema takvu denormalizaciju).
+// computer_metadata_{ram_modules,storage,gpus,nics} sve imaju ON DELETE
+// CASCADE ka computer_metadata.id, pa brisanje reda ovde automatski čisti
+// i njih - nema potrebe za ručnim brisanjem četiri child tabele.
+export async function deleteMetadataForIpEntry(ipEntryId) {
+  await pool.execute(`UPDATE ip_entries SET metadata_id = NULL WHERE id = ?`, [ipEntryId]);
+  const [result] = await pool.execute(
+    `DELETE FROM computer_metadata WHERE ip_entry_id = ?`,
+    [ipEntryId],
+  );
+  return result.affectedRows;
+}
+
 export async function listEntriesWithoutMetadata() {
   const [rows] = await pool.execute(
     `

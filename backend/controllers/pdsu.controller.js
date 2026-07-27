@@ -19,6 +19,7 @@ import {
   syncComputerPrinters,
   getComputerAvailableUpdates,
   syncComputerAvailableUpdates,
+  clearComputerPdsu,
 } from "../services/pdsu.service.js";
 
 // =========================
@@ -53,6 +54,14 @@ export async function getComputerController(req, res) {
   }
 
   res.json(computer);
+}
+
+export async function clearPdsuController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  await clearComputerPdsu(id);
+
+  res.json({ success: true, message: "PDSU podaci obrisani." });
 }
 
 // =========================

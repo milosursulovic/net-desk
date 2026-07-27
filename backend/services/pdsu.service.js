@@ -189,6 +189,21 @@ export async function syncComputerUpdates(ipEntryId, updates) {
   return true;
 }
 
+// Software/drajveri/servisi/updates - namerno NE i printers/available-updates
+// (odvojena briga, korisnik ne bi da "očisti PDSU" nenamerno obriše i njih).
+export async function clearComputerPdsu(ipEntryId) {
+  await getComputer(ipEntryId);
+
+  await Promise.all([
+    computerSoftwareDelete(ipEntryId),
+    computerDriversDelete(ipEntryId),
+    computerServicesDelete(ipEntryId),
+    computerUpdatesDelete(ipEntryId),
+  ]);
+
+  return true;
+}
+
 // =========================
 // Printers (agent-detektovani, po računaru)
 // =========================

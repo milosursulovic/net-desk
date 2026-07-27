@@ -4,7 +4,16 @@
       <h1 class="text-2xl font-bold text-slate-800">
         Inventar — {{ entry?.computer_name || entry?.ip || 'Nepoznato' }}
       </h1>
-      <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      <div class="flex items-center gap-2">
+        <AppButton
+          v-if="hasAnyPdsuData"
+          variant="danger"
+          @click="clearPdsu"
+        >
+          Očisti PDSU podatke
+        </AppButton>
+        <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      </div>
     </div>
 
     <div v-if="entryLoading" class="text-slate-600">Učitavanje…</div>
@@ -229,6 +238,16 @@
         </div>
       </div>
     </div>
+
+    <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>
 
@@ -239,10 +258,16 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import AppButton from '@/components/AppButton.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { toast, showToast } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const entry = ref(null)
 const entryLoading = ref(false)
@@ -269,6 +294,34 @@ const { search, tab } = usePaginatedRoute({
 
 function goBack() {
   router.push('/')
+}
+
+const hasAnyPdsuData = computed(() =>
+  software.value.length > 0 ||
+  drivers.value.length > 0 ||
+  services.value.length > 0 ||
+  updates.value.length > 0
+)
+
+async function clearPdsu() {
+  const ok = await askConfirm(
+    'Da li želiš da obrišeš SVE PDSU podatke (softver, drajveri, servisi, ažuriranja) za ovaj računar? Ova akcija se ne može poništiti.',
+    { title: 'Brisanje PDSU podataka' },
+  )
+  if (!ok) return
+
+  try {
+    const res = await fetchWithAuth(`/api/protected/pdsu/${route.params.id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
+    software.value = []
+    drivers.value = []
+    services.value = []
+    updates.value = []
+    showToast('PDSU podaci obrisani.')
+  } catch (err) {
+    console.error('Greška pri brisanju PDSU podataka:', err)
+    showToast('Greška pri brisanju PDSU podataka.', { prefix: '❌ ', duration: 3000 })
+  }
 }
 
 async function loadTabData(name) {
