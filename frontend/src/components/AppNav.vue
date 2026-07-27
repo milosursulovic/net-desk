@@ -21,6 +21,7 @@ const links = computed(() =>
         { to: '/users', label: 'Korisnici' },
         { to: '/logs', label: 'Logovi' },
         { to: '/config', label: 'Konfiguracija' },
+        { to: '/server-health', label: 'Server' },
       ]
     : baseLinks,
 )

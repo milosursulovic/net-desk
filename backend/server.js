@@ -7,6 +7,7 @@ import { startPingLoop } from "./utils/pingService.js";
 import { startPushNotificationWatcher } from "./utils/pushNotificationWatcher.js";
 import { startDailyReportScheduler } from "./utils/dailyReportScheduler.js";
 import { attachVncRelay } from "./ws/vncRelay.js";
+import { startServerHealthSnapshotLoop } from "./utils/serverHealthScheduler.js";
 
 const connectMySql = async () => {
   try {
@@ -42,6 +43,7 @@ export const startServer = async () => {
   startPingLoop(30);
   startPushNotificationWatcher(60);
   startDailyReportScheduler(7);
+  startServerHealthSnapshotLoop(120);
 
   const shutdown = async (signal) => {
     console.log(`🛑 Received ${signal}. Shutting down...`);

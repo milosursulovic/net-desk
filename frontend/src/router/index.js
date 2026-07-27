@@ -24,6 +24,7 @@ const ReportsView = () => import('@/views/ReportsView.vue')
 const UsersView = () => import('@/views/UsersView.vue')
 const LogsView = () => import('@/views/LogsView.vue')
 const ConfigView = () => import('@/views/ConfigView.vue')
+const ServerHealthView = () => import('@/views/ServerHealthView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -192,6 +193,12 @@ const router = createRouter({
           name: 'config',
           meta: { title: 'Konfiguracija - NetDesk', breadcrumb: 'Konfiguracija', requiresAdmin: true },
           component: ConfigView,
+        },
+        {
+          path: 'server-health',
+          name: 'server-health',
+          meta: { title: 'Server - NetDesk', breadcrumb: 'Server', requiresAdmin: true },
+          component: ServerHealthView,
         },
       ],
     },

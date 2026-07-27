@@ -13,6 +13,7 @@ import dailyReportsRoutes from "./dailyReports.routes.js";
 import usersRoutes from "./users.routes.js";
 import activityLogRoutes from "./activityLog.routes.js";
 import appSettingsRoutes from "./appSettings.routes.js";
+import serverHealthRoutes from "./serverHealth.routes.js";
 import { writeRequiresOperator } from "../middlewares/requireRole.middleware.js";
 
 const router = express.Router();
@@ -42,5 +43,6 @@ router.use("/agent-releases", agentReleasesRoutes);
 router.use("/users", usersRoutes);
 router.use("/activity-log", activityLogRoutes);
 router.use("/settings", appSettingsRoutes);
+router.use("/server-health", serverHealthRoutes);
 
 export default router;

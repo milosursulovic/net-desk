@@ -9,6 +9,7 @@ import { setupLogger } from "./config/logger.js";
 import routes from "./routes/index.js";
 import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { requestMetricsMiddleware } from "./middlewares/requestMetrics.middleware.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FRONTEND_DIST = path.join(__dirname, "../frontend/dist");
@@ -28,6 +29,8 @@ export const createApp = () => {
       hsts: IS_PROD,
     }),
   );
+
+  app.use(requestMetricsMiddleware);
 
   setupLogger(app);
   setupCors(app);
