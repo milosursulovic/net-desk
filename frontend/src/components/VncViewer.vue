@@ -27,7 +27,7 @@
         ref="frameEl"
         :src="frameUrl"
         tabindex="0"
-        class="w-full rounded-lg border-2 outline-none cursor-none select-none"
+        class="w-full min-h-90 max-h-[80vh] object-contain bg-slate-900 rounded-lg border-2 outline-none cursor-none select-none"
         :class="focused ? 'border-blue-500' : 'border-slate-200'"
         @mousemove="onMouseMove"
         @mousedown="onMouseDown"
@@ -97,9 +97,21 @@ async function start() {
       starting.value = false
     }
     ws.onmessage = (event) => {
-      if (currentFrameObjectUrl) URL.revokeObjectURL(currentFrameObjectUrl)
+      const previousUrl = currentFrameObjectUrl
       currentFrameObjectUrl = URL.createObjectURL(event.data)
       frameUrl.value = currentFrameObjectUrl
+
+      // Revoking the previous blob URL immediately (before the browser
+      // finishes decoding/painting the new one) can interrupt the <img>
+      // mid-load on some engines, leaving it permanently reporting no
+      // intrinsic size - defer it until the new frame has actually loaded.
+      if (previousUrl) {
+        if (frameEl.value) {
+          frameEl.value.addEventListener('load', () => URL.revokeObjectURL(previousUrl), { once: true })
+        } else {
+          URL.revokeObjectURL(previousUrl)
+        }
+      }
     }
     ws.onclose = () => {
       cleanup()
