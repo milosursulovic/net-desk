@@ -26,3 +26,14 @@ export function useCurrentUser() {
   const isAdmin = computed(() => currentUser.value?.role === 'admin')
   return { currentUser, isAdmin }
 }
+
+// `currentUser`/`loadPromise` are module-level so every component shares one
+// fetch - but that means they otherwise survive a logout, and load() would
+// never re-fetch for the next login (stale role shown until a full page
+// reload). Call this on every "session ends" path (logout button, expired-
+// token redirect, 401 redirect) so the next useCurrentUser() call re-fetches
+// against whatever token is active next.
+export function resetCurrentUser() {
+  currentUser.value = null
+  loadPromise = null
+}

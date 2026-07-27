@@ -28,10 +28,12 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import AppButton from '@/components/AppButton.vue'
+import { resetCurrentUser } from '@/composables/useCurrentUser.js'
 
 const router = useRouter()
 const logout = () => {
   localStorage.removeItem('token')
+  resetCurrentUser()
   router.push('/login')
 }
 </script>

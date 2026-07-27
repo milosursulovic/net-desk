@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isTokenExpired, decodeJwt } from '@/utils/auth.js'
+import { resetCurrentUser } from '@/composables/useCurrentUser.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
@@ -215,6 +216,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth) {
     if (!token || isTokenExpired(token)) {
       localStorage.removeItem('token')
+      resetCurrentUser()
       const returnTo = encodeURIComponent(to.fullPath || '/')
       return next(`/login?returnTo=${returnTo}`)
     }

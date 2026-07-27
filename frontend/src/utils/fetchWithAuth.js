@@ -1,5 +1,6 @@
 import router from '@/router'
 import { isTokenExpired } from '@/utils/auth.js'
+import { resetCurrentUser } from '@/composables/useCurrentUser.js'
 
 // Module-level (not per-call) guard: many concurrent requests can hit a 401
 // at once, and without this they'd each try to push('/login'), stacking
@@ -7,8 +8,20 @@ import { isTokenExpired } from '@/utils/auth.js'
 let redirectingToLogin = false
 function safeRedirectToLogin() {
   if (redirectingToLogin) return
+
+  // This 401 may belong to a request that started under a PREVIOUS session
+  // (e.g. the user logged out and back in as someone else while it was
+  // still in flight, or a login just barely raced a stale request from the
+  // login page itself). If there's already a valid token again by the time
+  // this fires, that's a stale/superseded response, not a real auth
+  // failure - acting on it would wrongly bounce a freshly-logged-in user
+  // back to the login page.
+  const currentToken = localStorage.getItem('token')
+  if (currentToken && !isTokenExpired(currentToken)) return
+
   redirectingToLogin = true
   localStorage.removeItem('token')
+  resetCurrentUser()
   const current = router.currentRoute.value
   const returnTo = encodeURIComponent(current.fullPath || '/')
   if (current.path !== '/login') {
