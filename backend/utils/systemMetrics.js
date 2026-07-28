@@ -35,6 +35,33 @@ export async function getSystemSnapshot() {
   return cached;
 }
 
+// Same caching reasoning as getSystemSnapshot - si.processes() scans every
+// running process, not free to call on every poll.
+let mariaDbCached = null;
+let mariaDbFetchAt = 0;
+
+export async function getMariaDbProcessSnapshot() {
+  const now = Date.now();
+  if (mariaDbCached !== null && now - mariaDbFetchAt < CACHE_MS) return mariaDbCached;
+
+  const { list } = await si.processes();
+  // MariaDB's Windows service binary is mysqld.exe (MySQL-compatible
+  // naming); Linux packages sometimes ship mariadbd instead - matching
+  // both covers either deployment target.
+  const proc = list.find((p) => /mysqld|mariadbd/i.test(p.name));
+
+  mariaDbCached = proc
+    ? {
+        found: true,
+        cpuPct: round1(proc.cpu),
+        memMb: Math.round((proc.memRss || 0) / 1024),
+      }
+    : { found: false, cpuPct: null, memMb: null };
+
+  mariaDbFetchAt = now;
+  return mariaDbCached;
+}
+
 export function getProcessSnapshot() {
   const mem = process.memoryUsage();
   return {

@@ -34,6 +34,12 @@ describe("server health routes (integration, real DB)", () => {
     expect(res.body.db).toMatchObject({
       threadsConnected: expect.any(Number),
       maxConnections: expect.any(Number),
+      queriesPerMin: expect.any(Number),
+      avgQueryMs: expect.any(Number),
+      slowQueryCount: expect.any(Number),
+      slowestQueries: expect.any(Array),
+      size: { totalSizeMb: expect.any(Number), topTables: expect.any(Array) },
+      process: { found: expect.any(Boolean) },
     });
     expect(res.body.process).toMatchObject({
       rssMb: expect.any(Number),
@@ -42,6 +48,8 @@ describe("server health routes (integration, real DB)", () => {
     expect(res.body.requests).toMatchObject({
       requestsPerMin: expect.any(Number),
       avgResponseMs: expect.any(Number),
+      p95ResponseMs: expect.any(Number),
+      p99ResponseMs: expect.any(Number),
       errorRatePct: expect.any(Number),
       topRoutes: expect.any(Array),
     });
@@ -83,6 +91,10 @@ describe("server health routes (integration, real DB)", () => {
     const last = res.body.items[res.body.items.length - 1];
     expect(last).toHaveProperty("cpuLoadPct");
     expect(last).toHaveProperty("recordedAt");
+    expect(last).toHaveProperty("p95ResponseMs");
+    expect(last).toHaveProperty("p99ResponseMs");
+    expect(last).toHaveProperty("mariadbCpuPct");
+    expect(last).toHaveProperty("mariadbMemMb");
 
     await pool.execute("DELETE FROM server_monitoring_history");
   });

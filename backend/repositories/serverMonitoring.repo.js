@@ -55,9 +55,10 @@ export async function insertServerSnapshot(s) {
       cpu_load_pct, ram_used_pct, ram_used_mb, ram_total_mb, disk_used_pct,
       process_rss_mb, process_heap_used_mb, db_threads_connected,
       requests_per_min, avg_response_ms, error_rate_pct,
-      db_size_mb, avg_query_ms
+      db_size_mb, avg_query_ms, p95_response_ms, p99_response_ms,
+      mariadb_cpu_pct, mariadb_mem_mb
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       s.cpuLoadPct,
@@ -73,6 +74,10 @@ export async function insertServerSnapshot(s) {
       s.errorRatePct,
       s.dbSizeMb,
       s.avgQueryMs,
+      s.p95ResponseMs,
+      s.p99ResponseMs,
+      s.mariadbCpuPct,
+      s.mariadbMemMb,
     ],
   );
 }
@@ -94,7 +99,11 @@ export async function listServerHistory(hours) {
       avg_response_ms AS avgResponseMs,
       error_rate_pct AS errorRatePct,
       db_size_mb AS dbSizeMb,
-      avg_query_ms AS avgQueryMs
+      avg_query_ms AS avgQueryMs,
+      p95_response_ms AS p95ResponseMs,
+      p99_response_ms AS p99ResponseMs,
+      mariadb_cpu_pct AS mariadbCpuPct,
+      mariadb_mem_mb AS mariadbMemMb
     FROM server_monitoring_history
     WHERE recorded_at >= NOW() - INTERVAL ? HOUR
     ORDER BY recorded_at ASC

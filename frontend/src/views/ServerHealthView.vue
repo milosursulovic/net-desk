@@ -141,6 +141,10 @@ const reqPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y:
 const respPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.avgResponseMs })))
 const dbSizePoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.dbSizeMb })))
 const queryMsPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.avgQueryMs })))
+const p95Points = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.p95ResponseMs })))
+const p99Points = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.p99ResponseMs })))
+const heapPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.processHeapUsedMb })))
+const mariadbCpuPoints = computed(() => history.value.map((h) => ({ x: h.recordedAt, y: h.mariadbCpuPct })))
 
 function selectHours(h) {
   historyHours.value = h
@@ -248,7 +252,24 @@ onBeforeUnmount(() => {
         <KpiCard
           title="Prosečno vreme odgovora"
           :value="live.requests.avgResponseMs + ' ms'"
+          sub="idealno <50-100ms u internoj mreži"
+          :warn="live.requests.avgResponseMs > 100"
         />
+        <KpiCard
+          title="P95 vreme odgovora"
+          :value="live.requests.p95ResponseMs + ' ms'"
+          sub="95% zahteva brže od ovoga"
+          :warn="live.requests.p95ResponseMs > 300"
+        />
+        <KpiCard
+          title="P99 vreme odgovora"
+          :value="live.requests.p99ResponseMs + ' ms'"
+          sub="najgori 1% zahteva"
+          :warn="live.requests.p99ResponseMs > 1000"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           title="Stopa grešaka (5xx)"
           :value="live.requests.errorRatePct + '%'"
@@ -257,6 +278,15 @@ onBeforeUnmount(() => {
         <KpiCard
           title="Veličina baze"
           :value="live.db.size.totalSizeMb + ' MB'"
+        />
+        <KpiCard
+          title="MariaDB proces — CPU"
+          :value="live.db.process.found ? live.db.process.cpuPct + '%' : 'nije pronađen'"
+          :warn="live.db.process.found && live.db.process.cpuPct > 80"
+        />
+        <KpiCard
+          title="MariaDB proces — RAM"
+          :value="live.db.process.found ? live.db.process.memMb + ' MB' : 'nije pronađen'"
         />
       </div>
 
@@ -446,12 +476,31 @@ onBeforeUnmount(() => {
         <TrendLine :points="respPoints" unit="ms" />
       </div>
       <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-slate-800 mb-3">P95 vreme odgovora (ms)</h3>
+        <TrendLine :points="p95Points" unit="ms" />
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-slate-800 mb-3">P99 vreme odgovora (ms)</h3>
+        <TrendLine :points="p99Points" unit="ms" />
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h3 class="font-semibold text-slate-800 mb-3">Veličina baze (MB)</h3>
         <TrendLine :points="dbSizePoints" unit="MB" />
       </div>
       <div class="rounded-xl border bg-white p-4 shadow-sm">
         <h3 class="font-semibold text-slate-800 mb-3">Prosečno trajanje upita (ms)</h3>
         <TrendLine :points="queryMsPoints" unit="ms" />
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-slate-800 mb-3">MariaDB proces — CPU (%)</h3>
+        <TrendLine :points="mariadbCpuPoints" unit="%" />
+      </div>
+      <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
+        <h3 class="font-semibold text-slate-800 mb-3">
+          Node proces — heap (MB)
+          <span class="text-xs font-normal text-slate-400">— stabilnost kroz vreme (očekivano ~50-70 MB)</span>
+        </h3>
+        <TrendLine :points="heapPoints" unit="MB" />
       </div>
     </div>
 

@@ -18,6 +18,12 @@ function pruneOld() {
   if (i > 0) events = events.slice(i);
 }
 
+function percentile(sortedDurations, p) {
+  if (!sortedDurations.length) return 0;
+  const idx = Math.min(sortedDurations.length - 1, Math.floor((p / 100) * sortedDurations.length));
+  return Math.round(sortedDurations[idx]);
+}
+
 /**
  * Aggregates the last `windowMs` of requests (default 1 minute) into
  * summary stats + a per-route breakdown, sorted by request count.
@@ -30,6 +36,14 @@ export function getLiveRequestStats(windowMs = 60_000) {
   const count = recent.length;
   const errors = recent.filter((e) => e.status >= 500).length;
   const totalMs = recent.reduce((sum, e) => sum + e.durationMs, 0);
+
+  // P95/P99 computed over the FULL retained window (up to 5 min), not just
+  // the requests-per-minute window above - 60s rarely has enough samples
+  // for a meaningful percentile, and "occasionally slow" outliers are
+  // exactly what a longer span is better at catching.
+  const allDurationsSorted = events.map((e) => e.durationMs).sort((a, b) => a - b);
+  const p95ResponseMs = percentile(allDurationsSorted, 95);
+  const p99ResponseMs = percentile(allDurationsSorted, 99);
 
   const perRoute = new Map();
   for (const e of recent) {
@@ -54,6 +68,8 @@ export function getLiveRequestStats(windowMs = 60_000) {
   return {
     requestsPerMin: Math.round((count / windowMs) * 60_000),
     avgResponseMs: count ? Math.round(totalMs / count) : 0,
+    p95ResponseMs,
+    p99ResponseMs,
     errorRatePct: count ? Math.round((errors / count) * 1000) / 10 : 0,
     topRoutes,
   };
