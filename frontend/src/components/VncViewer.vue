@@ -22,11 +22,23 @@
       instaliran i pokrenut na ciljnoj mašini.
     </p>
 
+    <!--
+      Kontejner mora UVEK biti realno renderovan (nikad display:none) -
+      noVNC pri new RFB(...) meri clientWidth/clientHeight ovog elementa i
+      na osnovu toga računa skaliranje canvas-a; ako je u tom trenutku
+      display:none (v-show), izmeri 0x0 i slika ostaje nevidljiva čak i
+      kad kontejner posle postane vidljiv. "Nije povezano" stanje se zato
+      prikazuje kao overlay PREKO uvek-prisutnog kontejnera, ne kroz
+      sakrivanje samog kontejnera.
+    -->
     <div
-      v-show="connected"
       ref="screenEl"
-      class="w-full min-h-90 max-h-[80vh] bg-slate-900 rounded-lg border-2 border-slate-200 overflow-hidden"
-    ></div>
+      class="relative w-full min-h-90 max-h-[80vh] bg-slate-900 rounded-lg border-2 border-slate-200 overflow-hidden"
+    >
+      <div v-if="!connected" class="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+        Nije povezano
+      </div>
+    </div>
 
     <ToastNotification :message="toast" />
   </div>
