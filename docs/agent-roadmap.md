@@ -26,17 +26,26 @@ alerting preko postojećeg notifikacionog sistema).
 ### 1. Uživo pristup / remote support
 Trenutni job queue je async (agent povlači komande na svaki poll ciklus, ne
 odmah). Za pravu IT podršku uživo bi imalo smisla:
-- **Pokušano pa uklonjeno** — custom remote screen view + kontrola miša/
-  tastature (sopstveni GDI capture + SendInput + WebSocket relay). Uklonjeno
-  jer je nagomilalo previše krhkih tačaka otkaza uživo (Session 0 izolacija,
-  ACL na log fajlu, frame rendering) bez pouzdanog "mora da radi" ponašanja.
-  Planiran novi pristup: bundle-ovati zreo, dokazan VNC server (npr.
-  UltraVNC, "service mode" koji ispravno rešava Session 0 iz kutije) koji
-  agent instalira i vezuje samo na 127.0.0.1, dok agent sam samo radi tanak
-  TCP↔WebSocket "byte forwarder" preko postojećeg outbound-relay mehanizma
-  (mnogo manje rizično od sopstvenog capture/injection koda), a frontend
-  koristi noVNC (zreo open-source browser VNC klijent) umesto ručno pisanog
-  viewer-a.
+- **Prva verzija pokušana pa uklonjena** — custom remote screen view +
+  kontrola miša/tastature (sopstveni GDI capture + SendInput + WebSocket
+  relay). Uklonjeno jer je nagomilalo previše krhkih tačaka otkaza uživo
+  (Session 0 izolacija, ACL na log fajlu, frame rendering) bez pouzdanog
+  "mora da radi" ponašanja.
+- **Druga verzija izgrađena** (backend/agent/frontend kod gotov, iza
+  `vnc_enabled` feature flaga, isključeno po default-u) — bundle-uje zreo,
+  dokazan VNC server (UltraVNC, "service mode" koji ispravno rešava
+  Session 0 iz kutije), instaliran kao poseban Windows servis vezan samo
+  na 127.0.0.1 (van obima ovog repoa — nije deo automatskog build/update
+  procesa). Agent sam samo radi tanak TCP↔WebSocket "byte forwarder"
+  (`Netdesk.Agent.Common/Vnc/VncBridge.cs`) preko postojećeg
+  outbound-relay mehanizma (mnogo manje rizično od sopstvenog
+  capture/injection koda, nema GDI-ja/SendInput-a/WTS logike uopšte), a
+  frontend koristi noVNC (`@novnc/novnc`, zreo open-source browser VNC
+  klijent) umesto ručno pisanog viewer-a. **Nije testirano na pravoj
+  mašini** — nema Windows GUI okruženja u sandbox-u da se preuzme/
+  instalira/pokrene stvaran UltraVNC; ostaje na korisniku da instalira
+  UltraVNC (videti `service/README.md`) i potvrdi end-to-end uživo pre
+  šireg uključivanja flaga.
 - **Real-time kanal** za obične komande i dalje ne postoji — svaka komanda
   i dalje čeka sledeći 15s poll ciklus.
 - **Live PowerShell/CMD sesija** (tekstualni "remote shell" prozor) i dalje

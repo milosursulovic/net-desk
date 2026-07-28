@@ -174,7 +174,8 @@ svaki sync)
 **RMM/agenti:**
 `agents`, `agent_monitoring` (1:1 upsert-latest snapshot),
 `agent_monitoring_history` (dnevni snapshot, koristi se za trend/anomalija
-analizu — vidi ispod), `agent_jobs`, `agent_releases`, `agent_update_log`
+analizu — vidi ispod), `agent_jobs`, `agent_releases`, `agent_update_log`,
+`vnc_sessions` (lifecycle udaljene kontrole ekrana — vidi ispod)
 
 **Dnevni izveštaj i push:**
 `daily_reports` (JSON sadržaj, `opened_at` za pročitano/nepročitano),
@@ -318,6 +319,11 @@ C:\Program Files\NetdeskAgent\
   provera → (opciono) provera digitalnog potpisa preko lanca do interne
   root CA → pokreni Updater → Updater menja fajlove i restartuje servis,
   sa automatskim rollback-om pri bilo kom izuzetku.
+- **Udaljena kontrola ekrana (VNC, iza `vnc_enabled` feature flaga)** —
+  agent sam ne radi capture/injection, samo tanak TCP↔WebSocket
+  "byte forwarder" (`Vnc/VncBridge.cs`) između lokalnog UltraVNC servera
+  (127.0.0.1, poseban Windows servis, van obima ovog repoa) i backend
+  relay-a. Videti `service/README.md`.
 
 Detaljnija arhitektura, build preduslovi, i sva "gotcha" saznanja iz
 razvoja (TLS 1.2 na Win7, JSON contract resolver zamke, itd.) su u
@@ -334,8 +340,8 @@ Admin-only za čitanje i pisanje (`/api/protected/settings`) - koja je
 funkcionalnost uključena je samo po sebi administrativna informacija,
 ista logika kao `users.routes.js`/`activityLog.routes.js`. Drugi servisi
 proveravaju flag preko `appSettings.service.js`'s `isFeatureEnabled(key)`
-helper-a. Registar (`APP_SETTINGS`) je trenutno prazan - okvir čeka prvo
-buduće podešavanje.
+helper-a. Trenutno registrovano: `vnc_enabled` (uključuje "Uzmi kontrolu
+ekrana" na stranici agenta — videti Netdesk Agent sekciju iznad).
 
 ## API pregled
 

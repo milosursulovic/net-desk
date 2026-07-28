@@ -4,5 +4,6 @@
   "HeartbeatIntervalSeconds": 30,
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
-  "UpdateCheckIntervalSeconds": 1800
+  "UpdateCheckIntervalSeconds": 1800,
+  "VncLocalPort": 5901
 }

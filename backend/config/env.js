@@ -36,3 +36,9 @@ export const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
 export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || null;
 export const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || null;
 export const VAPID_SUBJECT = process.env.VAPID_SUBJECT || null;
+
+// Opciono - deljena UltraVNC lozinka (ista podešena u ultravnc.ini na
+// svakoj upravljanoj mašini). Ako nije podešena, frontend pokušava VNC
+// konekciju bez lozinke (radi ako je UltraVNC konfigurisan da je ne
+// zahteva za loopback konekcije). Videti services/vncSessions.service.js.
+export const VNC_SHARED_PASSWORD = process.env.VNC_SHARED_PASSWORD || "";

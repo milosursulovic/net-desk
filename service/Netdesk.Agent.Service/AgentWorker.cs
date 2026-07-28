@@ -12,6 +12,7 @@ using NetdeskAgent.Common.Jobs;
 using NetdeskAgent.Common.Monitoring;
 using NetdeskAgent.Common.EventLogs;
 using NetdeskAgent.Common.Update;
+using NetdeskAgent.Common.Vnc;
 
 namespace NetdeskAgent.Service
 {
@@ -78,7 +79,7 @@ namespace NetdeskAgent.Service
                         }
                         else if ((DateTime.UtcNow - lastJobsPoll).TotalSeconds >= settings.JobsPollIntervalSeconds)
                         {
-                            await DoJobsPollAsync(client, state).ConfigureAwait(false);
+                            await DoJobsPollAsync(client, state, settings).ConfigureAwait(false);
                             lastJobsPoll = DateTime.UtcNow;
                         }
                         else if ((DateTime.UtcNow - lastEventLogSync).TotalSeconds >= settings.EventLogIntervalSeconds)
@@ -254,7 +255,7 @@ namespace NetdeskAgent.Service
             }
         }
 
-        private static async Task DoJobsPollAsync(NetdeskApiClient client, AgentState state)
+        private static async Task DoJobsPollAsync(NetdeskApiClient client, AgentState state, AgentSettings settings)
         {
             JobsResponse jobsResponse;
 
@@ -275,13 +276,34 @@ namespace NetdeskAgent.Service
 
             foreach (var job in jobsResponse.Jobs)
             {
-                await ProcessJobAsync(client, state, job).ConfigureAwait(false);
+                await ProcessJobAsync(client, state, settings, job).ConfigureAwait(false);
             }
         }
 
-        private static async Task ProcessJobAsync(NetdeskApiClient client, AgentState state, JobItem job)
+        private static async Task ProcessJobAsync(NetdeskApiClient client, AgentState state, AgentSettings settings, JobItem job)
         {
             FileLogger.Info("Izvršavam komandu #" + job.Id + " (" + job.CommandType + ")...");
+
+            if (job.CommandType == "start_vnc_bridge")
+            {
+                // Ne ide kroz JobExecutor (blokiralo bi poll petlju za celo
+                // trajanje sesije) - fire-and-forget na sopstvenom
+                // CancellationTokenSource-u, ne servisnom token-u (sesija se
+                // ionako gasi kad WS/TCP veza padne na jednoj od strana, vidi
+                // VncBridge.RunAsync).
+                var sessionId = ExtractSessionId(job.Payload);
+                var cts = new CancellationTokenSource();
+                RunVncBridgeFireAndForget(sessionId, settings, state, cts.Token);
+
+                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+                {
+                    Success = true,
+                    ExitCode = 0,
+                    Output = "VNC most pokrenut.",
+                    DurationMs = 0,
+                }).ConfigureAwait(false);
+                return;
+            }
 
             JobExecutor.ExecutionResult result;
 
@@ -301,6 +323,30 @@ namespace NetdeskAgent.Service
                 "Komanda #" + job.Id + " završena. Success=" + result.Success + " ExitCode=" + result.ExitCode);
 
             await ReportJobResultAsync(client, state, job.Id, result).ConfigureAwait(false);
+        }
+
+        private static long ExtractSessionId(Newtonsoft.Json.Linq.JObject payload)
+        {
+            return payload != null ? (long)payload["sessionId"] : 0;
+        }
+
+        // Task.Run(...) started here intentionally isn't awaited by the caller
+        // (it would block the poll loop for the whole session) - this wrapper
+        // just makes that explicit and logs anything VncBridge.RunAsync itself
+        // didn't already catch, instead of leaving an unobserved task exception.
+        private static async void RunVncBridgeFireAndForget(
+            long sessionId, AgentSettings settings, AgentState state, CancellationToken token)
+        {
+            try
+            {
+                await VncBridge.RunAsync(
+                    sessionId, settings.ServerBaseUrl, state.AgentId, state.ApiKey, settings.VncLocalPort, token)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("VNC sesija #" + sessionId + " - neočekivana greška u mostu", ex);
+            }
         }
 
         private static async Task ReportJobResultAsync(

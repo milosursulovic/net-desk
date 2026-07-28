@@ -113,8 +113,13 @@
         </button>
       </div>
 
+      <!-- Ekran -->
+      <div v-if="tab === 'screen'" class="space-y-4">
+        <VncViewer :agent-id="route.params.id" />
+      </div>
+
       <!-- Komande -->
-      <div v-if="tab === 'jobs'" class="space-y-4">
+      <div v-else-if="tab === 'jobs'" class="space-y-4">
         <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
           <div class="font-medium">Nova komanda</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -230,6 +235,7 @@ import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import VncViewer from '@/components/VncViewer.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`)
@@ -246,8 +252,8 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
 
-const TAB_NAMES = ['jobs', 'updates', 'events']
-const TAB_LABELS = { jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
+const TAB_NAMES = ['screen', 'jobs', 'updates', 'events']
+const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
 
 const { tab } = usePaginatedRoute({
   fields: { tab: { type: 'string', default: 'jobs', oneOf: TAB_NAMES } },

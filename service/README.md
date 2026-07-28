@@ -138,9 +138,17 @@ Servis čita `%ProgramData%\NetdeskAgent\config.json`. Kopiraj
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
   "EventLogIntervalSeconds": 300,
-  "UpdateCheckIntervalSeconds": 1800
+  "UpdateCheckIntervalSeconds": 1800,
+  "VncLocalPort": 5901
 }
 ```
+
+`VncLocalPort` je port na kom lokalni UltraVNC server sluša (videti sekciju
+"Udaljena kontrola ekrana (VNC)" ispod). **Default je namerno 5901, ne
+standardni VNC port 5900** - na upravljanim mašinama je 5900 već zauzet
+postojećim RealVNC serverom (nezavisna instalacija, van ovog sistema).
+UltraVNC treba instalirati/konfigurisati da sluša na 5901 (ili bilo kom
+drugom slobodnom portu - mora se samo poklapati sa ovim poljem).
 
 Nakon prve uspešne registracije, agent trajno čuva dobijeni `agentId`/`apiKey`
 u `%ProgramData%\NetdeskAgent\state.json` — `EnrollToken` se posle toga više ne
@@ -198,3 +206,44 @@ sve posle toga (heartbeat, inventory, jobs, update) sa
 `refresh_software_list`, `delete_temp_files`. Mora se tačno poklapati sa
 backend `COMMAND_TYPES` (`dtos/agentJobs.dto.js`) — videti
 `Netdesk.Agent.Common/Jobs/JobExecutor.cs`.
+
+`start_vnc_bridge` je poseban slučaj - kreira ga server programski (ne
+ručno biranje tipa komande), ne prolazi kroz `JobExecutor`, i obrađuje ga
+`AgentWorker.ProcessJobAsync` direktno. Videti sekciju ispod.
+
+## Udaljena kontrola ekrana (VNC)
+
+Agent sam ne radi screen capture ni input injection - to radi **UltraVNC**
+(mora biti instaliran i pokrenut kao Windows servis na svakoj mašini gde
+se ova funkcionalnost koristi, vezan **samo na 127.0.0.1**, nikad izložen
+na mreži). Agentova uloga je tanak `NetdeskAgent.Common.Vnc.VncBridge` -
+kad stigne `start_vnc_bridge` komanda (poslata sa servera nakon što admin
+klikne "Uzmi kontrolu ekrana" u UI-u), agent otvara TCP konekciju na
+`127.0.0.1:<VncLocalPort>` i WebSocket konekciju ka backend-u
+(`/api/agents/vnc-stream?sessionId=N`), pa samo prosleđuje sirove bajtove
+(pravi RFB protokol) u oba smera dok jedna od strana ne zatvori konekciju.
+Nema GDI-ja, `SendInput`-a, ni WTS/Session 0 workaround-a - obična loopback
+TCP konekcija radi identično bez obzira na sesiju u kojoj je servis
+pokrenut.
+
+**Instalacija UltraVNC-a na agent mašini je van obima ovog repoa** - nije
+deo automatskog build/update procesa (namerno, da se ne dodaje treći
+Windows servis u rutinsku, neizanadziranu auto-update petlju). Preuzeti sa
+uvnc.com, instalirati kao servis (`winvnc.exe -install`), i podesiti da
+sluša samo na loopback (bind adresa ako postoji, ili Windows Firewall
+pravilo kao odbrana u dubinu). Ako je backend podešen sa
+`VNC_SHARED_PASSWORD`, UltraVNC treba istu lozinku u `ultravnc.ini`;
+alternativa je podesiti UltraVNC da ne traži lozinku za loopback konekcije
+(stvarna bezbednosna granica je JWT/agent-kredencijali na WS relay sloju,
+ne VNC lozinka).
+
+**Port**: standardni VNC port `5900` je na upravljanim mašinama već zauzet
+postojećim RealVNC serverom (odvojena instalacija, nevezana za ovaj
+sistem) - UltraVNC treba instalirati/konfigurisati na `5901` (default u
+`AgentSettings.VncLocalPort`) da ne dođe do konflikta pri bind-u. Ovo je
+čisto konfiguracioni izbor - `VncLocalPort` u `config.json` mora se
+poklapati sa portom na kom je UltraVNC stvarno podešen, bilo koji slobodan
+port radi.
+
+Funkcionalnost je iza `vnc_enabled` app-setting flaga (isključeno po
+default-u) - admin ga uključuje na `/config` stranici.

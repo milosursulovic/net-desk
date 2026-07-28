@@ -2,10 +2,17 @@ import { z } from "zod";
 
 // Registry svih poznatih podešavanja - dodaj ovde kad god treba novi
 // checkbox na Config strani, ostalo (repo/service/controller/frontend
-// lista) je generičko i automatski ga podigne. Trenutno prazno (VNC flag
-// uklonjen zajedno sa VNC implementacijom) - okvir ostaje za buduća
-// podešavanja.
-export const APP_SETTINGS = [];
+// lista) je generičko i automatski ga podigne.
+export const APP_SETTINGS = [
+  {
+    key: "vnc_enabled",
+    label: "Udaljena kontrola ekrana (VNC)",
+    description:
+      "Omogućava 'Uzmi kontrolu ekrana' na stranici agenta (zahteva UltraVNC instaliran na upravljanoj mašini).",
+    type: "boolean",
+    default: "false",
+  },
+];
 
 export const SETTING_KEYS = APP_SETTINGS.map((s) => s.key);
 

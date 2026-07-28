@@ -11,6 +11,9 @@ export const COMMAND_TYPES = [
   "collect_inventory",
   "refresh_software_list",
   "delete_temp_files",
+  // Kreira se programski (services/vncSessions.service.js), ne izlazi na
+  // frontend "Nova komanda" dropdown ručnog biranja tipa komande.
+  "start_vnc_bridge",
 ];
 
 const SERVICE_COMMANDS = new Set([

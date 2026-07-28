@@ -25,6 +25,16 @@ namespace NetdeskAgent.Common.Configuration
         public int EventLogIntervalSeconds { get; set; } = 300;
         public int UpdateCheckIntervalSeconds { get; set; } = 1800;
 
+        /// <summary>
+        /// Port na kom lokalni UltraVNC server (instaliran pored agenta,
+        /// vezan samo na 127.0.0.1) sluša. Podrazumevani VNC port 5900 NIJE
+        /// korišćen kao default ovde jer je na upravljanim mašinama već
+        /// zauzet postojećim RealVNC serverom (nezavisna instalacija, van
+        /// ovog sistema) - UltraVNC treba instalirati na drugom portu da
+        /// izbegne konflikt. Videti NetdeskAgent.Common.Vnc.VncBridge.
+        /// </summary>
+        public int VncLocalPort { get; set; } = 5901;
+
         public static AgentSettings Load(string path)
         {
             if (!File.Exists(path))
