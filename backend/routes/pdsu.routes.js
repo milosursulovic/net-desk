@@ -20,6 +20,7 @@ import {
   getAvailableUpdatesController,
   syncAvailableUpdatesController,
   getEventLogsController,
+  exportComputerPdsuPdfController,
 } from "../controllers/pdsu.controller.js";
 
 const router = express.Router();
@@ -34,6 +35,8 @@ router.get("/by-ip/:ip", asyncHandler(getComputerByIpController));
 router.get("/:id", asyncHandler(getComputerController));
 
 router.delete("/:id", asyncHandler(clearPdsuController));
+
+router.get("/:id/export-pdf", asyncHandler(exportComputerPdsuPdfController));
 
 // Software
 router.get("/:id/software", asyncHandler(getSoftwareController));

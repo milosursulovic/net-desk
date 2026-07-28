@@ -2,6 +2,7 @@ import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { badRequest, notFound } from "../utils/httpError.js";
 import { listEventLogsService } from "../services/eventLogs.service.js";
+import { sendMultiTablePdf } from "../utils/pdfTable.js";
 
 import {
   listComputers,
@@ -62,6 +63,89 @@ export async function clearPdsuController(req, res) {
   await clearComputerPdsu(id);
 
   res.json({ success: true, message: "PDSU podaci obrisani." });
+}
+
+// mysql2 returns DATE/DATETIME columns as JS Date objects - pdfTable.js's
+// row rendering just does String(value), which for a raw Date produces a
+// verbose "Tue Jul 28 2026 00:00:00 GMT+..." string. Format the known date
+// fields up front instead.
+function fmtRowDates(rows, dateKeys) {
+  return rows.map((row) => {
+    const out = { ...row };
+    for (const key of dateKeys) {
+      if (out[key] instanceof Date) out[key] = out[key].toLocaleDateString("sr-RS");
+    }
+    return out;
+  });
+}
+
+export async function exportComputerPdsuPdfController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+
+  const [computer, software, drivers, services, updates] = await Promise.all([
+    getComputer(id),
+    getComputerSoftware(id),
+    getComputerDrivers(id),
+    getComputerServices(id),
+    getComputerUpdates(id),
+  ]);
+
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendMultiTablePdf(res, {
+    title: `NetDesk — PDSU: ${computer.computer_name || computer.ip}`,
+    subtitle: `IP: ${computer.ip}   Odeljenje: ${computer.department || "—"}   Generisano: ${dateStamp}`,
+    filename: `NetDesk_PDSU_${computer.computer_name || computer.ip}_${dateStamp}.pdf`,
+    sections: [
+      {
+        heading: `Programi (${software.length})`,
+        columns: [
+          { header: "Program", key: "display_name", width: 220 },
+          { header: "Verzija", key: "display_version", width: 140 },
+          { header: "Izdavač", key: "publisher", width: 180 },
+          { header: "Datum instalacije", key: "install_date", width: 140 },
+          { header: "Datum inventara", key: "inventory_date", width: 140 },
+        ],
+        rows: fmtRowDates(software, ["install_date", "inventory_date"]),
+        emptyText: "Nema podataka o instaliranom softveru.",
+      },
+      {
+        heading: `Drajveri (${drivers.length})`,
+        columns: [
+          { header: "Uređaj", key: "device_name", width: 220 },
+          { header: "Verzija drajvera", key: "driver_version", width: 140 },
+          { header: "Datum drajvera", key: "driver_date", width: 120 },
+          { header: "Proizvođač", key: "manufacturer", width: 160 },
+          { header: "Provider", key: "driver_provider_name", width: 160 },
+        ],
+        rows: fmtRowDates(drivers, ["driver_date"]),
+        emptyText: "Nema podataka o drajverima.",
+      },
+      {
+        heading: `Servisi (${services.length})`,
+        columns: [
+          { header: "Naziv", key: "name", width: 160 },
+          { header: "Prikazni naziv", key: "display_name", width: 200 },
+          { header: "Status", key: "state", width: 90 },
+          { header: "Način pokretanja", key: "start_mode", width: 110 },
+          { header: "Nalog", key: "start_name", width: 160 },
+        ],
+        rows: services,
+        emptyText: "Nema podataka o servisima.",
+      },
+      {
+        heading: `Ažuriranja (${updates.length})`,
+        columns: [
+          { header: "KB", key: "hotfix_id", width: 110 },
+          { header: "Opis", key: "description", width: 260 },
+          { header: "Datum instalacije", key: "installed_on", width: 140 },
+          { header: "Instalirao", key: "installed_by", width: 160 },
+        ],
+        rows: fmtRowDates(updates, ["installed_on"]),
+        emptyText: "Nema podataka o Windows ažuriranjima.",
+      },
+    ],
+  });
 }
 
 // =========================

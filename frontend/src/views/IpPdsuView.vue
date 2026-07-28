@@ -7,6 +7,14 @@
       <div class="flex items-center gap-2">
         <AppButton
           v-if="hasAnyPdsuData"
+          variant="secondary"
+          :disabled="exportingPdf"
+          @click="exportPdf"
+        >
+          {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+        </AppButton>
+        <AppButton
+          v-if="hasAnyPdsuData"
           variant="danger"
           @click="clearPdsu"
         >
@@ -256,6 +264,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
+import { downloadFromResponse } from '@/utils/download.js'
 import { fmtDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
@@ -279,6 +288,7 @@ const software = ref([])
 const drivers = ref([])
 const services = ref([])
 const updates = ref([])
+const exportingPdf = ref(false)
 
 const loaded = ref({ software: false, drivers: false, services: false, updates: false })
 const tabLoading = ref({ software: false, drivers: false, services: false, updates: false })
@@ -302,6 +312,22 @@ const hasAnyPdsuData = computed(() =>
   services.value.length > 0 ||
   updates.value.length > 0
 )
+
+async function exportPdf() {
+  exportingPdf.value = true
+  try {
+    const filenameSafe = (entry.value?.computer_name || entry.value?.ip || route.params.id).replace(/[^\w-]+/g, '_')
+    await downloadFromResponse(
+      await fetchWithAuth(`/api/protected/pdsu/${route.params.id}/export-pdf`),
+      `NetDesk_PDSU_${filenameSafe}.pdf`,
+    )
+  } catch (err) {
+    console.error('Greška pri izvozu PDF-a:', err)
+    showToast('Greška pri izvozu PDF-a.', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    exportingPdf.value = false
+  }
+}
 
 async function clearPdsu() {
   const ok = await askConfirm(

@@ -1,17 +1,5 @@
 import PDFDocument from "pdfkit";
-import { fileURLToPath } from "url";
-
-// pdfkit's built-in Standard-14 fonts (Helvetica etc.) only support
-// WinAnsiEncoding (cp1252), which is missing č/ć/đ (present: š/ž only) -
-// srpska latinica silently renders as garbage without a real embedded
-// Unicode font. DejaVu Sans has full Latin Extended-A coverage and a
-// license that permits embedding/redistribution.
-const FONT_REGULAR = fileURLToPath(
-  import.meta.resolve("dejavu-fonts-ttf/ttf/DejaVuSans.ttf"),
-);
-const FONT_BOLD = fileURLToPath(
-  import.meta.resolve("dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf"),
-);
+import { FONT_REGULAR, FONT_BOLD } from "./pdfFonts.js";
 
 const METRIC_LABEL = { disk: "Disk", cpu: "CPU", ram: "RAM" };
 

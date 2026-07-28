@@ -290,6 +290,14 @@ export async function getMetadataByIp(ip) {
   return { ipEntryId, metadata: meta };
 }
 
+export async function getMetadataByIpEntryIdService(ipEntryId) {
+  const metaId = await findMetadataIdByIpEntryId(ipEntryId);
+  if (!metaId) {
+    throw notFound("Metapodaci nisu pronađeni za ovaj računar");
+  }
+  return await loadMetadataById(metaId);
+}
+
 // Merge/patch semantics, never a raw overwrite - upsertMetadataForIpEntry
 // fully DELETEs+INSERTs the RAMModules/Storage/GPUs/NICs child tables from
 // whatever it's given, so the second loop below is not optional cleanup:

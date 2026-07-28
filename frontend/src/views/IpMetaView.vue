@@ -5,6 +5,9 @@
         Metapodaci — {{ entry?.computerName || entry?.ip || 'Nepoznato' }}
       </h1>
       <div class="flex items-center gap-2">
+        <AppButton v-if="meta" variant="secondary" :disabled="exportingPdf" @click="exportPdf">
+          {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+        </AppButton>
         <AppButton v-if="meta" variant="danger" @click="clearMetadata">
           Očisti metapodatke
         </AppButton>
@@ -253,6 +256,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
+import { downloadFromResponse } from '@/utils/download.js'
 import { fmtDate, fmtGb, fmtMbps, safe } from '@/utils/format.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
@@ -274,6 +278,7 @@ const entryError = ref('')
 const meta = ref(null)
 const metaLoading = ref(false)
 const metaError = ref('')
+const exportingPdf = ref(false)
 
 const uptimePeriods = ref([])
 const uptimeLoading = ref(false)
@@ -281,6 +286,22 @@ const uptimeError = ref('')
 
 function goBack() {
   router.push('/')
+}
+
+async function exportPdf() {
+  exportingPdf.value = true
+  try {
+    const filenameSafe = (entry.value?.computerName || entry.value?.ip || route.params.id).replace(/[^\w-]+/g, '_')
+    await downloadFromResponse(
+      await fetchWithAuth(`/api/protected/metadata/${route.params.id}/export-pdf`),
+      `NetDesk_metapodaci_${filenameSafe}.pdf`,
+    )
+  } catch (err) {
+    console.error('Greška pri izvozu PDF-a:', err)
+    showToast('Greška pri izvozu PDF-a.', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    exportingPdf.value = false
+  }
 }
 
 async function clearMetadata() {

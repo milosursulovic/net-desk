@@ -2,12 +2,16 @@ import { toInt, clamp } from "../utils/numbers.js";
 import { parseBool } from "../utils/queryCoercion.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { sendTablePdf } from "../utils/pdfTable.js";
+import { sendMetadataPdf } from "../utils/metadataPdf.js";
+import { notFound } from "../utils/httpError.js";
+import { findIpEntryById } from "../repositories/ipEntries.repo.js";
 import {
   listMetadataPage,
   statsService,
   searchMetadataService,
   listEntriesWithoutMetadataService,
   clearMetadataForIpEntryService,
+  getMetadataByIpEntryIdService,
 } from "../services/metadata.service.js";
 
 export async function listMetadataController(req, res) {
@@ -39,6 +43,16 @@ export async function clearMetadataController(req, res) {
   const ipEntryId = parseIdParam(req, "ipEntryId", "ID računara");
   const out = await clearMetadataForIpEntryService(ipEntryId);
   res.json(out);
+}
+
+export async function exportComputerMetadataPdfController(req, res) {
+  const ipEntryId = parseIdParam(req, "ipEntryId", "ID računara");
+
+  const entry = await findIpEntryById(ipEntryId);
+  if (!entry) throw notFound("Računar nije pronađen");
+
+  const meta = await getMetadataByIpEntryIdService(ipEntryId);
+  sendMetadataPdf(res, { entry, meta });
 }
 
 export async function exportWithoutMetadataPdfController(req, res) {
