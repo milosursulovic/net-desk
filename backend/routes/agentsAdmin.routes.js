@@ -18,10 +18,6 @@ import {
   setDeploymentGroupController,
   listUpdateLogController,
 } from "../controllers/agentReleases.controller.js";
-import {
-  startVncSessionController,
-  endVncSessionController,
-} from "../controllers/vncSessions.controller.js";
 
 const router = express.Router();
 
@@ -42,8 +38,5 @@ router.post("/jobs/batch", asyncHandler(createBatchJobController));
 
 router.patch("/:id/deployment-group", asyncHandler(setDeploymentGroupController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
-
-router.post("/:id/vnc/start", asyncHandler(startVncSessionController));
-router.post("/:id/vnc/stop", asyncHandler(endVncSessionController));
 
 export default router;

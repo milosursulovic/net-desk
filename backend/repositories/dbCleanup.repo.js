@@ -23,7 +23,6 @@ const RELATIONSHIPS = [
   { table: "agent_monitoring", column: "agent_id", parentTable: "agents", parentColumn: "id" },
   { table: "agent_monitoring_history", column: "agent_id", parentTable: "agents", parentColumn: "id" },
   { table: "agent_update_log", column: "agent_id", parentTable: "agents", parentColumn: "id" },
-  { table: "vnc_sessions", column: "agent_id", parentTable: "agents", parentColumn: "id" },
   { table: "computer_metadata_gpus", column: "metadata_id", parentTable: "computer_metadata", parentColumn: "id" },
   { table: "computer_metadata_nics", column: "metadata_id", parentTable: "computer_metadata", parentColumn: "id" },
   { table: "computer_metadata_ram_modules", column: "metadata_id", parentTable: "computer_metadata", parentColumn: "id" },

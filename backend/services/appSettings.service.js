@@ -34,8 +34,8 @@ export async function updateSettingService(key, value, updatedByUserId) {
 }
 
 // Za druge servise da provere da li je neka funkcionalnost trenutno
-// omogućena (npr. vncSessions.service.js pre kreiranja sesije) - ne
-// prolazi kroz RBAC/HTTP sloj, čisto pitanje "da li je flag uključen".
+// omogućena, bez prolaska kroz RBAC/HTTP sloj - čisto pitanje "da li je
+// flag uključen".
 export async function isFeatureEnabled(key) {
   const def = APP_SETTINGS.find((s) => s.key === key);
   const stored = await getSettingValue(key);

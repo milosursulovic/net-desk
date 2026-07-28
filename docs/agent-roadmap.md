@@ -26,17 +26,21 @@ alerting preko postojećeg notifikacionog sistema).
 ### 1. Uživo pristup / remote support
 Trenutni job queue je async (agent povlači komande na svaki poll ciklus, ne
 odmah). Za pravu IT podršku uživo bi imalo smisla:
-- ✅ **Urađeno** — remote screen view + kontrola miša/tastature (VNC-like),
-  preko posebnog WebSocket kanala (ne poll-a) — vidi `docs/TECHNICAL.md`,
-  sekcija "Remote screen control (VNC)". Sam START signal i dalje ide kroz
-  postojeći 15s job-poll (namerno - videti tu sekciju), ali jednom
-  uspostavljen, sam kanal je real-time u oba smera.
-- **Real-time kanal** za OBIČNE komande (ne VNC) i dalje ne postoji — svaka
-  ne-VNC komanda i dalje čeka sledeći 15s poll ciklus.
-- **Live PowerShell/CMD sesija** (tekstualni "remote shell" prozor, odvojeno
-  od VNC-a) i dalje nije urađeno — VNC kontrola sad delimično pokriva istu
-  potrebu (može se otvoriti terminal unutar VNC sesije), ali nema namenskog
-  tekstualnog remote shell-a.
+- **Pokušano pa uklonjeno** — custom remote screen view + kontrola miša/
+  tastature (sopstveni GDI capture + SendInput + WebSocket relay). Uklonjeno
+  jer je nagomilalo previše krhkih tačaka otkaza uživo (Session 0 izolacija,
+  ACL na log fajlu, frame rendering) bez pouzdanog "mora da radi" ponašanja.
+  Planiran novi pristup: bundle-ovati zreo, dokazan VNC server (npr.
+  UltraVNC, "service mode" koji ispravno rešava Session 0 iz kutije) koji
+  agent instalira i vezuje samo na 127.0.0.1, dok agent sam samo radi tanak
+  TCP↔WebSocket "byte forwarder" preko postojećeg outbound-relay mehanizma
+  (mnogo manje rizično od sopstvenog capture/injection koda), a frontend
+  koristi noVNC (zreo open-source browser VNC klijent) umesto ručno pisanog
+  viewer-a.
+- **Real-time kanal** za obične komande i dalje ne postoji — svaka komanda
+  i dalje čeka sledeći 15s poll ciklus.
+- **Live PowerShell/CMD sesija** (tekstualni "remote shell" prozor) i dalje
+  nije urađeno.
 
 ### 2. Odobravanje instalacije paketa i sertifikata
 Namerno ostavljeno neurađeno u ovoj fazi (nedostaje katalog odobrenih paketa).

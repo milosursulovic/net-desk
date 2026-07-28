@@ -19,7 +19,6 @@
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
-    <Reference Include="System.Drawing" />
   </ItemGroup>
 
 </Project>

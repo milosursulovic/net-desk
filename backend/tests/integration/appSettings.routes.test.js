@@ -1,20 +1,15 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../../app.js";
 import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
-import { pool } from "../../db/pool.js";
 
 const app = createApp();
 
-async function resetVncEnabled() {
-  await pool.execute("DELETE FROM app_settings WHERE setting_key = 'vnc_enabled'");
-}
-
+// APP_SETTINGS (backend/dtos/appSettings.dto.js) is currently empty - the
+// registry framework stays for future flags, but there's nothing real to
+// toggle right now. These tests cover the generic framework's behavior
+// (RBAC, empty listing, rejecting any key since none are registered yet).
 describe("app settings routes (integration, real DB)", () => {
-  afterEach(async () => {
-    await resetVncEnabled();
-  });
-
   it("rejects non-admin roles with 403", async () => {
     for (const token of [operatorToken(), viewerToken()]) {
       const getRes = await request(app)
@@ -25,48 +20,20 @@ describe("app settings routes (integration, real DB)", () => {
       const patchRes = await request(app)
         .patch("/api/protected/settings")
         .set("Authorization", `Bearer ${token}`)
-        .send({ key: "vnc_enabled", value: true });
+        .send({ key: "some_setting", value: true });
       expect(patchRes.status).toBe(403);
     }
   });
 
-  it("lists known settings with their registry defaults when nothing is stored yet", async () => {
+  it("admin gets an empty list when the registry has no settings", async () => {
     const res = await request(app)
       .get("/api/protected/settings")
       .set("Authorization", `Bearer ${adminToken()}`);
     expect(res.status).toBe(200);
-
-    const vnc = res.body.find((s) => s.key === "vnc_enabled");
-    expect(vnc).toBeTruthy();
-    expect(vnc.value).toBe(false);
-    expect(vnc.updatedAt).toBeNull();
+    expect(res.body).toEqual([]);
   });
 
-  it("admin can toggle a setting on and off, and the value persists", async () => {
-    const token = adminToken();
-
-    const onRes = await request(app)
-      .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ key: "vnc_enabled", value: true });
-    expect(onRes.status).toBe(200);
-    expect(onRes.body.find((s) => s.key === "vnc_enabled").value).toBe(true);
-
-    const listRes = await request(app)
-      .get("/api/protected/settings")
-      .set("Authorization", `Bearer ${token}`);
-    const vnc = listRes.body.find((s) => s.key === "vnc_enabled");
-    expect(vnc.value).toBe(true);
-    expect(vnc.updatedAt).not.toBeNull();
-
-    const offRes = await request(app)
-      .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ key: "vnc_enabled", value: false });
-    expect(offRes.body.find((s) => s.key === "vnc_enabled").value).toBe(false);
-  });
-
-  it("rejects an unknown setting key with 400", async () => {
+  it("rejects any key with 400 when the registry is empty", async () => {
     const res = await request(app)
       .patch("/api/protected/settings")
       .set("Authorization", `Bearer ${adminToken()}`)
@@ -78,7 +45,7 @@ describe("app settings routes (integration, real DB)", () => {
     const res = await request(app)
       .patch("/api/protected/settings")
       .set("Authorization", `Bearer ${adminToken()}`)
-      .send({ key: "vnc_enabled", value: "yes" });
+      .send({ key: "not_a_real_setting", value: "yes" });
     expect(res.status).toBe(400);
   });
 });
