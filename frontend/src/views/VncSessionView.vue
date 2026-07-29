@@ -19,7 +19,15 @@
       </AppButton>
     </div>
 
-    <div class="relative flex-1 overflow-auto bg-black">
+    <!--
+      min-h-0 je namerno - bez njega, flex stavka sa overflow-auto po
+      default-u računa min-height na osnovu sadržaja (flexbox min-height:auto
+      pravilo), umesto na osnovu dodeljenog flex prostora. To pravi cirkularan
+      problem baš u trenutku kad noVNC meri veličinu ovog kontejnera da
+      izračuna scaleViewport skaliranje (kontejner čeka sadržaj, sadržaj čeka
+      kontejner -> izmereno 0, canvas ostaje "sa scale 0" tj. nevidljiv).
+    -->
+    <div class="relative flex-1 min-h-0 overflow-auto bg-black">
       <div v-if="!connected" class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
         {{ starting ? 'Povezujem…' : 'Nije povezano' }}
       </div>
