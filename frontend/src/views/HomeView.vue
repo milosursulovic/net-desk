@@ -195,14 +195,24 @@
           </div>
         </div>
 
-        <router-link
-          v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount"
-          :to="`/ip/${entry.id}/pdsu`"
-          class="mt-2 inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 hover:bg-red-100 self-start"
-          :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa`"
-        >
-          ⚠ Neželjeni programi/servisi
-        </router-link>
+        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.hasUltravnc" class="mt-2 flex flex-wrap gap-2">
+          <router-link
+            v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount"
+            :to="`/ip/${entry.id}/pdsu`"
+            class="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 hover:bg-red-100"
+            :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa`"
+          >
+            ⚠ Neželjeni programi/servisi
+          </router-link>
+
+          <span
+            v-if="entry.hasUltravnc"
+            class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+            title="UltraVNC servis pronađen u servis inventaru ovog računara"
+          >
+            🖥️ VNC omogućen
+          </span>
+        </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
           <div class="grid grid-cols-2 gap-2 pt-2">

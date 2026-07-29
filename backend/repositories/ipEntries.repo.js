@@ -239,7 +239,20 @@ export async function listIpEntries({
       (SELECT COUNT(*) FROM computer_services csv
        JOIN flagged_services fsv
          ON LOWER(csv.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
-       WHERE csv.ip_entry_id = ip_entries.id) AS flaggedServiceCount
+       WHERE csv.ip_entry_id = ip_entries.id) AS flaggedServiceCount,
+      -- Isti obrazac poklapanja kao listComputersWithoutUltravnc() u
+      -- pdsuAnalytics.repo.js (uvnc_service je stvarni naziv koji registruje
+      -- Deploy-NetdeskVnc.ps1, ultravnc/winvnc su dodatni obrasci za
+      -- starije/ručne instalacije) - držati oba mesta u sinhronizaciji.
+      EXISTS(
+        SELECT 1 FROM computer_services uvnc
+        WHERE uvnc.ip_entry_id = ip_entries.id
+          AND (
+            LOWER(uvnc.name) LIKE '%uvnc%'
+            OR LOWER(uvnc.name) LIKE '%ultravnc%'
+            OR LOWER(uvnc.name) LIKE '%winvnc%'
+          )
+      ) AS hasUltravnc
     FROM ip_entries
     -- Assumes at most one active agent per ip_entry - if that's ever
     -- violated (e.g. re-enrollment leaves two active rows pointing at the
