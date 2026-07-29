@@ -59,9 +59,14 @@
 
           <div class="mt-3 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
             <span>{{ fmtDate(r.createdAt) }}</span>
-            <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
-              {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
-            </button>
+            <div class="flex items-center gap-3">
+              <RouterLink :to="outdatedAgentsLink(r)" class="text-sm text-blue-600 hover:underline">
+                Zaostali agenti
+              </RouterLink>
+              <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
+                {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -147,6 +152,18 @@ function fmtBytes(n) {
   if (num < 1024) return num + ' B'
   if (num < 1024 * 1024) return (num / 1024).toFixed(1) + ' KB'
   return (num / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+function outdatedAgentsLink(release) {
+  return {
+    path: '/agents',
+    query: {
+      status: 'active',
+      deploymentGroup: release.deploymentGroup,
+      version: release.version,
+      versionMode: 'neq',
+    },
+  }
 }
 
 function shortHash(h) {

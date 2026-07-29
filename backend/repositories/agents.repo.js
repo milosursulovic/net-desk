@@ -110,6 +110,8 @@ export async function listAgents({
   connectivityStatus,
   deploymentGroup,
   os,
+  version,
+  versionNot,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -140,6 +142,17 @@ export async function listAgents({
   if (os) {
     whereParts.push("os_caption = ?");
     params.push(os);
+  }
+  if (version) {
+    whereParts.push("agent_version = ?");
+    params.push(version);
+  }
+  if (versionNot) {
+    // Agenti bez izveštene verzije (NULL) su isto "nisu na ovoj verziji" -
+    // korisno za pronalaženje agenata koji nikad nisu uspešno prijavili
+    // update, ne samo onih zaglavljenih na starijoj verziji.
+    whereParts.push("(agent_version IS NULL OR agent_version != ?)");
+    params.push(versionNot);
   }
   if (enrolledFrom) {
     whereParts.push("DATE(enrolled_at) >= ?");
@@ -199,6 +212,25 @@ export async function listDistinctAgentOs() {
     `SELECT DISTINCT os_caption FROM agents WHERE os_caption IS NOT NULL AND os_caption != '' ORDER BY os_caption`,
   );
   return rows.map((r) => r.os_caption);
+}
+
+// Prirodno sortiranje ("1.2.10" posle "1.2.9", ne pre) - CAST na svaki
+// tačka-odvojen deo verzije kao broj. Pretpostavlja "x.y.z" oblik (isti
+// format kao AgentVersionInfo.cs u agentu) - agenti bez tog oblika i dalje
+// prolaze, samo im je redosled sortiranja manje pouzdan.
+export async function listDistinctAgentVersions() {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT agent_version
+    FROM agents
+    WHERE agent_version IS NOT NULL AND agent_version != ''
+    ORDER BY
+      CAST(SUBSTRING_INDEX(agent_version, '.', 1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(agent_version, '.', 2), '.', -1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(agent_version, '.', -1) AS UNSIGNED) DESC
+    `,
+  );
+  return rows.map((r) => r.agent_version);
 }
 
 // Fleet breakdown for the daily report - reuses the same CASE expression

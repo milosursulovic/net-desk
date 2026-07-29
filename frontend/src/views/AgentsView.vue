@@ -63,6 +63,20 @@
             <option value="">Svi OS</option>
             <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
           </select>
+
+          <select v-model="version" class="app-input w-auto" aria-label="Filter po verziji agenta">
+            <option value="">Sve verzije</option>
+            <option v-for="v in versionOptions" :key="v" :value="v">{{ v }}</option>
+          </select>
+
+          <label v-if="version" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="versionMode === 'neq'"
+              @change="versionMode = versionMode === 'neq' ? 'eq' : 'neq'"
+            />
+            Isključi (prikaži zaostale)
+          </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -280,6 +294,8 @@ const {
   connectivityStatus,
   deploymentGroup,
   os,
+  version,
+  versionMode,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -306,6 +322,8 @@ const {
       oneOf: ['', ...DEPLOYMENT_GROUPS],
     },
     os: { type: 'string', default: '', omitIfEmpty: true },
+    version: { type: 'string', default: '', omitIfEmpty: true },
+    versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
     enrolledFrom: { type: 'string', default: '', omitIfEmpty: true },
     enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
     heartbeatFrom: { type: 'string', default: '', omitIfEmpty: true },
@@ -317,6 +335,8 @@ const {
     'connectivityStatus',
     'deploymentGroup',
     'os',
+    'version',
+    'versionMode',
     'enrolledFrom',
     'enrolledTo',
     'heartbeatFrom',
@@ -334,6 +354,8 @@ watch(
     connectivityStatus,
     deploymentGroup,
     os,
+    version,
+    versionMode,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,
@@ -348,6 +370,7 @@ const totalPages = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
 const osOptions = ref([])
+const versionOptions = ref([])
 
 // Detaljni filteri su na mobilnom skupljeni po difoltu (ispod sm) - broj na
 // dugmetu je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i
@@ -358,6 +381,7 @@ const activeDetailedFilterCount = computed(() => {
   if (connectivityStatus.value) n++
   if (deploymentGroup.value) n++
   if (os.value) n++
+  if (version.value) n++
   if (enrolledFrom.value) n++
   if (enrolledTo.value) n++
   if (heartbeatFrom.value) n++
@@ -373,6 +397,7 @@ async function fetchFilterOptions() {
     if (!res.ok) throw new Error()
     const data = await res.json()
     osOptions.value = data.os || []
+    versionOptions.value = data.version || []
   } catch (e) {
     console.error('Neuspešno dohvatanje opcija filtera', e)
   }
@@ -382,6 +407,8 @@ function clearDetailedFilters() {
   connectivityStatus.value = ''
   deploymentGroup.value = ''
   os.value = ''
+  version.value = ''
+  versionMode.value = 'eq'
   enrolledFrom.value = ''
   enrolledTo.value = ''
   heartbeatFrom.value = ''
@@ -400,6 +427,9 @@ async function fetchData() {
     if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
     if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
     if (os.value) params.set('os', os.value)
+    if (version.value) {
+      params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
+    }
     if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
     if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
     if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)

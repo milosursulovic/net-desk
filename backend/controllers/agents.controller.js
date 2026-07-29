@@ -73,6 +73,8 @@ export async function listAgentsController(req, res) {
     ? req.query.deploymentGroup
     : undefined;
   const os = String(req.query.os || "").trim() || undefined;
+  const version = String(req.query.version || "").trim() || undefined;
+  const versionNot = String(req.query.versionNot || "").trim() || undefined;
   const enrolledFrom = dateFilter(req.query.enrolledFrom);
   const enrolledTo = dateFilter(req.query.enrolledTo);
   const heartbeatFrom = dateFilter(req.query.heartbeatFrom);
@@ -86,6 +88,8 @@ export async function listAgentsController(req, res) {
     connectivityStatus,
     deploymentGroup,
     os,
+    version,
+    versionNot,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,

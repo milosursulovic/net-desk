@@ -9,6 +9,7 @@ import {
   updateHeartbeat,
   listAgents,
   listDistinctAgentOs,
+  listDistinctAgentVersions,
   revokeAgentById,
   linkAgentToIpEntry,
   upsertAgentMonitoring,
@@ -111,6 +112,8 @@ export async function listAgentsService({
   connectivityStatus,
   deploymentGroup,
   os,
+  version,
+  versionNot,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -123,6 +126,8 @@ export async function listAgentsService({
     connectivityStatus,
     deploymentGroup,
     os,
+    version,
+    versionNot,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,
@@ -142,7 +147,8 @@ export async function listAgentsService({
 
 export async function agentFilterOptionsService() {
   const os = await listDistinctAgentOs();
-  return { os };
+  const version = await listDistinctAgentVersions();
+  return { os, version };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search }) {
