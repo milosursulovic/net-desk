@@ -86,7 +86,9 @@ async function start() {
     rfb = new RFB(screenEl.value, buildWsUrl(sessionId), {
       credentials: { password: session.vncPassword || '' },
     })
-    rfb.scaleViewport = true
+    // Privremeno isključeno (dijagnostika) - proveravamo da li scaleViewport
+    // CSS skaliranje krije stvarno iscrtan canvas.
+    rfb.scaleViewport = false
     rfb.resizeSession = false
 
     rfb.addEventListener('connect', () => {
