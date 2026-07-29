@@ -25,6 +25,7 @@ const UsersView = () => import('@/views/UsersView.vue')
 const LogsView = () => import('@/views/LogsView.vue')
 const ConfigView = () => import('@/views/ConfigView.vue')
 const ServerHealthView = () => import('@/views/ServerHealthView.vue')
+const VncSessionView = () => import('@/views/VncSessionView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -207,6 +208,14 @@ const router = createRouter({
       name: 'login',
       meta: { guestOnly: true, title: 'Prijavi se - NetDesk' },
       component: LoginView,
+    },
+    {
+      // Van MainLayout-a namerno - otvara se u posebnom browser prozoru
+      // (window.open iz VncViewer.vue), pa ne treba nav/sidebar hromiranje.
+      path: '/agents/:id/screen',
+      name: 'agent-vnc-session',
+      meta: { requiresAuth: true, title: 'Udaljena kontrola ekrana - NetDesk' },
+      component: VncSessionView,
     },
     {
       path: '/:pathMatch(.*)*',
