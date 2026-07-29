@@ -90,17 +90,22 @@ async function start() {
       credentials: { password: session.vncPassword || '' },
     })
     rfb.viewOnly = viewOnly
-    // scaleViewport je ranije, ugrađen u AgentDetailView-ov tab, ostavljao
-    // canvas nevidljiv (verovatno zbog kontejnera koji se menjao veličinom
-    // dok se tab prebacivao). Ovde je ceo prozor posvećen samo ovoj sesiji
-    // od početka, pa se sad ponovo probava - ako ekran opet ostane prazan,
-    // vratiti na false.
-    rfb.scaleViewport = true
+    // noVNC-ova ugrađena scaleViewport logika je u ovoj verziji/okruženju
+    // ostajala zaglavljena na scale=0 (canvas ispravne rezolucije, ali
+    // nevidljiv) bez obzira na layout kontejnera - probano i sa i bez
+    // display:none tajminga i flexbox min-h-0 fix-a, ništa nije pomoglo.
+    // Umesto toga, skaliranje računamo sami preko iste Display.scale
+    // metode koju noVNC interno koristi (ista _rescale() logika, isti
+    // efekat na mapiranje mišnih koordinata preko _display.absX/absY),
+    // samo je pozivamo MI, u trenutku kad smo sigurni da je kontejner
+    // stvarno izmeren - videti applyManualScale().
+    rfb.scaleViewport = false
     rfb.resizeSession = false
 
     rfb.addEventListener('connect', () => {
       connected.value = true
       starting.value = false
+      requestAnimationFrame(applyManualScale)
     })
     rfb.addEventListener('disconnect', (e) => {
       if (starting.value) {
@@ -150,12 +155,40 @@ function cleanup() {
   sessionId = null
 }
 
+// Ručno "fit to window" skaliranje - vidi napomenu uz rfb.scaleViewport
+// iznad. rfb._display je isti (samo ne-zvanično izložen, single underscore)
+// Display objekat čiji public scale setter noVNC sam koristi interno
+// (core/display.js - set scale(scale) { this._rescale(scale); }); ovde ga
+// zovemo direktno sa faktorom koji SAMI izračunamo iz stvarne, već
+// izmerene veličine kontejnera i canvas-a, čime zaobilazimo autoscale()
+// računicu koja je ostajala zaglavljena na 0.
+function applyManualScale() {
+  if (!rfb || !screenEl.value) return
+  const canvas = screenEl.value.querySelector('canvas')
+  if (!canvas || !canvas.width || !canvas.height) return
+
+  const containerWidth = screenEl.value.clientWidth
+  const containerHeight = screenEl.value.clientHeight
+  if (!containerWidth || !containerHeight) return
+
+  const factor = Math.min(containerWidth / canvas.width, containerHeight / canvas.height)
+  if (factor > 0 && Number.isFinite(factor)) {
+    rfb._display.scale = factor
+  }
+}
+
+function handleWindowResize() {
+  requestAnimationFrame(applyManualScale)
+}
+
 onMounted(() => {
   loadAgent()
   start()
+  window.addEventListener('resize', handleWindowResize)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleWindowResize)
   rfb?.disconnect()
 })
 </script>
