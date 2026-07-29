@@ -10,6 +10,17 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!--
+      System.Net.WebSockets.ClientWebSocket throws PlatformNotSupportedException
+      on Windows 7/Server 2008 R2 - it depends on WinHTTP WebSocket APIs only
+      present from Windows 8 onward, discovered live on a Windows 7 target
+      machine. This project explicitly targets net452 BECAUSE of Windows 7
+      support (see csproj/README), so a pure-managed WS client that doesn't
+      depend on that OS-level API is required instead. WebSocketSharp-netstandard
+      is a maintained fork of websocket-sharp (RFC 6455 implemented in C# over
+      raw sockets, no WinHTTP dependency), explicitly supports ".NET 3.5 or later".
+    -->
+    <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -60,6 +60,13 @@ function waitForClose(ws) {
   return new Promise((resolve) => ws.once("close", resolve));
 }
 
+// Credentials go via query string, not an Authorization header - matches
+// the real C# agent (websocket-sharp has no custom-header API), see
+// ws/vncRelay.js's authenticateAgentSocket.
+function agentWsUrl(sid, agentUid, key) {
+  return `${baseUrl}/api/agents/vnc-stream?sessionId=${sid}&agentId=${encodeURIComponent(agentUid)}&apiKey=${encodeURIComponent(key)}`;
+}
+
 describe("VNC relay (integration, real DB + real WebSocket server)", () => {
   let agentId;
   let agentUid;
@@ -90,9 +97,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
 
     const viewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}?token=${adminJwt()}`);
-    const agentWs = new WebSocket(`${baseUrl}/api/agents/vnc-stream?sessionId=${sessionId}`, {
-      headers: { Authorization: `Bearer ${agentUid}:${apiKey}` },
-    });
+    const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
 
     try {
       await Promise.all([waitForOpen(viewerWs), waitForOpen(agentWs)]);
@@ -135,9 +140,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
 
     const viewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}?token=${adminJwt()}`);
-    const agentWs = new WebSocket(`${baseUrl}/api/agents/vnc-stream?sessionId=${sessionId}`, {
-      headers: { Authorization: `Bearer ${agentUid}:${apiKey}` },
-    });
+    const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
     await Promise.all([waitForOpen(viewerWs), waitForOpen(agentWs)]);
 
     const agentClosed = waitForClose(agentWs);
@@ -190,9 +193,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     agentUid = (await findAgentById(agentId)).agentUid;
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
 
-    const agentWs = new WebSocket(`${baseUrl}/api/agents/vnc-stream?sessionId=${sessionId}`, {
-      headers: { Authorization: `Bearer ${agentUid}:${apiKey}` },
-    });
+    const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
     try {
       await waitForOpen(agentWs);
       // No viewer socket exists yet for this session - same crash class as above.
@@ -219,9 +220,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     agentUid = (await findAgentById(agentId)).agentUid;
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
 
-    const badAgentWs = new WebSocket(`${baseUrl}/api/agents/vnc-stream?sessionId=${sessionId}`, {
-      headers: { Authorization: `Bearer ${agentUid}:wrong-key` },
-    });
+    const badAgentWs = new WebSocket(agentWsUrl(sessionId, agentUid, "wrong-key"));
 
     await expect(waitForOpen(badAgentWs)).rejects.toBeTruthy();
   });

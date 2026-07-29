@@ -19,22 +19,24 @@ const MAX_SESSION_MS = 30 * 60 * 1000;
 //                requestedByUserId, requestedByUsername }
 const sessions = new Map();
 
-function parseBearer(req) {
-  const auth = req.headers["authorization"] || "";
-  const [type, token] = auth.split(" ");
-  return type === "Bearer" && token ? token : null;
-}
-
 // Mirrors middlewares/agentAuth.middleware.js's authenticateAgent - can't
 // reuse it directly since this runs on the raw "upgrade" event, not as
 // Express middleware (no req/res/next cycle for a WS handshake).
-async function authenticateAgentSocket(req) {
-  const token = parseBearer(req);
-  const sepIdx = token ? token.indexOf(":") : -1;
-  if (sepIdx <= 0) return null;
-
-  const agentUid = token.slice(0, sepIdx);
-  const apiKey = token.slice(sepIdx + 1);
+//
+// Credentials arrive as ?agentId=<uid>&apiKey=<key> query params, not an
+// Authorization header, even though the agent is a real (non-browser) WS
+// client that normally could set one - the C# agent's WebSocket library
+// (websocket-sharp, swapped in after ClientWebSocket turned out to be
+// unsupported on Windows 7) has no public API for custom request headers.
+// Same query-string pattern the viewer side already uses for the same
+// underlying reason (its WebSocket client - the browser - can't set custom
+// headers either), and the same security context applies: this is the raw
+// "upgrade" event, not routed through Express/morgan, so it never reaches
+// the access log.
+async function authenticateAgentSocket(url) {
+  const agentUid = url.searchParams.get("agentId");
+  const apiKey = url.searchParams.get("apiKey");
+  if (!agentUid || !apiKey) return null;
 
   const agent = await findAgentByUid(agentUid);
   if (!agent || agent.status !== "active") return null;
@@ -133,7 +135,7 @@ export function attachVncRelay(server) {
     }
 
     if (url.pathname === "/api/agents/vnc-stream") {
-      const agent = await authenticateAgentSocket(req);
+      const agent = await authenticateAgentSocket(url);
       const sessionId = Number(url.searchParams.get("sessionId"));
       const session = sessionId ? await findVncSessionById(sessionId) : null;
 

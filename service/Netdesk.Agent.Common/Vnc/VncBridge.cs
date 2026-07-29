@@ -1,9 +1,10 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Net.WebSockets;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
+using WebSocketSharp;
 using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Vnc
@@ -18,9 +19,21 @@ namespace NetdeskAgent.Common.Vnc
     /// trojke, ovde nema GDI-ja, SendInput-a ni WTS/Session 0 logike -
     /// obična loopback TCP konekcija radi identično u Session 0 (LocalSystem)
     /// kao u bilo kojoj drugoj sesiji, jer nije desktop/GDI resurs.
-    /// Pokreće se na Task.Run iz AgentWorker-a (isti obrazac kao
-    /// NetdeskAgentService.OnStart) da ne blokira glavnu poll petlju za
-    /// celo trajanje sesije.
+    ///
+    /// Koristi WebSocketSharp (ne System.Net.WebSockets.ClientWebSocket) -
+    /// otkriveno uživo na Windows 7: ClientWebSocket baca
+    /// PlatformNotSupportedException tamo jer zavisi od WinHTTP WebSocket
+    /// API-ja koji ne postoji pre Windows 8. websocket-sharp implementira
+    /// RFB 6455 sam, nad sirovim soketima, bez te OS zavisnosti - a upravo
+    /// Windows 7 podrška je razlog zašto ovaj projekat cilja net452.
+    ///
+    /// Ova biblioteka nema javni API za proizvoljne custom request header-e
+    /// (nema npr. CustomHeaders svojstvo), pa se agent-side auth
+    /// (agentId/apiKey) šalje kao query string, isto kao što viewer-side
+    /// (browser WebSocket API) već mora da šalje JWT kao query param umesto
+    /// header-a - isti obrazac, isti razlog (WS klijent koji ne dozvoljava
+    /// custom header-e), i isti sigurnosni kontekst (ovo je server.on("upgrade")
+    /// ruta, ne prolazi kroz Express/morgan access log).
     /// </summary>
     public static class VncBridge
     {
@@ -34,10 +47,6 @@ namespace NetdeskAgent.Common.Vnc
             int localVncPort,
             CancellationToken token)
         {
-            // Ista TLS 1.2 napomena kao NetdeskApiClient.cs - .NET Framework
-            // 4.5.2 ne uključuje je po default-u.
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
             using (var tcp = new TcpClient())
             {
                 try
@@ -53,15 +62,43 @@ namespace NetdeskAgent.Common.Vnc
                     return;
                 }
 
-                var wsUrl = BuildWsUrl(serverBaseUrl, sessionId);
+                var stream = tcp.GetStream();
+                var wsUrl = BuildWsUrl(serverBaseUrl, sessionId, agentId, apiKey);
 
-                using (var ws = new ClientWebSocket())
+                using (var ws = new WebSocket(wsUrl))
                 {
-                    ws.Options.SetRequestHeader("Authorization", "Bearer " + agentId + ":" + apiKey);
+                    if (wsUrl.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Ista TLS 1.2 napomena kao NetdeskApiClient.cs - .NET
+                        // Framework 4.5.2 ne uključuje je po default-u.
+                        ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
+                    }
+
+                    var closedSignal = new TaskCompletionSource<bool>();
+
+                    ws.OnMessage += (sender, e) =>
+                    {
+                        if (!e.IsBinary) return;
+                        try
+                        {
+                            stream.Write(e.RawData, 0, e.RawData.Length);
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Error("VNC sesija #" + sessionId + " - pisanje ka lokalnom VNC-u neuspešno", ex);
+                            closedSignal.TrySetResult(true);
+                        }
+                    };
+                    ws.OnError += (sender, e) =>
+                    {
+                        FileLogger.Error("VNC sesija #" + sessionId + " - WebSocket greška: " + e.Message, e.Exception);
+                        closedSignal.TrySetResult(true);
+                    };
+                    ws.OnClose += (sender, e) => closedSignal.TrySetResult(true);
 
                     try
                     {
-                        await ws.ConnectAsync(new Uri(wsUrl), token).ConfigureAwait(false);
+                        ws.Connect();
                     }
                     catch (Exception ex)
                     {
@@ -69,33 +106,31 @@ namespace NetdeskAgent.Common.Vnc
                         return;
                     }
 
+                    if (ws.ReadyState != WebSocketState.Open)
+                    {
+                        FileLogger.Error(
+                            "VNC sesija #" + sessionId + " - WebSocket konekcija neuspešna (state=" + ws.ReadyState + ")");
+                        return;
+                    }
+
                     FileLogger.Info("VNC sesija #" + sessionId + " - most uspostavljen (TCP<->WebSocket).");
 
-                    using (var linked = CancellationTokenSource.CreateLinkedTokenSource(token))
+                    var cancelSignal = new TaskCompletionSource<bool>();
+                    using (token.Register(() => cancelSignal.TrySetResult(true)))
                     {
-                        var stream = tcp.GetStream();
-                        var tcpToWs = PumpTcpToWebSocket(stream, ws, sessionId, linked.Token);
-                        var wsToTcp = PumpWebSocketToTcp(ws, stream, sessionId, linked.Token);
+                        var tcpToWsTask = Task.Run(() => PumpTcpToWebSocket(stream, ws, sessionId, token, closedSignal));
 
-                        await Task.WhenAny(tcpToWs, wsToTcp).ConfigureAwait(false);
-                        linked.Cancel(); // druga petlja možda i dalje čeka - zaustavi i nju
+                        await Task.WhenAny(closedSignal.Task, cancelSignal.Task, tcpToWsTask).ConfigureAwait(false);
 
-                        try
-                        {
-                            await Task.WhenAll(tcpToWs, wsToTcp).ConfigureAwait(false);
-                        }
-                        catch
-                        {
-                            // Očekivano posle Cancel() iznad - ne treba dodatno logovanje.
-                        }
+                        try { stream.Close(); } catch { /* unblocks a pending synchronous Read */ }
+                        try { await tcpToWsTask.ConfigureAwait(false); } catch { /* expected after stream.Close() */ }
                     }
 
                     try
                     {
-                        if (ws.State == WebSocketState.Open)
+                        if (ws.ReadyState == WebSocketState.Open)
                         {
-                            await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None)
-                                .ConfigureAwait(false);
+                            ws.Close(CloseStatusCode.Normal);
                         }
                     }
                     catch
@@ -108,100 +143,60 @@ namespace NetdeskAgent.Common.Vnc
             }
         }
 
-        private static async Task PumpTcpToWebSocket(
-            NetworkStream stream, ClientWebSocket ws, long sessionId, CancellationToken token)
+        // Radi na sopstvenoj pozadinskoj niti (Task.Run) - websocket-sharp
+        // nema async ReceiveAsync-stil API kao ClientWebSocket, pa se
+        // dolazna strana (UltraVNC -> WS) obrađuje preko OnMessage eventa
+        // (koji websocket-sharp sam pokreće na svojoj internoj niti posle
+        // Connect()-a), a ova petlja pokriva samo TCP -> WS smer.
+        private static void PumpTcpToWebSocket(
+            System.Net.Sockets.NetworkStream stream, WebSocket ws, long sessionId,
+            CancellationToken token, TaskCompletionSource<bool> closedSignal)
         {
             var buffer = new byte[BufferSize];
 
-            while (!token.IsCancellationRequested && ws.State == WebSocketState.Open)
+            while (!token.IsCancellationRequested)
             {
                 int read;
                 try
                 {
-                    read = await stream.ReadAsync(buffer, 0, buffer.Length, token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
+                    read = stream.Read(buffer, 0, buffer.Length);
                 }
                 catch (Exception ex)
                 {
-                    FileLogger.Error("VNC sesija #" + sessionId + " - čitanje sa lokalnog VNC-a neuspešno", ex);
-                    return;
+                    if (!token.IsCancellationRequested)
+                    {
+                        FileLogger.Error("VNC sesija #" + sessionId + " - čitanje sa lokalnog VNC-a neuspešno", ex);
+                    }
+                    break;
                 }
 
                 if (read == 0)
                 {
-                    return; // UltraVNC je zatvorio konekciju
+                    break; // UltraVNC je zatvorio konekciju
                 }
 
                 try
                 {
-                    await ws.SendAsync(new ArraySegment<byte>(buffer, 0, read), WebSocketMessageType.Binary, true, token)
-                        .ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
+                    var chunk = new byte[read];
+                    Array.Copy(buffer, chunk, read);
+                    ws.Send(chunk);
                 }
                 catch (Exception ex)
                 {
                     FileLogger.Error("VNC sesija #" + sessionId + " - slanje ka WebSocket-u neuspešno", ex);
-                    return;
+                    break;
                 }
             }
+
+            closedSignal.TrySetResult(true);
         }
 
-        private static async Task PumpWebSocketToTcp(
-            ClientWebSocket ws, NetworkStream stream, long sessionId, CancellationToken token)
-        {
-            var buffer = new byte[BufferSize];
-
-            while (!token.IsCancellationRequested && ws.State == WebSocketState.Open)
-            {
-                WebSocketReceiveResult result;
-                try
-                {
-                    result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    FileLogger.Error("VNC sesija #" + sessionId + " - prijem sa WebSocket-a neuspešan", ex);
-                    return;
-                }
-
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    return;
-                }
-
-                // RFB je kontinuiran bajt-stream - EndOfMessage granice (WebSocket
-                // frame boundary) su nebitne za sirov forwarding, prosleđujemo
-                // šta god je primljeno u ovom pozivu bez čekanja na celu poruku.
-                try
-                {
-                    await stream.WriteAsync(buffer, 0, result.Count, token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    FileLogger.Error("VNC sesija #" + sessionId + " - pisanje ka lokalnom VNC-u neuspešno", ex);
-                    return;
-                }
-            }
-        }
-
-        private static string BuildWsUrl(string serverBaseUrl, long sessionId)
+        private static string BuildWsUrl(string serverBaseUrl, long sessionId, string agentId, string apiKey)
         {
             var wsBase = serverBaseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
-            return wsBase + "/api/agents/vnc-stream?sessionId=" + sessionId;
+            return wsBase + "/api/agents/vnc-stream?sessionId=" + sessionId +
+                   "&agentId=" + Uri.EscapeDataString(agentId) +
+                   "&apiKey=" + Uri.EscapeDataString(apiKey);
         }
     }
 }

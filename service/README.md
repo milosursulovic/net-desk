@@ -91,12 +91,21 @@ C:\Program Files\NetdeskAgent\
 ├── Service\
 │   ├── Netdesk.Agent.Service.exe
 │   ├── Netdesk.Agent.Common.dll
-│   └── Newtonsoft.Json.dll
+│   ├── Newtonsoft.Json.dll
+│   └── websocket-sharp.dll
 └── Updater\
     ├── Netdesk.Agent.Updater.exe
     ├── Netdesk.Agent.Common.dll
-    └── Newtonsoft.Json.dll
+    ├── Newtonsoft.Json.dll
+    └── websocket-sharp.dll
 ```
+
+`websocket-sharp.dll` (paket `WebSocketSharp-netstandard`) je dodat zbog
+`VncBridge`-a - videti napomenu u sekciji "Udaljena kontrola ekrana"
+ispod za razlog (`System.Net.WebSockets.ClientWebSocket` ne radi na
+Windows 7). MSBuild ga kopira u oba foldera (tranzitivna zavisnost preko
+`Netdesk.Agent.Common.dll`) iako ga `Updater.exe` stvarno ne koristi u
+radu - bezopasno, samo dodatni fajl.
 
 **`Service\` i `Updater\` moraju biti odvojeni folderi.** Auto-update paket
 prepisuje samo sadržaj `Service\` — `Updater\` namerno ostaje netaknut jer
@@ -247,3 +256,20 @@ port radi.
 
 Funkcionalnost je iza `vnc_enabled` app-setting flaga (isključeno po
 default-u) - admin ga uključuje na `/config` stranici.
+
+**WebSocket klijent (Windows 7 napomena)**: `VncBridge` koristi
+**websocket-sharp** (`WebSocketSharp-netstandard` NuGet paket), NE
+`System.Net.WebSockets.ClientWebSocket` - otkriveno uživo na pravoj
+Windows 7 mašini: `ClientWebSocket` baca `PlatformNotSupportedException`
+tamo, jer zavisi od WinHTTP WebSocket API-ja koji ne postoji pre
+Windows 8. websocket-sharp implementira RFB 6455 protokol sam, nad sirovim
+soketima, bez te OS zavisnosti - a Windows 7 podrška je baš razlog zašto
+ovaj projekat cilja `net452` (videti vrh ovog fajla), pa je ovo bio pravi
+blocker, ne kozmetička razlika. Posledica: ova biblioteka nema javni API za
+proizvoljne custom HTTP header-e pri handshake-u, pa agent šalje
+`agentId`/`apiKey` kao query string (`?agentId=...&apiKey=...`) umesto
+`Authorization` header-a - isti obrazac koji je viewer strana (browser)
+već morala da koristi iz istog razloga (browser-ov WebSocket API takođe ne
+dozvoljava custom header-e), i ista bezbednosna napomena važi (ruta ide
+kroz `server.on("upgrade")`, ne kroz Express/morgan, pa se ne loguje u
+access log).
