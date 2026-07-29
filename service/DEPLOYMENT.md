@@ -33,6 +33,7 @@ Netdesk.Agent.Service.exe
 Netdesk.Agent.Service.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
+websocket-sharp.dll
 ```
 
 **Iz `Netdesk.Agent.Updater\bin\Release\net452\`:**
@@ -42,7 +43,12 @@ Netdesk.Agent.Updater.exe
 Netdesk.Agent.Updater.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
+websocket-sharp.dll
 ```
+
+(`websocket-sharp.dll` je dodat zbog VNC bridge-a - videti README.md,
+sekcija "Udaljena kontrola ekrana", za razlog. Kopira se u oba foldera
+kao tranzitivna zavisnost, iako ga Updater stvarno ne koristi u radu.)
 
 `.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
 simboli / šablon).
