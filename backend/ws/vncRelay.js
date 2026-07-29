@@ -126,6 +126,14 @@ export function attachVncRelay(server) {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", async (req, socket, head) => {
+    // Nagle's algorithm is on by default for a net/tls.Socket - it batches
+    // small writes for up to ~40ms hoping to coalesce them, which is
+    // exactly wrong for a relay carrying individual RFB messages (mouse
+    // moves, small incremental screen updates). This is the only upgrade
+    // handler on this server, so it's safe to apply to every socket that
+    // reaches here.
+    socket.setNoDelay(true);
+
     let url;
     try {
       url = new URL(req.url, "https://placeholder.invalid");

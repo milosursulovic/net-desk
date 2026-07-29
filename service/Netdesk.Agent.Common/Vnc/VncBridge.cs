@@ -52,6 +52,12 @@ namespace NetdeskAgent.Common.Vnc
                 try
                 {
                     await tcp.ConnectAsync(IPAddress.Loopback, localVncPort).ConfigureAwait(false);
+                    // Nagle's algorithm is on by default and batches small
+                    // writes for up to ~40ms - wrong for a relay carrying
+                    // individual RFB messages (mouse moves, small incremental
+                    // screen updates). Loopback RTT is near-zero anyway, so
+                    // there's no bandwidth-efficiency tradeoff to weigh here.
+                    tcp.NoDelay = true;
                 }
                 catch (Exception ex)
                 {
