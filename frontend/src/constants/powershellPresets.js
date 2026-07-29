@@ -139,4 +139,21 @@ export const POWERSHELL_PRESETS = [
       'Test-Connection -ComputerName 8.8.8.8 -Count 4 | Format-Table -AutoSize | Out-String\n' +
       'Resolve-DnsName google.com | Format-Table -AutoSize | Out-String',
   },
+  {
+    id: 'restart-netdesk-agent-deferred',
+    label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
+    // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
+    // ide preko obične ServiceController.Restart logike (restart_service
+    // komanda) - agent bi ubio sam sebe pre nego što stigne da prijavi
+    // rezultat serveru, pa bi job ostao zauvek zaglavljen na "sent". Umesto
+    // toga, Start-Process (bez -Wait) samo pokrene odvojen, "siroče" cmd.exe
+    // proces i odmah se vrati - ovaj PowerShell proces (koji job čeka) se
+    // završi za par milisekundi, job se prijavi kao uspešan, a stvarni
+    // net stop/net start se desi tek 5 sekundi kasnije, potpuno nezavisno
+    // od agent procesa koji ga je pokrenuo.
+    script:
+      'Start-Process -FilePath "cmd.exe" `\n' +
+      '  -ArgumentList \'/c "timeout /t 5 /nobreak >nul & net stop NetdeskAgent & net start NetdeskAgent"\' `\n' +
+      '  -WindowStyle Hidden',
+  },
 ]
