@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-950 flex flex-col">
+  <div ref="rootEl" class="min-h-screen bg-slate-950 flex flex-col">
     <div class="flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border-b border-slate-800">
       <div class="flex items-center gap-2 text-slate-200 font-medium truncate">
         {{ viewOnly ? 'Pregled ekrana' : 'Udaljena kontrola ekrana' }}
@@ -14,9 +14,17 @@
           SAMO PREGLED
         </span>
       </div>
-      <AppButton variant="danger" :disabled="stopping" @click="stopAndClose">
-        {{ stopping ? 'Zatvaram…' : 'Zatvori sesiju' }}
-      </AppButton>
+      <div class="flex items-center gap-3">
+        <span v-if="isFullscreen" class="text-xs text-slate-500 hidden sm:inline">
+          Drži Esc da izađeš iz punog ekrana
+        </span>
+        <AppButton variant="neutral" @click="toggleFullscreen">
+          {{ isFullscreen ? 'Izađi iz punog ekrana' : 'Ceo ekran' }}
+        </AppButton>
+        <AppButton variant="danger" :disabled="stopping" @click="stopAndClose">
+          {{ stopping ? 'Zatvaram…' : 'Zatvori sesiju' }}
+        </AppButton>
+      </div>
     </div>
 
     <!--
@@ -58,7 +66,9 @@ const agent = ref(null)
 const connected = ref(false)
 const starting = ref(false)
 const stopping = ref(false)
+const isFullscreen = ref(false)
 const screenEl = ref(null)
+const rootEl = ref(null)
 
 let rfb = null
 let sessionId = null
@@ -181,14 +191,52 @@ function handleWindowResize() {
   requestAnimationFrame(applyManualScale)
 }
 
+// OS-rezervisane kombinacije (Win+R, Win+L, Alt+Tab, Ctrl+Alt+Del...) ne
+// može da presretne obična web stranica - to je namerno browser
+// ograničenje, ne bag. Fullscreen + Keyboard Lock API je standardan način
+// da se to zaobiđe (isti mehanizam koristi npr. Chrome Remote Desktop),
+// ali radi pouzdano samo u Chromium browserima (Chrome/Edge), ne u
+// Firefox-u - zato je feature-detected, ne pretpostavljeno dostupno.
+async function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    try {
+      await rootEl.value.requestFullscreen()
+    } catch (e) {
+      console.error('Fullscreen zahtev neuspešan:', e)
+      showToast('Puni ekran nije dozvoljen u ovom browseru', { prefix: '❌ ', duration: 3000 })
+      return
+    }
+    if (navigator.keyboard?.lock) {
+      try {
+        await navigator.keyboard.lock()
+      } catch (e) {
+        console.warn('Keyboard Lock API nije uspeo (nastavljamo bez njega):', e)
+      }
+    }
+  } else {
+    await document.exitFullscreen()
+  }
+}
+
+function handleFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+  if (!isFullscreen.value) {
+    navigator.keyboard?.unlock?.()
+  }
+  requestAnimationFrame(applyManualScale)
+}
+
 onMounted(() => {
   loadAgent()
   start()
   window.addEventListener('resize', handleWindowResize)
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleWindowResize)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  navigator.keyboard?.unlock?.()
   rfb?.disconnect()
 })
 </script>
