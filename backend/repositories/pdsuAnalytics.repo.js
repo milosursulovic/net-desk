@@ -64,6 +64,39 @@ export async function listComputersWithoutPdsu() {
   return rows || [];
 }
 
+// "Bez UltraVNC" = nema nijedan servis u servis-inventaru čiji naziv liči na
+// UltraVNC (uvnc_service je stvarni naziv servisa koji registruje
+// Deploy-NetdeskVnc.ps1, winvnc/ultravnc su dodatni obrasci za starije/ručne
+// instalacije) - koristi se da se pronađu računari na kojima deploy skriptu
+// treba (ponovo) pokrenuti. hasServiceData razlikuje "potvrđeno nema
+// UltraVNC" od "nemamo uopšte servis-inventar za ovaj računar" (agent
+// možda nikad nije sinhronizovao servise), pošto oba slučaja padaju u isti
+// NOT EXISTS.
+export async function listComputersWithoutUltravnc() {
+  const [rows] = await pool.execute(`
+    SELECT
+      ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os,
+      agents.id AS agentId,
+      EXISTS(
+        SELECT 1 FROM computer_services csv2 WHERE csv2.ip_entry_id = ip.id
+      ) AS hasServiceData
+    FROM ip_entries ip
+    LEFT JOIN agents ON agents.ip_entry_id = ip.id AND agents.status = 'active'
+    WHERE ip.entry_type = 'computer'
+      AND NOT EXISTS (
+        SELECT 1 FROM computer_services csv
+        WHERE csv.ip_entry_id = ip.id
+          AND (
+            LOWER(csv.name) LIKE '%uvnc%'
+            OR LOWER(csv.name) LIKE '%ultravnc%'
+            OR LOWER(csv.name) LIKE '%winvnc%'
+          )
+      )
+    ORDER BY ip.computer_name ASC, ip.ip ASC
+  `);
+  return rows || [];
+}
+
 /* =========================================================
    SOFTWARE
    ========================================================= */

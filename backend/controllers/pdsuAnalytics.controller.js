@@ -3,6 +3,7 @@ import {
   exportPdsuAnalyticsXlsx,
   searchPdsuAnalytics,
   listComputersWithoutPdsuService,
+  listComputersWithoutUltravncService,
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 import { sendTablePdf } from "../utils/pdfTable.js";
@@ -48,6 +49,35 @@ export async function exportWithoutPdsuPdfController(req, res) {
     ],
     rows: items,
     emptyText: "Svi računari imaju bar neki PDSU podatak.",
+  });
+}
+
+export async function listWithoutUltravncController(req, res) {
+  const result = await listComputersWithoutUltravncService();
+
+  res.json(result);
+}
+
+export async function exportWithoutUltravncPdfController(req, res) {
+  const { items } = await listComputersWithoutUltravncService();
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendTablePdf(res, {
+    title: "NetDesk — Računari bez UltraVNC",
+    subtitle: `Nema servis nalik UltraVNC u servis inventaru — ukupno: ${items.length}, generisano ${dateStamp}`,
+    filename: `NetDesk_bez_UltraVNC_${dateStamp}.pdf`,
+    columns: [
+      { header: "Računar", key: "computerName", width: 160 },
+      { header: "IP", key: "ip", width: 100 },
+      { header: "Odeljenje", key: "department", width: 140 },
+      { header: "OS", key: "os", width: 200 },
+      { header: "Agent", key: "agentLabel", width: 100 },
+    ],
+    rows: items.map((r) => ({
+      ...r,
+      agentLabel: r.agentId ? "Ima agenta" : "Nema agenta",
+    })),
+    emptyText: "Svi računari imaju UltraVNC servis.",
   });
 }
 

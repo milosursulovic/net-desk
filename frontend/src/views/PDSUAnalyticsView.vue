@@ -27,6 +27,8 @@ const error = ref('')
 const stats = ref(null)
 const missingPdsu = ref([])
 const exportingMissingPdf = ref(false)
+const withoutUltravnc = ref([])
+const exportingWithoutUltravncPdf = ref(false)
 
 const activeTab = ref('overview')
 const { search } = usePaginatedRoute({
@@ -241,6 +243,7 @@ async function loadStats() {
 
     stats.value = await response.json()
     await fetchMissingPdsu()
+    await fetchWithoutUltravnc()
   } catch (err) {
     console.error('PDSU analytics error:', err)
 
@@ -272,6 +275,31 @@ async function exportMissingPdsuPdf() {
     console.error('Export bez PDSU greška:', err)
   } finally {
     exportingMissingPdf.value = false
+  }
+}
+
+async function fetchWithoutUltravnc() {
+  try {
+    const res = await fetchWithAuth('/api/protected/pdsu-analytics/without-ultravnc')
+    if (!res.ok) return
+    const data = await res.json()
+    withoutUltravnc.value = Array.isArray(data.items) ? data.items : []
+  } catch {
+  }
+}
+
+async function exportWithoutUltravncPdf() {
+  exportingWithoutUltravncPdf.value = true
+  try {
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    await downloadFromResponse(
+      await fetchWithAuth('/api/protected/pdsu-analytics/without-ultravnc/export-pdf'),
+      `NetDesk_bez_UltraVNC_${dateStamp}.pdf`
+    )
+  } catch (err) {
+    console.error('Export bez UltraVNC greška:', err)
+  } finally {
+    exportingWithoutUltravncPdf.value = false
   }
 }
 
@@ -547,6 +575,9 @@ onMounted(() => {
               :missing-computers="missingPdsu"
               :exporting-missing="exportingMissingPdf"
               @export-missing="exportMissingPdsuPdf"
+              :without-ultravnc="withoutUltravnc"
+              :exporting-without-ultravnc="exportingWithoutUltravncPdf"
+              @export-without-ultravnc="exportWithoutUltravncPdf"
             />
 
             <PDSUSoftware

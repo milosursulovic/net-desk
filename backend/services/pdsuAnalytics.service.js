@@ -1,5 +1,6 @@
 import {
   listComputersWithoutPdsu,
+  listComputersWithoutUltravnc,
   getPdsuCoverage,
   getSoftwareStats,
   getTopSoftware,
@@ -190,6 +191,11 @@ export async function pdsuAnalyticsStatsService() {
 
 export async function listComputersWithoutPdsuService() {
   const items = await listComputersWithoutPdsu();
+  return { items, total: items.length };
+}
+
+export async function listComputersWithoutUltravncService() {
+  const items = await listComputersWithoutUltravnc();
   return { items, total: items.length };
 }
 

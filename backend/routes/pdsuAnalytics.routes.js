@@ -7,6 +7,8 @@ import {
   searchPdsuAnalyticsController,
   listWithoutPdsuController,
   exportWithoutPdsuPdfController,
+  listWithoutUltravncController,
+  exportWithoutUltravncPdfController,
 } from "../controllers/pdsuAnalytics.controller.js";
 
 const router = express.Router();
@@ -18,5 +20,7 @@ router.get("/export-xlsx", asyncHandler(exportPdsuAnalyticsController));
 router.get("/search", asyncHandler(searchPdsuAnalyticsController));
 router.get("/missing", asyncHandler(listWithoutPdsuController));
 router.get("/missing/export-pdf", asyncHandler(exportWithoutPdsuPdfController));
+router.get("/without-ultravnc", asyncHandler(listWithoutUltravncController));
+router.get("/without-ultravnc/export-pdf", asyncHandler(exportWithoutUltravncPdfController));
 
 export default router;
