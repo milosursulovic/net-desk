@@ -2,10 +2,16 @@
   <div class="min-h-screen bg-slate-950 flex flex-col">
     <div class="flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border-b border-slate-800">
       <div class="flex items-center gap-2 text-slate-200 font-medium truncate">
-        Udaljena kontrola ekrana
+        {{ viewOnly ? 'Pregled ekrana' : 'Udaljena kontrola ekrana' }}
         <span class="text-slate-500 text-sm truncate">{{ agent?.hostname || agent?.agentUid || '' }}</span>
         <span class="rounded-full border border-amber-200/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-400">
           BETA
+        </span>
+        <span
+          v-if="viewOnly"
+          class="rounded-full border border-sky-200/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-sky-400"
+        >
+          SAMO PREGLED
         </span>
       </div>
       <AppButton variant="danger" :disabled="stopping" @click="stopAndClose">
@@ -36,6 +42,7 @@ import ToastNotification from '@/components/ToastNotification.vue'
 
 const route = useRoute()
 const agentId = route.params.id
+const viewOnly = route.query.viewOnly === '1'
 
 const { toast, showToast } = useToast()
 
@@ -74,10 +81,13 @@ async function start() {
     rfb = new RFB(screenEl.value, buildWsUrl(sessionId), {
       credentials: { password: session.vncPassword || '' },
     })
-    // Namerno isključeno - CSS skaliranje je uzrokovalo da canvas ostane
-    // nevidljiv iako je slika stvarno stizala (videti komentar u
-    // VncViewer.vue). Ceo prozor je dovoljno prostora bez skaliranja.
-    rfb.scaleViewport = false
+    rfb.viewOnly = viewOnly
+    // scaleViewport je ranije, ugrađen u AgentDetailView-ov tab, ostavljao
+    // canvas nevidljiv (verovatno zbog kontejnera koji se menjao veličinom
+    // dok se tab prebacivao). Ovde je ceo prozor posvećen samo ovoj sesiji
+    // od početka, pa se sad ponovo probava - ako ekran opet ostane prazan,
+    // vratiti na false.
+    rfb.scaleViewport = true
     rfb.resizeSession = false
 
     rfb.addEventListener('connect', () => {

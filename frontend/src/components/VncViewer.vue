@@ -7,12 +7,16 @@
           BETA
         </span>
       </div>
-      <AppButton variant="success" @click="openSession">Uzmi kontrolu ekrana</AppButton>
+      <div class="flex gap-2">
+        <AppButton variant="neutral" @click="openSession(true)">Samo pregled</AppButton>
+        <AppButton variant="success" @click="openSession(false)">Uzmi kontrolu ekrana</AppButton>
+      </div>
     </div>
 
     <p class="text-sm text-slate-500">
       Otvara se u posebnom prozoru, bez obaveštenja korisniku za tim
-      računarom. Zahteva UltraVNC instaliran i pokrenut na ciljnoj mašini.
+      računarom. "Samo pregled" ne šalje miš/tastaturu ka mašini. Zahteva
+      UltraVNC instaliran i pokrenut na ciljnoj mašini.
     </p>
   </div>
 </template>
@@ -27,8 +31,12 @@ const props = defineProps({
 
 const router = useRouter()
 
-function openSession() {
-  const url = router.resolve({ name: 'agent-vnc-session', params: { id: props.agentId } }).href
+function openSession(viewOnly) {
+  const url = router.resolve({
+    name: 'agent-vnc-session',
+    params: { id: props.agentId },
+    query: viewOnly ? { viewOnly: '1' } : {},
+  }).href
   window.open(url, `netdesk-vnc-${props.agentId}`, 'width=1400,height=900,noopener,noreferrer')
 }
 </script>
