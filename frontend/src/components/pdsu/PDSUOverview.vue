@@ -423,6 +423,7 @@ function percentageClass(percent) {
               <th>IP</th>
               <th>Odeljenje</th>
               <th>OS</th>
+              <th>Status</th>
               <th>Servis podaci</th>
               <th>Agent</th>
             </tr>
@@ -437,6 +438,14 @@ function percentageClass(percent) {
               <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
               <td>{{ row.department || '—' }}</td>
               <td>{{ row.os || '—' }}</td>
+              <td>
+                <span
+                  class="pdsu-badge"
+                  :class="row.isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'"
+                >
+                  {{ row.isOnline ? 'Online' : 'Offline' }}
+                </span>
+              </td>
               <td>
                 <span
                   class="pdsu-badge"

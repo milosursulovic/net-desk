@@ -71,10 +71,12 @@ export async function exportWithoutUltravncPdfController(req, res) {
       { header: "IP", key: "ip", width: 100 },
       { header: "Odeljenje", key: "department", width: 140 },
       { header: "OS", key: "os", width: 200 },
+      { header: "Status", key: "onlineLabel", width: 80 },
       { header: "Agent", key: "agentLabel", width: 100 },
     ],
     rows: items.map((r) => ({
       ...r,
+      onlineLabel: r.isOnline ? "Online" : "Offline",
       agentLabel: r.agentId ? "Ima agenta" : "Nema agenta",
     })),
     emptyText: "Svi računari imaju UltraVNC servis.",

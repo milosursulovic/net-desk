@@ -76,6 +76,7 @@ export async function listComputersWithoutUltravnc() {
   const [rows] = await pool.execute(`
     SELECT
       ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os,
+      ip.is_online AS isOnline,
       agents.id AS agentId,
       EXISTS(
         SELECT 1 FROM computer_services csv2 WHERE csv2.ip_entry_id = ip.id
