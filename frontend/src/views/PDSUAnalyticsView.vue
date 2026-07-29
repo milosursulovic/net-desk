@@ -8,13 +8,18 @@ import { fmtDateSr } from '@/utils/format.js'
 import { stateLabel, startModeLabel } from '@/utils/pdsuServiceLabels.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
 
 import PDSUOverview from '@/components/pdsu/PDSUOverview.vue'
 import PDSUSoftware from '@/components/pdsu/PDSUSoftware.vue'
 import PDSUDrivers from '@/components/pdsu/PDSUDrivers.vue'
 import PDSUServices from '@/components/pdsu/PDSUServices.vue'
 import PDSUUpdates from '@/components/pdsu/PDSUUpdates.vue'
+import PDSUFlagged from '@/components/pdsu/PDSUFlagged.vue'
+
+const { toast, showToast } = useToast()
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -81,6 +86,92 @@ const searchTotalCount = computed(() =>
 const nonEmptySearchCategories = computed(() =>
   searchCategories.filter((cat) => searchResults.value[cat]?.length)
 )
+
+const flaggedSoftware = ref([])
+const flaggedServices = ref([])
+
+async function fetchFlagged() {
+  try {
+    const [swRes, svcRes] = await Promise.all([
+      fetchWithAuth('/api/protected/flagged/software'),
+      fetchWithAuth('/api/protected/flagged/services'),
+    ])
+    flaggedSoftware.value = swRes.ok ? (await swRes.json()).items || [] : []
+    flaggedServices.value = svcRes.ok ? (await svcRes.json()).items || [] : []
+  } catch (err) {
+    console.error('Greška pri učitavanju neželjenih programa/servisa:', err)
+  }
+}
+
+function isSoftwareFlagged(item) {
+  return flaggedSoftware.value.some(
+    (f) =>
+      f.displayName.toLowerCase() === String(item.displayName || '').toLowerCase() &&
+      (f.publisher ?? '').toLowerCase() === String(item.publisher || '').toLowerCase(),
+  )
+}
+
+function isServiceFlagged(item) {
+  return flaggedServices.value.some(
+    (f) => f.name.toLowerCase() === String(item.name || '').toLowerCase(),
+  )
+}
+
+async function flagSoftware(item) {
+  try {
+    const res = await fetchWithAuth('/api/protected/flagged/software', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: item.displayName, publisher: item.publisher }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju programa'))
+    await fetchFlagged()
+    showToast('Program označen kao neželjen')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri označavanju programa', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function flagService(item) {
+  try {
+    const res = await fetchWithAuth('/api/protected/flagged/services', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: item.name, displayName: item.displayName }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju servisa'))
+    await fetchFlagged()
+    showToast('Servis označen kao neželjen')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri označavanju servisa', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function removeFlaggedSoftware(id) {
+  try {
+    const res = await fetchWithAuth(`/api/protected/flagged/software/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    await fetchFlagged()
+    showToast('Uklonjeno sa liste neželjenih')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function removeFlaggedService(id) {
+  try {
+    const res = await fetchWithAuth(`/api/protected/flagged/services/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    await fetchFlagged()
+    showToast('Uklonjeno sa liste neželjenih')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+  }
+}
 
 function cellValue(item, key) {
   const value = item?.[key]
@@ -200,7 +291,10 @@ async function exportXlsx() {
   }
 }
 
-onMounted(loadStats)
+onMounted(() => {
+  loadStats()
+  fetchFlagged()
+})
 </script>
 
 <template>
@@ -320,6 +414,7 @@ onMounted(loadStats)
                       <th>IP</th>
                       <th>Odeljenje</th>
                       <th v-for="col in searchColumnsMap[cat]" :key="col.key">{{ col.label }}</th>
+                      <th v-if="cat === 'software' || cat === 'services'"></th>
                     </tr>
                   </thead>
 
@@ -337,6 +432,34 @@ onMounted(loadStats)
 
                       <td v-for="col in searchColumnsMap[cat]" :key="col.key">
                         {{ cellValue(item, col.key) }}
+                      </td>
+
+                      <td v-if="cat === 'software'" class="text-right">
+                        <span v-if="isSoftwareFlagged(item)" class="pdsu-badge bg-red-600 text-white">
+                          ✓ Već označeno
+                        </span>
+                        <button
+                          v-else
+                          type="button"
+                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          @click="flagSoftware(item)"
+                        >
+                          🚫 Označi kao neželjen
+                        </button>
+                      </td>
+
+                      <td v-else-if="cat === 'services'" class="text-right">
+                        <span v-if="isServiceFlagged(item)" class="pdsu-badge bg-red-600 text-white">
+                          ✓ Već označeno
+                        </span>
+                        <button
+                          v-else
+                          type="button"
+                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          @click="flagService(item)"
+                        >
+                          🚫 Označi kao neželjen
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -399,6 +522,16 @@ onMounted(loadStats)
             <span class="pdsu-tab-icon">U</span>
             <span>Updates</span>
           </button>
+
+          <button
+            type="button"
+            class="pdsu-tab"
+            :class="{ 'pdsu-tab-active': activeTab === 'flagged' }"
+            @click="activeTab = 'flagged'"
+          >
+            <span class="pdsu-tab-icon">⚠</span>
+            <span>Neželjeni</span>
+          </button>
         </nav>
 
         <section class="pdsu-content">
@@ -439,9 +572,20 @@ onMounted(loadStats)
               key="updates"
               :updates="updates"
             />
+
+            <PDSUFlagged
+              v-else-if="activeTab === 'flagged'"
+              key="flagged"
+              :flagged-software="flaggedSoftware"
+              :flagged-services="flaggedServices"
+              @remove-software="removeFlaggedSoftware"
+              @remove-service="removeFlaggedService"
+            />
           </Transition>
         </section>
       </template>
     </template>
+
+    <ToastNotification :message="toast" />
   </div>
 </template>

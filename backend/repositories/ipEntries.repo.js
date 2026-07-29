@@ -230,7 +230,16 @@ export async function listIpEntries({
       last_status_change AS lastStatusChange,
       remote_script AS remoteScript,
       description,
-      agents.id AS agentId
+      agents.id AS agentId,
+      (SELECT COUNT(*) FROM computer_software cs
+       JOIN flagged_software fs
+         ON LOWER(cs.display_name) LIKE CONCAT('%', LOWER(fs.display_name), '%')
+        AND (fs.publisher IS NULL OR LOWER(cs.publisher) = LOWER(fs.publisher))
+       WHERE cs.ip_entry_id = ip_entries.id) AS flaggedSoftwareCount,
+      (SELECT COUNT(*) FROM computer_services csv
+       JOIN flagged_services fsv
+         ON LOWER(csv.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
+       WHERE csv.ip_entry_id = ip_entries.id) AS flaggedServiceCount
     FROM ip_entries
     -- Assumes at most one active agent per ip_entry - if that's ever
     -- violated (e.g. re-enrollment leaves two active rows pointing at the

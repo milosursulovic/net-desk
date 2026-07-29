@@ -195,6 +195,15 @@
           </div>
         </div>
 
+        <router-link
+          v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount"
+          :to="`/ip/${entry.id}/pdsu`"
+          class="mt-2 inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 hover:bg-red-100 self-start"
+          :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa`"
+        >
+          ⚠ Neželjeni programi/servisi
+        </router-link>
+
         <div class="mt-3 space-y-1.5 text-sm">
           <div class="grid grid-cols-2 gap-2 pt-2">
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">

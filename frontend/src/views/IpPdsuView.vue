@@ -146,9 +146,22 @@
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="item in filteredSoftware" :key="item.id" class="rounded-lg border bg-white p-3">
-              <div class="font-medium text-slate-800">
-                {{ item.display_name || 'Nepoznat program' }}
+            <div
+              v-for="item in filteredSoftware"
+              :key="item.id"
+              class="rounded-lg border bg-white p-3"
+              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+            >
+              <div class="flex items-center gap-2">
+                <div class="font-medium text-slate-800">
+                  {{ item.display_name || 'Nepoznat program' }}
+                </div>
+                <span
+                  v-if="item.is_flagged"
+                  class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                >
+                  ⚠ Neželjen
+                </span>
               </div>
 
               <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.display_version || '—' }}</div>
@@ -190,11 +203,24 @@
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="item in filteredServices" :key="item.id" class="rounded-lg border bg-white p-3">
+            <div
+              v-for="item in filteredServices"
+              :key="item.id"
+              class="rounded-lg border bg-white p-3"
+              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+            >
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <div class="font-medium text-slate-800">
-                    {{ item.display_name || item.name || 'Nepoznat servis' }}
+                  <div class="flex items-center gap-2">
+                    <div class="font-medium text-slate-800">
+                      {{ item.display_name || item.name || 'Nepoznat servis' }}
+                    </div>
+                    <span
+                      v-if="item.is_flagged"
+                      class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                    >
+                      ⚠ Neželjen
+                    </span>
                   </div>
 
                   <div class="text-xs text-slate-500">{{ item.name || '—' }}</div>

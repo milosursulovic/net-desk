@@ -58,15 +58,20 @@ export async function computerSoftwareList(ipEntryId) {
   const [rows] = await pool.query(
     `
     SELECT
-      id,
-      display_name,
-      display_version,
-      publisher,
-      install_date,
-      inventory_date
-    FROM computer_software
-    WHERE ip_entry_id = ?
-    ORDER BY display_name
+      cs.id,
+      cs.display_name,
+      cs.display_version,
+      cs.publisher,
+      cs.install_date,
+      cs.inventory_date,
+      EXISTS(
+        SELECT 1 FROM flagged_software fs
+        WHERE LOWER(cs.display_name) LIKE CONCAT('%', LOWER(fs.display_name), '%')
+          AND (fs.publisher IS NULL OR LOWER(cs.publisher) = LOWER(fs.publisher))
+      ) AS is_flagged
+    FROM computer_software cs
+    WHERE cs.ip_entry_id = ?
+    ORDER BY cs.display_name
     `,
     [ipEntryId],
   );
@@ -201,17 +206,21 @@ export async function computerServicesList(ipEntryId) {
   const [rows] = await pool.query(
     `
     SELECT
-      id,
-      name,
-      display_name,
-      state,
-      start_mode,
-      start_name,
-      path_name,
-      inventory_date
-    FROM computer_services
-    WHERE ip_entry_id = ?
-    ORDER BY display_name
+      cs.id,
+      cs.name,
+      cs.display_name,
+      cs.state,
+      cs.start_mode,
+      cs.start_name,
+      cs.path_name,
+      cs.inventory_date,
+      EXISTS(
+        SELECT 1 FROM flagged_services fsv
+        WHERE LOWER(cs.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
+      ) AS is_flagged
+    FROM computer_services cs
+    WHERE cs.ip_entry_id = ?
+    ORDER BY cs.display_name
     `,
     [ipEntryId],
   );
