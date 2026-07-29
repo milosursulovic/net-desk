@@ -111,6 +111,21 @@ async function start() {
     // stvarno izmeren - videti applyManualScale().
     rfb.scaleViewport = false
     rfb.resizeSession = false
+    // noVNC internally watches its own wrapper div (_screen, NOT screenEl)
+    // via a ResizeObserver, and on every fire calls the prototype's
+    // _updateScale(), which - since scaleViewport is false - unconditionally
+    // resets _display.scale back to 1.0. That ResizeObserver also fires as
+    // a side effect of OUR OWN scale changes: shrinking the canvas removes
+    // the need for _screen's native overflow:auto scrollbars, and the
+    // scrollbar disappearing changes _screen's measured content-box size,
+    // which re-triggers the observer -> resets scale to 1.0 -> canvas back
+    // at full remote resolution -> scrollbars reappear. That feedback loop
+    // (not the scale math itself) is what caused "puno se skrolla" on
+    // higher-resolution targets. Overriding _updateScale as a no-op on this
+    // instance neutralizes every internal reset path (ResizeObserver AND
+    // the direct call from _resize() during the initial handshake), leaving
+    // applyManualScale() as the only thing that ever touches _display.scale.
+    rfb._updateScale = () => {}
 
     rfb.addEventListener('connect', () => {
       connected.value = true
