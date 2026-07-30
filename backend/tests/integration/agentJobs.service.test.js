@@ -10,6 +10,7 @@ import {
 } from "../../services/agentJobs.service.js";
 import { pool } from "../../db/pool.js";
 import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
+import { heartbeat } from "../../services/agents.service.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 
 describe("agentJobs.service (integration, real DB)", () => {
@@ -267,6 +268,44 @@ describe("agentJobs.service (integration, real DB)", () => {
       await expect(
         getBatchStatusService("00000000-0000-0000-0000-000000000000"),
       ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("skips an agent that has never sent a heartbeat when onlyOnline is requested", async () => {
+      // agentId (from beforeEach) has just been inserted - last_heartbeat_at
+      // is NULL, so computeConnectivityStatus() reports 'unknown', not 'online'.
+      const out = await createBatchJobService(
+        [agentId],
+        { commandType: "delete_temp_files", payload: null, onlyOnline: true },
+        null,
+      );
+      batchIds.push(out.batchId);
+      expect(out.created).toHaveLength(0);
+      expect(out.skipped).toHaveLength(1);
+      expect(out.skipped[0].reason).toMatch(/nije online/);
+    });
+
+    it("includes an agent with a fresh heartbeat when onlyOnline is requested", async () => {
+      await heartbeat(agentId, {}, "10.230.62.81");
+
+      const out = await createBatchJobService(
+        [agentId],
+        { commandType: "delete_temp_files", payload: null, onlyOnline: true },
+        null,
+      );
+      batchIds.push(out.batchId);
+      expect(out.created).toHaveLength(1);
+      expect(out.skipped).toHaveLength(0);
+    });
+
+    it("does not skip anyone for connectivity when onlyOnline is not set", async () => {
+      const out = await createBatchJobService(
+        [agentId],
+        { commandType: "delete_temp_files", payload: null },
+        null,
+      );
+      batchIds.push(out.batchId);
+      expect(out.created).toHaveLength(1);
+      expect(out.skipped).toHaveLength(0);
     });
   });
 });

@@ -77,6 +77,7 @@ function parseAgentListFilters(query) {
     os: String(query.os || "").trim() || undefined,
     version: String(query.version || "").trim() || undefined,
     versionNot: String(query.versionNot || "").trim() || undefined,
+    department: String(query.department || "").trim() || undefined,
     enrolledFrom: dateFilter(query.enrolledFrom),
     enrolledTo: dateFilter(query.enrolledTo),
     heartbeatFrom: dateFilter(query.heartbeatFrom),

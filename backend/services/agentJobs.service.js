@@ -12,6 +12,7 @@ import {
   listJobBatches,
 } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
+import { computeConnectivityStatus } from "./agents.service.js";
 import { paginate } from "../utils/pagination.js";
 import { badRequest, notFound, conflict } from "../utils/httpError.js";
 
@@ -54,6 +55,10 @@ export async function createBatchJobService(agentIds, dto, createdByUserId) {
     }
     if (agent.status !== "active") {
       skipped.push({ agentId, hostname: agent.hostname, reason: "Agent nije aktivan" });
+      continue;
+    }
+    if (dto.onlyOnline && computeConnectivityStatus(agent.lastHeartbeatAt) !== "online") {
+      skipped.push({ agentId, hostname: agent.hostname, reason: "Agent nije online" });
       continue;
     }
 

@@ -97,16 +97,22 @@ export async function updateHeartbeat(id, { hostname, agentVersion, lastIp }) {
 // keep both in sync if the thresholds ever change.
 const CONNECTIVITY_STATUS_SQL = `
   CASE
-    WHEN last_heartbeat_at IS NULL THEN 'unknown'
-    WHEN TIMESTAMPDIFF(SECOND, last_heartbeat_at, NOW()) <= 300 THEN 'online'
-    WHEN TIMESTAMPDIFF(SECOND, last_heartbeat_at, NOW()) <= 1800 THEN 'stale'
+    WHEN agents.last_heartbeat_at IS NULL THEN 'unknown'
+    WHEN TIMESTAMPDIFF(SECOND, agents.last_heartbeat_at, NOW()) <= 300 THEN 'online'
+    WHEN TIMESTAMPDIFF(SECOND, agents.last_heartbeat_at, NOW()) <= 1800 THEN 'stale'
     ELSE 'offline'
   END
 `;
 
+// "agents" (bez alijasa) je i dalje validan kvalifikator za svoje kolone i
+// tamo gde nema JOIN-a (npr. countAgentsByConnectivity ispod) - zato ovaj
+// isti izraz radi svuda, prefiksovan ili ne.
+
 // Deljeno između listAgents() (paginirano) i listAgentIds() (svi id-jevi
 // koji odgovaraju filterima, za "selektuj sve po filteru" preko svih
-// strana) - isti filteri, ista logika, jedno mesto za izmenu.
+// strana) - isti filteri, ista logika, jedno mesto za izmenu. LEFT JOIN
+// na ip_entries (preko agents.ip_entry_id) je ovde samo zbog department
+// filtera - odeljenje živi na ip_entries, ne na agents.
 function buildAgentsWhereClause({
   search,
   status,
@@ -115,12 +121,13 @@ function buildAgentsWhereClause({
   os,
   version,
   versionNot,
+  department,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
   heartbeatTo,
 }) {
-  const searchClause = buildLikeSearch(["hostname", "agent_uid"], search);
+  const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
   const params = [];
 
@@ -129,7 +136,7 @@ function buildAgentsWhereClause({
     params.push(...searchClause.params);
   }
   if (status === "active" || status === "revoked") {
-    whereParts.push("status = ?");
+    whereParts.push("agents.status = ?");
     params.push(status);
   }
   if (connectivityStatus) {
@@ -137,38 +144,42 @@ function buildAgentsWhereClause({
     params.push(connectivityStatus);
   }
   if (deploymentGroup) {
-    whereParts.push("deployment_group = ?");
+    whereParts.push("agents.deployment_group = ?");
     params.push(deploymentGroup);
   }
   if (os) {
-    whereParts.push("os_caption = ?");
+    whereParts.push("agents.os_caption = ?");
     params.push(os);
   }
   if (version) {
-    whereParts.push("agent_version = ?");
+    whereParts.push("agents.agent_version = ?");
     params.push(version);
   }
   if (versionNot) {
     // Agenti bez izveštene verzije (NULL) su isto "nisu na ovoj verziji" -
     // korisno za pronalaženje agenata koji nikad nisu uspešno prijavili
     // update, ne samo onih zaglavljenih na starijoj verziji.
-    whereParts.push("(agent_version IS NULL OR agent_version != ?)");
+    whereParts.push("(agents.agent_version IS NULL OR agents.agent_version != ?)");
     params.push(versionNot);
   }
+  if (department) {
+    whereParts.push("ie.department = ?");
+    params.push(department);
+  }
   if (enrolledFrom) {
-    whereParts.push("DATE(enrolled_at) >= ?");
+    whereParts.push("DATE(agents.enrolled_at) >= ?");
     params.push(enrolledFrom);
   }
   if (enrolledTo) {
-    whereParts.push("DATE(enrolled_at) <= ?");
+    whereParts.push("DATE(agents.enrolled_at) <= ?");
     params.push(enrolledTo);
   }
   if (heartbeatFrom) {
-    whereParts.push("DATE(last_heartbeat_at) >= ?");
+    whereParts.push("DATE(agents.last_heartbeat_at) >= ?");
     params.push(heartbeatFrom);
   }
   if (heartbeatTo) {
-    whereParts.push("DATE(last_heartbeat_at) <= ?");
+    whereParts.push("DATE(agents.last_heartbeat_at) <= ?");
     params.push(heartbeatTo);
   }
 
@@ -176,36 +187,40 @@ function buildAgentsWhereClause({
   return { whereSql, params };
 }
 
+const AGENTS_IP_ENTRY_JOIN = "LEFT JOIN ip_entries ie ON ie.id = agents.ip_entry_id";
+
 export async function listAgents(filters) {
   const { whereSql, params } = buildAgentsWhereClause(filters);
   const { limit, offset } = filters;
 
   const [[{ total }]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM agents ${whereSql}`,
+    `SELECT COUNT(*) AS total FROM agents ${AGENTS_IP_ENTRY_JOIN} ${whereSql}`,
     params,
   );
 
   const [items] = await pool.execute(
     `
     SELECT
-      id,
-      agent_uid AS agentUid,
-      ip_entry_id AS ipEntryId,
-      hostname,
-      os_caption AS osCaption,
-      os_version AS osVersion,
-      os_build AS osBuild,
-      agent_version AS agentVersion,
-      deployment_group AS deploymentGroup,
-      status,
-      last_ip AS lastIp,
-      last_heartbeat_at AS lastHeartbeatAt,
-      enrolled_at AS enrolledAt,
-      created_at AS createdAt,
-      updated_at AS updatedAt
+      agents.id,
+      agents.agent_uid AS agentUid,
+      agents.ip_entry_id AS ipEntryId,
+      agents.hostname,
+      agents.os_caption AS osCaption,
+      agents.os_version AS osVersion,
+      agents.os_build AS osBuild,
+      agents.agent_version AS agentVersion,
+      agents.deployment_group AS deploymentGroup,
+      agents.status,
+      agents.last_ip AS lastIp,
+      agents.last_heartbeat_at AS lastHeartbeatAt,
+      agents.enrolled_at AS enrolledAt,
+      agents.created_at AS createdAt,
+      agents.updated_at AS updatedAt,
+      ie.department
     FROM agents
+    ${AGENTS_IP_ENTRY_JOIN}
     ${whereSql}
-    ORDER BY enrolled_at DESC
+    ORDER BY agents.enrolled_at DESC
     LIMIT ? OFFSET ?
     `,
     [...params, limit, offset],
@@ -224,7 +239,7 @@ export async function listAgentIds(filters) {
   const { whereSql, params } = buildAgentsWhereClause(filters);
 
   const [rows] = await pool.execute(
-    `SELECT id FROM agents ${whereSql} ORDER BY enrolled_at DESC LIMIT ${MAX_MATCHING_IDS}`,
+    `SELECT agents.id FROM agents ${AGENTS_IP_ENTRY_JOIN} ${whereSql} ORDER BY agents.enrolled_at DESC LIMIT ${MAX_MATCHING_IDS}`,
     params,
   );
   return rows.map((r) => r.id);

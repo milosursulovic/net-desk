@@ -23,6 +23,7 @@ import {
   updateIpEntryPatch,
   listComputersWithoutAgent,
   listAllComputersWithoutAgent,
+  listDistinctDepartments,
 } from "../repositories/ipEntries.repo.js";
 import { patchMetadataForIpEntry } from "./metadata.service.js";
 import {
@@ -97,7 +98,7 @@ export async function heartbeat(agentId, dto, remoteIp) {
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 const STALE_THRESHOLD_MS = 30 * 60 * 1000;
 
-function computeConnectivityStatus(lastHeartbeatAt) {
+export function computeConnectivityStatus(lastHeartbeatAt) {
   if (!lastHeartbeatAt) return "unknown";
   const age = Date.now() - new Date(lastHeartbeatAt).getTime();
   if (age <= ONLINE_THRESHOLD_MS) return "online";
@@ -115,6 +116,7 @@ export async function listAgentsService({
   os,
   version,
   versionNot,
+  department,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -129,6 +131,7 @@ export async function listAgentsService({
     os,
     version,
     versionNot,
+    department,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,
@@ -156,7 +159,8 @@ export async function listAgentIdsService(filters) {
 export async function agentFilterOptionsService() {
   const os = await listDistinctAgentOs();
   const version = await listDistinctAgentVersions();
-  return { os, version };
+  const department = await listDistinctDepartments();
+  return { os, version, department };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search }) {

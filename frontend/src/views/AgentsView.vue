@@ -78,6 +78,11 @@
             />
             Isključi (prikaži zaostale)
           </label>
+
+          <select v-model="department" class="app-input w-auto" aria-label="Filter po odeljenju">
+            <option value="">Sva odeljenja</option>
+            <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
+          </select>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -162,6 +167,10 @@
         </div>
         <FormInput v-if="isBatchServiceCommand" v-model.trim="batchForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
       </div>
+      <label class="flex items-center gap-2 text-sm text-blue-900">
+        <input type="checkbox" v-model="batchOnlyOnline" />
+        Pošalji samo online agentima (preskoči offline/neaktivne)
+      </label>
       <div v-if="batchForm.commandType === 'run_powershell_script'" class="space-y-2">
         <div>
           <label class="text-sm text-slate-600">Gotova skripta (opciono)</label>
@@ -319,6 +328,7 @@ const {
   os,
   version,
   versionMode,
+  department,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -347,6 +357,7 @@ const {
     os: { type: 'string', default: '', omitIfEmpty: true },
     version: { type: 'string', default: '', omitIfEmpty: true },
     versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
+    department: { type: 'string', default: '', omitIfEmpty: true },
     enrolledFrom: { type: 'string', default: '', omitIfEmpty: true },
     enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
     heartbeatFrom: { type: 'string', default: '', omitIfEmpty: true },
@@ -360,6 +371,7 @@ const {
     'os',
     'version',
     'versionMode',
+    'department',
     'enrolledFrom',
     'enrolledTo',
     'heartbeatFrom',
@@ -379,6 +391,7 @@ watch(
     os,
     version,
     versionMode,
+    department,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,
@@ -394,6 +407,7 @@ const searchInput = ref(search.value)
 const loading = ref(false)
 const osOptions = ref([])
 const versionOptions = ref([])
+const departmentOptions = ref([])
 
 // Detaljni filteri su na mobilnom skupljeni po difoltu (ispod sm) - broj na
 // dugmetu je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i
@@ -405,6 +419,7 @@ const activeDetailedFilterCount = computed(() => {
   if (deploymentGroup.value) n++
   if (os.value) n++
   if (version.value) n++
+  if (department.value) n++
   if (enrolledFrom.value) n++
   if (enrolledTo.value) n++
   if (heartbeatFrom.value) n++
@@ -421,6 +436,7 @@ async function fetchFilterOptions() {
     const data = await res.json()
     osOptions.value = data.os || []
     versionOptions.value = data.version || []
+    departmentOptions.value = data.department || []
   } catch (e) {
     console.error('Neuspešno dohvatanje opcija filtera', e)
   }
@@ -432,6 +448,7 @@ function clearDetailedFilters() {
   os.value = ''
   version.value = ''
   versionMode.value = 'eq'
+  department.value = ''
   enrolledFrom.value = ''
   enrolledTo.value = ''
   heartbeatFrom.value = ''
@@ -449,6 +466,7 @@ function buildFilterParams() {
   if (version.value) {
     params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
   }
+  if (department.value) params.set('department', department.value)
   if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
   if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
   if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)
@@ -565,6 +583,7 @@ async function selectAllMatching() {
 const batchForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
 const isBatchServiceCommand = computed(() => SERVICE_COMMANDS.has(batchForm.value.commandType))
 const batchSelectedPresetId = ref('')
+const batchOnlyOnline = ref(false)
 const sendingBatch = ref(false)
 
 function applyBatchPreset() {
@@ -604,6 +623,7 @@ async function sendBatchJob() {
         commandType: batchForm.value.commandType,
         payload,
         agentIds: [...selectedIds.value],
+        onlyOnline: batchOnlyOnline.value,
       }),
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju batch komande'))

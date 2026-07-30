@@ -58,6 +58,10 @@ export const CreateJobSchema = withCommandRefinements(JobCommandFields);
 export const BatchCreateJobSchema = withCommandRefinements(
   JobCommandFields.extend({
     agentIds: z.array(z.coerce.number().int().positive()).min(1).max(500),
+    // Kad je true, agenti koji trenutno nisu "online" (ista definicija kao
+    // computeConnectivityStatus u agents.service.js) se preskaču umesto da
+    // im se pošalje komanda koju možda neće pokupiti još dugo.
+    onlyOnline: z.boolean().optional().default(false),
   }),
 );
 

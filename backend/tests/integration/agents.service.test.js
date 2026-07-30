@@ -316,4 +316,48 @@ describe("agents.service (integration, real DB)", () => {
       expect(notMatched.ids).toEqual([]);
     });
   });
+
+  describe("department filter (joined from ip_entries via agents.ip_entry_id)", () => {
+    it("filters listAgentsService/listAgentIdsService by department", async () => {
+      const ip = testIp();
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const sync = await syncAgentInventory(found, {
+        ip,
+        hostname,
+        department: "VITEST_TEST_DEPT",
+      });
+      ipEntryId = sync.ipEntryId;
+
+      const matched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        department: "VITEST_TEST_DEPT",
+      });
+      expect(matched.items.map((a) => a.id)).toContain(agentId);
+      expect(matched.items.find((a) => a.id === agentId).department).toBe("VITEST_TEST_DEPT");
+
+      const notMatched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        department: "Some Other Department",
+      });
+      expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
+
+      const ids = await listAgentIdsService({
+        search: hostname,
+        status: "all",
+        department: "VITEST_TEST_DEPT",
+      });
+      expect(ids.ids).toEqual([agentId]);
+    });
+  });
 });
