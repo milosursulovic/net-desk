@@ -6,6 +6,11 @@
 // konfiguracije).
 export const POWERSHELL_PRESETS = [
   {
+    id: 'test-script',
+    label: '🧪 Test skripta (provera da agent izvršava komande)',
+    script: '"Test OK - $env:COMPUTERNAME - $(Get-Date)"',
+  },
+  {
     id: 'flush-dns',
     label: 'Isprazni DNS keš',
     script: 'Clear-DnsClientCache; "DNS keš ispražnjen."',
