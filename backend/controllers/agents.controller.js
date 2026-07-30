@@ -7,6 +7,7 @@ import {
   enrollAgent,
   heartbeat,
   listAgentsService,
+  listAgentIdsService,
   agentFilterOptionsService,
   listComputersWithoutAgentService,
   listAllComputersWithoutAgentService,
@@ -61,40 +62,38 @@ export async function inventoryController(req, res) {
   res.json(out);
 }
 
+// Deljeno između listAgentsController (paginirano) i listAgentIdsController
+// ("selektuj sve po filteru") - isti query-param oblik, jedno mesto za izmenu.
+function parseAgentListFilters(query) {
+  return {
+    search: String(query.search || "").trim(),
+    status: STATUS_FILTERS.has(query.status) ? query.status : "all",
+    connectivityStatus: CONNECTIVITY_FILTERS.has(query.connectivityStatus)
+      ? query.connectivityStatus
+      : undefined,
+    deploymentGroup: DEPLOYMENT_GROUP_FILTERS.has(query.deploymentGroup)
+      ? query.deploymentGroup
+      : undefined,
+    os: String(query.os || "").trim() || undefined,
+    version: String(query.version || "").trim() || undefined,
+    versionNot: String(query.versionNot || "").trim() || undefined,
+    enrolledFrom: dateFilter(query.enrolledFrom),
+    enrolledTo: dateFilter(query.enrolledTo),
+    heartbeatFrom: dateFilter(query.heartbeatFrom),
+    heartbeatTo: dateFilter(query.heartbeatTo),
+  };
+}
+
 export async function listAgentsController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 50), 1, 200);
-  const search = String(req.query.search || "").trim();
-  const status = STATUS_FILTERS.has(req.query.status) ? req.query.status : "all";
-  const connectivityStatus = CONNECTIVITY_FILTERS.has(req.query.connectivityStatus)
-    ? req.query.connectivityStatus
-    : undefined;
-  const deploymentGroup = DEPLOYMENT_GROUP_FILTERS.has(req.query.deploymentGroup)
-    ? req.query.deploymentGroup
-    : undefined;
-  const os = String(req.query.os || "").trim() || undefined;
-  const version = String(req.query.version || "").trim() || undefined;
-  const versionNot = String(req.query.versionNot || "").trim() || undefined;
-  const enrolledFrom = dateFilter(req.query.enrolledFrom);
-  const enrolledTo = dateFilter(req.query.enrolledTo);
-  const heartbeatFrom = dateFilter(req.query.heartbeatFrom);
-  const heartbeatTo = dateFilter(req.query.heartbeatTo);
 
-  const out = await listAgentsService({
-    page,
-    limit,
-    search,
-    status,
-    connectivityStatus,
-    deploymentGroup,
-    os,
-    version,
-    versionNot,
-    enrolledFrom,
-    enrolledTo,
-    heartbeatFrom,
-    heartbeatTo,
-  });
+  const out = await listAgentsService({ page, limit, ...parseAgentListFilters(req.query) });
+  res.json(out);
+}
+
+export async function listAgentIdsController(req, res) {
+  const out = await listAgentIdsService(parseAgentListFilters(req.query));
   res.json(out);
 }
 

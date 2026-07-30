@@ -5,6 +5,7 @@
       <div class="flex gap-2">
         <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
         <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
+        <AppButton variant="secondary" to="/agent-batches">Batch komande</AppButton>
       </div>
     </div>
 
@@ -127,16 +128,30 @@
 
       <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} agenata</p>
 
-      <label v-if="items.length" class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAllVisible" />
-        Selektuj sve prikazane ({{ selectedIds.size }} izabrano)
-      </label>
+      <div v-if="items.length" class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAllVisible" />
+          Selektuj sve prikazane ({{ selectedIds.size }} izabrano)
+        </label>
+        <button
+          type="button"
+          class="text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:no-underline"
+          :disabled="selectingAllMatching"
+          @click="selectAllMatching"
+        >
+          {{ selectingAllMatching ? 'Selektujem…' : `Selektuj sve po filteru (${total})` }}
+        </button>
+      </div>
     </div>
 
     <!-- Batch komanda - vidljivo samo kad je bar 1 agent selektovan -->
     <div v-if="selectedIds.size" class="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
       <div class="font-medium text-blue-900">
         Pošalji komandu na {{ selectedIds.size }} izabranih agenata
+      </div>
+      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-red-700">
+        Batch komande podržavaju najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju
+        (npr. suzi filter) pre slanja.
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -162,7 +177,11 @@
       </div>
       <div class="flex justify-end gap-2">
         <AppButton variant="neutral" @click="clearSelection">Poništi selekciju</AppButton>
-        <AppButton variant="success" :disabled="sendingBatch" @click="sendBatchJob">
+        <AppButton
+          variant="success"
+          :disabled="sendingBatch || selectedIds.size > MAX_BATCH_AGENTS"
+          @click="sendBatchJob"
+        >
           {{ sendingBatch ? 'Šaljem…' : `Pošalji na ${selectedIds.size} agenata` }}
         </AppButton>
       </div>
@@ -264,7 +283,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -280,9 +299,13 @@ import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
+const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+
+// Isti limit kao BatchCreateJobSchema.agentIds max u backend/dtos/agentJobs.dto.js.
+const MAX_BATCH_AGENTS = 500
 
 const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
 
@@ -415,25 +438,30 @@ function clearDetailedFilters() {
   heartbeatTo.value = ''
 }
 
+// Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
+// (šalje na /agents/ids bez page/limit - svi id-jevi koji odgovaraju
+// filterima, ne samo trenutna strana) - isti set filtera na oba mesta.
+function buildFilterParams() {
+  const params = new URLSearchParams({ search: search.value, status: status.value })
+  if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
+  if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
+  if (os.value) params.set('os', os.value)
+  if (version.value) {
+    params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
+  }
+  if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
+  if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
+  if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)
+  if (heartbeatTo.value) params.set('heartbeatTo', heartbeatTo.value)
+  return params
+}
+
 async function fetchData() {
   loading.value = true
   try {
-    const params = new URLSearchParams({
-      page: page.value,
-      limit: limit.value,
-      search: search.value,
-      status: status.value,
-    })
-    if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
-    if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
-    if (os.value) params.set('os', os.value)
-    if (version.value) {
-      params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
-    }
-    if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
-    if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
-    if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)
-    if (heartbeatTo.value) params.set('heartbeatTo', heartbeatTo.value)
+    const params = buildFilterParams()
+    params.set('page', page.value)
+    params.set('limit', limit.value)
 
     const res = await fetchWithAuth(`/api/protected/agents?${params.toString()}`, {
       signal: getSignal(),
@@ -516,6 +544,24 @@ function clearSelection() {
   selectedIds.value = new Set()
 }
 
+const selectingAllMatching = ref(false)
+
+async function selectAllMatching() {
+  selectingAllMatching.value = true
+  try {
+    const params = buildFilterParams()
+    const res = await fetchWithAuth(`/api/protected/agents/ids?${params.toString()}`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    selectedIds.value = new Set(data.ids || [])
+  } catch (e) {
+    console.error('Neuspešno dohvatanje id-jeva po filteru', e)
+    showToast('Greška pri selekciji svih agenata', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    selectingAllMatching.value = false
+  }
+}
+
 const batchForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
 const isBatchServiceCommand = computed(() => SERVICE_COMMANDS.has(batchForm.value.commandType))
 const batchSelectedPresetId = ref('')
@@ -568,6 +614,9 @@ async function sendBatchJob() {
     showToast(parts.join(', '))
 
     clearSelection()
+    if (data.batchId) {
+      router.push(`/agent-batches/${data.batchId}`)
+    }
   } catch (e) {
     console.error(e)
     showToast(e?.message || 'Greška pri slanju batch komande', { prefix: '❌ ', duration: 3000 })

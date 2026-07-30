@@ -5,7 +5,10 @@ import {
   createBatchJobService,
   pollJobsService,
   submitJobResultService,
+  getBatchStatusService,
+  listJobBatchesService,
 } from "../../services/agentJobs.service.js";
+import { pool } from "../../db/pool.js";
 import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 
@@ -130,6 +133,18 @@ describe("agentJobs.service (integration, real DB)", () => {
   });
 
   describe("createBatchJobService", () => {
+    let batchIds = [];
+
+    afterEach(async () => {
+      if (batchIds.length) {
+        await pool.execute(
+          `DELETE FROM job_batches WHERE id IN (${batchIds.map(() => "?").join(",")})`,
+          batchIds,
+        );
+      }
+      batchIds = [];
+    });
+
     it("creates a job for each active agent in the list", async () => {
       const otherAgentId = await insertAgent({
         agentUid: crypto.randomUUID(),
@@ -147,6 +162,7 @@ describe("agentJobs.service (integration, real DB)", () => {
           { commandType: "delete_temp_files", payload: null },
           null,
         );
+        batchIds.push(out.batchId);
         expect(out.created).toHaveLength(2);
         expect(out.skipped).toHaveLength(0);
 
@@ -177,6 +193,7 @@ describe("agentJobs.service (integration, real DB)", () => {
           { commandType: "delete_temp_files", payload: null },
           null,
         );
+        batchIds.push(out.batchId);
         expect(out.created).toHaveLength(1);
         expect(out.created[0].agentId).toBe(agentId);
         expect(out.skipped).toHaveLength(2);
@@ -193,10 +210,63 @@ describe("agentJobs.service (integration, real DB)", () => {
         { commandType: "delete_temp_files", payload: null },
         null,
       );
+      batchIds.push(out.batchId);
       expect(out.created).toHaveLength(1);
 
       const jobs = await pollJobsService(agentId);
       expect(jobs).toHaveLength(1);
+    });
+
+    it("returns a batchId, and getBatchStatusService reports per-agent status through pending/sent/completed", async () => {
+      const otherAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-batch-status",
+        hostname: testHostname("_batch_status"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+
+      try {
+        const out = await createBatchJobService(
+          [agentId, otherAgentId],
+          { commandType: "delete_temp_files", payload: null },
+          null,
+        );
+        batchIds.push(out.batchId);
+        expect(out.batchId).toBeTruthy();
+
+        let status = await getBatchStatusService(out.batchId);
+        expect(status.batch.commandType).toBe("delete_temp_files");
+        expect(status.items).toHaveLength(2);
+        expect(status.items.every((i) => i.status === "pending")).toBe(true);
+
+        await pollJobsService(agentId);
+        status = await getBatchStatusService(out.batchId);
+        const firstItem = status.items.find((i) => i.agentId === agentId);
+        expect(firstItem.status).toBe("sent");
+        expect(status.items.find((i) => i.agentId === otherAgentId).status).toBe("pending");
+
+        await submitJobResultService(agentId, firstItem.id, { success: true, exitCode: 0 });
+        status = await getBatchStatusService(out.batchId);
+        expect(status.items.find((i) => i.agentId === agentId).status).toBe("completed");
+
+        const history = await listJobBatchesService({ page: 1, limit: 20 });
+        const historyEntry = history.items.find((b) => b.batchId === out.batchId);
+        expect(historyEntry).toBeTruthy();
+        expect(historyEntry.total).toBe(2);
+        expect(historyEntry.completedCount).toBe(1);
+        expect(historyEntry.pendingCount).toBe(1);
+      } finally {
+        await deleteTestAgent(otherAgentId);
+      }
+    });
+
+    it("getBatchStatusService throws 404 for an unknown batchId", async () => {
+      await expect(
+        getBatchStatusService("00000000-0000-0000-0000-000000000000"),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 });

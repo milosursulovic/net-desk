@@ -8,6 +8,7 @@ import {
   findAgentById,
   updateHeartbeat,
   listAgents,
+  listAgentIds,
   listDistinctAgentOs,
   listDistinctAgentVersions,
   revokeAgentById,
@@ -143,6 +144,13 @@ export async function listAgentsService({
   }));
 
   return { items: itemsWithStatus, page: safePage, limit, total, totalPages, search, status };
+}
+
+// Za "selektuj sve po filteru" na /agents - isti filter-oblik kao
+// listAgentsService, bez page/limit (svi id-jevi, ne jedna strana).
+export async function listAgentIdsService(filters) {
+  const ids = await listAgentIds(filters);
+  return { ids };
 }
 
 export async function agentFilterOptionsService() {

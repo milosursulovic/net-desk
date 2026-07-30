@@ -10,8 +10,11 @@ import {
   listJobsForAgentService,
   pollJobsService,
   submitJobResultService,
+  getBatchStatusService,
+  listJobBatchesService,
 } from "../services/agentJobs.service.js";
 import { parseIdParam } from "../utils/idParam.js";
+import { toInt, clamp } from "../utils/numbers.js";
 import { badRequest } from "../utils/httpError.js";
 
 // Admin (JWT) — /api/protected/agents/:id/jobs
@@ -35,6 +38,22 @@ export async function createBatchJobController(req, res) {
   const { agentIds, ...dto } = parsed.data;
   const out = await createBatchJobService(agentIds, dto, req.user?.userId ?? null);
   res.status(201).json(out);
+}
+
+export async function getBatchStatusController(req, res) {
+  const batchId = String(req.params.batchId || "").trim();
+  if (!batchId) throw badRequest("Neispravan ID batch-a");
+
+  const out = await getBatchStatusService(batchId);
+  res.json(out);
+}
+
+export async function listJobBatchesController(req, res) {
+  const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+  const limit = clamp(toInt(req.query.limit, 20), 1, 100);
+
+  const out = await listJobBatchesService({ page, limit });
+  res.json(out);
 }
 
 export async function listJobsController(req, res) {

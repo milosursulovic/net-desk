@@ -104,7 +104,10 @@ const CONNECTIVITY_STATUS_SQL = `
   END
 `;
 
-export async function listAgents({
+// Deljeno između listAgents() (paginirano) i listAgentIds() (svi id-jevi
+// koji odgovaraju filterima, za "selektuj sve po filteru" preko svih
+// strana) - isti filteri, ista logika, jedno mesto za izmenu.
+function buildAgentsWhereClause({
   search,
   status,
   connectivityStatus,
@@ -116,8 +119,6 @@ export async function listAgents({
   enrolledTo,
   heartbeatFrom,
   heartbeatTo,
-  limit,
-  offset,
 }) {
   const searchClause = buildLikeSearch(["hostname", "agent_uid"], search);
   const whereParts = [];
@@ -172,6 +173,12 @@ export async function listAgents({
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+  return { whereSql, params };
+}
+
+export async function listAgents(filters) {
+  const { whereSql, params } = buildAgentsWhereClause(filters);
+  const { limit, offset } = filters;
 
   const [[{ total }]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM agents ${whereSql}`,
@@ -205,6 +212,22 @@ export async function listAgents({
   );
 
   return { items, total: Number(total) || 0 };
+}
+
+// Za "selektuj sve po filteru" na /agents - vraća SVE id-jeve koji
+// odgovaraju filterima, ne samo trenutnu stranu paginacije. 1000 je
+// sigurnosni gornji limit (ne prava paginacija) - dovoljno velik za
+// realnu veličinu flote, sprečava patološki neograničen upit.
+const MAX_MATCHING_IDS = 1000;
+
+export async function listAgentIds(filters) {
+  const { whereSql, params } = buildAgentsWhereClause(filters);
+
+  const [rows] = await pool.execute(
+    `SELECT id FROM agents ${whereSql} ORDER BY enrolled_at DESC LIMIT ${MAX_MATCHING_IDS}`,
+    params,
+  );
+  return rows.map((r) => r.id);
 }
 
 export async function listDistinctAgentOs() {

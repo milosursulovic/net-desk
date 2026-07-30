@@ -22,6 +22,7 @@ function mapRow(row) {
   return {
     id: row.id,
     agentId: row.agentId,
+    batchId: row.batchId,
     commandType: row.commandType,
     payload: parsePayload(row.payload),
     status: row.status,
@@ -39,6 +40,7 @@ function mapRow(row) {
 const SELECT_FIELDS = `
   id,
   agent_id AS agentId,
+  batch_id AS batchId,
   command_type AS commandType,
   payload,
   status,
@@ -52,16 +54,119 @@ const SELECT_FIELDS = `
   completed_at AS completedAt
 `;
 
-export async function insertJob({ agentId, commandType, payload, createdByUserId }) {
+export async function insertJob({ agentId, batchId, commandType, payload, createdByUserId }) {
   const [result] = await pool.execute(
     `
     INSERT INTO agent_jobs
-      (agent_id, command_type, payload, status, created_by_user_id)
-    VALUES (?, ?, ?, 'pending', ?)
+      (agent_id, batch_id, command_type, payload, status, created_by_user_id)
+    VALUES (?, ?, ?, ?, 'pending', ?)
     `,
-    [agentId, commandType, payload ? JSON.stringify(payload) : null, createdByUserId],
+    [agentId, batchId ?? null, commandType, payload ? JSON.stringify(payload) : null, createdByUserId],
   );
   return result.insertId;
+}
+
+// job_batches.id je CHAR(36) UUID (crypto.randomUUID(), generisan u
+// agentJobs.service.js) - jedan red po batch pozivu, deca su agent_jobs
+// redovi povezani preko batch_id FK-a. Odvojena tabela (ne samo GROUP BY
+// po agent_jobs.batch_id) namerno - lista istorije ostaje brz indeksovan
+// lookup i kad agent_jobs naraste.
+export async function insertJobBatch({ id, commandType, createdByUserId }) {
+  await pool.execute(
+    `
+    INSERT INTO job_batches (id, command_type, created_by_user_id)
+    VALUES (?, ?, ?)
+    `,
+    [id, commandType, createdByUserId],
+  );
+  return id;
+}
+
+export async function findJobBatchById(id) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      id AS batchId,
+      command_type AS commandType,
+      created_by_user_id AS createdByUserId,
+      created_at AS createdAt
+    FROM job_batches
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [id],
+  );
+  return rows?.[0] || null;
+}
+
+export async function listJobsForBatch(batchId) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      j.id,
+      j.agent_id AS agentId,
+      j.batch_id AS batchId,
+      j.command_type AS commandType,
+      j.payload,
+      j.status,
+      j.created_by_user_id AS createdByUserId,
+      j.exit_code AS exitCode,
+      j.output,
+      j.error_output AS errorOutput,
+      j.duration_ms AS durationMs,
+      j.created_at AS createdAt,
+      j.sent_at AS sentAt,
+      j.completed_at AS completedAt,
+      a.hostname,
+      a.agent_uid AS agentUid
+    FROM agent_jobs j
+    JOIN agents a ON a.id = j.agent_id
+    WHERE j.batch_id = ?
+    ORDER BY a.hostname ASC
+    `,
+    [batchId],
+  );
+  return rows.map((r) => ({ ...mapRow(r), hostname: r.hostname, agentUid: r.agentUid }));
+}
+
+export async function listJobBatches({ limit, offset }) {
+  const [[{ total }]] = await pool.execute(`SELECT COUNT(*) AS total FROM job_batches`);
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      jb.id AS batchId,
+      jb.command_type AS commandType,
+      jb.created_by_user_id AS createdByUserId,
+      jb.created_at AS createdAt,
+      COUNT(j.id) AS total,
+      SUM(j.status = 'pending') AS pendingCount,
+      SUM(j.status = 'sent') AS sentCount,
+      SUM(j.status = 'completed') AS completedCount,
+      SUM(j.status = 'failed') AS failedCount
+    FROM job_batches jb
+    LEFT JOIN agent_jobs j ON j.batch_id = jb.id
+    GROUP BY jb.id
+    ORDER BY jb.created_at DESC
+    LIMIT ? OFFSET ?
+    `,
+    [limit, offset],
+  );
+
+  return {
+    items: rows.map((r) => ({
+      batchId: r.batchId,
+      commandType: r.commandType,
+      createdByUserId: r.createdByUserId,
+      createdAt: r.createdAt,
+      total: Number(r.total) || 0,
+      pendingCount: Number(r.pendingCount) || 0,
+      sentCount: Number(r.sentCount) || 0,
+      completedCount: Number(r.completedCount) || 0,
+      failedCount: Number(r.failedCount) || 0,
+    })),
+    total: Number(total) || 0,
+  };
 }
 
 export async function findJobById(id) {

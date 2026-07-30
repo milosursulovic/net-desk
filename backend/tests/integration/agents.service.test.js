@@ -6,6 +6,7 @@ import {
   getAgentService,
   revokeAgentService,
   listAgentsService,
+  listAgentIdsService,
   setAgentDeploymentGroupService,
 } from "../../services/agents.service.js";
 import { findAgentById } from "../../repositories/agents.repo.js";
@@ -289,6 +290,30 @@ describe("agents.service (integration, real DB)", () => {
         enrolledTo: "2000-01-01",
       });
       expect(outsideRange.items.map((a) => a.id)).not.toContain(agentId);
+    });
+  });
+
+  describe("listAgentIdsService (select-all-across-pages)", () => {
+    it("returns matching ids unpaginated, ignoring page/limit entirely", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname, osCaption: "VITEST_TEST_OS_SelectAll" });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const matched = await listAgentIdsService({
+        search: hostname,
+        status: "all",
+        os: "VITEST_TEST_OS_SelectAll",
+      });
+      expect(matched.ids).toEqual([agentId]);
+
+      const notMatched = await listAgentIdsService({
+        search: hostname,
+        status: "all",
+        os: "Some Other OS",
+      });
+      expect(notMatched.ids).toEqual([]);
     });
   });
 });

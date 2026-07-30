@@ -19,6 +19,8 @@ const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
 const AgentsView = () => import('@/views/AgentsView.vue')
 const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
+const BatchJobsView = () => import('@/views/BatchJobsView.vue')
+const BatchJobDetailView = () => import('@/views/BatchJobDetailView.vue')
 const ComputersWithoutAgentView = () => import('@/views/ComputersWithoutAgentView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
 const UsersView = () => import('@/views/UsersView.vue')
@@ -150,6 +152,26 @@ const router = createRouter({
             breadcrumbParent: { label: 'Agenti', to: '/agents' },
           },
           component: AgentReleasesView,
+        },
+        {
+          path: 'agent-batches',
+          name: 'agent-batches',
+          meta: {
+            title: 'Batch komande - NetDesk',
+            breadcrumb: 'Batch komande',
+            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+          },
+          component: BatchJobsView,
+        },
+        {
+          path: 'agent-batches/:batchId',
+          name: 'agent-batch-detail',
+          meta: {
+            title: 'Status batch komande - NetDesk',
+            breadcrumb: 'Status batch komande',
+            breadcrumbParent: { label: 'Batch komande', to: '/agent-batches' },
+          },
+          component: BatchJobDetailView,
         },
         {
           path: 'computers-without-agent',

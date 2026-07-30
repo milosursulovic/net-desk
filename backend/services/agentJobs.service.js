@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import {
   insertJob,
   findJobById,
@@ -5,6 +6,10 @@ import {
   markJobsSent,
   completeJob,
   listJobsForAgent,
+  insertJobBatch,
+  findJobBatchById,
+  listJobsForBatch,
+  listJobBatches,
 } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
 import { paginate } from "../utils/pagination.js";
@@ -21,6 +26,7 @@ export async function createJobService(agentId, dto, createdByUserId) {
 
   const id = await insertJob({
     agentId,
+    batchId: null,
     commandType: dto.commandType,
     payload: dto.payload ?? null,
     createdByUserId,
@@ -37,6 +43,9 @@ export async function createBatchJobService(agentIds, dto, createdByUserId) {
   const created = [];
   const skipped = [];
 
+  const batchId = crypto.randomUUID();
+  await insertJobBatch({ id: batchId, commandType: dto.commandType, createdByUserId });
+
   for (const agentId of uniqueIds) {
     const agent = await findAgentById(agentId);
     if (!agent) {
@@ -50,6 +59,7 @@ export async function createBatchJobService(agentIds, dto, createdByUserId) {
 
     const id = await insertJob({
       agentId,
+      batchId,
       commandType: dto.commandType,
       payload: dto.payload ?? null,
       createdByUserId,
@@ -57,7 +67,24 @@ export async function createBatchJobService(agentIds, dto, createdByUserId) {
     created.push({ agentId, hostname: agent.hostname, jobId: id });
   }
 
-  return { created, skipped };
+  return { batchId, created, skipped };
+}
+
+export async function getBatchStatusService(batchId) {
+  const batch = await findJobBatchById(batchId);
+  if (!batch) {
+    throw notFound("Batch nije pronađen");
+  }
+  const items = await listJobsForBatch(batchId);
+  return { batch, items };
+}
+
+export async function listJobBatchesService({ page, limit }) {
+  const offset = (page - 1) * limit;
+  const { items, total } = await listJobBatches({ limit, offset });
+  const { page: safePage, totalPages } = paginate({ page, limit, total });
+
+  return { items, page: safePage, limit, total, totalPages };
 }
 
 export async function listJobsForAgentService(agentId, { page, limit, status }) {
