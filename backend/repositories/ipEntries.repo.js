@@ -61,6 +61,7 @@ export async function findIpEntryById(id) {
       os,
       remote_script AS remoteScript,
       department,
+      site,
       entry_type AS entryType,
       metadata_id AS metadata,
       is_online AS isOnline,
@@ -89,6 +90,7 @@ export async function findIpEntryByIdLean(id) {
       rdp_app AS rdpApp,
       os,
       department,
+      site,
       entry_type AS entryType,
       is_online AS isOnline,
       last_checked AS lastChecked,
@@ -114,8 +116,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, department, description, remote_script, entry_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, department, site, description, remote_script, entry_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -124,6 +126,7 @@ export async function insertIpEntry(row) {
       row.rdpApp,
       row.os,
       row.department,
+      row.site ?? null,
       row.description,
       row.remoteScript,
       row.entryType ?? null,
@@ -157,6 +160,7 @@ export async function listIpEntries({
   entryType,
   department,
   os,
+  site,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -182,6 +186,11 @@ export async function listIpEntries({
   if (os) {
     whereBaseParts.push("os = ?");
     baseParams.push(os);
+  }
+
+  if (site) {
+    whereBaseParts.push("site = ?");
+    baseParams.push(site);
   }
 
   const whereBaseSql = whereBaseParts.length
@@ -223,6 +232,7 @@ export async function listIpEntries({
       rdp_app AS rdpApp,
       os,
       department,
+      site,
       entry_type AS entryType,
       metadata_id AS metadata,
       is_online AS isOnline,
@@ -319,48 +329,79 @@ export async function listIpEntries({
   };
 }
 
-export async function listDistinctDepartments() {
+export async function listDistinctDepartments(site) {
+  const whereParts = ["department IS NOT NULL", "department != ''"];
+  const params = [];
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
   const [rows] = await pool.execute(
-    `SELECT DISTINCT department FROM ip_entries WHERE department IS NOT NULL AND department != '' ORDER BY department`,
+    `SELECT DISTINCT department FROM ip_entries WHERE ${whereParts.join(" AND ")} ORDER BY department`,
+    params,
   );
   return rows.map((r) => r.department);
 }
 
-export async function listDistinctOs() {
+export async function listDistinctOs(site) {
+  const whereParts = ["os IS NOT NULL", "os != ''"];
+  const params = [];
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
   const [rows] = await pool.execute(
-    `SELECT DISTINCT os FROM ip_entries WHERE os IS NOT NULL AND os != '' ORDER BY os`,
+    `SELECT DISTINCT os FROM ip_entries WHERE ${whereParts.join(" AND ")} ORDER BY os`,
+    params,
   );
   return rows.map((r) => r.os);
 }
 
-export async function listIpEntriesCreatedSince(since, limit = 20) {
+export async function listIpEntriesCreatedSince(since, limit = 20, site) {
+  const whereParts = ["created_at >= ?"];
+  const params = [since];
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
+  params.push(limit);
   const [rows] = await pool.execute(
     `
     SELECT id, ip, computer_name AS computerName, department, created_at AS createdAt
     FROM ip_entries
-    WHERE created_at >= ?
+    WHERE ${whereParts.join(" AND ")}
     ORDER BY created_at DESC
     LIMIT ?
     `,
-    [since, limit],
+    params,
   );
   return rows;
 }
 
-export async function countIpEntriesTotal() {
-  const [[{ cnt }]] = await pool.execute(`SELECT COUNT(*) AS cnt FROM ip_entries`);
-  return Number(cnt) || 0;
-}
-
-export async function countIpEntriesCreatedSince(since) {
+export async function countIpEntriesTotal(site) {
+  const whereSql = site ? "WHERE site = ?" : "";
   const [[{ cnt }]] = await pool.execute(
-    `SELECT COUNT(*) AS cnt FROM ip_entries WHERE created_at >= ?`,
-    [since],
+    `SELECT COUNT(*) AS cnt FROM ip_entries ${whereSql}`,
+    site ? [site] : [],
   );
   return Number(cnt) || 0;
 }
 
-export async function listComputersWithoutAgent({ search, page, limit }) {
+export async function countIpEntriesCreatedSince(since, site) {
+  const whereParts = ["created_at >= ?"];
+  const params = [since];
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
+  const [[{ cnt }]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM ip_entries WHERE ${whereParts.join(" AND ")}`,
+    params,
+  );
+  return Number(cnt) || 0;
+}
+
+export async function listComputersWithoutAgent({ search, page, limit, site }) {
   const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
     prefixColumns: ["ip"],
   });
@@ -374,6 +415,11 @@ export async function listComputersWithoutAgent({ search, page, limit }) {
   if (searchClause.where) {
     whereParts.push(searchClause.where);
     params.push(...searchClause.params);
+  }
+
+  if (site) {
+    whereParts.push("e.site = ?");
+    params.push(site);
   }
 
   const whereSql = `WHERE ${whereParts.join(" AND ")}`;
@@ -410,7 +456,7 @@ export async function listComputersWithoutAgent({ search, page, limit }) {
 
 // Puna (nepaginirana) verzija listComputersWithoutAgent - za PDF export, gde
 // treba kompletna lista, ne samo trenutna stranica.
-export async function listAllComputersWithoutAgent(search) {
+export async function listAllComputersWithoutAgent(search, site) {
   const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
     prefixColumns: ["ip"],
   });
@@ -424,6 +470,11 @@ export async function listAllComputersWithoutAgent(search) {
   if (searchClause.where) {
     whereParts.push(searchClause.where);
     params.push(...searchClause.params);
+  }
+
+  if (site) {
+    whereParts.push("e.site = ?");
+    params.push(site);
   }
 
   const whereSql = `WHERE ${whereParts.join(" AND ")}`;
@@ -448,7 +499,11 @@ export async function listAllComputersWithoutAgent(search) {
   return entries;
 }
 
-export async function duplicateComputerNameGroups({ search, status }) {
+// site je NAMERNO UVEK primenjen (ne opcion) kad je zadat - duplikat imena
+// se gleda PO LOKACIJI, ne globalno preko cele flote, inače isto ime
+// računara na dve različite fizičke lokacije (npr. "PC-01" u bolnici i
+// "PC-01" u domu zdravlja) bi se stalno lažno prijavljivalo kao duplikat.
+export async function duplicateComputerNameGroups({ search, status, site }) {
   const base = buildFastSearchSql(search || "");
   const whereParts = [];
   const params = [];
@@ -460,6 +515,11 @@ export async function duplicateComputerNameGroups({ search, status }) {
 
   if (status === "online") whereParts.push("is_online = 1");
   else if (status === "offline") whereParts.push("is_online = 0");
+
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
 
   whereParts.push("TRIM(COALESCE(computer_name,'')) <> ''");
 
@@ -485,6 +545,13 @@ export async function duplicateComputerNameGroups({ search, status }) {
   let totalRows = 0;
 
   for (const g of groups) {
+    const itemsWhereParts = ["LOWER(TRIM(computer_name)) = ?"];
+    const itemsParams = [g.compKey];
+    if (site) {
+      itemsWhereParts.push("site = ?");
+      itemsParams.push(site);
+    }
+
     const [items] = await pool.execute(
       `
       SELECT
@@ -494,10 +561,10 @@ export async function duplicateComputerNameGroups({ search, status }) {
         department,
         updated_at AS updatedAt
       FROM ip_entries
-      WHERE LOWER(TRIM(computer_name)) = ?
+      WHERE ${itemsWhereParts.join(" AND ")}
       ORDER BY ip_numeric ASC
       `,
-      [g.compKey],
+      itemsParams,
     );
 
     totalRows += Number(g.count) || 0;
@@ -517,9 +584,16 @@ export async function duplicateComputerNameGroups({ search, status }) {
   };
 }
 
-export async function exportIpEntriesForXlsx(search) {
+export async function exportIpEntriesForXlsx(search, site) {
   const leg = buildLegacySearchSql(search);
-  const whereSql = leg.where ? `WHERE ${leg.where}` : "";
+  const whereParts = [];
+  const params = [...leg.params];
+  if (leg.where) whereParts.push(leg.where);
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
+  const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
   const [entries] = await pool.execute(
     `
@@ -530,6 +604,7 @@ export async function exportIpEntriesForXlsx(search) {
       rdp_app AS rdpApp,
       os,
       department,
+      site,
       entry_type AS entryType,
       remote_script AS remoteScript,
       metadata_id AS metadataId,
@@ -538,7 +613,7 @@ export async function exportIpEntriesForXlsx(search) {
     ${whereSql}
     ORDER BY ip_numeric ASC
     `,
-    leg.params,
+    params,
   );
 
   return entries || [];

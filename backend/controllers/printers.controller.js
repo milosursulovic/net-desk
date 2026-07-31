@@ -2,6 +2,7 @@ import { toInt, clamp } from "../utils/numbers.js";
 import { parseSearchTerm } from "../utils/queryCoercion.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import {
   listPrintersService,
   getPrinterService,
@@ -15,10 +16,14 @@ import {
   exportPrintersService,
 } from "../services/printers.service.js";
 
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
+}
+
 export async function exportXlsxPrintersController(req, res) {
   const search = parseSearchTerm(req.query.search);
   const { printers, connections, connAgg } =
-    await exportPrintersService(search);
+    await exportPrintersService(search, siteFilter(req.query.site));
 
   const connMap = new Map(
     connAgg.map((r) => [
@@ -98,7 +103,7 @@ export async function listPrintersController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 50), 1, 1000);
   const search = parseSearchTerm(req.query.search);
-  const out = await listPrintersService({ page, limit, search });
+  const out = await listPrintersService({ page, limit, search, site: siteFilter(req.query.site) });
   res.json(out);
 }
 

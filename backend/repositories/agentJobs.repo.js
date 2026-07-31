@@ -214,7 +214,7 @@ export async function completeJob(id, { status, exitCode, output, errorOutput, d
   return result.affectedRows;
 }
 
-export async function listFailedJobsSince(since, limit = 20) {
+export async function listFailedJobsSince(since, limit = 20, site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -224,19 +224,27 @@ export async function listFailedJobsSince(since, limit = 20) {
       j.completed_at AS completedAt
     FROM agent_jobs j
     JOIN agents a ON a.id = j.agent_id
+    ${site ? "JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
     WHERE j.status = 'failed' AND j.completed_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY j.completed_at DESC
     LIMIT ?
     `,
-    [since, limit],
+    [since, ...(site ? [site] : []), limit],
   );
   return rows;
 }
 
-export async function countFailedJobsSince(since) {
+export async function countFailedJobsSince(since, site) {
   const [[{ cnt }]] = await pool.execute(
-    `SELECT COUNT(*) AS cnt FROM agent_jobs WHERE status = 'failed' AND completed_at >= ?`,
-    [since],
+    `
+    SELECT COUNT(*) AS cnt
+    FROM agent_jobs j
+    ${site ? "JOIN agents a ON a.id = j.agent_id JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
+    WHERE j.status = 'failed' AND j.completed_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    [since, ...(site ? [site] : [])],
   );
   return Number(cnt) || 0;
 }

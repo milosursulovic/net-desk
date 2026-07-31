@@ -38,6 +38,7 @@ import { listNotifications } from "./notifications.service.js";
 import { sendPushToAll } from "../utils/webPush.js";
 import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import {
   computeDiskFillProjection,
   computeDiskAnomaly,
@@ -50,9 +51,31 @@ import {
 // downside to keeping more history around now while data is still sparse.
 const TREND_WINDOW_DAYS = 90;
 
-export async function generateDailyReport() {
-  const periodEnd = new Date();
-  const previous = await findLatestDailyReport();
+// Postojeći redovi u daily_reports pre uvođenja lokacija su svi stvarno iz
+// bolnice (potvrđeno uživo pri planiranju multi-site feature-a) - isti
+// default kao SQL migracija (daily_reports.site DEFAULT 'bolnica').
+const DEFAULT_SITE = "bolnica";
+const SITE_LABELS = { bolnica: "Bolnica", dom_zdravlja: "Dom zdravlja" };
+
+// Snimak trenutnog CPU/RAM/disk stanja SVIH agenata u istoriju, vezan za
+// generisanje izveštaja (ne svaki heartbeat - agent_monitoring se već
+// ažurira na ~30s, i ta učestalost zauvek bi eksplodirala ovu tabelu bez
+// koristi). Namerno odvojeno od generateDailyReport(site) i pozvano SAMO
+// JEDNOM po ciklusu generisanja (ne po lokaciji) - ovo je snimak cele
+// flote, ne po-lokaciji upit, pa bi pozivanje dva puta (jednom po lokaciji)
+// upisalo duplirane redove istorije za svakog agenta.
+async function snapshotCurrentMonitoring(periodEnd) {
+  const currentMonitoring = await listCurrentMonitoringForAllAgents();
+  await insertMonitoringSnapshot(
+    currentMonitoring.map((m) => ({ ...m, recordedAt: periodEnd })),
+  );
+}
+
+export async function generateDailyReport(
+  site,
+  { skipSnapshot = false, periodEnd = new Date() } = {},
+) {
+  const previous = await findLatestDailyReport(site);
   const periodStart = previous ? new Date(previous.periodEnd) : new Date(periodEnd - 24 * 60 * 60 * 1000);
 
   const [
@@ -72,30 +95,26 @@ export async function generateDailyReport() {
     statusTransitions,
     alerts,
   ] = await Promise.all([
-    countAgentsByConnectivity(),
-    countIpEntriesTotal(),
-    countOfflineEntries(),
-    listAgentsEnrolledSince(periodStart),
-    countAgentsEnrolledSince(periodStart),
-    listIpEntriesCreatedSince(periodStart),
-    countIpEntriesCreatedSince(periodStart),
-    listPrintersCreatedSince(periodStart),
-    countPrintersCreatedSince(periodStart),
-    listFailedJobsSince(periodStart),
-    countFailedJobsSince(periodStart),
-    listFailedUpdatesSince(periodStart),
-    countFailedUpdatesSince(periodStart),
-    countStatusTransitionsSince(periodStart),
-    listNotifications(),
+    countAgentsByConnectivity(site),
+    countIpEntriesTotal(site),
+    countOfflineEntries(site),
+    listAgentsEnrolledSince(periodStart, 20, site),
+    countAgentsEnrolledSince(periodStart, site),
+    listIpEntriesCreatedSince(periodStart, 20, site),
+    countIpEntriesCreatedSince(periodStart, site),
+    listPrintersCreatedSince(periodStart, 20, site),
+    countPrintersCreatedSince(periodStart, site),
+    listFailedJobsSince(periodStart, 20, site),
+    countFailedJobsSince(periodStart, site),
+    listFailedUpdatesSince(periodStart, 20, site),
+    countFailedUpdatesSince(periodStart, site),
+    countStatusTransitionsSince(periodStart, site),
+    listNotifications(site),
   ]);
 
-  // Snapshot everyone's current CPU/RAM/disk into history, tied to report
-  // generation (not every heartbeat - agent_monitoring already updates every
-  // ~30s, and that cadence forever would explode this table for no benefit).
-  const currentMonitoring = await listCurrentMonitoringForAllAgents();
-  await insertMonitoringSnapshot(
-    currentMonitoring.map((m) => ({ ...m, recordedAt: periodEnd })),
-  );
+  if (!skipSnapshot) {
+    await snapshotCurrentMonitoring(periodEnd);
+  }
 
   // Disk-fill trend, computed from the history just extended above (so
   // today's fresh point is included) - most days this will be empty/near-
@@ -103,7 +122,7 @@ export async function generateDailyReport() {
   // not a bug, and computeDiskFillProjection returns null rather than a
   // noisy row for agents with too little history or a flat/decreasing trend.
   const windowStart = new Date(periodEnd - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const historyRows = await listMonitoringHistorySince(windowStart);
+  const historyRows = await listMonitoringHistorySince(windowStart, site);
   const historyByAgent = new Map();
   for (const row of historyRows) {
     if (!historyByAgent.has(row.agentId)) historyByAgent.set(row.agentId, []);
@@ -166,15 +185,35 @@ export async function generateDailyReport() {
     periodStart,
     periodEnd,
     content,
+    site: site ?? DEFAULT_SITE,
   });
 
   await sendPushToAll({
-    title: "Dnevni izveštaj je spreman",
+    title: site
+      ? `Dnevni izveštaj je spreman (${SITE_LABELS[site] ?? site})`
+      : "Dnevni izveštaj je spreman",
     body: buildPushSummary(content),
     url: `/reports/${id}`,
   });
 
   return await findDailyReportById(id);
+}
+
+// Generiše po jedan izveštaj za SVAKU lokaciju u jednom ciklusu (isti cron
+// raspored kao pre uvođenja lokacija) - snimak agent_monitoring istorije se
+// radi TAČNO JEDNOM ovde (ne po lokaciji, vidi snapshotCurrentMonitoring),
+// dok se agregacije za sadržaj izveštaja rade po lokaciji.
+export async function generateDailyReportsForAllSites() {
+  const periodEnd = new Date();
+  await snapshotCurrentMonitoring(periodEnd);
+
+  const reports = [];
+  for (const site of SITES) {
+    reports.push(
+      await generateDailyReport(site, { skipSnapshot: true, periodEnd }),
+    );
+  }
+  return reports;
 }
 
 function buildPushSummary(content) {
@@ -203,8 +242,8 @@ function buildPushSummary(content) {
   return parts.join(", ") + ".";
 }
 
-export async function getLatestReportService() {
-  const report = await findLatestDailyReport();
+export async function getLatestReportService(site) {
+  const report = await findLatestDailyReport(site);
   if (!report) {
     throw notFound("Još nema generisanih izveštaja");
   }
@@ -233,9 +272,9 @@ export async function markReportReadService(id) {
   return await findDailyReportById(id);
 }
 
-export async function listReportsService({ page, limit }) {
+export async function listReportsService({ page, limit, site }) {
   const offset = (page - 1) * limit;
-  const { items, total } = await listDailyReports({ limit, offset });
+  const { items, total } = await listDailyReports({ limit, offset, site });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
   return { items, page: safePage, limit, total, totalPages };
 }

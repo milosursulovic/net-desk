@@ -3,22 +3,36 @@ import { ScanSchema, UpsertIpSchema, ListSchema } from "../../dtos/ipAddresses.d
 
 describe("UpsertIpSchema", () => {
   it("requires a valid IPv4 address", () => {
-    expect(UpsertIpSchema.safeParse({ ip: "10.230.62.81" }).success).toBe(true);
-    expect(UpsertIpSchema.safeParse({ ip: "garbage" }).success).toBe(false);
+    expect(UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "bolnica" }).success).toBe(
+      true,
+    );
+    expect(UpsertIpSchema.safeParse({ ip: "garbage", site: "bolnica" }).success).toBe(false);
   });
 
   it("accepts a known entryType and rejects an unknown one", () => {
     expect(
-      UpsertIpSchema.safeParse({ ip: "10.230.62.81", entryType: "computer" }).success,
+      UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "bolnica", entryType: "computer" })
+        .success,
     ).toBe(true);
     expect(
-      UpsertIpSchema.safeParse({ ip: "10.230.62.81", entryType: "printer" }).success,
+      UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "bolnica", entryType: "printer" })
+        .success,
     ).toBe(false);
   });
 
   it("accepts null entryType (unknown/unclassified)", () => {
     expect(
-      UpsertIpSchema.safeParse({ ip: "10.230.62.81", entryType: null }).success,
+      UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "bolnica", entryType: null }).success,
+    ).toBe(true);
+  });
+
+  it("requires site (manual choice, no default) and rejects an unknown value", () => {
+    expect(UpsertIpSchema.safeParse({ ip: "10.230.62.81" }).success).toBe(false);
+    expect(
+      UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "neka_treca_lokacija" }).success,
+    ).toBe(false);
+    expect(
+      UpsertIpSchema.safeParse({ ip: "10.230.62.81", site: "dom_zdravlja" }).success,
     ).toBe(true);
   });
 });
@@ -49,6 +63,12 @@ describe("ListSchema", () => {
   it("caps limit at 1000", () => {
     expect(ListSchema.safeParse({ limit: 5000 }).success).toBe(false);
     expect(ListSchema.safeParse({ limit: 1000 }).success).toBe(true);
+  });
+
+  it("accepts an optional site filter and rejects an unknown value", () => {
+    expect(ListSchema.safeParse({}).success).toBe(true);
+    expect(ListSchema.safeParse({ site: "bolnica" }).success).toBe(true);
+    expect(ListSchema.safeParse({ site: "neka_treca_lokacija" }).success).toBe(false);
   });
 });
 

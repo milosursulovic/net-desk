@@ -13,6 +13,15 @@
         </select>
       </div>
 
+      <div>
+        <label for="site" class="block text-sm font-medium text-slate-700 mb-1">Lokacija *</label>
+        <select id="site" v-model="form.site" class="app-input w-full" required>
+          <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
       <div v-for="field in fields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
@@ -64,6 +73,7 @@ import {
   validateIpv4,
 } from '@/constants/ipEntryFields.js'
 import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
+import { SITE_OPTIONS } from '@/constants/sites.js'
 
 const route = useRoute()
 const router = useRouter()

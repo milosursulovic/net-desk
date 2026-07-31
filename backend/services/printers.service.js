@@ -49,8 +49,8 @@ async function findIpEntryByIpOrId(ipOrId) {
   return null;
 }
 
-export async function listPrintersService({ page, limit, search }) {
-  const { items, total } = await listPrinters({ page, limit, search });
+export async function listPrintersService({ page, limit, search, site }) {
+  const { items, total } = await listPrinters({ page, limit, search, site });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
   return { items, page: safePage, limit, search, total, totalPages };
@@ -74,6 +74,7 @@ export async function createPrinterService(body) {
     model: emptyToNull(body.model),
     serial: emptyToNull(body.serial),
     department: emptyToNull(body.department),
+    site: body.site,
     connectionType: emptyToNull(body.connectionType) ?? "Network",
     ip,
     ipNumeric,
@@ -99,6 +100,7 @@ export async function updatePrinterService(id, body) {
   if ("model" in body) setIf("model", emptyToNull(body.model));
   if ("serial" in body) setIf("serial", emptyToNull(body.serial));
   if ("department" in body) setIf("department", emptyToNull(body.department));
+  if ("site" in body) setIf("site", body.site);
   if ("connectionType" in body)
     setIf("connection_type", emptyToNull(body.connectionType) ?? "Network");
 
@@ -185,6 +187,6 @@ export async function disconnectComputerService(printerId, computer) {
   return updated;
 }
 
-export async function exportPrintersService(search) {
-  return await exportPrintersData(search);
+export async function exportPrintersService(search, site) {
+  return await exportPrintersData(search, site);
 }

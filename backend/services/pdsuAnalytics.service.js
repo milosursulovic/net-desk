@@ -49,7 +49,7 @@ function pct(value, total) {
   return Math.round((safeValue / safeTotal) * 100);
 }
 
-export async function pdsuAnalyticsStatsService() {
+export async function pdsuAnalyticsStatsService(site) {
   const [
     coverage,
 
@@ -77,31 +77,31 @@ export async function pdsuAnalyticsStatsService() {
     latestUpdatesByComputer,
     staleUpdateComputers,
   ] = await Promise.all([
-    getPdsuCoverage(),
+    getPdsuCoverage(site),
 
-    getSoftwareStats(),
-    getTopSoftware(10),
-    getTopPublishers(10),
-    getSoftwareMultipleVersions(20),
-    getRareSoftware(20),
-    getComputersWithMostSoftware(10),
+    getSoftwareStats(site),
+    getTopSoftware(10, site),
+    getTopPublishers(10, site),
+    getSoftwareMultipleVersions(20, site),
+    getRareSoftware(20, site),
+    getComputersWithMostSoftware(10, site),
 
-    getDriverStats(),
-    getTopDriverManufacturers(10),
-    getOldestDrivers(20),
-    getDriverMultipleVersions(20),
-    getComputersWithMostDrivers(10),
+    getDriverStats(site),
+    getTopDriverManufacturers(10, site),
+    getOldestDrivers(20, site),
+    getDriverMultipleVersions(20, site),
+    getComputersWithMostDrivers(10, site),
 
-    getServiceStats(),
-    getAutomaticStoppedServices(30),
-    getUnusualServicePaths(30),
-    getRareServices(20),
+    getServiceStats(site),
+    getAutomaticStoppedServices(30, site),
+    getUnusualServicePaths(30, site),
+    getRareServices(20, site),
 
-    getUpdateStats(),
-    getUpdateFreshnessBuckets(),
-    getTopHotfixes(10),
-    getLatestUpdateByComputer(200),
-    getStaleUpdateComputers(90, 50),
+    getUpdateStats(site),
+    getUpdateFreshnessBuckets(site),
+    getTopHotfixes(10, site),
+    getLatestUpdateByComputer(200, site),
+    getStaleUpdateComputers(90, 50, site),
   ]);
 
   const totalComputers = Number(coverage.totalComputers) || 0;
@@ -189,17 +189,17 @@ export async function pdsuAnalyticsStatsService() {
   };
 }
 
-export async function listComputersWithoutPdsuService() {
-  const items = await listComputersWithoutPdsu();
+export async function listComputersWithoutPdsuService(site) {
+  const items = await listComputersWithoutPdsu(site);
   return { items, total: items.length };
 }
 
-export async function listComputersWithoutUltravncService() {
-  const items = await listComputersWithoutUltravnc();
+export async function listComputersWithoutUltravncService(site) {
+  const items = await listComputersWithoutUltravnc(site);
   return { items, total: items.length };
 }
 
-export async function searchPdsuAnalytics(category, term) {
+export async function searchPdsuAnalytics(category, term, site) {
   const query = String(term ?? "").trim();
 
   if (category === "all") {
@@ -208,10 +208,10 @@ export async function searchPdsuAnalytics(category, term) {
     }
 
     const [software, drivers, services, updates] = await Promise.all([
-      searchSoftwareRows(query, 50),
-      searchDriverRows(query, 50),
-      searchServiceRows(query, 50),
-      searchUpdateRows(query, 50),
+      searchSoftwareRows(query, 50, site),
+      searchDriverRows(query, 50, site),
+      searchServiceRows(query, 50, site),
+      searchUpdateRows(query, 50, site),
     ]);
 
     return { software, drivers, services, updates };
@@ -224,15 +224,15 @@ export async function searchPdsuAnalytics(category, term) {
 
   if (!query) return [];
 
-  return await handler(query, 100);
+  return await handler(query, 100, site);
 }
 
-export async function exportPdsuAnalyticsXlsx() {
+export async function exportPdsuAnalyticsXlsx(site) {
   const [software, drivers, services, updates] = await Promise.all([
-    getAllSoftwareForExport(),
-    getAllDriversForExport(),
-    getAllServicesForExport(),
-    getAllUpdatesForExport(),
+    getAllSoftwareForExport(site),
+    getAllDriversForExport(site),
+    getAllServicesForExport(site),
+    getAllUpdatesForExport(site),
   ]);
 
   return { software, drivers, services, updates };

@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { isValidIPv4 } from "../utils/ip.js";
 
+// Dve fizičke lokacije - Bolnica (10.230.62.0/23) i Dom zdravlja
+// (10.160.64.0/21). Lokacija se NAMERNO uvek bira ručno (dropdown), nikad
+// ne izvodi automatski iz IP opsega, iako se opsezi ne preklapaju -
+// korisnikova eksplicitna odluka pri planiranju ovog feature-a.
+export const SITES = ["bolnica", "dom_zdravlja"];
+
 export const ScanSchema = z.object({
   ip: z.string().refine(isValidIPv4, { message: "Neispravan IPv4" }),
   ports: z.string().optional(),
@@ -22,6 +28,7 @@ export const UpsertIpSchema = z.object({
   rdpApp: z.string().nullable().optional(),
   os: z.string().nullable().optional(),
   department: z.string().nullable().optional(),
+  site: z.enum(SITES),
   description: z.string().nullable().optional(),
   remoteScript: z.string().nullable().optional(),
   entryType: EntryTypeEnum.nullable().optional(),
@@ -51,4 +58,5 @@ export const ListSchema = z.object({
     .default("all"),
   department: z.string().optional(),
   os: z.string().optional(),
+  site: z.enum(SITES).optional(),
 });

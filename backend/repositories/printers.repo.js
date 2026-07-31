@@ -10,11 +10,16 @@ const SEARCH_COLUMNS = [
   "p.department",
 ];
 
-function buildPrintersWhere(search = "") {
+function buildPrintersWhere(search = "", site) {
   const { where, params } = buildLikeSearch(SEARCH_COLUMNS, search, {
     prefixColumns: ["p.ip"],
   });
-  return where ? { where, params } : { where: "1=1", params: [] };
+  const base = where ? { where, params } : { where: "1=1", params: [] };
+  if (!site) return base;
+  return {
+    where: `${base.where} AND p.site = ?`,
+    params: [...base.params, site],
+  };
 }
 
 export async function getPrinterById(printerId) {
@@ -27,6 +32,7 @@ export async function getPrinterById(printerId) {
       p.model,
       p.serial,
       p.department,
+      p.site,
       p.connection_type AS connectionType,
       p.ip,
       p.ip_numeric AS ipNumeric,
@@ -77,8 +83,8 @@ export async function getPrinterById(printerId) {
   };
 }
 
-export async function listPrinters({ page, limit, search }) {
-  const { where, params } = buildPrintersWhere(search);
+export async function listPrinters({ page, limit, search, site }) {
+  const { where, params } = buildPrintersWhere(search, site);
 
   const [[{ total }]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM printers p WHERE ${where}`,
@@ -96,6 +102,7 @@ export async function listPrinters({ page, limit, search }) {
       p.model,
       p.serial,
       p.department,
+      p.site,
       p.connection_type AS connectionType,
       p.ip,
       p.ip_numeric AS ipNumeric,
@@ -149,24 +156,25 @@ export async function listPrinters({ page, limit, search }) {
   };
 }
 
-export async function listPrintersCreatedSince(since, limit = 20) {
+export async function listPrintersCreatedSince(since, limit = 20, site) {
   const [rows] = await pool.execute(
     `
     SELECT id, name, ip, department, created_at AS createdAt
     FROM printers
     WHERE created_at >= ?
+      ${site ? "AND site = ?" : ""}
     ORDER BY created_at DESC
     LIMIT ?
     `,
-    [since, limit],
+    [since, ...(site ? [site] : []), limit],
   );
   return rows;
 }
 
-export async function countPrintersCreatedSince(since) {
+export async function countPrintersCreatedSince(since, site) {
   const [[{ cnt }]] = await pool.execute(
-    `SELECT COUNT(*) AS cnt FROM printers WHERE created_at >= ?`,
-    [since],
+    `SELECT COUNT(*) AS cnt FROM printers WHERE created_at >= ? ${site ? "AND site = ?" : ""}`,
+    [since, ...(site ? [site] : [])],
   );
   return Number(cnt) || 0;
 }
@@ -175,9 +183,9 @@ export async function insertPrinter(row) {
   const [r] = await pool.execute(
     `
     INSERT INTO printers
-      (name, manufacturer, model, serial, department, connection_type, ip, ip_numeric, shared, host_computer_id)
+      (name, manufacturer, model, serial, department, site, connection_type, ip, ip_numeric, shared, host_computer_id)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.name,
@@ -185,6 +193,7 @@ export async function insertPrinter(row) {
       row.model,
       row.serial,
       row.department,
+      row.site ?? null,
       row.connectionType,
       row.ip,
       row.ipNumeric,
@@ -259,8 +268,8 @@ export async function updateSharedFromConnections(printerId) {
   return shared;
 }
 
-export async function exportPrintersData(search) {
-  const { where, params } = buildPrintersWhere(search);
+export async function exportPrintersData(search, site) {
+  const { where, params } = buildPrintersWhere(search, site);
 
   const [printers] = await pool.execute(
     `
@@ -271,6 +280,7 @@ export async function exportPrintersData(search) {
       p.model,
       p.serial,
       p.department,
+      p.site,
       p.connection_type AS connectionType,
       p.ip,
       p.shared,

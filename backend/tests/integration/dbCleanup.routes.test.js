@@ -11,7 +11,7 @@ async function createTestIpEntry() {
   const res = await request(app)
     .post("/api/protected/ip-addresses")
     .set("Authorization", `Bearer ${adminToken()}`)
-    .send({ ip: testIp(), computerName: "DBCLEANUP-TEST-PC", entryType: "computer" });
+    .send({ ip: testIp(), computerName: "DBCLEANUP-TEST-PC", site: "bolnica", entryType: "computer" });
   expect(res.status).toBe(201);
   return res.body.id;
 }

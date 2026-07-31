@@ -306,6 +306,7 @@ import { fmtRelative } from '@/utils/format.js'
 import { labelForEntryType } from '@/constants/entryTypes.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -313,6 +314,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const router = useRouter()
+const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
@@ -348,7 +350,7 @@ const {
 })
 
 watch(
-  [page, limit, search, sortBy, sortOrder, status, entryType, department, os],
+  [page, limit, search, sortBy, sortOrder, status, entryType, department, os, site],
   fetchData,
   { immediate: true },
 )
@@ -358,7 +360,9 @@ const osOptions = ref([])
 
 async function fetchFilterOptions() {
   try {
-    const res = await fetchWithAuth('/api/protected/ip-addresses/filter-options')
+    const res = await fetchWithAuth(
+      `/api/protected/ip-addresses/filter-options?site=${site.value}`,
+    )
     if (!res.ok) throw new Error()
     const data = await res.json()
     departmentOptions.value = data.departments || []
@@ -414,6 +418,7 @@ async function fetchData() {
     sortOrder: sortOrder.value,
     status: status.value,
     entryType: entryType.value,
+    site: site.value,
   })
   if (department.value) params.set('department', department.value)
   if (os.value) params.set('os', os.value)
@@ -452,10 +457,9 @@ const deleteEntry = async (id) => {
 
 const exportToXlsx = async () => {
   try {
+    const params = new URLSearchParams({ search: search.value, site: site.value })
     await downloadFromResponse(
-      await fetchWithAuth(
-        `/api/protected/ip-addresses/export-xlsx?search=${encodeURIComponent(search.value)}`
-      ),
+      await fetchWithAuth(`/api/protected/ip-addresses/export-xlsx?${params.toString()}`),
       'ip-entries.xlsx'
     )
   } catch {
@@ -478,6 +482,7 @@ async function fetchDuplicateNames() {
     const params = new URLSearchParams({
       search: search.value,
       status: status.value,
+      site: site.value,
     })
     const res = await fetchWithAuth(`/api/protected/ip-addresses/duplicates?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -502,6 +507,11 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+})
+
+watch(site, () => {
+  fetchDuplicateNames()
+  fetchFilterOptions()
 })
 </script>
 

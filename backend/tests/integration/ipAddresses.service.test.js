@@ -7,6 +7,7 @@ import {
   getByIdService,
   listService,
   filterOptionsService,
+  duplicatesService,
 } from "../../services/ipAddresses.service.js";
 import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
@@ -123,6 +124,67 @@ describe("ipAddresses.service (integration, real DB)", () => {
     const out = await filterOptionsService();
     expect(out.departments).toContain(uniqueDept);
     expect(out.os).toContain(uniqueOs);
+  });
+
+  it("listService filters by site", async () => {
+    const uniqueDept = `VITEST_DEPT_${Date.now()}`;
+    const a = await createService({
+      ip: testIp(),
+      department: uniqueDept,
+      site: "bolnica",
+      entryType: "computer",
+    });
+    ipEntryId = a.id;
+    const b = await createService({
+      ip: testIp(),
+      department: uniqueDept,
+      site: "dom_zdravlja",
+      entryType: "computer",
+    });
+    ipEntryId2 = b.id;
+
+    const out = await listService({
+      page: 1,
+      limit: 50,
+      sortBy: "ip",
+      sortOrder: "asc",
+      status: "all",
+      entryType: "all",
+      department: uniqueDept,
+      site: "bolnica",
+    });
+
+    const ids = out.entries.map((e) => e.id);
+    expect(ids).toContain(a.id);
+    expect(ids).not.toContain(b.id);
+  });
+
+  it("duplicatesService does NOT flag the same computer name existing once per site as a duplicate", async () => {
+    const uniqueName = `VITEST-DUP-${Date.now()}`;
+    const a = await createService({
+      ip: testIp(),
+      computerName: uniqueName,
+      site: "bolnica",
+      entryType: "computer",
+    });
+    ipEntryId = a.id;
+    const b = await createService({
+      ip: testIp(),
+      computerName: uniqueName,
+      site: "dom_zdravlja",
+      entryType: "computer",
+    });
+    ipEntryId2 = b.id;
+
+    const bolnicaOut = await duplicatesService({ search: "", status: "all", site: "bolnica" });
+    const bolnicaGroup = bolnicaOut.groups.find(
+      (g) => g.name.toLowerCase() === uniqueName.toLowerCase(),
+    );
+    expect(bolnicaGroup).toBeUndefined();
+
+    const dzOut = await duplicatesService({ search: "", status: "all", site: "dom_zdravlja" });
+    const dzGroup = dzOut.groups.find((g) => g.name.toLowerCase() === uniqueName.toLowerCase());
+    expect(dzGroup).toBeUndefined();
   });
 
   describe("agentId (home page -> agent link)", () => {

@@ -27,6 +27,15 @@
         </select>
       </div>
 
+      <div>
+        <label for="site" class="block text-sm font-medium text-slate-700 mb-1">Lokacija *</label>
+        <select id="site" v-model="form.site" class="app-input w-full" required>
+          <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
       <div v-for="field in optionalFields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }}
@@ -73,11 +82,14 @@ import {
   validateIpv4,
 } from '@/constants/ipEntryFields.js'
 import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
+import { SITE_OPTIONS } from '@/constants/sites.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 
 const route = useRoute()
 const router = useRouter()
+const currentSite = useCurrentSite()
 const error = ref('')
-const form = ref(createIpEntryForm())
+const form = ref(createIpEntryForm({ site: currentSite.value }))
 const optionalFields = IP_OPTIONAL_FIELDS
 
 const ipError = computed(() => validateIpv4(form.value.ip))

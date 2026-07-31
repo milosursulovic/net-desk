@@ -1,12 +1,12 @@
 import { pool } from "../db/pool.js";
 
-export async function insertDailyReport({ periodStart, periodEnd, content }) {
+export async function insertDailyReport({ periodStart, periodEnd, content, site }) {
   const [r] = await pool.execute(
     `
-    INSERT INTO daily_reports (period_start, period_end, content)
-    VALUES (?, ?, ?)
+    INSERT INTO daily_reports (period_start, period_end, content, site)
+    VALUES (?, ?, ?, ?)
     `,
-    [periodStart, periodEnd, JSON.stringify(content)],
+    [periodStart, periodEnd, JSON.stringify(content), site],
   );
   return r.insertId;
 }
@@ -23,15 +23,17 @@ function parseContent(row) {
   return { ...row, content };
 }
 
-export async function findLatestDailyReport() {
+export async function findLatestDailyReport(site) {
   const [rows] = await pool.execute(
     `
-    SELECT id, period_start AS periodStart, period_end AS periodEnd, content,
+    SELECT id, period_start AS periodStart, period_end AS periodEnd, content, site,
            opened_at AS openedAt, generated_at AS generatedAt
     FROM daily_reports
+    ${site ? "WHERE site = ?" : ""}
     ORDER BY generated_at DESC
     LIMIT 1
     `,
+    site ? [site] : [],
   );
   return parseContent(rows[0]) || null;
 }
@@ -39,7 +41,7 @@ export async function findLatestDailyReport() {
 export async function findDailyReportById(id) {
   const [rows] = await pool.execute(
     `
-    SELECT id, period_start AS periodStart, period_end AS periodEnd, content,
+    SELECT id, period_start AS periodStart, period_end AS periodEnd, content, site,
            opened_at AS openedAt, generated_at AS generatedAt
     FROM daily_reports
     WHERE id = ?
@@ -50,20 +52,22 @@ export async function findDailyReportById(id) {
   return parseContent(rows[0]) || null;
 }
 
-export async function listDailyReports({ limit, offset }) {
+export async function listDailyReports({ limit, offset, site }) {
   const [[{ total }]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM daily_reports`,
+    `SELECT COUNT(*) AS total FROM daily_reports ${site ? "WHERE site = ?" : ""}`,
+    site ? [site] : [],
   );
 
   const [rows] = await pool.execute(
     `
-    SELECT id, period_start AS periodStart, period_end AS periodEnd,
+    SELECT id, period_start AS periodStart, period_end AS periodEnd, site,
            opened_at AS openedAt, generated_at AS generatedAt
     FROM daily_reports
+    ${site ? "WHERE site = ?" : ""}
     ORDER BY generated_at DESC
     LIMIT ? OFFSET ?
     `,
-    [limit, offset],
+    [...(site ? [site] : []), limit, offset],
   );
 
   return { items: rows, total: Number(total) || 0 };

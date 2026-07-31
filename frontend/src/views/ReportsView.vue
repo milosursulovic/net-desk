@@ -234,10 +234,12 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { useToast } from '@/composables/useToast.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
 const route = useRoute()
+const site = useCurrentSite()
 const { toast, showToast } = useToast()
 
 const TREND_WINDOW_DAYS = 90
@@ -282,7 +284,7 @@ async function loadReport() {
   try {
     const url = route.params.id
       ? `/api/protected/reports/${route.params.id}`
-      : '/api/protected/reports/latest'
+      : `/api/protected/reports/latest?site=${site.value}`
     const res = await fetchWithAuth(url)
     if (res.status === 404) {
       report.value = null
@@ -334,7 +336,7 @@ async function downloadPdf() {
 
 async function loadHistory() {
   try {
-    const res = await fetchWithAuth('/api/protected/reports?limit=30')
+    const res = await fetchWithAuth(`/api/protected/reports?limit=30&site=${site.value}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     history.value = data.items || []
@@ -358,6 +360,10 @@ async function generateNow() {
 }
 
 watch(() => route.params.id, loadReport)
+watch(site, () => {
+  loadHistory()
+  if (!route.params.id) loadReport()
+})
 
 onMounted(() => {
   loadReport()

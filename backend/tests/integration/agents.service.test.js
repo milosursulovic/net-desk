@@ -9,7 +9,8 @@ import {
   listAgentIdsService,
   setAgentDeploymentGroupService,
 } from "../../services/agents.service.js";
-import { findAgentById } from "../../repositories/agents.repo.js";
+import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
+import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
 import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
 
 describe("agents.service (integration, real DB)", () => {
@@ -356,6 +357,49 @@ describe("agents.service (integration, real DB)", () => {
         search: hostname,
         status: "all",
         department: "VITEST_TEST_DEPT",
+      });
+      expect(ids.ids).toEqual([agentId]);
+    });
+  });
+
+  describe("site filter (joined from ip_entries via agents.ip_entry_id)", () => {
+    it("filters listAgentsService/listAgentIdsService by site", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const entry = await createIpEntryService({
+        ip: testIp(),
+        site: "dom_zdravlja",
+        entryType: "computer",
+      });
+      ipEntryId = entry.id;
+      await linkAgentToIpEntry(agentId, ipEntryId);
+
+      const matched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        site: "dom_zdravlja",
+      });
+      expect(matched.items.map((a) => a.id)).toContain(agentId);
+
+      const notMatched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        site: "bolnica",
+      });
+      expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
+
+      const ids = await listAgentIdsService({
+        search: hostname,
+        status: "all",
+        site: "dom_zdravlja",
       });
       expect(ids.ids).toEqual([agentId]);
     });

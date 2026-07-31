@@ -8,6 +8,7 @@ import { fmtDateSr } from '@/utils/format.js'
 import { stateLabel, startModeLabel } from '@/utils/pdsuServiceLabels.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -20,6 +21,7 @@ import PDSUUpdates from '@/components/pdsu/PDSUUpdates.vue'
 import PDSUFlagged from '@/components/pdsu/PDSUFlagged.vue'
 
 const { toast, showToast } = useToast()
+const site = useCurrentSite()
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -195,7 +197,7 @@ async function runSearch() {
   searchLoading.value = true
 
   try {
-    const params = new URLSearchParams({ category: 'all', q: query })
+    const params = new URLSearchParams({ category: 'all', q: query, site: site.value })
     const res = await fetchWithAuth(`/api/protected/pdsu-analytics/search?${params.toString()}`, {
       signal: getSignal(),
     })
@@ -218,7 +220,7 @@ async function runSearch() {
 }
 
 watch(
-  search,
+  [search, site],
   () => {
     clearTimeout(searchTimer)
     searchTimer = setTimeout(runSearch, 300)
@@ -233,7 +235,7 @@ async function loadStats() {
   error.value = ''
 
   try {
-    const response = await fetchWithAuth('/api/protected/pdsu-analytics/stats')
+    const response = await fetchWithAuth(`/api/protected/pdsu-analytics/stats?site=${site.value}`)
 
     if (!response.ok) {
       const message = await parseError(response, 'Greška prilikom učitavanja PDSU analitike.')
@@ -255,7 +257,7 @@ async function loadStats() {
 
 async function fetchMissingPdsu() {
   try {
-    const res = await fetchWithAuth('/api/protected/pdsu-analytics/missing')
+    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/missing?site=${site.value}`)
     if (!res.ok) return
     const data = await res.json()
     missingPdsu.value = Array.isArray(data.items) ? data.items : []
@@ -268,7 +270,7 @@ async function exportMissingPdsuPdf() {
   try {
     const dateStamp = new Date().toISOString().slice(0, 10)
     await downloadFromResponse(
-      await fetchWithAuth('/api/protected/pdsu-analytics/missing/export-pdf'),
+      await fetchWithAuth(`/api/protected/pdsu-analytics/missing/export-pdf?site=${site.value}`),
       `NetDesk_bez_PDSU_${dateStamp}.pdf`
     )
   } catch (err) {
@@ -280,7 +282,7 @@ async function exportMissingPdsuPdf() {
 
 async function fetchWithoutUltravnc() {
   try {
-    const res = await fetchWithAuth('/api/protected/pdsu-analytics/without-ultravnc')
+    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/without-ultravnc?site=${site.value}`)
     if (!res.ok) return
     const data = await res.json()
     withoutUltravnc.value = Array.isArray(data.items) ? data.items : []
@@ -293,7 +295,7 @@ async function exportWithoutUltravncPdf() {
   try {
     const dateStamp = new Date().toISOString().slice(0, 10)
     await downloadFromResponse(
-      await fetchWithAuth('/api/protected/pdsu-analytics/without-ultravnc/export-pdf'),
+      await fetchWithAuth(`/api/protected/pdsu-analytics/without-ultravnc/export-pdf?site=${site.value}`),
       `NetDesk_bez_UltraVNC_${dateStamp}.pdf`
     )
   } catch (err) {
@@ -309,7 +311,7 @@ async function exportXlsx() {
   try {
     const dateStamp = new Date().toISOString().slice(0, 10)
     await downloadFromResponse(
-      await fetchWithAuth('/api/protected/pdsu-analytics/export-xlsx'),
+      await fetchWithAuth(`/api/protected/pdsu-analytics/export-xlsx?site=${site.value}`),
       `NetDesk_PDSU_${dateStamp}.xlsx`
     )
   } catch (err) {
@@ -323,6 +325,8 @@ onMounted(() => {
   loadStats()
   fetchFlagged()
 })
+
+watch(site, loadStats)
 </script>
 
 <template>

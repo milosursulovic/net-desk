@@ -74,7 +74,7 @@ describe("role enforcement across modules (integration, real DB)", () => {
     const res = await request(app)
       .post("/api/protected/ip-addresses")
       .set("Authorization", `Bearer ${operatorToken()}`)
-      .send({ ip: testIp(), computerName: "ROLE-TEST-PC", entryType: "computer" });
+      .send({ ip: testIp(), computerName: "ROLE-TEST-PC", site: "bolnica", entryType: "computer" });
     expect(res.status).toBe(201);
     entryId = res.body.id;
   });

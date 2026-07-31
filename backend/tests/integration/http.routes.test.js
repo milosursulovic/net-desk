@@ -177,7 +177,7 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
       const createRes = await request(app)
         .post("/api/protected/ip-addresses")
         .set("Authorization", `Bearer ${token}`)
-        .send({ ip, computerName: "HTTP-TEST-PC", entryType: "computer" });
+        .send({ ip, computerName: "HTTP-TEST-PC", site: "bolnica", entryType: "computer" });
       expect(createRes.status).toBe(201);
       entryId = createRes.body.id;
 

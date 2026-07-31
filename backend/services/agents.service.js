@@ -117,6 +117,7 @@ export async function listAgentsService({
   version,
   versionNot,
   department,
+  site,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -132,6 +133,7 @@ export async function listAgentsService({
     version,
     versionNot,
     department,
+    site,
     enrolledFrom,
     enrolledTo,
     heartbeatFrom,
@@ -156,19 +158,19 @@ export async function listAgentIdsService(filters) {
   return { ids };
 }
 
-export async function agentFilterOptionsService() {
-  const os = await listDistinctAgentOs();
-  const version = await listDistinctAgentVersions();
-  const department = await listDistinctDepartments();
+export async function agentFilterOptionsService(site) {
+  const os = await listDistinctAgentOs(site);
+  const version = await listDistinctAgentVersions(site);
+  const department = await listDistinctDepartments(site);
   return { os, version, department };
 }
 
-export async function listComputersWithoutAgentService({ page, limit, search }) {
-  return await listComputersWithoutAgent({ search, page, limit });
+export async function listComputersWithoutAgentService({ page, limit, search, site }) {
+  return await listComputersWithoutAgent({ search, page, limit, site });
 }
 
-export async function listAllComputersWithoutAgentService(search) {
-  return await listAllComputersWithoutAgent(search);
+export async function listAllComputersWithoutAgentService(search, site) {
+  return await listAllComputersWithoutAgent(search, site);
 }
 
 export async function getAgentService(id) {

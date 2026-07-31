@@ -215,10 +215,10 @@ export async function listService(filters) {
   return await listIpEntries(filters);
 }
 
-export async function filterOptionsService() {
+export async function filterOptionsService(site) {
   const [departments, os] = await Promise.all([
-    listDistinctDepartments(),
-    listDistinctOs(),
+    listDistinctDepartments(site),
+    listDistinctOs(site),
   ]);
   return { departments, os };
 }
@@ -240,6 +240,7 @@ export async function createService(dto) {
     rdpApp: emptyToNull(dto.rdpApp),
     os: emptyToNull(dto.os),
     department: emptyToNull(dto.department),
+    site: dto.site,
     description: emptyToNull(dto.description),
     remoteScript: emptyToNull(dto.remoteScript),
     entryType: dto.entryType ?? null,
@@ -275,6 +276,10 @@ export async function updateService(id, patch) {
     sets.push("department = ?");
     params.push(emptyToNull(patch.department));
   }
+  if (patch.site !== undefined) {
+    sets.push("site = ?");
+    params.push(patch.site);
+  }
   if (patch.description !== undefined) {
     sets.push("description = ?");
     params.push(emptyToNull(patch.description));
@@ -308,12 +313,12 @@ export async function deleteService(id) {
   return true;
 }
 
-export async function duplicatesService({ search, status }) {
-  return await duplicateComputerNameGroups({ search, status });
+export async function duplicatesService({ search, status, site }) {
+  return await duplicateComputerNameGroups({ search, status, site });
 }
 
-export async function exportXlsxRowsService(search) {
-  const entries = await exportIpEntriesForXlsx(search);
+export async function exportXlsxRowsService(search, site) {
+  const entries = await exportIpEntriesForXlsx(search, site);
   return entries.map((e) => ({
     ip: e.ip,
     computerName: e.computerName || "",

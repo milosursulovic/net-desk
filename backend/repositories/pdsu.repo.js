@@ -5,7 +5,9 @@ import { pool } from "../db/pool.js";
 // =========================
 
 export async function computerList(query = {}) {
-  const [rows] = await pool.query(`
+  const { site } = query;
+  const [rows] = await pool.query(
+    `
     SELECT
       id,
       ip,
@@ -19,8 +21,11 @@ export async function computerList(query = {}) {
       updated_at
     FROM ip_entries
     WHERE entry_type = 'computer'
+      ${site ? "AND site = ?" : ""}
     ORDER BY computer_name
-  `);
+  `,
+    site ? [site] : [],
+  );
 
   return rows;
 }

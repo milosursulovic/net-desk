@@ -2,6 +2,7 @@ import {
   ScanSchema,
   ListSchema,
   UpsertIpSchema,
+  SITES,
 } from "../dtos/ipAddresses.dto.js";
 import {
   scanPorts,
@@ -19,6 +20,10 @@ import { parseIdParam } from "../utils/idParam.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 import { badRequest } from "../utils/httpError.js";
 
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
+}
+
 export async function scanPortsController(req, res) {
   const q = ScanSchema.safeParse(req.query);
   if (!q.success) return res.status(400).json({ error: q.error.issues });
@@ -33,13 +38,14 @@ export async function duplicatesController(req, res) {
   const out = await duplicatesService({
     search: parsed.data.search,
     status: parsed.data.status,
+    site: parsed.data.site,
   });
   res.json(out);
 }
 
 export async function exportXlsxController(req, res) {
   const search = String(req.query.search || "");
-  const rows = await exportXlsxRowsService(search);
+  const rows = await exportXlsxRowsService(search, siteFilter(req.query.site));
 
   await sendXlsxExport(res, {
     filename: "ip-entries.xlsx",
@@ -63,7 +69,7 @@ export async function exportXlsxController(req, res) {
 }
 
 export async function filterOptionsController(req, res) {
-  const out = await filterOptionsService();
+  const out = await filterOptionsService(siteFilter(req.query.site));
   res.json(out);
 }
 

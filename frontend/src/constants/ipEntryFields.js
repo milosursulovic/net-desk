@@ -6,6 +6,7 @@ export const IP_ENTRY_DEFAULTS = {
   rdpApp: '',
   os: '',
   department: '',
+  site: '',
   remoteScript: '',
   description: '',
   entryType: null,

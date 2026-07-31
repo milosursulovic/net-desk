@@ -1,4 +1,4 @@
-import { generateDailyReport } from "../services/dailyReport.service.js";
+import { generateDailyReportsForAllSites } from "../services/dailyReport.service.js";
 
 // Recomputed on every cycle (not a fixed 24h interval) so DST transitions
 // don't drift the fire time away from actual local 7:00 over time.
@@ -20,8 +20,8 @@ export function startDailyReportScheduler(hour = 7) {
 
   const tick = async () => {
     try {
-      await generateDailyReport();
-      console.log("📋 Dnevni izveštaj generisan");
+      await generateDailyReportsForAllSites();
+      console.log("📋 Dnevni izveštaji generisani (po lokaciji)");
     } catch (err) {
       console.error("❌ Greška pri generisanju dnevnog izveštaja:", err);
     } finally {

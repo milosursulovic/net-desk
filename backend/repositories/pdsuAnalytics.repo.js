@@ -4,39 +4,46 @@ import { buildLikeSearch } from "../utils/sqlSearch.js";
 /**
  * Zajednička pokrivenost inventarom.
  */
-export async function getPdsuCoverage() {
-  const [[row]] = await pool.execute(`
+export async function getPdsuCoverage(site) {
+  const siteSql = site ? "AND ie.site = ?" : "";
+  const siteSqlNoAlias = site ? "AND site = ?" : "";
+  const p = site ? [site] : [];
+
+  const [[row]] = await pool.execute(
+    `
     SELECT
-      (SELECT COUNT(*) FROM ip_entries WHERE entry_type = 'computer') AS totalComputers,
+      (SELECT COUNT(*) FROM ip_entries WHERE entry_type = 'computer' ${siteSqlNoAlias}) AS totalComputers,
 
       (
         SELECT COUNT(DISTINCT cs.ip_entry_id)
         FROM computer_software cs
         JOIN ip_entries ie ON ie.id = cs.ip_entry_id
-        WHERE ie.entry_type = 'computer'
+        WHERE ie.entry_type = 'computer' ${siteSql}
       ) AS withSoftware,
 
       (
         SELECT COUNT(DISTINCT cd.ip_entry_id)
         FROM computer_drivers cd
         JOIN ip_entries ie ON ie.id = cd.ip_entry_id
-        WHERE ie.entry_type = 'computer'
+        WHERE ie.entry_type = 'computer' ${siteSql}
       ) AS withDrivers,
 
       (
         SELECT COUNT(DISTINCT csv.ip_entry_id)
         FROM computer_services csv
         JOIN ip_entries ie ON ie.id = csv.ip_entry_id
-        WHERE ie.entry_type = 'computer'
+        WHERE ie.entry_type = 'computer' ${siteSql}
       ) AS withServices,
 
       (
         SELECT COUNT(DISTINCT cu.ip_entry_id)
         FROM computer_updates cu
         JOIN ip_entries ie ON ie.id = cu.ip_entry_id
-        WHERE ie.entry_type = 'computer'
+        WHERE ie.entry_type = 'computer' ${siteSql}
       ) AS withUpdates
-  `);
+    `,
+    [...p, ...p, ...p, ...p, ...p],
+  );
 
   return {
     totalComputers: Number(row?.totalComputers) || 0,
@@ -50,17 +57,21 @@ export async function getPdsuCoverage() {
 // "Bez PDSU" = nema baš nijedan zapis ni u jednoj od 4 tabele (stroži
 // kriterijum od "nedostaje bar jedna kategorija") - videti getPdsuCoverage
 // za per-tabelu brojeve.
-export async function listComputersWithoutPdsu() {
-  const [rows] = await pool.execute(`
+export async function listComputersWithoutPdsu(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os
     FROM ip_entries ip
     WHERE ip.entry_type = 'computer'
+      ${site ? "AND ip.site = ?" : ""}
       AND NOT EXISTS (SELECT 1 FROM computer_software cs WHERE cs.ip_entry_id = ip.id)
       AND NOT EXISTS (SELECT 1 FROM computer_drivers cd WHERE cd.ip_entry_id = ip.id)
       AND NOT EXISTS (SELECT 1 FROM computer_services csv WHERE csv.ip_entry_id = ip.id)
       AND NOT EXISTS (SELECT 1 FROM computer_updates cu WHERE cu.ip_entry_id = ip.id)
     ORDER BY ip.computer_name ASC, ip.ip ASC
-  `);
+    `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
@@ -72,8 +83,9 @@ export async function listComputersWithoutPdsu() {
 // UltraVNC" od "nemamo uopšte servis-inventar za ovaj računar" (agent
 // možda nikad nije sinhronizovao servise), pošto oba slučaja padaju u isti
 // NOT EXISTS.
-export async function listComputersWithoutUltravnc() {
-  const [rows] = await pool.execute(`
+export async function listComputersWithoutUltravnc(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT
       ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os,
       ip.is_online AS isOnline,
@@ -84,6 +96,7 @@ export async function listComputersWithoutUltravnc() {
     FROM ip_entries ip
     LEFT JOIN agents ON agents.ip_entry_id = ip.id AND agents.status = 'active'
     WHERE ip.entry_type = 'computer'
+      ${site ? "AND ip.site = ?" : ""}
       AND NOT EXISTS (
         SELECT 1 FROM computer_services csv
         WHERE csv.ip_entry_id = ip.id
@@ -94,7 +107,9 @@ export async function listComputersWithoutUltravnc() {
           )
       )
     ORDER BY ip.computer_name ASC, ip.ip ASC
-  `);
+    `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
@@ -102,8 +117,9 @@ export async function listComputersWithoutUltravnc() {
    SOFTWARE
    ========================================================= */
 
-export async function getSoftwareStats() {
-  const [[row]] = await pool.execute(`
+export async function getSoftwareStats(site) {
+  const [[row]] = await pool.execute(
+    `
     SELECT
       COUNT(*) AS totalInstallations,
 
@@ -134,8 +150,10 @@ export async function getSoftwareStats() {
 
     FROM computer_software cs
     JOIN ip_entries ie ON ie.id = cs.ip_entry_id
-    WHERE ie.entry_type = 'computer'
-  `);
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [site] : [],
+  );
 
   const totalInstallations = Number(row?.totalInstallations) || 0;
   const computersWithSoftware = Number(row?.computersWithSoftware) || 0;
@@ -154,7 +172,7 @@ export async function getSoftwareStats() {
   };
 }
 
-export async function getTopSoftware(limit = 10) {
+export async function getTopSoftware(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -167,13 +185,14 @@ export async function getTopSoftware(limit = 10) {
       FROM computer_software cs
       JOIN ip_entries ie ON ie.id = cs.ip_entry_id
       WHERE ie.entry_type = 'computer'
+        ${site ? "AND ie.site = ?" : ""}
         AND cs.display_name IS NOT NULL
         AND TRIM(cs.display_name) <> ''
       GROUP BY TRIM(cs.display_name)
       ORDER BY computers DESC, installations DESC, name ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -184,7 +203,7 @@ export async function getTopSoftware(limit = 10) {
   }));
 }
 
-export async function getTopPublishers(limit = 10) {
+export async function getTopPublishers(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -199,7 +218,7 @@ export async function getTopPublishers(limit = 10) {
         ) AS softwareCount
       FROM computer_software cs
       JOIN ip_entries ie ON ie.id = cs.ip_entry_id
-      WHERE ie.entry_type = 'computer'
+      WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
       GROUP BY
         COALESCE(
           NULLIF(TRIM(cs.publisher), ''),
@@ -208,7 +227,7 @@ export async function getTopPublishers(limit = 10) {
       ORDER BY installations DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -219,7 +238,7 @@ export async function getTopPublishers(limit = 10) {
   }));
 }
 
-export async function getSoftwareMultipleVersions(limit = 20) {
+export async function getSoftwareMultipleVersions(limit = 20, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -234,6 +253,7 @@ export async function getSoftwareMultipleVersions(limit = 20) {
       FROM computer_software cs
       JOIN ip_entries ie ON ie.id = cs.ip_entry_id
       WHERE ie.entry_type = 'computer'
+        ${site ? "AND ie.site = ?" : ""}
         AND cs.display_name IS NOT NULL
         AND TRIM(cs.display_name) <> ''
         AND cs.display_version IS NOT NULL
@@ -243,7 +263,7 @@ export async function getSoftwareMultipleVersions(limit = 20) {
       ORDER BY versionCount DESC, computers DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -254,7 +274,7 @@ export async function getSoftwareMultipleVersions(limit = 20) {
   }));
 }
 
-export async function getRareSoftware(limit = 20) {
+export async function getRareSoftware(limit = 20, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -274,6 +294,7 @@ export async function getRareSoftware(limit = 20) {
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
         AND cs.display_name IS NOT NULL
         AND TRIM(cs.display_name) <> ''
       GROUP BY TRIM(cs.display_name)
@@ -281,7 +302,7 @@ export async function getRareSoftware(limit = 20) {
       ORDER BY computers ASC, name ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -293,7 +314,7 @@ export async function getRareSoftware(limit = 20) {
   }));
 }
 
-export async function getComputersWithMostSoftware(limit = 10) {
+export async function getComputersWithMostSoftware(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -306,7 +327,7 @@ export async function getComputersWithMostSoftware(limit = 10) {
       FROM ip_entries ip
       JOIN computer_software cs
         ON cs.ip_entry_id = ip.id
-      WHERE ip.entry_type = 'computer'
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
       GROUP BY
         ip.id,
         ip.ip,
@@ -315,7 +336,7 @@ export async function getComputersWithMostSoftware(limit = 10) {
       ORDER BY softwareCount DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -332,8 +353,9 @@ export async function getComputersWithMostSoftware(limit = 10) {
    DRIVERS
    ========================================================= */
 
-export async function getDriverStats() {
-  const [[row]] = await pool.execute(`
+export async function getDriverStats(site) {
+  const [[row]] = await pool.execute(
+    `
     SELECT
       COUNT(*) AS totalDrivers,
 
@@ -378,8 +400,10 @@ export async function getDriverStats() {
 
     FROM computer_drivers cd
     JOIN ip_entries ie ON ie.id = cd.ip_entry_id
-    WHERE ie.entry_type = 'computer'
-  `);
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [site] : [],
+  );
 
   const totalDrivers = Number(row?.totalDrivers) || 0;
   const computersWithDrivers = Number(row?.computersWithDrivers) || 0;
@@ -402,7 +426,7 @@ export async function getDriverStats() {
   };
 }
 
-export async function getTopDriverManufacturers(limit = 10) {
+export async function getTopDriverManufacturers(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -418,7 +442,7 @@ export async function getTopDriverManufacturers(limit = 10) {
         ) AS devices
       FROM computer_drivers cd
       JOIN ip_entries ie ON ie.id = cd.ip_entry_id
-      WHERE ie.entry_type = 'computer'
+      WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
       GROUP BY
         COALESCE(
           NULLIF(TRIM(cd.manufacturer), ''),
@@ -428,7 +452,7 @@ export async function getTopDriverManufacturers(limit = 10) {
       ORDER BY drivers DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -439,7 +463,7 @@ export async function getTopDriverManufacturers(limit = 10) {
   }));
 }
 
-export async function getOldestDrivers(limit = 20) {
+export async function getOldestDrivers(limit = 20, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -457,11 +481,12 @@ export async function getOldestDrivers(limit = 20) {
       JOIN ip_entries ip
         ON ip.id = cd.ip_entry_id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
         AND cd.driver_date IS NOT NULL
       ORDER BY cd.driver_date ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -478,7 +503,7 @@ export async function getOldestDrivers(limit = 20) {
   }));
 }
 
-export async function getDriverMultipleVersions(limit = 20) {
+export async function getDriverMultipleVersions(limit = 20, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -499,6 +524,7 @@ export async function getDriverMultipleVersions(limit = 20) {
       FROM computer_drivers cd
       JOIN ip_entries ie ON ie.id = cd.ip_entry_id
       WHERE ie.entry_type = 'computer'
+        ${site ? "AND ie.site = ?" : ""}
         AND cd.device_name IS NOT NULL
         AND TRIM(cd.device_name) <> ''
         AND cd.driver_version IS NOT NULL
@@ -508,7 +534,7 @@ export async function getDriverMultipleVersions(limit = 20) {
       ORDER BY versionCount DESC, computers DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -520,7 +546,7 @@ export async function getDriverMultipleVersions(limit = 20) {
   }));
 }
 
-export async function getComputersWithMostDrivers(limit = 10) {
+export async function getComputersWithMostDrivers(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -533,7 +559,7 @@ export async function getComputersWithMostDrivers(limit = 10) {
       FROM ip_entries ip
       JOIN computer_drivers cd
         ON cd.ip_entry_id = ip.id
-      WHERE ip.entry_type = 'computer'
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
       GROUP BY
         ip.id,
         ip.ip,
@@ -542,7 +568,7 @@ export async function getComputersWithMostDrivers(limit = 10) {
       ORDER BY driverCount DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -559,8 +585,9 @@ export async function getComputersWithMostDrivers(limit = 10) {
    SERVICES
    ========================================================= */
 
-export async function getServiceStats() {
-  const [[row]] = await pool.execute(`
+export async function getServiceStats(site) {
+  const [[row]] = await pool.execute(
+    `
     SELECT
       COUNT(*) AS totalServices,
 
@@ -624,8 +651,10 @@ export async function getServiceStats() {
 
     FROM computer_services csv
     JOIN ip_entries ie ON ie.id = csv.ip_entry_id
-    WHERE ie.entry_type = 'computer'
-  `);
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [site] : [],
+  );
 
   const totalServices = Number(row?.totalServices) || 0;
   const computersWithServices = Number(row?.computersWithServices) || 0;
@@ -648,7 +677,7 @@ export async function getServiceStats() {
   };
 }
 
-export async function getAutomaticStoppedServices(limit = 30) {
+export async function getAutomaticStoppedServices(limit = 30, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -667,6 +696,7 @@ export async function getAutomaticStoppedServices(limit = 30) {
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
         AND LOWER(TRIM(cs.start_mode)) IN ('auto', 'automatic')
         AND LOWER(TRIM(cs.state)) <> 'running'
       ORDER BY
@@ -674,7 +704,7 @@ export async function getAutomaticStoppedServices(limit = 30) {
         cs.display_name ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -692,7 +722,7 @@ export async function getAutomaticStoppedServices(limit = 30) {
   }));
 }
 
-export async function getUnusualServicePaths(limit = 30) {
+export async function getUnusualServicePaths(limit = 30, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -711,6 +741,7 @@ export async function getUnusualServicePaths(limit = 30) {
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
         AND cs.path_name IS NOT NULL
         AND TRIM(cs.path_name) <> ''
 
@@ -725,7 +756,7 @@ export async function getUnusualServicePaths(limit = 30) {
       ORDER BY ip.computer_name ASC, cs.name ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -743,7 +774,7 @@ export async function getUnusualServicePaths(limit = 30) {
   }));
 }
 
-export async function getRareServices(limit = 20) {
+export async function getRareServices(limit = 20, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -762,6 +793,7 @@ export async function getRareServices(limit = 20) {
       JOIN ip_entries ip
         ON ip.id = cs.ip_entry_id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
         AND cs.name IS NOT NULL
         AND TRIM(cs.name) <> ''
       GROUP BY TRIM(cs.name)
@@ -769,7 +801,7 @@ export async function getRareServices(limit = 20) {
       ORDER BY computers ASC, name ASC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -784,8 +816,9 @@ export async function getRareServices(limit = 20) {
    UPDATES
    ========================================================= */
 
-export async function getUpdateStats() {
-  const [[row]] = await pool.execute(`
+export async function getUpdateStats(site) {
+  const [[row]] = await pool.execute(
+    `
     SELECT
       COUNT(*) AS totalUpdates,
 
@@ -811,7 +844,10 @@ export async function getUpdateStats() {
     FROM computer_updates cu
     JOIN ip_entries ie ON ie.id = cu.ip_entry_id
     WHERE ie.entry_type = 'computer'
-  `);
+      ${site ? "AND ie.site = ?" : ""}
+  `,
+    site ? [site] : [],
+  );
 
   return {
     totalUpdates: Number(row?.totalUpdates) || 0,
@@ -825,8 +861,9 @@ export async function getUpdateStats() {
   };
 }
 
-export async function getUpdateFreshnessBuckets() {
-  const [[row]] = await pool.execute(`
+export async function getUpdateFreshnessBuckets(site) {
+  const [[row]] = await pool.execute(
+    `
     SELECT
       SUM(
         CASE
@@ -869,21 +906,28 @@ export async function getUpdateFreshnessBuckets() {
       FROM computer_updates cu
       JOIN ip_entries ie ON ie.id = cu.ip_entry_id
       WHERE ie.entry_type = 'computer'
+        ${site ? "AND ie.site = ?" : ""}
         AND cu.installed_on IS NOT NULL
       GROUP BY cu.ip_entry_id
     ) latest
-  `);
+  `,
+    site ? [site] : [],
+  );
 
-  const [[missingRow]] = await pool.execute(`
+  const [[missingRow]] = await pool.execute(
+    `
     SELECT COUNT(*) AS withoutData
     FROM ip_entries ip
     WHERE ip.entry_type = 'computer'
+      ${site ? "AND ip.site = ?" : ""}
       AND NOT EXISTS (
         SELECT 1
         FROM computer_updates cu
         WHERE cu.ip_entry_id = ip.id
       )
-  `);
+  `,
+    site ? [site] : [],
+  );
 
   return {
     last30Days: Number(row?.last30Days) || 0,
@@ -894,7 +938,7 @@ export async function getUpdateFreshnessBuckets() {
   };
 }
 
-export async function getTopHotfixes(limit = 10) {
+export async function getTopHotfixes(limit = 10, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -907,13 +951,14 @@ export async function getTopHotfixes(limit = 10) {
       FROM computer_updates cu
       JOIN ip_entries ie ON ie.id = cu.ip_entry_id
       WHERE ie.entry_type = 'computer'
+        ${site ? "AND ie.site = ?" : ""}
         AND cu.hotfix_id IS NOT NULL
         AND TRIM(cu.hotfix_id) <> ''
       GROUP BY TRIM(cu.hotfix_id)
       ORDER BY computers DESC, installations DESC
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -926,7 +971,7 @@ export async function getTopHotfixes(limit = 10) {
   }));
 }
 
-export async function getLatestUpdateByComputer(limit = 200) {
+export async function getLatestUpdateByComputer(limit = 200, site) {
   const [rows] = await pool.execute(
     `
       SELECT
@@ -954,6 +999,7 @@ export async function getLatestUpdateByComputer(limit = 200) {
         ON cu.ip_entry_id = ip.id
 
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
 
       GROUP BY
         ip.id,
@@ -967,7 +1013,7 @@ export async function getLatestUpdateByComputer(limit = 200) {
 
       LIMIT ?
     `,
-    [limit],
+    [...(site ? [site] : []), limit],
   );
 
   return rows.map((row) => ({
@@ -982,7 +1028,7 @@ export async function getLatestUpdateByComputer(limit = 200) {
   }));
 }
 
-export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
+export async function getStaleUpdateComputers(staleDays = 90, limit = 50, site) {
   const safeDays = Math.max(1, Math.min(Number(staleDays) || 90, 3650));
 
   const [rows] = await pool.execute(
@@ -999,6 +1045,7 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
       LEFT JOIN computer_updates cu
         ON cu.ip_entry_id = ip.id
       WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
       GROUP BY
         ip.id,
         ip.ip,
@@ -1012,7 +1059,7 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
         MAX(cu.installed_on) ASC
       LIMIT ?
     `,
-    [safeDays, limit],
+    [...(site ? [site] : []), safeDays, limit],
   );
 
   return rows.map((row) => ({
@@ -1030,8 +1077,9 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50) {
    EXPORT (pune liste, bez limita/top-N kurirovanja)
    ========================================================= */
 
-export async function getAllSoftwareForExport() {
-  const [rows] = await pool.execute(`
+export async function getAllSoftwareForExport(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT
       ie.computer_name AS computerName,
       ie.ip,
@@ -1044,13 +1092,17 @@ export async function getAllSoftwareForExport() {
     FROM computer_software cs
     JOIN ip_entries ie ON ie.id = cs.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY ie.computer_name ASC, cs.display_name ASC
-  `);
+  `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
-export async function getAllDriversForExport() {
-  const [rows] = await pool.execute(`
+export async function getAllDriversForExport(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT
       ie.computer_name AS computerName,
       ie.ip,
@@ -1064,13 +1116,17 @@ export async function getAllDriversForExport() {
     FROM computer_drivers cd
     JOIN ip_entries ie ON ie.id = cd.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY ie.computer_name ASC, cd.device_name ASC
-  `);
+  `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
-export async function getAllServicesForExport() {
-  const [rows] = await pool.execute(`
+export async function getAllServicesForExport(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT
       ie.computer_name AS computerName,
       ie.ip,
@@ -1085,13 +1141,17 @@ export async function getAllServicesForExport() {
     FROM computer_services cs
     JOIN ip_entries ie ON ie.id = cs.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY ie.computer_name ASC, cs.display_name ASC
-  `);
+  `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
-export async function getAllUpdatesForExport() {
-  const [rows] = await pool.execute(`
+export async function getAllUpdatesForExport(site) {
+  const [rows] = await pool.execute(
+    `
     SELECT
       ie.computer_name AS computerName,
       ie.ip,
@@ -1104,8 +1164,11 @@ export async function getAllUpdatesForExport() {
     FROM computer_updates cu
     JOIN ip_entries ie ON ie.id = cu.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY ie.computer_name ASC, cu.installed_on DESC
-  `);
+  `,
+    site ? [site] : [],
+  );
   return rows || [];
 }
 
@@ -1114,7 +1177,7 @@ export async function getAllUpdatesForExport() {
    tabele koje se prikazuju na dashboard-u)
    ========================================================= */
 
-export async function searchSoftwareRows(term, limit = 100) {
+export async function searchSoftwareRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     ["cs.display_name", "cs.display_version", "cs.publisher", "ie.computer_name", "ie.ip"],
     term,
@@ -1134,16 +1197,16 @@ export async function searchSoftwareRows(term, limit = 100) {
       cs.inventory_date AS inventoryDate
     FROM computer_software cs
     JOIN ip_entries ie ON ie.id = cs.ip_entry_id
-    WHERE ie.entry_type = 'computer' AND ${where}
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY ie.computer_name ASC, cs.display_name ASC
     LIMIT ?
     `,
-    [...params, limit],
+    [...(site ? [site] : []), ...params, limit],
   );
   return rows || [];
 }
 
-export async function searchDriverRows(term, limit = 100) {
+export async function searchDriverRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     ["cd.device_name", "cd.driver_version", "cd.manufacturer", "cd.driver_provider_name", "ie.computer_name", "ie.ip"],
     term,
@@ -1164,16 +1227,16 @@ export async function searchDriverRows(term, limit = 100) {
       cd.inventory_date AS inventoryDate
     FROM computer_drivers cd
     JOIN ip_entries ie ON ie.id = cd.ip_entry_id
-    WHERE ie.entry_type = 'computer' AND ${where}
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY ie.computer_name ASC, cd.device_name ASC
     LIMIT ?
     `,
-    [...params, limit],
+    [...(site ? [site] : []), ...params, limit],
   );
   return rows || [];
 }
 
-export async function searchServiceRows(term, limit = 100) {
+export async function searchServiceRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     ["cs.name", "cs.display_name", "cs.start_name", "cs.path_name", "ie.computer_name", "ie.ip"],
     term,
@@ -1195,16 +1258,16 @@ export async function searchServiceRows(term, limit = 100) {
       cs.inventory_date AS inventoryDate
     FROM computer_services cs
     JOIN ip_entries ie ON ie.id = cs.ip_entry_id
-    WHERE ie.entry_type = 'computer' AND ${where}
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY ie.computer_name ASC, cs.display_name ASC
     LIMIT ?
     `,
-    [...params, limit],
+    [...(site ? [site] : []), ...params, limit],
   );
   return rows || [];
 }
 
-export async function searchUpdateRows(term, limit = 100) {
+export async function searchUpdateRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     ["cu.hotfix_id", "cu.description", "cu.installed_by", "ie.computer_name", "ie.ip"],
     term,
@@ -1224,11 +1287,11 @@ export async function searchUpdateRows(term, limit = 100) {
       cu.inventory_date AS inventoryDate
     FROM computer_updates cu
     JOIN ip_entries ie ON ie.id = cu.ip_entry_id
-    WHERE ie.entry_type = 'computer' AND ${where}
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY cu.installed_on DESC
     LIMIT ?
     `,
-    [...params, limit],
+    [...(site ? [site] : []), ...params, limit],
   );
   return rows || [];
 }

@@ -1,10 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isTokenExpired, decodeJwt } from '@/utils/auth.js'
 import { resetCurrentUser } from '@/composables/useCurrentUser.js'
+import { isValidSite } from '@/constants/sites.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
 const LoginView = () => import('@/views/LoginView.vue')
+const SelectSiteView = () => import('@/views/SelectSiteView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 const AddIpView = () => import('@/views/AddIpView.vue')
 const EditIpView = () => import('@/views/EditIpView.vue')
@@ -232,11 +234,23 @@ const router = createRouter({
       component: LoginView,
     },
     {
+      // Van MainLayout-a namerno, isti obrazac kao /login - kartice za izbor
+      // lokacije (Bolnica/Dom zdravlja), pre nego što se nastavi na traženu
+      // stranu. requiresSite: false da guard ne uđe u beskonačnu petlju
+      // preusmeravanja na samog sebe.
+      path: '/select-site',
+      name: 'select-site',
+      meta: { requiresAuth: true, requiresSite: false, title: 'Izbor lokacije - NetDesk' },
+      component: SelectSiteView,
+    },
+    {
       // Van MainLayout-a namerno - otvara se u posebnom browser prozoru
       // (window.open iz VncViewer.vue), pa ne treba nav/sidebar hromiranje.
+      // requiresSite: false - samostalna po-agentu strana, ne filtrira po
+      // lokaciji, pa ne treba da bude preusmerena na /select-site.
       path: '/agents/:id/screen',
       name: 'agent-vnc-session',
-      meta: { requiresAuth: true, title: 'Udaljena kontrola ekrana - NetDesk' },
+      meta: { requiresAuth: true, requiresSite: false, title: 'Udaljena kontrola ekrana - NetDesk' },
       component: VncSessionView,
     },
     {
@@ -260,6 +274,21 @@ router.beforeEach((to, from, next) => {
     }
     if (to.meta.requiresAdmin && decodeJwt(token)?.role !== 'admin') {
       return next('/')
+    }
+
+    // Lokacija (Bolnica/Dom zdravlja) se nosi kao URL query param na svakoj
+    // strani (korisnikova eksplicitna odluka - ne localStorage, mora se
+    // videti/deliti u linku). Ovo je isti "guard-injektuje-state" pristup
+    // kao auth provera iznad, samo jedno mesto za izmenu umesto diranja
+    // desetina postojećih router-link/router.push poziva.
+    if (to.meta.requiresSite !== false) {
+      if (!isValidSite(to.query.site)) {
+        if (isValidSite(from.query.site)) {
+          return next({ ...to, query: { ...to.query, site: from.query.site } })
+        }
+        const returnTo = encodeURIComponent(to.fullPath || '/')
+        return next(`/select-site?returnTo=${returnTo}`)
+      }
     }
   }
 

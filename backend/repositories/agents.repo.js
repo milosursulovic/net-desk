@@ -122,6 +122,7 @@ function buildAgentsWhereClause({
   version,
   versionNot,
   department,
+  site,
   enrolledFrom,
   enrolledTo,
   heartbeatFrom,
@@ -165,6 +166,10 @@ function buildAgentsWhereClause({
   if (department) {
     whereParts.push("ie.department = ?");
     params.push(department);
+  }
+  if (site) {
+    whereParts.push("ie.site = ?");
+    params.push(site);
   }
   if (enrolledFrom) {
     whereParts.push("DATE(agents.enrolled_at) >= ?");
@@ -245,9 +250,18 @@ export async function listAgentIds(filters) {
   return rows.map((r) => r.id);
 }
 
-export async function listDistinctAgentOs() {
+export async function listDistinctAgentOs(site) {
+  const whereParts = ["agents.os_caption IS NOT NULL", "agents.os_caption != ''"];
+  const params = [];
+  let join = "";
+  if (site) {
+    join = AGENTS_IP_ENTRY_JOIN;
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
   const [rows] = await pool.execute(
-    `SELECT DISTINCT os_caption FROM agents WHERE os_caption IS NOT NULL AND os_caption != '' ORDER BY os_caption`,
+    `SELECT DISTINCT agents.os_caption FROM agents ${join} WHERE ${whereParts.join(" AND ")} ORDER BY agents.os_caption`,
+    params,
   );
   return rows.map((r) => r.os_caption);
 }
@@ -256,17 +270,26 @@ export async function listDistinctAgentOs() {
 // tačka-odvojen deo verzije kao broj. Pretpostavlja "x.y.z" oblik (isti
 // format kao AgentVersionInfo.cs u agentu) - agenti bez tog oblika i dalje
 // prolaze, samo im je redosled sortiranja manje pouzdan.
-export async function listDistinctAgentVersions() {
+export async function listDistinctAgentVersions(site) {
+  const whereParts = ["agents.agent_version IS NOT NULL", "agents.agent_version != ''"];
+  const params = [];
+  let join = "";
+  if (site) {
+    join = AGENTS_IP_ENTRY_JOIN;
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
   const [rows] = await pool.execute(
     `
-    SELECT DISTINCT agent_version
-    FROM agents
-    WHERE agent_version IS NOT NULL AND agent_version != ''
+    SELECT DISTINCT agents.agent_version
+    FROM agents ${join}
+    WHERE ${whereParts.join(" AND ")}
     ORDER BY
-      CAST(SUBSTRING_INDEX(agent_version, '.', 1) AS UNSIGNED) DESC,
-      CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(agent_version, '.', 2), '.', -1) AS UNSIGNED) DESC,
-      CAST(SUBSTRING_INDEX(agent_version, '.', -1) AS UNSIGNED) DESC
+      CAST(SUBSTRING_INDEX(agents.agent_version, '.', 1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(agents.agent_version, '.', 2), '.', -1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(agents.agent_version, '.', -1) AS UNSIGNED) DESC
     `,
+    params,
   );
   return rows.map((r) => r.agent_version);
 }
@@ -275,38 +298,49 @@ export async function listDistinctAgentVersions() {
 // (and thresholds) that listAgents()'s connectivityStatus filter matches
 // against, so the counts here are always consistent with what the filter
 // would return.
-export async function countAgentsByConnectivity() {
+export async function countAgentsByConnectivity(site) {
   const [rows] = await pool.execute(
     `
     SELECT (${CONNECTIVITY_STATUS_SQL}) AS status, COUNT(*) AS cnt
     FROM agents
-    WHERE status = 'active'
+    ${site ? AGENTS_IP_ENTRY_JOIN : ""}
+    WHERE agents.status = 'active'
+      ${site ? "AND ie.site = ?" : ""}
     GROUP BY status
     `,
+    site ? [site] : [],
   );
   const out = { online: 0, stale: 0, offline: 0, unknown: 0 };
   for (const r of rows) out[r.status] = Number(r.cnt) || 0;
   return out;
 }
 
-export async function listAgentsEnrolledSince(since, limit = 20) {
+export async function listAgentsEnrolledSince(since, limit = 20, site) {
   const [rows] = await pool.execute(
     `
-    SELECT hostname, agent_uid AS agentUid, enrolled_at AS enrolledAt
+    SELECT agents.hostname, agents.agent_uid AS agentUid, agents.enrolled_at AS enrolledAt
     FROM agents
-    WHERE enrolled_at >= ?
-    ORDER BY enrolled_at DESC
+    ${site ? AGENTS_IP_ENTRY_JOIN : ""}
+    WHERE agents.enrolled_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
+    ORDER BY agents.enrolled_at DESC
     LIMIT ?
     `,
-    [since, limit],
+    [since, ...(site ? [site] : []), limit],
   );
   return rows;
 }
 
-export async function countAgentsEnrolledSince(since) {
+export async function countAgentsEnrolledSince(since, site) {
   const [[{ cnt }]] = await pool.execute(
-    `SELECT COUNT(*) AS cnt FROM agents WHERE enrolled_at >= ?`,
-    [since],
+    `
+    SELECT COUNT(*) AS cnt
+    FROM agents
+    ${site ? AGENTS_IP_ENTRY_JOIN : ""}
+    WHERE agents.enrolled_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    [since, ...(site ? [site] : [])],
   );
   return Number(cnt) || 0;
 }

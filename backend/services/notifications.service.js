@@ -11,7 +11,7 @@ import {
   countWuServiceUnavailable,
 } from "../repositories/notifications.repo.js";
 
-export async function listNotifications() {
+export async function listNotifications(site) {
   const [
     offline,
     duplicates,
@@ -24,16 +24,16 @@ export async function listNotifications() {
     failedJobs,
     wuUnavailable,
   ] = await Promise.all([
-    countOfflineEntries(),
-    countDuplicateNameGroups(),
-    countUnclassifiedEntries(),
-    countAutomaticStoppedServices(),
-    countStaleUpdateComputers(90),
-    countDiskFullAgents(90),
-    countAntivirusInactiveAgents(),
-    countFirewallInactiveAgents(),
-    countFailedJobsRecent(24),
-    countWuServiceUnavailable(),
+    countOfflineEntries(site),
+    countDuplicateNameGroups(site),
+    countUnclassifiedEntries(site),
+    countAutomaticStoppedServices(site),
+    countStaleUpdateComputers(90, site),
+    countDiskFullAgents(90, site),
+    countAntivirusInactiveAgents(site),
+    countFirewallInactiveAgents(site),
+    countFailedJobsRecent(24, site),
+    countWuServiceUnavailable(site),
   ]);
 
   const notifications = [];

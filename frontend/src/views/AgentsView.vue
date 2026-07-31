@@ -296,6 +296,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
@@ -309,6 +310,7 @@ import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
+const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
@@ -396,9 +398,12 @@ watch(
     enrolledTo,
     heartbeatFrom,
     heartbeatTo,
+    site,
   ],
   fetchData,
 )
+
+watch(site, fetchFilterOptions)
 
 const items = ref([])
 const total = ref(0)
@@ -431,7 +436,7 @@ let searchT = null
 
 async function fetchFilterOptions() {
   try {
-    const res = await fetchWithAuth('/api/protected/agents/filter-options')
+    const res = await fetchWithAuth(`/api/protected/agents/filter-options?site=${site.value}`)
     if (!res.ok) throw new Error()
     const data = await res.json()
     osOptions.value = data.os || []
@@ -459,7 +464,7 @@ function clearDetailedFilters() {
 // (šalje na /agents/ids bez page/limit - svi id-jevi koji odgovaraju
 // filterima, ne samo trenutna strana) - isti set filtera na oba mesta.
 function buildFilterParams() {
-  const params = new URLSearchParams({ search: search.value, status: status.value })
+  const params = new URLSearchParams({ search: search.value, status: status.value, site: site.value })
   if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
   if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
   if (os.value) params.set('os', os.value)

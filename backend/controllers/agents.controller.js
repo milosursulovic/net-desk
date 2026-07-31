@@ -16,6 +16,7 @@ import {
   syncAgentInventory,
 } from "../services/agents.service.js";
 import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { badRequest } from "../utils/httpError.js";
@@ -28,6 +29,10 @@ const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateFilter(value) {
   return DATE_ONLY_RE.test(String(value || "")) ? value : undefined;
+}
+
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
 }
 
 export async function enrollController(req, res) {
@@ -78,6 +83,7 @@ function parseAgentListFilters(query) {
     version: String(query.version || "").trim() || undefined,
     versionNot: String(query.versionNot || "").trim() || undefined,
     department: String(query.department || "").trim() || undefined,
+    site: siteFilter(query.site),
     enrolledFrom: dateFilter(query.enrolledFrom),
     enrolledTo: dateFilter(query.enrolledTo),
     heartbeatFrom: dateFilter(query.heartbeatFrom),
@@ -99,7 +105,7 @@ export async function listAgentIdsController(req, res) {
 }
 
 export async function agentFilterOptionsController(req, res) {
-  const out = await agentFilterOptionsService();
+  const out = await agentFilterOptionsService(siteFilter(req.query.site));
   res.json(out);
 }
 
@@ -107,14 +113,15 @@ export async function listComputersWithoutAgentController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 50), 1, 200);
   const search = String(req.query.search || "").trim();
+  const site = siteFilter(req.query.site);
 
-  const out = await listComputersWithoutAgentService({ page, limit, search });
+  const out = await listComputersWithoutAgentService({ page, limit, search, site });
   res.json(out);
 }
 
 export async function exportComputersWithoutAgentPdfController(req, res) {
   const search = String(req.query.search || "").trim();
-  const entries = await listAllComputersWithoutAgentService(search);
+  const entries = await listAllComputersWithoutAgentService(search, siteFilter(req.query.site));
   const dateStamp = new Date().toISOString().slice(0, 10);
 
   sendTablePdf(res, {

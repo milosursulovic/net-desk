@@ -11,7 +11,7 @@ export async function insertUpdateLog({ agentId, fromVersion, toVersion, success
   );
 }
 
-export async function listFailedUpdatesSince(since, limit = 20) {
+export async function listFailedUpdatesSince(since, limit = 20, site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -22,19 +22,27 @@ export async function listFailedUpdatesSince(since, limit = 20) {
       l.reported_at AS reportedAt
     FROM agent_update_log l
     JOIN agents a ON a.id = l.agent_id
+    ${site ? "JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
     WHERE l.success = 0 AND l.reported_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY l.reported_at DESC
     LIMIT ?
     `,
-    [since, limit],
+    [since, ...(site ? [site] : []), limit],
   );
   return rows;
 }
 
-export async function countFailedUpdatesSince(since) {
+export async function countFailedUpdatesSince(since, site) {
   const [[{ cnt }]] = await pool.execute(
-    `SELECT COUNT(*) AS cnt FROM agent_update_log WHERE success = 0 AND reported_at >= ?`,
-    [since],
+    `
+    SELECT COUNT(*) AS cnt
+    FROM agent_update_log l
+    ${site ? "JOIN agents a ON a.id = l.agent_id JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
+    WHERE l.success = 0 AND l.reported_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    [since, ...(site ? [site] : [])],
   );
   return Number(cnt) || 0;
 }

@@ -10,7 +10,7 @@ async function createTestIpEntry(computerName) {
   const res = await request(app)
     .post("/api/protected/ip-addresses")
     .set("Authorization", `Bearer ${adminToken()}`)
-    .send({ ip: testIp(), computerName, entryType: "computer" });
+    .send({ ip: testIp(), computerName, site: "bolnica", entryType: "computer" });
   expect(res.status).toBe(201);
   return res.body;
 }

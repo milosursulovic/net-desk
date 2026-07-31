@@ -5,6 +5,7 @@ import { sendTablePdf } from "../utils/pdfTable.js";
 import { sendMetadataPdf } from "../utils/metadataPdf.js";
 import { notFound } from "../utils/httpError.js";
 import { findIpEntryById } from "../repositories/ipEntries.repo.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import {
   listMetadataPage,
   statsService,
@@ -14,28 +15,32 @@ import {
   getMetadataByIpEntryIdService,
 } from "../services/metadata.service.js";
 
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
+}
+
 export async function listMetadataController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 50), 1, 1000);
 
-  const out = await listMetadataPage({ page, limit });
+  const out = await listMetadataPage({ page, limit, site: siteFilter(req.query.site) });
   res.json(out);
 }
 
 export async function searchMetadataController(req, res) {
   const term = String(req.query.q || "");
-  const out = await searchMetadataService(term);
+  const out = await searchMetadataService(term, siteFilter(req.query.site));
   res.json(out);
 }
 
 export async function statsController(req, res) {
   const includeMeta = parseBool(req.query.includeMeta);
-  const out = await statsService(includeMeta);
+  const out = await statsService(includeMeta, siteFilter(req.query.site));
   res.json(out);
 }
 
 export async function listWithoutMetadataController(req, res) {
-  const out = await listEntriesWithoutMetadataService();
+  const out = await listEntriesWithoutMetadataService(siteFilter(req.query.site));
   res.json(out);
 }
 
@@ -56,7 +61,7 @@ export async function exportComputerMetadataPdfController(req, res) {
 }
 
 export async function exportWithoutMetadataPdfController(req, res) {
-  const { items } = await listEntriesWithoutMetadataService();
+  const { items } = await listEntriesWithoutMetadataService(siteFilter(req.query.site));
   const dateStamp = new Date().toISOString().slice(0, 10);
 
   sendTablePdf(res, {

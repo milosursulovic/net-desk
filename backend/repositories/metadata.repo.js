@@ -91,17 +91,18 @@ export async function findMetadataIdByIpEntryId(ipEntryId) {
   return row?.id ?? null;
 }
 
-export async function listMetadataIds(offset, limit) {
+export async function listMetadataIds(offset, limit, site) {
   const [rows] = await pool.execute(
     `
     SELECT cm.id
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY cm.id DESC
     LIMIT ? OFFSET ?
     `,
-    [limit, offset],
+    [...(site ? [site] : []), limit, offset],
   );
   return rows || [];
 }
@@ -110,7 +111,7 @@ export async function listMetadataIds(offset, limit) {
 // kao pdsuAnalytics.repo.js searchSoftwareRows/searchDriverRows/itd: LIKE
 // preko relevantnih kolona, JOIN sa ip_entries za računar/IP/odeljenje, hard
 // LIMIT da jedan preširok upit ne vrati celu bazu.
-export async function searchMetadataRows(term, limit = 100) {
+export async function searchMetadataRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     [
       "ie.computer_name",
@@ -144,23 +145,25 @@ export async function searchMetadataRows(term, limit = 100) {
       cm.collected_at AS collectedAt
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
-    WHERE ie.entry_type = 'computer' AND ${where}
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY ie.computer_name ASC
     LIMIT ?
     `,
-    [...params, limit],
+    [...(site ? [site] : []), ...params, limit],
   );
   return rows || [];
 }
 
-export async function countMetadataTotal() {
+export async function countMetadataTotal(site) {
   const [[{ total }]] = await pool.execute(
     `
     SELECT COUNT(*) AS total
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   return Number(total) || 0;
 }
@@ -380,21 +383,24 @@ export async function txReplaceNics(conn, metadataId, items) {
   }
 }
 
-export async function statsTotalIpEntries() {
+export async function statsTotalIpEntries(site) {
   const [[{ totalIpEntries }]] = await pool.execute(
-    `SELECT COUNT(*) AS totalIpEntries FROM ip_entries WHERE entry_type = 'computer'`,
+    `SELECT COUNT(*) AS totalIpEntries FROM ip_entries WHERE entry_type = 'computer' ${site ? "AND site = ?" : ""}`,
+    site ? [site] : [],
   );
   return Number(totalIpEntries) || 0;
 }
 
-export async function statsTotalWithMeta() {
+export async function statsTotalWithMeta(site) {
   const [[{ totalWithMeta }]] = await pool.execute(
     `
     SELECT COUNT(*) AS totalWithMeta
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   return Number(totalWithMeta) || 0;
 }
@@ -414,19 +420,21 @@ export async function deleteMetadataForIpEntry(ipEntryId) {
   return result.affectedRows;
 }
 
-export async function listEntriesWithoutMetadata() {
+export async function listEntriesWithoutMetadata(site) {
   const [rows] = await pool.execute(
     `
     SELECT id, ip, computer_name AS computerName, department, os
     FROM ip_entries
     WHERE entry_type = 'computer' AND metadata_id IS NULL
+      ${site ? "AND site = ?" : ""}
     ORDER BY computer_name ASC, ip ASC
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsRamTotals() {
+export async function statsRamTotals(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -442,12 +450,14 @@ export async function statsRamTotals() {
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsStorageAgg() {
+export async function statsStorageAgg(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -458,12 +468,14 @@ export async function statsStorageAgg() {
     JOIN computer_metadata cm ON cm.id = s.metadata_id
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   return rows?.[0] || { totalGb: 0, ssdCount: 0, hddCount: 0 };
 }
 
-export async function statsGpuCounts() {
+export async function statsGpuCounts(site) {
   const [[{ withGpu }]] = await pool.execute(
     `
     SELECT COUNT(DISTINCT g.metadata_id) AS withGpu
@@ -471,7 +483,9 @@ export async function statsGpuCounts() {
     JOIN computer_metadata cm ON cm.id = g.metadata_id
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   const [[{ avgVramGb }]] = await pool.execute(
     `
@@ -480,12 +494,14 @@ export async function statsGpuCounts() {
     JOIN computer_metadata cm ON cm.id = g.metadata_id
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     `,
+    site ? [site] : [],
   );
   return { withGpu: Number(withGpu) || 0, avgVramGb: Number(avgVramGb) || 0 };
 }
 
-export async function statsTopOs() {
+export async function statsTopOs(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -494,15 +510,17 @@ export async function statsTopOs() {
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     GROUP BY \`key\`
     ORDER BY count DESC
     LIMIT 5
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsTopManufacturers() {
+export async function statsTopManufacturers(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -511,15 +529,17 @@ export async function statsTopManufacturers() {
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     GROUP BY \`key\`
     ORDER BY count DESC
     LIMIT 6
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsTopNicSpeedsRaw() {
+export async function statsTopNicSpeedsRaw(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -535,15 +555,17 @@ export async function statsTopNicSpeedsRaw() {
     JOIN computer_metadata cm ON cm.id = n.metadata_id
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     GROUP BY speedNorm
     ORDER BY count DESC
     LIMIT 5
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsRecencyAgg(startDate) {
+export async function statsRecencyAgg(startDate, site) {
   const [rows] = await pool.execute(
     `
     SELECT DATE(cm.collected_at) AS day, COUNT(*) AS count
@@ -551,15 +573,16 @@ export async function statsRecencyAgg(startDate) {
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
       AND cm.collected_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
     GROUP BY DATE(cm.collected_at)
     ORDER BY day ASC
     `,
-    [startDate],
+    [startDate, ...(site ? [site] : [])],
   );
   return rows || [];
 }
 
-export async function statsLowRamRows() {
+export async function statsLowRamRows(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -577,14 +600,16 @@ export async function statsLowRamRows() {
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY TotalRAM_GB ASC
     LIMIT 10
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
 
-export async function statsOldOsRows() {
+export async function statsOldOsRows(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -595,10 +620,12 @@ export async function statsOldOsRows() {
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
       AND cm.os_install_date IS NOT NULL
     ORDER BY cm.os_install_date ASC
     LIMIT 10
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }
@@ -606,7 +633,7 @@ export async function statsOldOsRows() {
 // Flags Lexar SSDs specifically - this brand/model has a known firmware
 // reliability issue observed on this fleet, so it's called out separately
 // from the general low-RAM/old-OS red-flag lists rather than being generic.
-export async function statsLexarFlagRows() {
+export async function statsLexarFlagRows(site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -620,9 +647,11 @@ export async function statsLexarFlagRows() {
     JOIN computer_metadata cm ON cm.id = s.metadata_id
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
     WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
       AND s.model LIKE '%lexar%' AND UPPER(COALESCE(s.media_type,'')) LIKE '%SSD%'
     ORDER BY ComputerName ASC
     `,
+    site ? [site] : [],
   );
   return rows || [];
 }

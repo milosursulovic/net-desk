@@ -109,10 +109,12 @@ import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import AppButton from '@/components/AppButton.vue'
 
 const { getSignal, abort } = useAbortableFetch()
+const site = useCurrentSite()
 
 const { page, limit, search, nextPage, prevPage, applyServerPagination } =
   usePaginatedRoute({
@@ -125,7 +127,7 @@ const { page, limit, search, nextPage, prevPage, applyServerPagination } =
     useReplace: true,
   })
 
-watch([page, limit, search], fetchData)
+watch([page, limit, search, site], fetchData)
 
 const items = ref([])
 const total = ref(0)
@@ -137,7 +139,7 @@ const exportingPdf = ref(false)
 async function exportPdf() {
   exportingPdf.value = true
   try {
-    const params = new URLSearchParams({ search: search.value })
+    const params = new URLSearchParams({ search: search.value, site: site.value })
     const dateStamp = new Date().toISOString().slice(0, 10)
     await downloadFromResponse(
       await fetchWithAuth(`/api/protected/agents/without-agent-computers/export-pdf?${params.toString()}`),
@@ -159,6 +161,7 @@ async function fetchData() {
       page: page.value,
       limit: limit.value,
       search: search.value,
+      site: site.value,
     })
 
     const res = await fetchWithAuth(`/api/protected/agents/without-agent-computers?${params.toString()}`, {

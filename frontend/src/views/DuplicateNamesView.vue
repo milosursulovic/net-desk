@@ -78,14 +78,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useToast } from '@/composables/useToast.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
 const router = useRouter()
+const site = useCurrentSite()
 const { toast, copyToClipboard } = useToast()
 
 const loading = ref(false)
@@ -104,7 +106,7 @@ async function loadDuplicates() {
   loading.value = true
   error.value = ''
   try {
-    const params = new URLSearchParams({ search: '', status: 'all' })
+    const params = new URLSearchParams({ search: '', status: 'all', site: site.value })
     const res = await fetchWithAuth(`/api/protected/ip-addresses/duplicates?${params.toString()}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -118,4 +120,5 @@ async function loadDuplicates() {
 }
 
 onMounted(loadDuplicates)
+watch(site, loadDuplicates)
 </script>

@@ -105,12 +105,12 @@ async function loadMetadataById(metadataId) {
   return mapMeta(base, children);
 }
 
-export async function listMetadataPage({ page, limit }) {
-  const total = await countMetadataTotal();
+export async function listMetadataPage({ page, limit, site }) {
+  const total = await countMetadataTotal(site);
   const { page: safePage, totalPages } = paginate({ page, limit, total });
   const offset = (safePage - 1) * limit;
 
-  const ids = await listMetadataIds(offset, limit);
+  const ids = await listMetadataIds(offset, limit, site);
   const items = [];
   for (const r of ids) {
     const obj = await loadMetadataById(r.id);
@@ -120,8 +120,8 @@ export async function listMetadataPage({ page, limit }) {
   return { items, total, totalPages, page: safePage, limit };
 }
 
-export async function listEntriesWithoutMetadataService() {
-  const items = await listEntriesWithoutMetadata();
+export async function listEntriesWithoutMetadataService(site) {
+  const items = await listEntriesWithoutMetadata(site);
   return { items, total: items.length };
 }
 
@@ -130,11 +130,11 @@ export async function clearMetadataForIpEntryService(ipEntryId) {
   return { cleared: affected > 0 };
 }
 
-export async function searchMetadataService(term) {
+export async function searchMetadataService(term, site) {
   const query = String(term ?? "").trim();
   if (!query) return { items: [] };
 
-  const items = await searchMetadataRows(query, 100);
+  const items = await searchMetadataRows(query, 100, site);
   return { items };
 }
 
@@ -344,11 +344,11 @@ function median(nums) {
 }
 const round1 = (n) => (Number.isFinite(n) ? Math.round(n * 10) / 10 : 0);
 
-export async function statsService(includeMeta = false) {
-  const totalIpEntries = await statsTotalIpEntries();
-  const totalWithMeta = await statsTotalWithMeta();
+export async function statsService(includeMeta = false, site) {
+  const totalIpEntries = await statsTotalIpEntries(site);
+  const totalWithMeta = await statsTotalWithMeta(site);
 
-  const ramRows = await statsRamTotals();
+  const ramRows = await statsRamTotals(site);
   const ramTotals = ramRows.map((x) => Number(x.ramTotal) || 0);
   const avgRam = ramTotals.length
     ? ramTotals.reduce((a, b) => a + b, 0) / ramTotals.length
@@ -356,12 +356,12 @@ export async function statsService(includeMeta = false) {
   const medRam = median(ramTotals);
   const maxRam = ramTotals.length ? Math.max(...ramTotals) : 0;
 
-  const storage = await statsStorageAgg();
-  const gpu = await statsGpuCounts();
+  const storage = await statsStorageAgg(site);
+  const gpu = await statsGpuCounts(site);
 
-  const osTop = await statsTopOs();
-  const manufacturersTop = await statsTopManufacturers();
-  const nicTopRaw = await statsTopNicSpeedsRaw();
+  const osTop = await statsTopOs(site);
+  const manufacturersTop = await statsTopManufacturers(site);
+  const nicTopRaw = await statsTopNicSpeedsRaw(site);
   const nicTop = nicTopRaw.map((r) => ({
     key: String(r.speedNorm),
     count: r.count,
@@ -369,7 +369,7 @@ export async function statsService(includeMeta = false) {
 
   const now = new Date();
   const start = new Date(now.getTime() - 13 * 24 * 3600 * 1000);
-  const recencyAgg = await statsRecencyAgg(start);
+  const recencyAgg = await statsRecencyAgg(start, site);
 
   const recencyMap = new Map(
     recencyAgg.map((d) => [
@@ -386,7 +386,7 @@ export async function statsService(includeMeta = false) {
     return recencyMap.get(d.toDateString()) || 0;
   });
 
-  const lowRamRows = await statsLowRamRows();
+  const lowRamRows = await statsLowRamRows(site);
   const lowRam = lowRamRows.map((r) => ({
     ComputerName: r.ComputerName,
     "OS.Caption": r.osCaption ?? null,
@@ -394,7 +394,7 @@ export async function statsService(includeMeta = false) {
     TotalRAM_GB: Number(r.TotalRAM_GB) || 0,
   }));
 
-  const oldOsRows = await statsOldOsRows();
+  const oldOsRows = await statsOldOsRows(site);
   const oldOs = oldOsRows.map((r) => ({
     ComputerName: r.ComputerName,
     "OS.Caption": r.osCaption ?? null,
@@ -402,7 +402,7 @@ export async function statsService(includeMeta = false) {
     CollectedAt: r.CollectedAt ?? null,
   }));
 
-  const lexarFlagRows = await statsLexarFlagRows();
+  const lexarFlagRows = await statsLexarFlagRows(site);
   const lexarFlag = lexarFlagRows.map((r) => ({
     ComputerName: r.ComputerName,
     Storage: {

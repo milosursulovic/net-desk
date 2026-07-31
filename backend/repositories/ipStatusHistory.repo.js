@@ -19,15 +19,17 @@ export async function insertStatusHistoryBulk(rows) {
   );
 }
 
-export async function countStatusTransitionsSince(since) {
+export async function countStatusTransitionsSince(since, site) {
   const [rows] = await pool.execute(
     `
-    SELECT is_online AS isOnline, COUNT(*) AS cnt
-    FROM ip_status_history
-    WHERE changed_at >= ?
-    GROUP BY is_online
+    SELECT ish.is_online AS isOnline, COUNT(*) AS cnt
+    FROM ip_status_history ish
+    ${site ? "JOIN ip_entries ie ON ie.id = ish.ip_entry_id" : ""}
+    WHERE ish.changed_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
+    GROUP BY ish.is_online
     `,
-    [since],
+    [since, ...(site ? [site] : [])],
   );
   const out = { wentOffline: 0, cameOnline: 0 };
   for (const r of rows) {

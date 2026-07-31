@@ -66,7 +66,7 @@ describe("activity-log routes (integration, real DB)", () => {
     const createRes = await request(app)
       .post("/api/protected/ip-addresses")
       .set("Authorization", `Bearer ${token}`)
-      .send({ ip, computerName: "AUDIT-TEST-PC", entryType: "computer" });
+      .send({ ip, computerName: "AUDIT-TEST-PC", site: "bolnica", entryType: "computer" });
     expect(createRes.status).toBe(201);
     entryId = createRes.body.id;
 
@@ -113,7 +113,7 @@ describe("activity-log routes (integration, real DB)", () => {
     const createRes = await request(app)
       .post("/api/protected/ip-addresses")
       .set("Authorization", `Bearer ${adminToken()}`)
-      .send({ ip, computerName: "AUDIT-TEST-PC", entryType: "computer" });
+      .send({ ip, computerName: "AUDIT-TEST-PC", site: "bolnica", entryType: "computer" });
     entryId = createRes.body.id;
 
     const viewRes = await request(app)
@@ -184,7 +184,7 @@ describe("activity-log routes (integration, real DB)", () => {
     const createRes = await request(app)
       .post("/api/protected/ip-addresses")
       .set("Authorization", `Bearer ${token}`)
-      .send({ ip, computerName: "AUDIT-TEST-PC", entryType: "computer" });
+      .send({ ip, computerName: "AUDIT-TEST-PC", site: "bolnica", entryType: "computer" });
     entryId = createRes.body.id;
 
     const res = await request(app)

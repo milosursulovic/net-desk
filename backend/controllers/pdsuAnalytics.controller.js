@@ -7,9 +7,14 @@ import {
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 import { sendTablePdf } from "../utils/pdfTable.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
+
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
+}
 
 export async function pdsuAnalyticsStatsController(req, res) {
-  const result = await pdsuAnalyticsStatsService();
+  const result = await pdsuAnalyticsStatsService(siteFilter(req.query.site));
 
   res.json(result);
 }
@@ -18,7 +23,7 @@ export async function searchPdsuAnalyticsController(req, res) {
   const category = String(req.query.category || "all");
   const term = String(req.query.q || "");
 
-  const result = await searchPdsuAnalytics(category, term);
+  const result = await searchPdsuAnalytics(category, term, siteFilter(req.query.site));
 
   if (category === "all") {
     return res.json(result);
@@ -28,13 +33,13 @@ export async function searchPdsuAnalyticsController(req, res) {
 }
 
 export async function listWithoutPdsuController(req, res) {
-  const result = await listComputersWithoutPdsuService();
+  const result = await listComputersWithoutPdsuService(siteFilter(req.query.site));
 
   res.json(result);
 }
 
 export async function exportWithoutPdsuPdfController(req, res) {
-  const { items } = await listComputersWithoutPdsuService();
+  const { items } = await listComputersWithoutPdsuService(siteFilter(req.query.site));
   const dateStamp = new Date().toISOString().slice(0, 10);
 
   sendTablePdf(res, {
@@ -53,13 +58,13 @@ export async function exportWithoutPdsuPdfController(req, res) {
 }
 
 export async function listWithoutUltravncController(req, res) {
-  const result = await listComputersWithoutUltravncService();
+  const result = await listComputersWithoutUltravncService(siteFilter(req.query.site));
 
   res.json(result);
 }
 
 export async function exportWithoutUltravncPdfController(req, res) {
-  const { items } = await listComputersWithoutUltravncService();
+  const { items } = await listComputersWithoutUltravncService(siteFilter(req.query.site));
   const dateStamp = new Date().toISOString().slice(0, 10);
 
   sendTablePdf(res, {
@@ -85,7 +90,7 @@ export async function exportWithoutUltravncPdfController(req, res) {
 
 export async function exportPdsuAnalyticsController(req, res) {
   const { software, drivers, services, updates } =
-    await exportPdsuAnalyticsXlsx();
+    await exportPdsuAnalyticsXlsx(siteFilter(req.query.site));
 
   const dateStamp = new Date().toISOString().slice(0, 10);
 

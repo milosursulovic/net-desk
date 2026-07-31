@@ -577,10 +577,12 @@ import {
 } from '@/utils/metadataHelpers.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import * as XLSX from 'xlsx'
 
 const router = useRouter()
+const site = useCurrentSite()
 
 const SectionHeader = defineComponent({
   name: 'SectionHeader',
@@ -866,7 +868,7 @@ const exportingMissingPdf = ref(false)
 
 async function fetchMissingMetadata() {
   try {
-    const res = await fetchWithAuth('/api/protected/metadata/missing')
+    const res = await fetchWithAuth(`/api/protected/metadata/missing?site=${site.value}`)
     if (!res.ok) return
     const data = await res.json()
     missingMetadata.value = Array.isArray(data.items) ? data.items : []
@@ -879,7 +881,7 @@ async function exportMissingMetadataPdf() {
   try {
     const dateStamp = new Date().toISOString().slice(0, 10)
     await downloadFromResponse(
-      await fetchWithAuth('/api/protected/metadata/missing/export-pdf'),
+      await fetchWithAuth(`/api/protected/metadata/missing/export-pdf?site=${site.value}`),
       `NetDesk_bez_metapodataka_${dateStamp}.pdf`
     )
   } catch (err) {
@@ -910,7 +912,7 @@ async function runSearch() {
   }
   searchLoading.value = true
   try {
-    const params = new URLSearchParams({ q: query })
+    const params = new URLSearchParams({ q: query, site: site.value })
     const res = await fetchWithAuth(`/api/protected/metadata/search?${params.toString()}`, {
       signal: getSearchSignal(),
     })
@@ -927,7 +929,7 @@ async function runSearch() {
   }
 }
 
-watch(search, () => {
+watch([search, site], () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(runSearch, 300)
 }, { immediate: true })
@@ -959,7 +961,7 @@ async function fetchStatsPreferServer() {
   // Namerno se NE oslanjamo na /api/protected/ip-addresses kao fallback ovde -
   // ta lista nije filtrirana po tipu i vraćala bi i aparate.
   try {
-    const res = await fetchWithAuth('/api/protected/metadata/stats')
+    const res = await fetchWithAuth(`/api/protected/metadata/stats?site=${site.value}`)
     if (res.ok) {
       const payload = await res.json()
       if (payload?.tables) serverTables.value = payload.tables
@@ -973,7 +975,7 @@ async function fetchStatsPreferServer() {
     let page = 1,
       all = []
     while (true) {
-      const r = await fetchWithAuth(`/api/protected/metadata?page=${page}&limit=200`, {
+      const r = await fetchWithAuth(`/api/protected/metadata?page=${page}&limit=200&site=${site.value}`, {
         signal: getSignal(),
       })
       if (!r.ok) break
@@ -1009,6 +1011,8 @@ onBeforeUnmount(() => {
   abort()
   clearTimeout(searchTimer)
 })
+
+watch(site, refreshAll)
 
 const cpuDist = computed(() => groupCount(meta.value.map((x) => cpuNameOf(x)).filter(Boolean)))
 const topCpuModels = computed(() => cpuDist.value.slice(0, 5))

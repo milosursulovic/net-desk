@@ -135,6 +135,12 @@
           <FormInput v-model.trim="form.serial" label="Serijski" />
           <FormInput v-model.trim="form.department" label="Odeljenje" />
           <div>
+            <label class="text-sm text-slate-600">Lokacija</label>
+            <select v-model="form.site" class="app-input w-full">
+              <option v-for="o in SITE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+          </div>
+          <div>
             <label class="text-sm text-slate-600">Tip konekcije</label>
             <select v-model="form.connectionType" class="app-input w-full">
               <option value="Network">Network</option>
@@ -265,9 +271,11 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { SITE_OPTIONS } from '@/constants/sites.js'
 import FormInput from '@/components/FormInput.vue'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -275,6 +283,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
+const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
@@ -290,7 +299,7 @@ const { page, limit, search, nextPage, prevPage, applyServerPagination } =
     useReplace: true,
   })
 
-watch([page, limit, search], fetchData)
+watch([page, limit, search, site], fetchData)
 
 const items = ref([])
 const total = ref(0)
@@ -307,6 +316,7 @@ const form = ref({
   model: '',
   serial: '',
   department: '',
+  site: site.value,
   connectionType: 'Network',
   ip: '',
   shared: false,
@@ -328,6 +338,7 @@ async function fetchData() {
       page: page.value,
       limit: limit.value,
       search: search.value,
+      site: site.value,
     })
 
     const res = await fetchWithAuth(`/api/protected/printers?${params.toString()}`, {
@@ -412,6 +423,7 @@ const openCreate = () => {
     model: '',
     serial: '',
     department: '',
+    site: site.value,
     connectionType: 'Network',
     ip: '',
     shared: false,
@@ -427,6 +439,7 @@ const openEdit = (p) => {
     model: p.model || '',
     serial: p.serial || '',
     department: p.department || '',
+    site: p.site || site.value,
     connectionType: p.connectionType || 'Network',
     ip: p.ip || '',
     shared: !!p.shared,
@@ -542,7 +555,7 @@ async function copy(text) {
 
 async function exportXlsx() {
   try {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ site: site.value })
     if (search.value) params.set('search', search.value)
 
     const date = new Date().toISOString().slice(0, 10)
