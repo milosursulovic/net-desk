@@ -145,6 +145,34 @@ export const POWERSHELL_PRESETS = [
       'Resolve-DnsName google.com | Format-Table -AutoSize | Out-String',
   },
   {
+    id: 'rename-org-in-agent-log',
+    label: 'Zameni stari naziv ustanove u agent.log',
+    // File.ReadAllText/WriteAllText (ne Get-Content/Set-Content) namerno -
+    // agent.log piše FileLogger.cs preko File.AppendAllText bez eksplicitnog
+    // encoding-a, što je UTF-8 BEZ BOM-a po .NET default-u. Get-Content/
+    // Set-Content -Encoding UTF8 u Windows PowerShell 5.1 dodaje BOM na
+    // upisu, što ovde izbegavamo eksplicitnim UTF8Encoding($false) da fajl
+    // ostane bit-identičan po encoding-u (bez rizika da se š/č/ć/ž/đ
+    // iskrive ili da se doda BOM koji fajl ranije nije imao).
+    script:
+      '$logPath = "$env:ProgramData\\NetdeskAgent\\logs\\agent.log"\n' +
+      '$old = "Informacioni sistem Opšte bolnice Bor"\n' +
+      '$new = "Informacioni sistem Zdravstvenog centra Bor"\n' +
+      'if (Test-Path $logPath) {\n' +
+      '  $content = [System.IO.File]::ReadAllText($logPath, [System.Text.Encoding]::UTF8)\n' +
+      '  $count = ([regex]::Matches($content, [regex]::Escape($old))).Count\n' +
+      '  if ($count -gt 0) {\n' +
+      '    $updated = $content.Replace($old, $new)\n' +
+      '    [System.IO.File]::WriteAllText($logPath, $updated, (New-Object System.Text.UTF8Encoding($false)))\n' +
+      '    "Zamenjeno $count pojava u agent.log."\n' +
+      '  } else {\n' +
+      '    "Nema pojava starog naziva u agent.log - nista nije promenjeno."\n' +
+      '  }\n' +
+      '} else {\n' +
+      '  "agent.log nije pronadjen na $logPath"\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
