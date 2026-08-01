@@ -161,6 +161,48 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'update-agent-config-key',
+    label: 'Upiši key/value u config.json',
+    // Generička skripta, NE hardkodovana na jedan konkretan ključ - $key/
+    // $value na vrhu su namerno ono što se menja pre slanja (npr. za neko
+    // buduće novo AgentSettings.cs polje), ostatak skripte se ne dira.
+    // Namerno BEZ restarta servisa - to se radi posebno (drugom skriptom/
+    // preset-om), ne ovde.
+    //
+    // VAŽNO - tip vrednosti zavisi od toga da li je $value pod navodnicima:
+    //   $value = 300        -> upisuje se kao BROJ u JSON (300)
+    //   $value = "300"      -> upisuje se kao STRING u JSON ("300")
+    //   $value = $true      -> upisuje se kao BOOLEAN u JSON (true)
+    // Poklopi ovo sa stvarnim tipom polja u AgentSettings.cs (npr. `int
+    // DnsLogIntervalSeconds` očekuje broj, ne string pod navodnicima).
+    //
+    // Add-Member -Force namerno - radi i ako ključ već postoji u config.json
+    // (prepiše ga) i ako ne postoji (doda ga bez greške - bez -Force,
+    // Add-Member baca "Member already exists" ako ključ VEĆ postoji).
+    //
+    // File.ReadAllText/WriteAllText sa eksplicitnim UTF8 (bez BOM-a na
+    // upisu) - isti razlog kao agent.log preset: eksplicitno, ne oslanja se
+    // na auto-detekciju encoding-a.
+    script:
+      '# --- Izmeni ova dva reda pre slanja ---\n' +
+      '$key = "DnsLogIntervalSeconds"\n' +
+      '$value = 300\n' +
+      '# ---------------------------------------\n' +
+      '\n' +
+      '$configPath = "$env:ProgramData\\NetdeskAgent\\config.json"\n' +
+      'if (-not (Test-Path $configPath)) {\n' +
+      '  "config.json nije pronadjen na $configPath"\n' +
+      '} else {\n' +
+      '  $raw = [System.IO.File]::ReadAllText($configPath, [System.Text.Encoding]::UTF8)\n' +
+      '  $config = $raw | ConvertFrom-Json\n' +
+      '  $config | Add-Member -NotePropertyName $key -NotePropertyValue $value -Force\n' +
+      '  $json = $config | ConvertTo-Json -Depth 5\n' +
+      '  [System.IO.File]::WriteAllText($configPath, $json, (New-Object System.Text.UTF8Encoding($false)))\n' +
+      '\n' +
+      '  "config.json azuriran ($key=$value). Restart servisa nije izvrsen - uradi ga posebno."\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
