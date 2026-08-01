@@ -98,7 +98,9 @@ C:\Program Files\NetdeskAgent\
 │   ├── Dia2Lib.dll
 │   ├── OSExtensions.dll
 │   ├── TraceReloggerLib.dll
-│   └── System.Runtime.CompilerServices.Unsafe.dll
+│   ├── System.Runtime.CompilerServices.Unsafe.dll
+│   ├── amd64\ (KernelTraceControl.dll, msdia140.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
+│   └── x86\ (isti fajlovi + KernelTraceControl.Win61.dll)
 └── Updater\
     ├── Netdesk.Agent.Updater.exe
     ├── Netdesk.Agent.Common.dll
@@ -109,7 +111,9 @@ C:\Program Files\NetdeskAgent\
     ├── Dia2Lib.dll
     ├── OSExtensions.dll
     ├── TraceReloggerLib.dll
-    └── System.Runtime.CompilerServices.Unsafe.dll
+    ├── System.Runtime.CompilerServices.Unsafe.dll
+    ├── amd64\ (isti podfolder kao gore)
+    └── x86\ (isti podfolder kao gore)
 ```
 
 `websocket-sharp.dll` (paket `WebSocketSharp-netstandard`) je dodat zbog
@@ -122,7 +126,14 @@ poslednja verzija koja i dalje isporučuje `net45` lib target (3.x+ je
 samo `netstandard2.0`/`net462+`, ni jedno net452 ne može da konzumira).
 MSBuild sve ovo kopira u oba foldera (tranzitivna zavisnost preko
 `Netdesk.Agent.Common.dll`) iako ih `Updater.exe` stvarno ne koristi u
-radu - bezopasno, samo dodatni fajlovi.
+radu - bezopasno, samo dodatni fajlovi. `amd64\`/`x86\` podfolderi
+(native helper DLL-ovi, arh-specifični - managed sklopovi su MSIL/AnyCPU
+i rade na oba, ali proces traži native helpere u podfolderu koji
+odgovara SVOJOJ stvarnoj bitnosti) su uključeni preventivno - nije uživo
+potvrđeno da li ih plain real-time ETW sesija na manifest provajderu (bez
+kernel provajdera ili .etl merge-a) uopšte zahteva u praksi, ali je cena
+zanemarljiva. `x86\` je posebno bitan zbog `KernelTraceControl.Win61.dll`
+(Windows 7 varijanta) - baš ono što ovaj projekat cilja.
 
 **`Service\` i `Updater\` moraju biti odvojeni folderi.** Auto-update paket
 prepisuje samo sadržaj `Service\` — `Updater\` namerno ostaje netaknut jer
@@ -197,10 +208,20 @@ Radi identičnu petlju kao pravi servis, samo u konzoli (Ctrl+C za izlaz).
 
 ## Instalacija kao pravi Windows Service
 
-Preko `InstallUtil.exe` (deo .NET Framework-a), iz `Service\` foldera:
+Preko `InstallUtil.exe` (deo .NET Framework-a), iz `Service\` foldera.
+**Putanja zavisi od bitnosti OS-a na target mašini** (sklopovi su MSIL/
+AnyCPU i rade na oba, ali `Framework64` folder ne postoji na pravom
+32-bit Windows-u):
 
 ```
+:: 64-bit Windows
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
+
+:: 32-bit Windows
+%WINDIR%\Microsoft.NET\Framework\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
+```
+
+```
 sc start NetdeskAgent
 ```
 
@@ -212,7 +233,8 @@ InstallUtil-a — podešava se posebno:
 sc failure NetdeskAgent reset=86400 actions=restart/60000/restart/60000/restart/60000
 ```
 
-Deinstalacija: `InstallUtil.exe /u Netdesk.Agent.Service.exe`.
+Deinstalacija: isti `InstallUtil.exe` (64-bit ili 32-bit putanja iznad) sa
+`/u Netdesk.Agent.Service.exe`.
 
 Updater se ne instalira kao servis — samo se kopira u `Updater\` folder pored
 `Service\` (videti raspored instalacije gore); Netdesk.Agent.Service.exe ga

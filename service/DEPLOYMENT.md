@@ -40,6 +40,8 @@ Dia2Lib.dll
 OSExtensions.dll
 TraceReloggerLib.dll
 System.Runtime.CompilerServices.Unsafe.dll
+amd64\ (ceo podfolder - KernelTraceControl.dll, msdia140.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
+x86\ (ceo podfolder - isti fajlovi + KernelTraceControl.Win61.dll)
 ```
 
 **Iz `Netdesk.Agent.Updater\bin\Release\net452\`:**
@@ -56,6 +58,8 @@ Dia2Lib.dll
 OSExtensions.dll
 TraceReloggerLib.dll
 System.Runtime.CompilerServices.Unsafe.dll
+amd64\ (isti podfolder kao gore)
+x86\ (isti podfolder kao gore)
 ```
 
 (`websocket-sharp.dll` je dodat zbog VNC bridge-a - videti README.md,
@@ -64,7 +68,21 @@ tranzitivne zavisnosti `Microsoft.Diagnostics.Tracing.TraceEvent` paketa
 (DNS query logging - `DnsLogs.DnsQueryCollector`, ETW sesija na
 Microsoft-Windows-DNS-Client provajderu). Svi se kopiraju u OBA foldera
 kao tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ih
-Updater stvarno ne koristi u radu - isti obrazac kao websocket-sharp.dll.)
+Updater stvarno ne koristi u radu - isti obrazac kao websocket-sharp.dll.
+`amd64\`/`x86\` podfolderi sadrže TraceEvent-ove native helper DLL-ove -
+managed sklopovi (TraceEvent.dll, Netdesk.Agent.*.dll/.exe) su MSIL/AnyCPU
+(potvrđeno uživo preko reflection-a, nema PlatformTarget/Prefer32Bit
+ograničenja), pa proces radi ispravno na oba - ali native helperi su
+arh-specifični, i proces ih traži u podfolderu koji odgovara njegovoj
+stvarnoj bitnosti. `x86\` ima i dodatan `KernelTraceControl.Win61.dll`
+(Windows 6.1 = Windows 7 varijanta) - relevantno baš zbog Windows 7 cilja
+ovog projekta. Nije uživo potvrđeno da li ih ova konkretna upotreba -
+real-time sesija na manifest provajderu, bez kernel provajdera ili .etl
+merge-a - uopšte zahteva u praksi (DnsQueryCollector.TryStart() je u
+try/catch - ako ipak nedostaju, DNS logging se samo tiho isključi na toj
+mašini, ostatak agenta radi normalno), ali oba podfoldera su uključena
+preventivno jer je cena zanemarljiva u odnosu na rizik. `arm64\` je
+namerno izostavljen - nijedan realan cilj u floti nije ARM.)
 
 `.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
 simboli / šablon).
@@ -112,9 +130,25 @@ koristi i može se izbaciti iz config-a pri distribuciji na ostale mašine.
 
 ## 6. Instaliraj servis (CMD/PowerShell kao Administrator)
 
+**Bitno - `InstallUtil.exe` putanja zavisi od bitnosti OS-a na target
+mašini** (ne od bitnosti agenta - sklopovi su MSIL/AnyCPU i rade na oba,
+ali `InstallUtil.exe` sam postoji u dve odvojene instalacije koje Windows
+instalira zavisno od svoje bitnosti - `Framework64` folder NE POSTOJI na
+pravom 32-bit Windows-u):
+
+- **64-bit Windows:**
+  ```
+  cd "C:\Program Files\NetdeskAgent\Service"
+  %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
+  ```
+- **32-bit Windows:**
+  ```
+  cd "C:\Program Files\NetdeskAgent\Service"
+  %WINDIR%\Microsoft.NET\Framework\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
+  ```
+
+Zatim u oba slučaja:
 ```
-cd "C:\Program Files\NetdeskAgent\Service"
-%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
 sc start NetdeskAgent
 sc failure NetdeskAgent reset=86400 actions=restart/60000/restart/60000/restart/60000
 ```
@@ -136,6 +170,11 @@ komanda (`sc failure`) podešava automatski restart pri padu servisa — to
 ```
 cd "C:\Program Files\NetdeskAgent\Service"
 sc stop NetdeskAgent
+```
+
+Zatim isti `InstallUtil.exe` (64-bit ili 32-bit putanja, videti korak 6)
+sa `/u`:
+```
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe /u Netdesk.Agent.Service.exe
 ```
 

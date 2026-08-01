@@ -19,6 +19,7 @@ backend/uploads/
 service/**/bin/
 service/**/obj/
 service/**/*.user
+service/.release-staging/
 .vs/
 
 # Logs
