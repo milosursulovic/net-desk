@@ -9,11 +9,20 @@ export async function ingestDnsQueries(ipEntryId, entries) {
       const domain = String(item.domain || "").trim().toLowerCase();
       if (!domain) return null;
 
+      // new Date(...) je namerno, ne sirov string - agent šalje ISO 8601 sa
+      // 7 decimala sekunde i "Z" sufiksom (C#-ov DateTime.ToString("o")),
+      // što MySQL DATETIME odbija direktno ("Incorrect datetime value" -
+      // Z sufiks se nikad ne prihvata, a >6 decimala takođe ne). new Date()
+      // parsira taj string ispravno u JS Date objekat, koji mysql2 zatim
+      // sam ispravno serijalizuje u MySQL-ov format.
+      const firstSeen = item.firstSeen ? new Date(item.firstSeen) : new Date();
+      const lastSeen = item.lastSeen ? new Date(item.lastSeen) : new Date();
+
       return {
         ip_entry_id: ipEntryId,
         domain,
-        first_seen: item.firstSeen ?? new Date(),
-        last_seen: item.lastSeen ?? new Date(),
+        first_seen: isNaN(firstSeen) ? new Date() : firstSeen,
+        last_seen: isNaN(lastSeen) ? new Date() : lastSeen,
         query_count: Number(item.count) > 0 ? Number(item.count) : 1,
       };
     })
