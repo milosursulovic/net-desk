@@ -403,7 +403,16 @@ watch(
   fetchData,
 )
 
-watch(site, fetchFilterOptions)
+watch(site, () => {
+  // os/version/department dropdown vrednosti su vezane za PRETHODNU
+  // lokaciju - ako ostanu postavljene posle promene lokacije, filtriraju
+  // na vrednost koja verovatno ne postoji na novoj (prazna lista rezultata).
+  os.value = ''
+  version.value = ''
+  versionMode.value = 'eq'
+  department.value = ''
+  fetchFilterOptions()
+})
 
 const items = ref([])
 const total = ref(0)

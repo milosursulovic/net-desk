@@ -510,6 +510,11 @@ onUnmounted(() => {
 })
 
 watch(site, () => {
+  // department/os su dropdown vrednosti preuzete iz PRETHODNE lokacije -
+  // ostavljanje stare vrednosti posle promene lokacije bi filtriralo na
+  // vrednost koja verovatno ne postoji na novoj lokaciji (prazna lista).
+  department.value = ''
+  os.value = ''
   fetchDuplicateNames()
   fetchFilterOptions()
 })
