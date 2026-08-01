@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emptyToNull } from "../utils/strings.js";
+import { SITES } from "./ipAddresses.dto.js";
 
 // This isn't just a camelCase->column display map - inventory.repo.js
 // interpolates the resolved column name directly into the SQL string
@@ -30,6 +31,7 @@ export const InventoryCreateSchema = z.object({
   speed: z.any().optional().transform(emptyToNull),
   socket: z.any().optional().transform(emptyToNull),
   location: z.any().optional().transform(emptyToNull),
+  site: z.enum(SITES),
   notes: z.any().optional().transform(emptyToNull),
 });
 

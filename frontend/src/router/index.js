@@ -62,6 +62,8 @@ const router = createRouter({
             title: 'Uredi IP - NetDesk',
             breadcrumb: 'Uredi IP',
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            // Konkretan postojeći unos, sopstveni site već poznat iz baze.
+            requiresSite: false,
           },
           component: EditIpView,
         },
@@ -72,6 +74,9 @@ const router = createRouter({
             title: 'Metapodaci - NetDesk',
             breadcrumb: 'Metapodaci',
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            // Per-računar detalj strana - lokacija je već implicitna kroz
+            // taj jedan IP unos (svoj site u bazi), ne treba filter.
+            requiresSite: false,
           },
           component: IpMetaView,
         },
@@ -82,6 +87,7 @@ const router = createRouter({
             title: 'PDSU Inventar - NetDesk',
             breadcrumb: 'PDSU Inventar',
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            requiresSite: false,
           },
           component: IpPdsuView,
         },
@@ -92,6 +98,7 @@ const router = createRouter({
             title: 'Port scan - NetDesk',
             breadcrumb: 'Port scan',
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            requiresSite: false,
           },
           component: IpPortScanView,
         },
@@ -142,6 +149,8 @@ const router = createRouter({
             title: 'Agent - NetDesk',
             breadcrumb: 'Detalji agenta',
             breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            // Konkretan agent, vezan za jedan računar čiji je site već poznat.
+            requiresSite: false,
           },
           component: AgentDetailView,
         },
@@ -172,6 +181,9 @@ const router = createRouter({
             title: 'Status batch komande - NetDesk',
             breadcrumb: 'Status batch komande',
             breadcrumbParent: { label: 'Batch komande', to: '/agent-batches' },
+            // Konkretan batch po id-ju, može obuhvatati agente sa obe
+            // lokacije - nema smisla vezivati ga za jednu.
+            requiresSite: false,
           },
           component: BatchJobDetailView,
         },

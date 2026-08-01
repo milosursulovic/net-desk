@@ -1,15 +1,17 @@
 import { pool } from "../db/pool.js";
 
-export async function inventoryExportAll() {
+export async function inventoryExportAll(site) {
   const [items] = await pool.execute(
     `SELECT
        id, type, manufacturer, model,
        serial_number AS serialNumber,
        quantity, status,
-       capacity, speed, socket, location, notes,
+       capacity, speed, socket, location, site, notes,
        created_at AS createdAt, updated_at AS updatedAt
      FROM inventory_items
+     ${site ? "WHERE site = ?" : ""}
      ORDER BY created_at DESC`,
+    site ? [site] : [],
   );
   return items || [];
 }
@@ -20,7 +22,7 @@ export async function inventoryFindById(id) {
        id, type, manufacturer, model,
        serial_number AS serialNumber,
        quantity, status,
-       capacity, speed, socket, location, notes,
+       capacity, speed, socket, location, site, notes,
        created_at AS createdAt, updated_at AS updatedAt
      FROM inventory_items
      WHERE id = ?
@@ -60,7 +62,7 @@ export async function inventoryListWithCounts({
       id, type, manufacturer, model,
       serial_number AS serialNumber,
       quantity, status,
-      capacity, speed, socket, location, notes,
+      capacity, speed, socket, location, site, notes,
       created_at AS createdAt, updated_at AS updatedAt
     FROM inventory_items
     ${whereSql}
@@ -80,8 +82,8 @@ export async function inventoryListWithCounts({
 export async function inventoryInsert(payload) {
   const [result] = await pool.execute(
     `INSERT INTO inventory_items
-      (type, manufacturer, model, serial_number, quantity, status, capacity, speed, socket, location, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (type, manufacturer, model, serial_number, quantity, status, capacity, speed, socket, location, site, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.type,
       payload.manufacturer,
@@ -93,6 +95,7 @@ export async function inventoryInsert(payload) {
       payload.speed,
       payload.socket,
       payload.location,
+      payload.site ?? null,
       payload.notes,
     ],
   );
@@ -112,6 +115,7 @@ export async function inventoryUpdate(id, payload) {
        speed = ?,
        socket = ?,
        location = ?,
+       site = ?,
        notes = ?
      WHERE id = ?`,
     [
@@ -125,6 +129,7 @@ export async function inventoryUpdate(id, payload) {
       payload.speed,
       payload.socket,
       payload.location,
+      payload.site ?? null,
       payload.notes,
       id,
     ],

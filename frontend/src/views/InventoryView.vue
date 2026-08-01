@@ -106,6 +106,10 @@
 
         <div class="mt-3 space-y-1.5 text-sm">
           <div class="flex justify-between gap-3">
+            <span class="text-slate-500">Objekat</span>
+            <span class="font-medium truncate">{{ labelForSite(item.site) }}</span>
+          </div>
+          <div class="flex justify-between gap-3">
             <span class="text-slate-500">Lokacija</span>
             <span class="font-medium truncate">{{ item.location || 'Magacin' }}</span>
           </div>
@@ -231,6 +235,12 @@
             <input v-model="form.location" class="app-input w-full text-sm"
               placeholder="npr. Magacin 2, Orman 3, IT kancelarija…" />
           </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Objekat</label>
+            <select v-model="form.site" class="app-input w-full text-sm">
+              <option v-for="o in SITE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+          </div>
         </div>
 
         <div>
@@ -257,8 +267,10 @@ import { parseError } from '@/utils/api.js'
 import { fmtDateOnly, shortSerial } from '@/utils/format.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { SITE_OPTIONS, labelForSite } from '@/constants/sites.js'
 import {
   INVENTORY_TYPE_OPTIONS,
   labelForInventoryType,
@@ -291,8 +303,10 @@ const {
   useReplace: true,
 })
 
+const site = useCurrentSite()
+
 watch(
-  [page, limit, search, filterType, sortBy, sortOrder],
+  [page, limit, search, filterType, sortBy, sortOrder, site],
   fetchData
 )
 
@@ -319,6 +333,7 @@ async function fetchData() {
     type: filterType.value || 'all',
     sortBy: sortBy.value || 'createdAt',
     sortOrder: sortOrder.value || 'desc',
+    site: site.value,
   })
 
   try {
@@ -351,6 +366,7 @@ const form = ref({
   speed: '',
   socket: '',
   location: '',
+  site: site.value,
   notes: '',
 })
 
@@ -366,6 +382,7 @@ const resetForm = () => {
     speed: '',
     socket: '',
     location: '',
+    site: site.value,
     notes: '',
   }
 }
@@ -389,6 +406,7 @@ const openEditModal = (item) => {
     speed: item.speed || '',
     socket: item.socket || '',
     location: item.location || '',
+    site: item.site || site.value,
     notes: item.notes || '',
   }
   showForm.value = true
@@ -414,6 +432,7 @@ const saveItem = async () => {
     speed: form.value.speed,
     socket: form.value.socket,
     location: form.value.location,
+    site: form.value.site,
     notes: form.value.notes,
   }
 
@@ -466,7 +485,7 @@ const confirmDelete = async (item) => {
 const exportToXlsx = async () => {
   try {
     await downloadFromResponse(
-      await fetchWithAuth('/api/protected/inventory/export'),
+      await fetchWithAuth(`/api/protected/inventory/export?site=${site.value}`),
       'inventar.xlsx'
     )
   } catch (e) {

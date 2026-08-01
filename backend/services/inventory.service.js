@@ -1,5 +1,6 @@
 import { toInt, clamp } from "../utils/numbers.js";
 import { normalizeStatus, SORT_FIELDS } from "../dtos/inventory.dto.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
@@ -28,6 +29,7 @@ export async function listInventory(query) {
 
   const search = (query.search ?? "").toString().trim();
   const type = (query.type ?? "all").toString().trim();
+  const site = SITES.includes(query.site) ? query.site : undefined;
 
   const sortBy = (query.sortBy ?? "createdAt").toString();
   const sortOrder = query.sortOrder === "asc" ? "ASC" : "DESC";
@@ -39,6 +41,11 @@ export async function listInventory(query) {
   if (type && type !== "all") {
     where.push("type = ?");
     params.push(type);
+  }
+
+  if (site) {
+    where.push("site = ?");
+    params.push(site);
   }
 
   const searchClause = buildLikeSearch(SEARCH_COLUMNS, search);

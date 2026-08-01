@@ -2,6 +2,7 @@ import {
   InventoryCreateSchema,
   InventoryUpdateSchema,
 } from "../dtos/inventory.dto.js";
+import { SITES } from "../dtos/ipAddresses.dto.js";
 import {
   inventoryExportAll,
   inventoryFindById,
@@ -16,11 +17,19 @@ import { parseIdParam } from "../utils/idParam.js";
 import { badRequest, notFound } from "../utils/httpError.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 
-export async function exportInventoryController(_req, res) {
-  const items = await inventoryExportAll();
+function siteFilter(value) {
+  return SITES.includes(value) ? value : undefined;
+}
+
+const SITE_LABELS = { bolnica: "Bolnica", dom_zdravlja: "Dom zdravlja" };
+const labelForSite = (value) => SITE_LABELS[value] || value || "";
+
+export async function exportInventoryController(req, res) {
+  const items = await inventoryExportAll(siteFilter(req.query.site));
 
   const rows = items.map((it) => ({
     ...it,
+    site: labelForSite(it.site),
     createdAt: it.createdAt ? new Date(it.createdAt).toLocaleString() : "",
     updatedAt: it.updatedAt ? new Date(it.updatedAt).toLocaleString() : "",
   }));
@@ -41,6 +50,7 @@ export async function exportInventoryController(_req, res) {
           { header: "Brzina", key: "speed", width: 15 },
           { header: "Socket/Konektor", key: "socket", width: 18 },
           { header: "Lokacija", key: "location", width: 24 },
+          { header: "Objekat", key: "site", width: 16 },
           { header: "Napomena", key: "notes", width: 40 },
           { header: "Kreirano", key: "createdAt", width: 20 },
           { header: "Ažurirano", key: "updatedAt", width: 20 },
