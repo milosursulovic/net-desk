@@ -44,5 +44,6 @@ export const InventorySyncSchema = z
     printers: z.array(z.record(z.string(), z.any())).optional(),
     availableUpdates: z.array(z.record(z.string(), z.any())).optional(),
     eventLogs: z.array(z.record(z.string(), z.any())).optional(),
+    dnsQueries: z.array(z.record(z.string(), z.any())).optional(),
   })
   .passthrough();

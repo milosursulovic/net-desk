@@ -35,6 +35,7 @@ import {
   syncComputerAvailableUpdates,
 } from "./pdsu.service.js";
 import { ingestEventLogs } from "./eventLogs.service.js";
+import { ingestDnsQueries } from "./dnsLogs.service.js";
 import { notFound } from "../utils/httpError.js";
 
 export async function enrollAgent(dto) {
@@ -268,6 +269,9 @@ export async function syncAgentInventory(agent, body) {
   }
   if (Array.isArray(body.eventLogs)) {
     await ingestEventLogs(ipEntryId, body.eventLogs);
+  }
+  if (Array.isArray(body.dnsQueries)) {
+    await ingestDnsQueries(ipEntryId, body.dnsQueries);
   }
 
   return { ok: true, ipEntryId, metadata };

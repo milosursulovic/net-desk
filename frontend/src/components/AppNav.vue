@@ -22,6 +22,7 @@ const links = computed(() =>
         { to: '/logs', label: 'Logovi' },
         { to: '/config', label: 'Konfiguracija' },
         { to: '/server-health', label: 'Server' },
+        { to: '/dns-logs', label: 'DNS Logovi' },
       ]
     : baseLinks,
 )

@@ -77,8 +77,8 @@ instaliranom, što ovo sandboxovano okruženje nema.
 ```
 Netdesk.Agent.sln
 Netdesk.Agent.Common/     deljeni kod - modeli, HTTP klijent, WMI/registry
-                          kolektori (Inventory/Monitoring/EventLogs), job
-                          executor, update manager, config/state/logger
+                          kolektori (Inventory/Monitoring/EventLogs/DnsLogs),
+                          job executor, update manager, config/state/logger
 Netdesk.Agent.Service/    Netdesk.Agent.Service.exe - Windows Service
 Netdesk.Agent.Updater/    Netdesk.Agent.Updater.exe - odvojen proces koji
                           fizički menja fajlove servisa i restartuje ga
@@ -92,20 +92,37 @@ C:\Program Files\NetdeskAgent\
 │   ├── Netdesk.Agent.Service.exe
 │   ├── Netdesk.Agent.Common.dll
 │   ├── Newtonsoft.Json.dll
-│   └── websocket-sharp.dll
+│   ├── websocket-sharp.dll
+│   ├── Microsoft.Diagnostics.Tracing.TraceEvent.dll
+│   ├── Microsoft.Diagnostics.FastSerialization.dll
+│   ├── Dia2Lib.dll
+│   ├── OSExtensions.dll
+│   ├── TraceReloggerLib.dll
+│   └── System.Runtime.CompilerServices.Unsafe.dll
 └── Updater\
     ├── Netdesk.Agent.Updater.exe
     ├── Netdesk.Agent.Common.dll
     ├── Newtonsoft.Json.dll
-    └── websocket-sharp.dll
+    ├── websocket-sharp.dll
+    ├── Microsoft.Diagnostics.Tracing.TraceEvent.dll
+    ├── Microsoft.Diagnostics.FastSerialization.dll
+    ├── Dia2Lib.dll
+    ├── OSExtensions.dll
+    ├── TraceReloggerLib.dll
+    └── System.Runtime.CompilerServices.Unsafe.dll
 ```
 
 `websocket-sharp.dll` (paket `WebSocketSharp-netstandard`) je dodat zbog
 `VncBridge`-a - videti napomenu u sekciji "Udaljena kontrola ekrana"
 ispod za razlog (`System.Net.WebSockets.ClientWebSocket` ne radi na
-Windows 7). MSBuild ga kopira u oba foldera (tranzitivna zavisnost preko
-`Netdesk.Agent.Common.dll`) iako ga `Updater.exe` stvarno ne koristi u
-radu - bezopasno, samo dodatni fajl.
+Windows 7). Preostalih 6 DLL-ova su tranzitivne zavisnosti paketa
+`Microsoft.Diagnostics.Tracing.TraceEvent` (DNS query logging - videti
+sekciju "DNS query logging" ispod), pinovanog na 2.0.77 jer je to
+poslednja verzija koja i dalje isporučuje `net45` lib target (3.x+ je
+samo `netstandard2.0`/`net462+`, ni jedno net452 ne može da konzumira).
+MSBuild sve ovo kopira u oba foldera (tranzitivna zavisnost preko
+`Netdesk.Agent.Common.dll`) iako ih `Updater.exe` stvarno ne koristi u
+radu - bezopasno, samo dodatni fajlovi.
 
 **`Service\` i `Updater\` moraju biti odvojeni folderi.** Auto-update paket
 prepisuje samo sadržaj `Service\` — `Updater\` namerno ostaje netaknut jer
@@ -147,6 +164,7 @@ Servis čita `%ProgramData%\NetdeskAgent\config.json`. Kopiraj
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
   "EventLogIntervalSeconds": 300,
+  "DnsLogIntervalSeconds": 300,
   "UpdateCheckIntervalSeconds": 1800,
   "VncLocalPort": 5901
 }
@@ -273,3 +291,38 @@ već morala da koristi iz istog razloga (browser-ov WebSocket API takođe ne
 dozvoljava custom header-e), i ista bezbednosna napomena važi (ruta ide
 kroz `server.on("upgrade")`, ne kroz Express/morgan, pa se ne loguje u
 access log).
+
+## DNS query logging
+
+`NetdeskAgent.Common.DnsLogs.DnsQueryCollector` prati DNS upite cele mašine
+preko ugrađenog Windows ETW `Microsoft-Windows-DNS-Client` provajdera -
+bez paketnog snimanja (nema Npcap/SharpPcap zavisnosti, nema promiscuous
+mode), in-process, dostupno od Windows Vista naovamo (radi i na Windows 7
+mašinama u floti). Pokreće se JEDNOM pri startu servisa (ne po tick-u kao
+ostali kolektori) - ETW sesija mora da radi kontinuirano da ne propusti
+upite između sync ciklusa. `AgentWorker` periodično (`DnsLogIntervalSeconds`,
+podrazumevano 300s) uzima nakupljeno stanje (agregirano po domenu - broj
+upita, prvi/poslednji put viđen, ne jedan red po pojedinačnom upitu) i šalje
+preko istog `/api/agents/inventory` kanala kao event logovi.
+
+**Bezbednosna namena**: nema firewall/NDR rešenja u mreži - ovo je jedina
+vidljivost u DNS-nivo pretnje (malware C2 beaconing, DNS tunneling/
+exfiltracija, phishing domeni). Backend čuva agregat po (računar, domen) u
+`computer_dns_queries`, prikazano na `/dns-logs` (admin-only, pretraživo po
+domenu) u frontend-u. Namerno BEZ aktivnog alerting-a protiv blocklist-e u
+ovoj iteraciji - samo skladištenje + pretraga za naknadnu forenziku.
+
+**NuGet napomena**: `Microsoft.Diagnostics.Tracing.TraceEvent` je pinovan
+na `2.0.77` u `Netdesk.Agent.Common.csproj` - to je poslednja verzija koja
+isporučuje `net45` lib target (provereno uživo: 3.x+ isporučuje samo
+`netstandard2.0`/`net462+`, ni jedno net452 ne može da konzumira - `net461`
+je stvarni pod za netstandard2.0 potrošače). Ne dizati ovu zavisnost bez
+prethodne provere `lib/` foldera paketa za net4x target.
+
+**Nije uživo provereno** (isti razlog kao i za ostatak agenta - nema
+Windows/admin okruženja u sandboxu): da ETW sesija stvarno hvata upite u
+praksi na realnoj mašini. Kod je odbranski pisan (start sesije u try/catch,
+ne obara ostatak agenta ako otkaže) i generički čita `QueryName` polje iz
+event-a tog provajdera (otporno na to koji tačno EventID nosi polje) - ali
+prva stvarna provera mora biti ručna, na test/pilot mašini, pre šireg
+rollout-a (isti obrazac kao "Napomena pre šireg rollout-a" gore).

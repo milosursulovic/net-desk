@@ -23,6 +23,7 @@ namespace NetdeskAgent.Common.Configuration
         public int InventoryIntervalSeconds { get; set; } = 3600;
         public int JobsPollIntervalSeconds { get; set; } = 15;
         public int EventLogIntervalSeconds { get; set; } = 300;
+        public int DnsLogIntervalSeconds { get; set; } = 300;
         public int UpdateCheckIntervalSeconds { get; set; } = 1800;
 
         /// <summary>

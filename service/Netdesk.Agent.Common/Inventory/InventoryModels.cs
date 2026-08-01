@@ -72,6 +72,9 @@ namespace NetdeskAgent.Common.Inventory
 
         [JsonProperty("eventLogs")]
         public List<EventLogItem> EventLogs { get; set; }
+
+        [JsonProperty("dnsQueries")]
+        public List<DnsQueryItem> DnsQueries { get; set; }
     }
 
     /// <summary>Odgovor POST /api/agents/inventory - metadata sadržaj nam ovde ne treba, samo potvrda.</summary>
@@ -303,5 +306,19 @@ namespace NetdeskAgent.Common.Inventory
         public int? EventId { get; set; }
         public string Message { get; set; }
         public string LoggedAt { get; set; }
+    }
+
+    /// <summary>
+    /// Agregiran DNS upit (domen + prvi/poslednji put viđen + broj upita u
+    /// ovom sync prozoru) - computer_dns_queries na backend-u, upsert-uje se
+    /// PO (računar, domen), ne dodaje se jedan red po pojedinačnom upitu.
+    /// Videti DnsLogs.DnsQueryCollector.Snapshot().
+    /// </summary>
+    public class DnsQueryItem
+    {
+        public string Domain { get; set; }
+        public string FirstSeen { get; set; }
+        public string LastSeen { get; set; }
+        public int Count { get; set; }
     }
 }

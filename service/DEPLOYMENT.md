@@ -34,6 +34,12 @@ Netdesk.Agent.Service.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
 websocket-sharp.dll
+Microsoft.Diagnostics.Tracing.TraceEvent.dll
+Microsoft.Diagnostics.FastSerialization.dll
+Dia2Lib.dll
+OSExtensions.dll
+TraceReloggerLib.dll
+System.Runtime.CompilerServices.Unsafe.dll
 ```
 
 **Iz `Netdesk.Agent.Updater\bin\Release\net452\`:**
@@ -44,11 +50,21 @@ Netdesk.Agent.Updater.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
 websocket-sharp.dll
+Microsoft.Diagnostics.Tracing.TraceEvent.dll
+Microsoft.Diagnostics.FastSerialization.dll
+Dia2Lib.dll
+OSExtensions.dll
+TraceReloggerLib.dll
+System.Runtime.CompilerServices.Unsafe.dll
 ```
 
 (`websocket-sharp.dll` je dodat zbog VNC bridge-a - videti README.md,
-sekcija "Udaljena kontrola ekrana", za razlog. Kopira se u oba foldera
-kao tranzitivna zavisnost, iako ga Updater stvarno ne koristi u radu.)
+sekcija "Udaljena kontrola ekrana", za razlog. Preostalih 6 DLL-ova su
+tranzitivne zavisnosti `Microsoft.Diagnostics.Tracing.TraceEvent` paketa
+(DNS query logging - `DnsLogs.DnsQueryCollector`, ETW sesija na
+Microsoft-Windows-DNS-Client provajderu). Svi se kopiraju u OBA foldera
+kao tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ih
+Updater stvarno ne koristi u radu - isti obrazac kao websocket-sharp.dll.)
 
 `.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
 simboli / šablon).
@@ -85,6 +101,7 @@ Kreiraj folder `%ProgramData%\NetdeskAgent\` i u njemu `config.json`:
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
   "EventLogIntervalSeconds": 300,
+  "DnsLogIntervalSeconds": 300,
   "UpdateCheckIntervalSeconds": 1800
 }
 ```

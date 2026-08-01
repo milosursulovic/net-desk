@@ -11,6 +11,7 @@ using NetdeskAgent.Common.Inventory;
 using NetdeskAgent.Common.Jobs;
 using NetdeskAgent.Common.Monitoring;
 using NetdeskAgent.Common.EventLogs;
+using NetdeskAgent.Common.DnsLogs;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
 
@@ -57,11 +58,19 @@ namespace NetdeskAgent.Service
             var eventLogBookmarks = EventLogBookmarks.Load(Paths.EventLogBookmarksFile);
 
             using (var client = new NetdeskApiClient(settings.ServerBaseUrl))
+            using (var dnsCollector = new DnsQueryCollector())
             {
+                // Pokreće se JEDNOM ovde (ne po tick-u) - ETW sesija mora da
+                // radi kontinuirano da ne propusti upite između ciklusa.
+                // TryStart() interno guta grešku i vraća false ako otkaže -
+                // agent nastavlja normalno, samo bez DNS logovanja ovog rada.
+                dnsCollector.TryStart();
+
                 var lastHeartbeat = DateTime.MinValue;
                 var lastInventorySync = DateTime.MinValue;
                 var lastJobsPoll = DateTime.MinValue;
                 var lastEventLogSync = DateTime.MinValue;
+                var lastDnsLogSync = DateTime.MinValue;
                 var lastUpdateCheck = DateTime.MinValue;
 
                 while (!token.IsCancellationRequested)
@@ -86,6 +95,11 @@ namespace NetdeskAgent.Service
                         {
                             await DoEventLogSyncAsync(client, state, eventLogBookmarks).ConfigureAwait(false);
                             lastEventLogSync = DateTime.UtcNow;
+                        }
+                        else if ((DateTime.UtcNow - lastDnsLogSync).TotalSeconds >= settings.DnsLogIntervalSeconds)
+                        {
+                            await DoDnsLogSyncAsync(client, state, dnsCollector).ConfigureAwait(false);
+                            lastDnsLogSync = DateTime.UtcNow;
                         }
                         else if ((DateTime.UtcNow - lastUpdateCheck).TotalSeconds >= settings.UpdateCheckIntervalSeconds)
                         {
@@ -223,6 +237,41 @@ namespace NetdeskAgent.Service
             catch (Exception ex)
             {
                 FileLogger.Error("Event log sync neuspešan", ex);
+            }
+        }
+
+        private static async Task DoDnsLogSyncAsync(NetdeskApiClient client, AgentState state, DnsQueryCollector dnsCollector)
+        {
+            try
+            {
+                var entries = dnsCollector.Snapshot();
+                if (entries.Count == 0)
+                {
+                    return;
+                }
+
+                var ip = HardwareCollector.GetPrimaryIPv4();
+                if (string.IsNullOrEmpty(ip))
+                {
+                    FileLogger.Warn("Nije pronađena IPv4 adresa - DNS log sync se preskače ovog ciklusa.");
+                    return;
+                }
+
+                // Isti obrazac kao DoEventLogSyncAsync - lagan zahtev, samo ip +
+                // dnsQueries, merge (patch) semantika na backend-u ne dira
+                // ostale metapodatke.
+                var request = new InventoryRequest { Ip = ip, DnsQueries = entries };
+                await client.PostInventoryAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
+
+                FileLogger.Info("DNS log sync OK. Poslato " + entries.Count + " domena.");
+            }
+            catch (NetdeskApiException apiEx)
+            {
+                FileLogger.Error("DNS log sync odbijen od servera (HTTP " + apiEx.StatusCode + ")", apiEx);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("DNS log sync neuspešan", ex);
             }
         }
 
