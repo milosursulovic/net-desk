@@ -42,6 +42,7 @@ describe("role enforcement across modules (integration, real DB)", () => {
   let entryId;
   let pushEndpoint;
   let reportId;
+  let reportIds = [];
   let realUserId;
 
   afterEach(async () => {
@@ -49,7 +50,8 @@ describe("role enforcement across modules (integration, real DB)", () => {
     entryId = undefined;
     await deleteTestPushSubscription(pushEndpoint);
     pushEndpoint = undefined;
-    await deleteTestDailyReport(reportId);
+    await Promise.all(reportIds.map((id) => deleteTestDailyReport(id)));
+    reportIds = [];
     reportId = undefined;
     await deleteTestUser(realUserId);
     realUserId = undefined;
@@ -118,7 +120,8 @@ describe("role enforcement across modules (integration, real DB)", () => {
     const genRes = await request(app)
       .post("/api/protected/reports/generate")
       .set("Authorization", `Bearer ${adminToken()}`);
-    reportId = genRes.body.id;
+    reportIds = genRes.body.map((r) => r.id);
+    reportId = reportIds[0];
 
     const res = await request(app)
       .post(`/api/protected/reports/${reportId}/mark-read`)

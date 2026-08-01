@@ -297,11 +297,11 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     "route ordering: /reports/latest and /reports/generate must not be swallowed by " +
       "/reports/:id (same regression class as the agents route-ordering tests above)",
     () => {
-      let reportId;
+      let reportIds = [];
 
       afterEach(async () => {
-        await deleteTestDailyReport(reportId);
-        reportId = undefined;
+        await Promise.all(reportIds.map((id) => deleteTestDailyReport(id)));
+        reportIds = [];
       });
 
       it("GET /reports/latest resolves to the latest-report lookup, not a parseIdParam 400", async () => {
@@ -319,18 +319,24 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
           .post("/api/protected/reports/generate")
           .set("Authorization", `Bearer ${adminToken()}`);
 
+        // Generiše po jedan izveštaj za SVAKU lokaciju (generateDailyReportsForAllSites) -
+        // odgovor je niz, ne pojedinačan izveštaj.
         expect(res.status).toBe(201);
-        expect(res.body).toHaveProperty("content");
-        reportId = res.body.id;
+        expect(Array.isArray(res.body)).toBe(true);
+        expect(res.body.length).toBeGreaterThan(0);
+        expect(res.body[0]).toHaveProperty("content");
+        reportIds = res.body.map((r) => r.id);
       });
     },
   );
 
   describe("reports endpoints over real HTTP", () => {
+    let reportIds = [];
     let reportId;
 
     afterEach(async () => {
-      await deleteTestDailyReport(reportId);
+      await Promise.all(reportIds.map((id) => deleteTestDailyReport(id)));
+      reportIds = [];
       reportId = undefined;
     });
 
@@ -341,7 +347,8 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         .post("/api/protected/reports/generate")
         .set("Authorization", `Bearer ${token}`);
       expect(genRes.status).toBe(201);
-      reportId = genRes.body.id;
+      reportIds = genRes.body.map((r) => r.id);
+      reportId = reportIds[0];
 
       const getRes = await request(app)
         .get(`/api/protected/reports/${reportId}`)
@@ -369,8 +376,9 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
       const genRes = await request(app)
         .post("/api/protected/reports/generate")
         .set("Authorization", `Bearer ${token}`);
-      reportId = genRes.body.id;
-      expect(genRes.body.openedAt).toBeNull();
+      reportIds = genRes.body.map((r) => r.id);
+      reportId = reportIds[0];
+      expect(genRes.body[0].openedAt).toBeNull();
 
       const beforeRes = await request(app)
         .get(`/api/protected/reports/${reportId}`)
@@ -402,7 +410,8 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
       const genRes = await request(app)
         .post("/api/protected/reports/generate")
         .set("Authorization", `Bearer ${token}`);
-      reportId = genRes.body.id;
+      reportIds = genRes.body.map((r) => r.id);
+      reportId = reportIds[0];
 
       const pdfRes = await request(app)
         .get(`/api/protected/reports/${reportId}/pdf`)
