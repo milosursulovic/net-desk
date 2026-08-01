@@ -145,8 +145,8 @@ export const POWERSHELL_PRESETS = [
       'Resolve-DnsName google.com | Format-Table -AutoSize | Out-String',
   },
   {
-    id: 'read-agent-log',
-    label: 'Pročitaj sadržaj agent.log',
+    id: 'read-agent-log-full',
+    label: 'Pročitaj ceo sadržaj agent.log',
     // File.ReadAllText (ne Get-Content) namerno - agent.log piše FileLogger.cs
     // preko File.AppendAllText bez eksplicitnog encoding-a, što je UTF-8 BEZ
     // BOM-a po .NET default-u. Get-Content u Windows PowerShell 5.1 pravilno
@@ -156,6 +156,23 @@ export const POWERSHELL_PRESETS = [
       '$logPath = "$env:ProgramData\\NetdeskAgent\\logs\\agent.log"\n' +
       'if (Test-Path $logPath) {\n' +
       '  [System.IO.File]::ReadAllText($logPath, [System.Text.Encoding]::UTF8)\n' +
+      '} else {\n' +
+      '  "agent.log nije pronadjen na $logPath"\n' +
+      '}',
+  },
+  {
+    id: 'read-agent-log-tail',
+    label: 'Pročitaj poslednjih 100 linija agent.log',
+    // Get-Content -Tail (ne File.ReadAllText) namerno - agent.log na
+    // produkciji vremenom naraste, a ReadAllText bi morao da učita ceo fajl
+    // u memoriju samo da bi se na kraju uzelo poslednjih par linija.
+    // -Tail čita fajl unazad i zaustavlja se čim skupi traženi broj linija.
+    // -Encoding UTF8 eksplicitan iz istog razloga kao u punom read presetu
+    // (agent.log je UTF-8 bez BOM-a).
+    script:
+      '$logPath = "$env:ProgramData\\NetdeskAgent\\logs\\agent.log"\n' +
+      'if (Test-Path $logPath) {\n' +
+      '  Get-Content -Path $logPath -Tail 100 -Encoding UTF8 | Out-String\n' +
       '} else {\n' +
       '  "agent.log nije pronadjen na $logPath"\n' +
       '}',
