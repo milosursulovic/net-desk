@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
@@ -119,6 +120,8 @@ namespace NetdeskAgent.Common.Vnc
                         return;
                     }
 
+                    DisableNagleOnWebSocketSocket(ws, sessionId);
+
                     FileLogger.Info("VNC sesija #" + sessionId + " - most uspostavljen (TCP<->WebSocket).");
 
                     var cancelSignal = new TaskCompletionSource<bool>();
@@ -195,6 +198,45 @@ namespace NetdeskAgent.Common.Vnc
             }
 
             closedSignal.TrySetResult(true);
+        }
+
+        // websocket-sharp ima javni API samo za slanje/primanje poruka, ne i
+        // za konfigurisanje soketa ispod - nema svojstvo tipa "NoDelay" niti
+        // način da se prosledi već konfigurisan TcpClient u konstruktor. Bez
+        // ovoga, Nagle-ov algoritam (uključen po default-u, grupiše male
+        // pisanja do ~40ms) i dalje deluje baš na ovoj grani - agent -> backend
+        // WebSocket konekcija koja nosi inkrementalna ažuriranja ekrana
+        // (najveći deo saobraćaja) - iako je NoDelay već postavljen na
+        // lokalnom TCP-u ka UltraVNC-u (iznad) i na oba kraja backend relay-a
+        // (vncRelay.js). Reflection na privatno "_tcpClient" polje je jedini
+        // način da se to zatvori bez zamene cele WS biblioteke (websocket-sharp
+        // je izabran baš zbog Windows 7 podrške - videti napomenu na vrhu
+        // fajla). Namerno best-effort: ako se polje ikad promeni/ukloni u
+        // budućoj verziji paketa, ovo samo tiho ne uspe (VNC most i dalje radi
+        // ispravno, samo bez ovog dodatnog podešavanja) - ne sme da obori
+        // sesiju zbog jedne optimizacije.
+        private static void DisableNagleOnWebSocketSocket(WebSocket ws, long sessionId)
+        {
+            try
+            {
+                var field = typeof(WebSocket).GetField("_tcpClient", BindingFlags.NonPublic | BindingFlags.Instance);
+                var tcpClient = field?.GetValue(ws) as TcpClient;
+                if (tcpClient != null)
+                {
+                    tcpClient.NoDelay = true;
+                }
+                else
+                {
+                    FileLogger.Warn(
+                        "VNC sesija #" + sessionId + " - _tcpClient polje nije pronađeno na WebSocket instanci " +
+                        "(verovatno promenjena verzija websocket-sharp) - Nagle ostaje uključen na agent->backend grani.");
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Warn(
+                    "VNC sesija #" + sessionId + " - podešavanje NoDelay na WebSocket soketu neuspešno (nekritično): " + ex.Message);
+            }
         }
 
         private static string BuildWsUrl(string serverBaseUrl, long sessionId, string agentId, string apiKey)
