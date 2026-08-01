@@ -8,6 +8,7 @@ import {
   createJobService,
   createBatchJobService,
   listJobsForAgentService,
+  clearJobsForAgentService,
   pollJobsService,
   submitJobResultService,
   getBatchStatusService,
@@ -63,6 +64,13 @@ export async function listJobsController(req, res) {
   if (!parsed.success) throw badRequest("Neispravan format podataka");
 
   const out = await listJobsForAgentService(agentId, parsed.data);
+  res.json(out);
+}
+
+export async function clearJobsController(req, res) {
+  const agentId = parseIdParam(req, "id", "ID agenta");
+
+  const out = await clearJobsForAgentService(agentId);
   res.json(out);
 }
 

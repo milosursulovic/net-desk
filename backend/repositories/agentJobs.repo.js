@@ -249,6 +249,11 @@ export async function countFailedJobsSince(since, site) {
   return Number(cnt) || 0;
 }
 
+export async function deleteJobsForAgent(agentId) {
+  const [result] = await pool.execute(`DELETE FROM agent_jobs WHERE agent_id = ?`, [agentId]);
+  return result.affectedRows;
+}
+
 export async function listJobsForAgent({ agentId, status, limit, offset }) {
   const whereParts = ["agent_id = ?"];
   const params = [agentId];

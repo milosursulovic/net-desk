@@ -152,6 +152,12 @@
         </div>
 
         <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="font-medium">Istorija komandi</div>
+            <button v-if="jobs.length" @click="confirmClearJobs" class="text-red-600 hover:underline text-sm">
+              Očisti logove
+            </button>
+          </div>
           <div v-if="jobsLoading" class="text-slate-600 text-sm">Učitavanje…</div>
           <div v-else-if="!jobs.length" class="text-slate-500 text-sm">Nema poslatih komandi.</div>
           <div v-for="j in jobs" :key="j.id" class="rounded-lg border bg-white p-3 text-sm">
@@ -384,6 +390,22 @@ async function loadJobs() {
     console.error(err)
   } finally {
     jobsLoading.value = false
+  }
+}
+
+async function confirmClearJobs() {
+  const ok = await askConfirm('Očistiti istoriju komandi za ovaj agent? Ova radnja se ne može poništiti.', {
+    title: 'Čišćenje logova komandi',
+  })
+  if (!ok) return
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čišćenju logova'))
+    await loadJobs()
+    showToast('Logovi komandi očišćeni')
+  } catch (err) {
+    console.error(err)
+    showToast('Greška pri čišćenju logova', { prefix: '❌ ', duration: 3000 })
   }
 }
 

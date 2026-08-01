@@ -6,6 +6,7 @@ import {
   markJobsSent,
   completeJob,
   listJobsForAgent,
+  deleteJobsForAgent,
   insertJobBatch,
   findJobBatchById,
   listJobsForBatch,
@@ -98,6 +99,16 @@ export async function listJobsForAgentService(agentId, { page, limit, status }) 
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
   return { items, page: safePage, limit, total, totalPages, status };
+}
+
+export async function clearJobsForAgentService(agentId) {
+  const agent = await findAgentById(agentId);
+  if (!agent) {
+    throw notFound("Agent nije pronađen");
+  }
+
+  const cleared = await deleteJobsForAgent(agentId);
+  return { cleared };
 }
 
 export async function pollJobsService(agentId) {

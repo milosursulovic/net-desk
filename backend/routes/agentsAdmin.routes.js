@@ -14,6 +14,7 @@ import {
   createJobController,
   createBatchJobController,
   listJobsController,
+  clearJobsController,
   getBatchStatusController,
   listJobBatchesController,
 } from "../controllers/agentJobs.controller.js";
@@ -42,6 +43,7 @@ router.post("/:id/revoke", asyncHandler(revokeAgentController));
 
 router.get("/:id/jobs", asyncHandler(listJobsController));
 router.post("/:id/jobs", asyncHandler(createJobController));
+router.delete("/:id/jobs", asyncHandler(clearJobsController));
 // "/jobs/batch(es)" and "/:id/jobs" never collide (different second
 // segment), registration order doesn't matter.
 router.post("/jobs/batch", asyncHandler(createBatchJobController));
