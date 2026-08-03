@@ -11,6 +11,7 @@ import {
   listAgentIds,
   listDistinctAgentOs,
   listDistinctAgentVersions,
+  listDistinctAgentDeploymentGroups,
   revokeAgentById,
   linkAgentToIpEntry,
   upsertAgentMonitoring,
@@ -38,6 +39,8 @@ import {
 import { ingestEventLogs } from "./eventLogs.service.js";
 import { ingestDnsQueries } from "./dnsLogs.service.js";
 import { ingestProcessDetections } from "./processDetections.service.js";
+import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
+import { listDistinctReleaseDeploymentGroups } from "../repositories/agentReleases.repo.js";
 import { notFound } from "../utils/httpError.js";
 
 export async function enrollAgent(dto) {
@@ -169,7 +172,21 @@ export async function agentFilterOptionsService(site) {
   const os = await listDistinctAgentOs(site);
   const version = await listDistinctAgentVersions(site);
   const department = await listDistinctDepartments(site);
-  return { os, version, department };
+
+  // Deployment grupa je slobodan tekst (ne stroga enumeracija) - predlozi su
+  // unija klasičnih vrednosti (test/it/pilot/rest), grupa već u upotrebi na
+  // agentima/release-ima, i postojećih odeljenja (organizacija najčešće želi
+  // grupe usklađene sa svojim odeljenjima). Site-scope se primenjuje samo na
+  // agente/odeljenja - releases nisu site-vezani.
+  const [agentGroups, releaseGroups] = await Promise.all([
+    listDistinctAgentDeploymentGroups(site),
+    listDistinctReleaseDeploymentGroups(),
+  ]);
+  const deploymentGroups = [
+    ...new Set([...DEPLOYMENT_GROUPS, ...agentGroups, ...releaseGroups, ...department]),
+  ].sort((a, b) => a.localeCompare(b));
+
+  return { os, version, department, deploymentGroups };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search, site }) {

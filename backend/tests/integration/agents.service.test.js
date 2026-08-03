@@ -9,6 +9,7 @@ import {
   listAgentIdsService,
   setAgentDeploymentGroupService,
   setAgentProcessKillExemptService,
+  agentFilterOptionsService,
 } from "../../services/agents.service.js";
 import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
@@ -268,6 +269,29 @@ describe("agents.service (integration, real DB)", () => {
       expect(test.items.map((a) => a.id)).not.toContain(agentId);
     });
 
+    // Deployment grupa je sada slobodan tekst (usklađena sa stvarnim
+    // odeljenjima), ne fiksna test/it/pilot/rest enumeracija - ovaj test
+    // potvrđuje da filtriranje radi i za proizvoljno ime odeljenja.
+    it("filters by an arbitrary (department-like) deploymentGroup value, not just the classic ones", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const customGroup = `VITEST_DEPT_${Date.now()}`;
+      await setAgentDeploymentGroupService(agentId, customGroup);
+
+      const matched = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        deploymentGroup: customGroup,
+      });
+      expect(matched.items.map((a) => a.id)).toContain(agentId);
+    });
+
     it("filters by os (exact match on osCaption)", async () => {
       const hostname = testHostname();
       const enrolled = await enrollAgent({
@@ -436,5 +460,30 @@ describe("agents.service (integration, real DB)", () => {
       });
       expect(ids.ids).toEqual([agentId]);
     });
+  });
+
+  it("agentFilterOptionsService suggests deployment groups from classic values, agent groups in use, AND departments", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    const customGroup = `VITEST_GROUP_${Date.now()}`;
+    await setAgentDeploymentGroupService(agentId, customGroup);
+
+    const uniqueDept = `VITEST_DEPT_${Date.now()}`;
+    const entry = await createIpEntryService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      department: uniqueDept,
+    });
+    ipEntryId = entry.id;
+
+    const out = await agentFilterOptionsService();
+    expect(out.deploymentGroups).toEqual(expect.arrayContaining(["test", "it", "pilot", "rest"]));
+    expect(out.deploymentGroups).toContain(customGroup);
+    expect(out.deploymentGroups).toContain(uniqueDept);
   });
 });

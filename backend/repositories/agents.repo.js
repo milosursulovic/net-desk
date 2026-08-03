@@ -267,6 +267,22 @@ export async function listDistinctAgentOs(site) {
   return rows.map((r) => r.os_caption);
 }
 
+export async function listDistinctAgentDeploymentGroups(site) {
+  const whereParts = ["agents.deployment_group IS NOT NULL", "agents.deployment_group != ''"];
+  const params = [];
+  let join = "";
+  if (site) {
+    join = AGENTS_IP_ENTRY_JOIN;
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT agents.deployment_group FROM agents ${join} WHERE ${whereParts.join(" AND ")} ORDER BY agents.deployment_group`,
+    params,
+  );
+  return rows.map((r) => r.deployment_group);
+}
+
 // Prirodno sortiranje ("1.2.10" posle "1.2.9", ne pre) - CAST na svaki
 // tačka-odvojen deo verzije kao broj. Pretpostavlja "x.y.z" oblik (isti
 // format kao AgentVersionInfo.cs u agentu) - agenti bez tog oblika i dalje

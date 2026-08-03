@@ -28,8 +28,13 @@
           <div class="flex items-start justify-between gap-3">
             <div>
               <div class="text-lg font-semibold text-slate-800">{{ r.version }}</div>
-              <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full border bg-slate-50">{{ r.deploymentGroup }}</span>
+              <div class="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                <RouterLink v-for="g in r.deploymentGroups" :key="g"
+                  :to="outdatedAgentsLink(r, g)"
+                  class="inline-flex items-center px-2 py-0.5 rounded-full border bg-slate-50 hover:bg-slate-100"
+                  :title="`Zaostali agenti u grupi '${g}'`">
+                  {{ g }}
+                </RouterLink>
               </div>
             </div>
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
@@ -60,9 +65,9 @@
           <div class="mt-3 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
             <span>{{ fmtDate(r.createdAt) }}</span>
             <div class="flex items-center gap-3">
-              <RouterLink :to="outdatedAgentsLink(r)" class="text-sm text-blue-600 hover:underline">
-                Zaostali agenti
-              </RouterLink>
+              <button @click="openEditGroups(r)" class="text-sm text-blue-600 hover:underline">
+                Uredi grupe
+              </button>
               <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
                 {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
               </button>
@@ -74,14 +79,11 @@
 
     <SlideOverPanel :open="showUpload" title="Otpremi novu verziju" @close="closeUpload">
       <div class="space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormInput v-model.trim="form.version" label="Verzija" placeholder="1.1.0" />
-          <div>
-            <label class="text-sm text-slate-600">Deployment grupa</label>
-            <select v-model="form.deploymentGroup" class="app-input w-full">
-              <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
-            </select>
-          </div>
+        <FormInput v-model.trim="form.version" label="Verzija" placeholder="1.1.0" />
+
+        <div>
+          <label class="text-sm text-slate-600">Deployment grupe (bar jedna)</label>
+          <DeploymentGroupPicker v-model="form.deploymentGroups" :options="deploymentGroupOptions" />
         </div>
 
         <div>
@@ -99,6 +101,22 @@
           <AppButton variant="neutral" @click="closeUpload">Otkaži</AppButton>
           <AppButton variant="success" :disabled="uploading" @click="upload">
             {{ uploading ? 'Otpremam…' : 'Otpremi' }}
+          </AppButton>
+        </div>
+      </div>
+    </SlideOverPanel>
+
+    <SlideOverPanel :open="showEditGroups" title="Uredi deployment grupe" @close="closeEditGroups">
+      <div class="space-y-4">
+        <p class="text-sm text-slate-600">
+          Verzija <span class="font-semibold">{{ editForm.version }}</span> - dodaj grupe da proširiš rollout,
+          ili ukloni da suziš.
+        </p>
+        <DeploymentGroupPicker v-model="editForm.deploymentGroups" :options="deploymentGroupOptions" />
+        <div class="flex gap-2 justify-end">
+          <AppButton variant="neutral" @click="closeEditGroups">Otkaži</AppButton>
+          <AppButton variant="success" :disabled="savingGroups" @click="saveGroups">
+            {{ savingGroups ? 'Čuvam…' : 'Sačuvaj' }}
           </AppButton>
         </div>
       </div>
@@ -128,23 +146,39 @@ import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DeploymentGroupPicker from '@/components/DeploymentGroupPicker.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-// Duplicated in AgentDetailView.vue (no shared constants module for this
-// yet) - also must match the backend's implicit "rest" default fallback in
-// agentReleases.service.js. Keep all three in sync if groups ever change.
-const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
-
 const items = ref([])
 const loading = ref(false)
 
+// Predlozi za DeploymentGroupPicker (klasične vrednosti + odeljenja + grupe
+// već u upotrebi) - iz istog /agents/filter-options endpoint-a koji
+// AgentsView.vue već koristi za os/version/department dropdown-ove.
+const deploymentGroupOptions = ref([])
+
+async function fetchDeploymentGroupOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/agents/filter-options')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    deploymentGroupOptions.value = data.deploymentGroups || []
+  } catch (err) {
+    console.error('Neuspešno dohvatanje predloga deployment grupa', err)
+  }
+}
+
 const showUpload = ref(false)
 const uploading = ref(false)
-const form = ref({ version: '', deploymentGroup: 'rest', releaseNotes: '' })
+const form = ref({ version: '', deploymentGroups: ['rest'], releaseNotes: '' })
 const selectedFile = ref(null)
+
+const showEditGroups = ref(false)
+const savingGroups = ref(false)
+const editForm = ref({ releaseId: null, version: '', deploymentGroups: [] })
 
 function fmtBytes(n) {
   if (n === null || n === undefined) return '—'
@@ -154,12 +188,12 @@ function fmtBytes(n) {
   return (num / 1024 / 1024).toFixed(1) + ' MB'
 }
 
-function outdatedAgentsLink(release) {
+function outdatedAgentsLink(release, group) {
   return {
     path: '/agents',
     query: {
       status: 'active',
-      deploymentGroup: release.deploymentGroup,
+      deploymentGroup: group,
       version: release.version,
       versionMode: 'neq',
     },
@@ -191,7 +225,7 @@ async function fetchData() {
 }
 
 function openUpload() {
-  form.value = { version: '', deploymentGroup: 'rest', releaseNotes: '' }
+  form.value = { version: '', deploymentGroups: ['rest'], releaseNotes: '' }
   selectedFile.value = null
   showUpload.value = true
 }
@@ -209,6 +243,10 @@ async function upload() {
     showToast('Verzija je obavezna', { prefix: '❌ ', duration: 3000 })
     return
   }
+  if (!form.value.deploymentGroups.length) {
+    showToast('Bar jedna deployment grupa je obavezna', { prefix: '❌ ', duration: 3000 })
+    return
+  }
   if (!selectedFile.value) {
     showToast('Paket (.zip) je obavezan', { prefix: '❌ ', duration: 3000 })
     return
@@ -218,7 +256,9 @@ async function upload() {
   try {
     const formData = new FormData()
     formData.append('version', form.value.version.trim())
-    formData.append('deploymentGroup', form.value.deploymentGroup)
+    // JSON-encoded jer multipart/form-data (multer) inače stavlja polje kao
+    // običan string - backend parsira ovo pre Zod validacije.
+    formData.append('deploymentGroups', JSON.stringify(form.value.deploymentGroups))
     if (form.value.releaseNotes.trim()) {
       formData.append('releaseNotes', form.value.releaseNotes.trim())
     }
@@ -244,7 +284,7 @@ async function upload() {
 async function toggleActive(release) {
   const nextActive = !release.isActive
   const ok = await askConfirm(
-    `${nextActive ? 'Aktivirati' : 'Deaktivirati'} verziju ${release.version} (${release.deploymentGroup})?`,
+    `${nextActive ? 'Aktivirati' : 'Deaktivirati'} verziju ${release.version} (${release.deploymentGroups.join(', ')})?`,
     { title: nextActive ? 'Aktiviranje verzije' : 'Deaktiviranje verzije' }
   )
   if (!ok) return
@@ -264,5 +304,46 @@ async function toggleActive(release) {
   }
 }
 
-onMounted(fetchData)
+function openEditGroups(release) {
+  editForm.value = {
+    releaseId: release.id,
+    version: release.version,
+    deploymentGroups: [...release.deploymentGroups],
+  }
+  showEditGroups.value = true
+}
+
+function closeEditGroups() {
+  showEditGroups.value = false
+}
+
+async function saveGroups() {
+  if (!editForm.value.deploymentGroups.length) {
+    showToast('Bar jedna deployment grupa je obavezna', { prefix: '❌ ', duration: 3000 })
+    return
+  }
+
+  savingGroups.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agent-releases/${editForm.value.releaseId}/deployment-groups`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deploymentGroups: editForm.value.deploymentGroups }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju grupa'))
+    showEditGroups.value = false
+    await fetchData()
+    showToast('Deployment grupe sačuvane')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri čuvanju grupa', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    savingGroups.value = false
+  }
+}
+
+onMounted(() => {
+  fetchData()
+  fetchDeploymentGroupOptions()
+})
 </script>

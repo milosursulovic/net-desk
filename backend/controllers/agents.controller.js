@@ -17,7 +17,6 @@ import {
   syncAgentInventory,
   setAgentProcessKillExemptService,
 } from "../services/agents.service.js";
-import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -26,7 +25,6 @@ import { sendTablePdf } from "../utils/pdfTable.js";
 
 const STATUS_FILTERS = new Set(["active", "revoked"]);
 const CONNECTIVITY_FILTERS = new Set(["online", "stale", "offline", "unknown"]);
-const DEPLOYMENT_GROUP_FILTERS = new Set(DEPLOYMENT_GROUPS);
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateFilter(value) {
@@ -78,9 +76,9 @@ function parseAgentListFilters(query) {
     connectivityStatus: CONNECTIVITY_FILTERS.has(query.connectivityStatus)
       ? query.connectivityStatus
       : undefined,
-    deploymentGroup: DEPLOYMENT_GROUP_FILTERS.has(query.deploymentGroup)
-      ? query.deploymentGroup
-      : undefined,
+    // Slobodan tekst (isti tretman kao os/version/department ispod) - grupe
+    // više nisu ograničene na fiksnu 4-vrednosnu listu.
+    deploymentGroup: String(query.deploymentGroup || "").trim() || undefined,
     os: String(query.os || "").trim() || undefined,
     version: String(query.version || "").trim() || undefined,
     versionNot: String(query.versionNot || "").trim() || undefined,

@@ -57,7 +57,7 @@
 
           <select v-model="deploymentGroup" class="app-input w-auto" aria-label="Filter po deployment grupi">
             <option value="">Sve deployment grupe</option>
-            <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
+            <option v-for="g in deploymentGroupOptions" :key="g" :value="g">{{ g }}</option>
           </select>
 
           <select v-model="os" class="app-input w-auto" aria-label="Filter po operativnom sistemu">
@@ -318,8 +318,6 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 // Isti limit kao BatchCreateJobSchema.agentIds max u backend/dtos/agentJobs.dto.js.
 const MAX_BATCH_AGENTS = 500
 
-const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
-
 const {
   page,
   limit,
@@ -350,12 +348,10 @@ const {
       omitIfEmpty: true,
       oneOf: ['', 'online', 'stale', 'offline', 'unknown'],
     },
-    deploymentGroup: {
-      type: 'string',
-      default: '',
-      omitIfEmpty: true,
-      oneOf: ['', ...DEPLOYMENT_GROUPS],
-    },
+    // Slobodan tekst (isto tretiranje kao os/version/department ispod) -
+    // grupe više nisu ograničene na fiksnu listu, pa nema oneOf ovde (inače
+    // bi bilo koja vrednost van stare liste od 4 bila tiho resetovana).
+    deploymentGroup: { type: 'string', default: '', omitIfEmpty: true },
     os: { type: 'string', default: '', omitIfEmpty: true },
     version: { type: 'string', default: '', omitIfEmpty: true },
     versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
@@ -422,6 +418,7 @@ const loading = ref(false)
 const osOptions = ref([])
 const versionOptions = ref([])
 const departmentOptions = ref([])
+const deploymentGroupOptions = ref([])
 
 // Detaljni filteri su na mobilnom skupljeni po difoltu (ispod sm) - broj na
 // dugmetu je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i
@@ -451,6 +448,7 @@ async function fetchFilterOptions() {
     osOptions.value = data.os || []
     versionOptions.value = data.version || []
     departmentOptions.value = data.department || []
+    deploymentGroupOptions.value = data.deploymentGroups || []
   } catch (e) {
     console.error('Neuspešno dohvatanje opcija filtera', e)
   }

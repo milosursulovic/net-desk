@@ -53,9 +53,16 @@
 
         <div class="flex items-center gap-2 pt-2 border-t">
           <label class="text-sm font-medium">Deployment grupa</label>
-          <select v-model="deploymentGroupInput" @change="saveDeploymentGroup" class="app-input w-auto text-sm py-1">
-            <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
-          </select>
+          <input
+            v-model.trim="deploymentGroupInput"
+            @change="saveDeploymentGroup"
+            list="deployment-group-options"
+            class="app-input w-auto text-sm py-1"
+            placeholder="npr. Server Sala"
+          />
+          <datalist id="deployment-group-options">
+            <option v-for="g in deploymentGroupOptions" :key="g" :value="g" />
+          </datalist>
         </div>
 
         <div class="flex items-center gap-2 pt-2 border-t">
@@ -262,11 +269,20 @@ const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-// Duplicated in AgentReleasesView.vue (no shared constants module for this
-// yet) - also must match the backend's implicit "rest" default fallback in
-// agentReleases.service.js. Keep all three in sync if groups ever change.
-const DEPLOYMENT_GROUPS = ['test', 'it', 'pilot', 'rest']
+// Deployment grupa je slobodan tekst - predlozi (klasične vrednosti +
+// odeljenja + grupe već u upotrebi) dolaze sa /agents/filter-options.
+const deploymentGroupOptions = ref([])
 
+async function fetchDeploymentGroupOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/agents/filter-options')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    deploymentGroupOptions.value = data.deploymentGroups || []
+  } catch (err) {
+    console.error('Neuspešno dohvatanje predloga deployment grupa', err)
+  }
+}
 
 const TAB_NAMES = ['screen', 'jobs', 'updates', 'events']
 const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
@@ -515,6 +531,7 @@ function selectTab(name) {
 }
 
 onMounted(async () => {
+  fetchDeploymentGroupOptions()
   await loadAgent()
   if (!loadError.value) selectTab(tab.value)
 })

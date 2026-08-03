@@ -134,6 +134,10 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty("os");
         expect(Array.isArray(res.body.os)).toBe(true);
+        // deploymentGroups je slobodan tekst sada (ne fiksna 4-vrednosna
+        // lista) - i dalje mora sadržati bar klasične vrednosti kao predloge.
+        expect(Array.isArray(res.body.deploymentGroups)).toBe(true);
+        expect(res.body.deploymentGroups).toEqual(expect.arrayContaining(["test", "it", "pilot", "rest"]));
       });
     },
   );

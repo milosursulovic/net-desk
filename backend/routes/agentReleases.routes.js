@@ -7,6 +7,7 @@ import {
   createReleaseController,
   listReleasesController,
   setReleaseActiveController,
+  updateReleaseGroupsController,
 } from "../controllers/agentReleases.controller.js";
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.post(
   asyncHandler(createReleaseController),
 );
 router.patch("/:id", requireRole("admin"), asyncHandler(setReleaseActiveController));
+// Isti admin-only nivo kao upload/is-active - "širenje" rollout-a na nove
+// grupe je isti blast-radius rizik kao sam upload.
+router.patch("/:id/deployment-groups", requireRole("admin"), asyncHandler(updateReleaseGroupsController));
 
 export default router;

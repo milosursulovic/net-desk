@@ -3,6 +3,7 @@ import {
   CreateReleaseSchema,
   UpdateReportSchema,
   DeploymentGroupSchema,
+  UpdateReleaseGroupsSchema,
 } from "../dtos/agentReleases.dto.js";
 import {
   uploadReleaseService,
@@ -12,6 +13,7 @@ import {
   downloadReleaseService,
   reportUpdateResultService,
   listUpdateLogService,
+  updateReleaseGroupsService,
 } from "../services/agentReleases.service.js";
 import { setAgentDeploymentGroupService } from "../services/agents.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -28,7 +30,16 @@ export const uploadMiddleware = multer({
 // =========================
 
 export async function createReleaseController(req, res) {
-  const parsed = CreateReleaseSchema.safeParse(req.body || {});
+  // multer stavlja ne-file polja iz multipart/form-data kao string - niz
+  // grupa stiže kao JSON-encoded string, mora se parsirati PRE Zod validacije.
+  let deploymentGroups;
+  try {
+    deploymentGroups = JSON.parse(req.body?.deploymentGroups || "[]");
+  } catch {
+    throw badRequest("Neispravan format deployment grupa");
+  }
+
+  const parsed = CreateReleaseSchema.safeParse({ ...req.body, deploymentGroups });
   if (!parsed.success) throw badRequest("Neispravan format podataka");
 
   const release = await uploadReleaseService(
@@ -55,6 +66,16 @@ export async function setReleaseActiveController(req, res) {
   const isActive = !!req.body?.isActive;
 
   const release = await setReleaseActiveService(id, isActive);
+  res.json(release);
+}
+
+export async function updateReleaseGroupsController(req, res) {
+  const id = parseIdParam(req, "id", "ID verzije");
+
+  const parsed = UpdateReleaseGroupsSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const release = await updateReleaseGroupsService(id, parsed.data.deploymentGroups);
   res.json(release);
 }
 

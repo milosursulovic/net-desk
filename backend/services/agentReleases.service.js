@@ -3,6 +3,9 @@ import path from "path";
 import crypto from "crypto";
 import {
   insertRelease,
+  insertReleaseGroups,
+  setReleaseGroups,
+  isReleaseTargetingGroup,
   findReleaseById,
   findActiveReleasesForGroup,
   listReleases,
@@ -25,7 +28,7 @@ function ensureReleasesDir() {
 }
 
 export async function uploadReleaseService(
-  { buffer, originalName, version, deploymentGroup, releaseNotes },
+  { buffer, originalName, version, deploymentGroups, releaseNotes },
   createdByUserId,
 ) {
   if (!buffer || !buffer.length) {
@@ -36,7 +39,9 @@ export async function uploadReleaseService(
 
   const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
   const safeExt = path.extname(originalName || "") || ".zip";
-  const storedFileName = `${version}-${deploymentGroup}-${Date.now()}${safeExt}`;
+  // Ime fajla na disku više ne uključuje grupu (release sada može ciljati
+  // više grupa - agent_release_groups je izvor istine za to, ne slug u imenu).
+  const storedFileName = `${version}-${Date.now()}${safeExt}`;
   const filePath = path.join(RELEASES_DIR, storedFileName);
 
   fs.writeFileSync(filePath, buffer);
@@ -51,9 +56,13 @@ export async function uploadReleaseService(
     sha256,
     signature,
     releaseNotes: releaseNotes ?? null,
-    deploymentGroup,
     createdByUserId,
   });
+
+  // Dedup u JS (case-sensitive - "IT" i "it" se tretiraju kao različite
+  // grupe, isto kao slobodan tekst svuda drugde u ovoj promeni).
+  const uniqueGroups = [...new Set(deploymentGroups.map((g) => g.trim()).filter(Boolean))];
+  await insertReleaseGroups(id, uniqueGroups);
 
   return await findReleaseById(id);
 }
@@ -105,11 +114,10 @@ export async function checkForUpdateService(agent) {
 
 export async function downloadReleaseService(releaseId, agent) {
   const release = await findReleaseById(releaseId);
-  if (
-    !release ||
-    !release.isActive ||
-    release.deploymentGroup !== (agent.deploymentGroup || "rest")
-  ) {
+  const targeted = release
+    ? await isReleaseTargetingGroup(releaseId, agent.deploymentGroup || "rest")
+    : false;
+  if (!release || !release.isActive || !targeted) {
     throw notFound("Verzija nije pronađena");
   }
 
@@ -119,6 +127,24 @@ export async function downloadReleaseService(releaseId, agent) {
   }
 
   return { filePath, fileName: release.fileName };
+}
+
+// "Širenje" rollout-a - menja SET ciljanih grupa na već otpremljenom
+// release-u BEZ ponovnog upload-a paketa. Pun replace (ne append) - frontend
+// šalje ceo novi set (stare + nove grupe za širenje).
+export async function updateReleaseGroupsService(id, deploymentGroups) {
+  const release = await findReleaseById(id);
+  if (!release) {
+    throw notFound("Verzija nije pronađena");
+  }
+
+  const uniqueGroups = [...new Set(deploymentGroups.map((g) => g.trim()).filter(Boolean))];
+  if (!uniqueGroups.length) {
+    throw badRequest("Bar jedna deployment grupa je obavezna");
+  }
+
+  await setReleaseGroups(id, uniqueGroups);
+  return await findReleaseById(id);
 }
 
 export async function reportUpdateResultService(agent, dto) {
