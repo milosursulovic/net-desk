@@ -10,6 +10,11 @@ import {
   listWithoutUltravncController,
   exportWithoutUltravncPdfController,
 } from "../controllers/pdsuAnalytics.controller.js";
+import {
+  listIgnoredPrinterPatternsController,
+  createIgnoredPrinterPatternController,
+  deleteIgnoredPrinterPatternController,
+} from "../controllers/printerPatterns.controller.js";
 
 const router = express.Router();
 
@@ -22,5 +27,9 @@ router.get("/missing", asyncHandler(listWithoutPdsuController));
 router.get("/missing/export-pdf", asyncHandler(exportWithoutPdsuPdfController));
 router.get("/without-ultravnc", asyncHandler(listWithoutUltravncController));
 router.get("/without-ultravnc/export-pdf", asyncHandler(exportWithoutUltravncPdfController));
+
+router.get("/printer-patterns", asyncHandler(listIgnoredPrinterPatternsController));
+router.post("/printer-patterns", asyncHandler(createIgnoredPrinterPatternController));
+router.delete("/printer-patterns/:id", asyncHandler(deleteIgnoredPrinterPatternController));
 
 export default router;

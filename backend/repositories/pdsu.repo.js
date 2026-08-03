@@ -339,6 +339,10 @@ export async function computerUpdatesInsert(rows) {
 // Printers (agent-detektovani, po računaru)
 // =========================
 
+// Isključuje virtuelne/softverske štampače (Microsoft Print to PDF, AnyDesk
+// Printer, itd. - admin-upravljiva lista, printerPatterns.repo.js) - podaci
+// ostaju netaknuti u computer_printers, filtriranje je samo na čitanju, pa
+// se ništa ne gubi ako se obrazac kasnije ukloni sa liste.
 export async function computerPrintersList(ipEntryId) {
   const [rows] = await pool.query(
     `
@@ -350,8 +354,12 @@ export async function computerPrintersList(ipEntryId) {
       status,
       is_default,
       inventory_date
-    FROM computer_printers
+    FROM computer_printers cp
     WHERE ip_entry_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM ignored_printer_patterns ipp
+        WHERE LOWER(cp.name) LIKE CONCAT('%', LOWER(ipp.pattern), '%')
+      )
     ORDER BY is_default DESC, name
     `,
     [ipEntryId],

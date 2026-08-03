@@ -1086,6 +1086,18 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50, site) 
    PRINTERS
    ========================================================= */
 
+// Isključuje virtuelne/softverske štampače (Microsoft Print to PDF, AnyDesk
+// Printer, itd.) iz SVIH fleet-wide upita ispod - admin-upravljiva lista
+// (printerPatterns.repo.js), ista logika kao pdsu.repo.js's
+// computerPrintersList. Pretpostavlja da je computer_printers uvek aliasovan
+// kao "cp" u upitu gde se ovo umeće (važi za sve funkcije ispod).
+const IGNORED_PRINTER_EXCLUSION_SQL = `
+  AND NOT EXISTS (
+    SELECT 1 FROM ignored_printer_patterns ipp
+    WHERE LOWER(cp.name) LIKE CONCAT('%', LOWER(ipp.pattern), '%')
+  )
+`;
+
 export async function getPrinterStats(site) {
   const [[row]] = await pool.execute(
     `
@@ -1121,6 +1133,7 @@ export async function getPrinterStats(site) {
     FROM computer_printers cp
     JOIN ip_entries ie ON ie.id = cp.ip_entry_id
     WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
+    ${IGNORED_PRINTER_EXCLUSION_SQL}
     `,
     site ? [site] : [],
   );
@@ -1152,6 +1165,7 @@ export async function getTopPrinterNames(limit = 10, site) {
       JOIN ip_entries ip ON ip.id = cp.ip_entry_id
       WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
         AND cp.name IS NOT NULL AND TRIM(cp.name) <> ''
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
       GROUP BY TRIM(cp.name)
       ORDER BY computers DESC, name ASC
       LIMIT ?
@@ -1173,6 +1187,7 @@ export async function getTopPrinterDrivers(limit = 10, site) {
       JOIN ip_entries ip ON ip.id = cp.ip_entry_id
       WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
         AND cp.driver_name IS NOT NULL AND TRIM(cp.driver_name) <> ''
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
       GROUP BY TRIM(cp.driver_name)
       ORDER BY printers DESC, driverName ASC
       LIMIT ?
@@ -1207,6 +1222,7 @@ export async function getPrintersWithProblemStatus(limit = 30, site) {
         ${site ? "AND ip.site = ?" : ""}
         AND cp.status IS NOT NULL AND TRIM(cp.status) <> ''
         AND LOWER(TRIM(cp.status)) NOT IN ('ok', 'idle', 'unknown')
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
       ORDER BY ip.computer_name ASC, cp.name ASC
       LIMIT ?
     `,
@@ -1243,6 +1259,7 @@ export async function getRarePrinters(limit = 20, site) {
       WHERE ip.entry_type = 'computer'
         ${site ? "AND ip.site = ?" : ""}
         AND cp.name IS NOT NULL AND TRIM(cp.name) <> ''
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
       GROUP BY TRIM(cp.name)
       HAVING COUNT(DISTINCT cp.ip_entry_id) <= 2
       ORDER BY computers ASC, name ASC
@@ -1271,6 +1288,7 @@ export async function getComputersWithMostPrinters(limit = 10, site) {
       FROM ip_entries ip
       JOIN computer_printers cp ON cp.ip_entry_id = ip.id
       WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
       GROUP BY ip.id, ip.ip, ip.computer_name, ip.department
       ORDER BY printerCount DESC
       LIMIT ?
@@ -1284,6 +1302,46 @@ export async function getComputersWithMostPrinters(limit = 10, site) {
     computerName: row.computerName,
     department: row.department,
     printerCount: Number(row.printerCount) || 0,
+    inventoryDate: row.inventoryDate,
+  }));
+}
+
+// "Unikatan pravi štampač po računaru" - JEDAN red po računaru, onaj
+// označen kao podrazumevani (Win32_Printer.Default preko WMI-ja je jedini
+// realan signal koji Windows daje za "trenutno se koristi" - nema
+// "poslednji put korišćen" podatak). Isključuje i virtuelne/ignorisane
+// obrasce, isto kao ostale funkcije u ovoj sekciji.
+export async function getActivePrinterPerComputer(site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        ip.id AS ipEntryId,
+        ip.ip,
+        ip.computer_name AS computerName,
+        ip.department,
+        cp.name,
+        cp.driver_name AS driverName,
+        cp.port_name AS portName,
+        cp.status,
+        cp.inventory_date AS inventoryDate
+      FROM ip_entries ip
+      JOIN computer_printers cp ON cp.ip_entry_id = ip.id AND cp.is_default = 1
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
+        ${IGNORED_PRINTER_EXCLUSION_SQL}
+      ORDER BY ip.computer_name ASC, ip.ip ASC
+    `,
+    site ? [site] : [],
+  );
+
+  return rows.map((row) => ({
+    ipEntryId: Number(row.ipEntryId),
+    ip: row.ip,
+    computerName: row.computerName,
+    department: row.department,
+    name: row.name,
+    driverName: row.driverName,
+    portName: row.portName,
+    status: row.status,
     inventoryDate: row.inventoryDate,
   }));
 }
@@ -1404,6 +1462,7 @@ export async function getAllPrintersForExport(site) {
     JOIN ip_entries ie ON ie.id = cp.ip_entry_id
     WHERE ie.entry_type = 'computer'
       ${site ? "AND ie.site = ?" : ""}
+      ${IGNORED_PRINTER_EXCLUSION_SQL}
     ORDER BY ie.computer_name ASC, cp.name ASC
   `,
     site ? [site] : [],
@@ -1557,6 +1616,7 @@ export async function searchPrinterRows(term, limit = 100, site) {
     FROM computer_printers cp
     JOIN ip_entries ie ON ie.id = cp.ip_entry_id
     WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
+      ${IGNORED_PRINTER_EXCLUSION_SQL}
     ORDER BY ie.computer_name ASC, cp.name ASC
     LIMIT ?
     `,

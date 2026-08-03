@@ -28,6 +28,7 @@ import {
   getPrintersWithProblemStatus,
   getRarePrinters,
   getComputersWithMostPrinters,
+  getActivePrinterPerComputer,
   getAllSoftwareForExport,
   getAllDriversForExport,
   getAllServicesForExport,
@@ -92,6 +93,7 @@ export async function pdsuAnalyticsStatsService(site) {
     printersWithProblemStatus,
     rarePrinters,
     computersWithMostPrinters,
+    activePrinterPerComputer,
   ] = await Promise.all([
     getPdsuCoverage(site),
 
@@ -125,6 +127,7 @@ export async function pdsuAnalyticsStatsService(site) {
     getPrintersWithProblemStatus(30, site),
     getRarePrinters(20, site),
     getComputersWithMostPrinters(10, site),
+    getActivePrinterPerComputer(site),
   ]);
 
   const totalComputers = Number(coverage.totalComputers) || 0;
@@ -226,6 +229,7 @@ export async function pdsuAnalyticsStatsService(site) {
         problemStatus: printersWithProblemStatus,
         rarePrinters,
         computersWithMostPrinters,
+        activePerComputer: activePrinterPerComputer,
       },
     },
   };
@@ -271,13 +275,14 @@ export async function searchPdsuAnalytics(category, term, site) {
 }
 
 export async function exportPdsuAnalyticsXlsx(site) {
-  const [software, drivers, services, updates, printers] = await Promise.all([
+  const [software, drivers, services, updates, printers, activePrinters] = await Promise.all([
     getAllSoftwareForExport(site),
     getAllDriversForExport(site),
     getAllServicesForExport(site),
     getAllUpdatesForExport(site),
     getAllPrintersForExport(site),
+    getActivePrinterPerComputer(site),
   ]);
 
-  return { software, drivers, services, updates, printers };
+  return { software, drivers, services, updates, printers, activePrinters };
 }

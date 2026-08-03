@@ -1,6 +1,10 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { parseError } from '@/utils/api.js'
+import { useToast } from '@/composables/useToast.js'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+import AppButton from '@/components/AppButton.vue'
 
 const props = defineProps({
   printers: {
@@ -9,7 +13,10 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits(['patterns-changed'])
+
 const { formatNumber, formatDate: formatDateBase, splitValues } = usePdsuFormatters()
+const { showToast } = useToast()
 
 function formatDate(value) {
   return formatDateBase(value, true)
@@ -23,6 +30,7 @@ const topDrivers = computed(() => tables.value?.topDrivers ?? [])
 const problemStatus = computed(() => tables.value?.problemStatus ?? [])
 const rarePrinters = computed(() => tables.value?.rarePrinters ?? [])
 const computersWithMostPrinters = computed(() => tables.value?.computersWithMostPrinters ?? [])
+const activePerComputer = computed(() => tables.value?.activePerComputer ?? [])
 
 const totalPrinters = computed(() => Number(stats.value?.totalPrinters) || 0)
 
@@ -33,6 +41,64 @@ function statusBadgeClass(status) {
   }
   return 'bg-red-600 text-white'
 }
+
+// Ignorisani obrasci imena (Microsoft Print to PDF, AnyDesk Printer, itd.) -
+// admin-upravljiva lista, isti CRUD obrazac kao crna lista domena na DNS
+// Logovima. Backend već isključuje ove obrasce iz SVIH tabela/statistika
+// iznad - ovaj panel samo upravlja SAMOM listom.
+const patterns = ref([])
+const newPattern = ref('')
+const newPatternReason = ref('')
+const savingPattern = ref(false)
+
+async function fetchPatterns() {
+  try {
+    const res = await fetchWithAuth('/api/protected/pdsu-analytics/printer-patterns')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    patterns.value = data.items || []
+  } catch (e) {
+    console.error('Neuspešno dohvatanje ignorisanih obrazaca štampača', e)
+  }
+}
+
+async function addPattern() {
+  if (!newPattern.value.trim()) return
+  savingPattern.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/pdsu-analytics/printer-patterns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pattern: newPattern.value.trim(), reason: newPatternReason.value.trim() }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju obrasca'))
+    newPattern.value = ''
+    newPatternReason.value = ''
+    await fetchPatterns()
+    emit('patterns-changed')
+    showToast('Obrazac dodat')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri dodavanju obrasca', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    savingPattern.value = false
+  }
+}
+
+async function removePattern(id) {
+  try {
+    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/printer-patterns/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    await fetchPatterns()
+    emit('patterns-changed')
+    showToast('Obrazac uklonjen')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+onMounted(fetchPatterns)
 </script>
 
 <template>
@@ -108,6 +174,56 @@ function statusBadgeClass(status) {
             <div class="font-semibold text-slate-900">{{ formatDate(stats.newestInventoryDate) }}</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Aktivni štampač po računaru (unikatan, jedan red po računaru) -->
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
+        <div>
+          <h5 class="pdsu-card-title">Aktivni štampač po računaru</h5>
+          <div class="text-xs text-slate-500">
+            Jedan red po računaru - podrazumevani (trenutno korišćeni) štampač, bez virtuelnih/softverskih.
+            Ovo je isto što se izvozi u "Aktivni štampači" list pri XLSX izvozu.
+          </div>
+        </div>
+        <span class="pdsu-badge bg-blue-600 text-white">{{ formatNumber(activePerComputer.length) }}</span>
+      </div>
+
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
+          <thead>
+            <tr>
+              <th>Računar</th>
+              <th>IP</th>
+              <th>Odeljenje</th>
+              <th>Štampač</th>
+              <th>Drajver</th>
+              <th class="text-center">Status</th>
+              <th>Datum inventara</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in activePerComputer" :key="item.ipEntryId ?? `${item.ip}-${index}`">
+              <td class="font-semibold text-slate-900">{{ item.computerName || 'Nepoznat računar' }}</td>
+              <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
+              <td>{{ item.department || '—' }}</td>
+              <td>{{ item.name || '—' }}</td>
+              <td>{{ item.driverName || '—' }}</td>
+              <td class="text-center">
+                <span class="pdsu-badge" :class="statusBadgeClass(item.status)">
+                  {{ item.status || 'Nepoznato' }}
+                </span>
+              </td>
+              <td>{{ formatDate(item.inventoryDate) }}</td>
+            </tr>
+            <tr v-if="activePerComputer.length === 0">
+              <td colspan="7" class="text-center text-slate-500 py-4">
+                Nema računara sa podešenim podrazumevanim (ne-virtuelnim) štampačem.
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -325,6 +441,60 @@ function statusBadgeClass(status) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Ignorisani obrasci imena (virtuelni/softverski štampači) -->
+    <div class="pdsu-card mt-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
+        <div>
+          <h5 class="pdsu-card-title">Ignorisani obrasci imena štampača</h5>
+          <div class="text-xs text-slate-500">
+            Štampači čije ime SADRŽI neki od ovih obrazaca (npr. "print to pdf", "anydesk printer") se ne
+            prikazuju/izvoze nigde iznad - ni u statistici, ni u tabelama, ni po računaru.
+          </div>
+        </div>
+        <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(patterns.length) }}</span>
+      </div>
+
+      <form @submit.prevent="addPattern" class="flex flex-wrap items-end gap-2 p-4 border-b border-slate-100">
+        <div class="flex-1 min-w-40">
+          <label class="text-xs text-slate-600">Obrazac (deo imena)</label>
+          <input v-model.trim="newPattern" type="text" class="app-input w-full" placeholder="npr. anydesk printer" />
+        </div>
+        <div class="flex-1 min-w-40">
+          <label class="text-xs text-slate-600">Napomena (opciono)</label>
+          <input v-model.trim="newPatternReason" type="text" class="app-input w-full" placeholder="npr. virtuelni štampač" />
+        </div>
+        <AppButton type="submit" variant="danger" :disabled="!newPattern || savingPattern">
+          {{ savingPattern ? 'Dodajem…' : 'Dodaj obrazac' }}
+        </AppButton>
+      </form>
+
+      <div class="pdsu-table-wrap">
+        <table v-if="patterns.length" class="pdsu-table">
+          <thead>
+            <tr>
+              <th>Obrazac</th>
+              <th>Napomena</th>
+              <th>Dodato</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in patterns" :key="item.id">
+              <td class="font-mono">{{ item.pattern }}</td>
+              <td>{{ item.reason || '—' }}</td>
+              <td>{{ formatDate(item.createdAt) }}</td>
+              <td class="text-right">
+                <button type="button" class="text-red-600 hover:underline text-sm" @click="removePattern(item.id)">
+                  Ukloni
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="text-sm text-slate-500 p-4">Lista je prazna - svi detektovani štampači se prikazuju.</p>
       </div>
     </div>
   </section>

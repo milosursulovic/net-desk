@@ -89,7 +89,7 @@ export async function exportWithoutUltravncPdfController(req, res) {
 }
 
 export async function exportPdsuAnalyticsController(req, res) {
-  const { software, drivers, services, updates, printers } =
+  const { software, drivers, services, updates, printers, activePrinters } =
     await exportPdsuAnalyticsXlsx(siteFilter(req.query.site));
 
   const dateStamp = new Date().toISOString().slice(0, 10);
@@ -157,7 +157,24 @@ export async function exportPdsuAnalyticsController(req, res) {
         rows: updates,
       },
       {
-        name: "Štampači",
+        // Jedan red po računaru - podrazumevani (aktivni), ne-virtuelni
+        // štampač. Ovo je "čist" fleet-wide pregled bez starih/dodatnih
+        // instaliranih štampača i bez softverskih (Print to PDF i sl.).
+        name: "Aktivni štampači",
+        columns: [
+          { header: "Računar", key: "computerName", width: 22 },
+          { header: "IP", key: "ip", width: 14 },
+          { header: "Odeljenje", key: "department", width: 18 },
+          { header: "Naziv", key: "name", width: 26 },
+          { header: "Drajver", key: "driverName", width: 26 },
+          { header: "Port", key: "portName", width: 16 },
+          { header: "Status", key: "status", width: 14 },
+          { header: "Datum inventara", key: "inventoryDate", width: 20 },
+        ],
+        rows: activePrinters,
+      },
+      {
+        name: "Štampači (svi)",
         columns: [
           { header: "Računar", key: "computerName", width: 22 },
           { header: "IP", key: "ip", width: 14 },
