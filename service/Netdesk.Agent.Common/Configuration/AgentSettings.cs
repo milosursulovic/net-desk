@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -25,6 +26,29 @@ namespace NetdeskAgent.Common.Configuration
         public int EventLogIntervalSeconds { get; set; } = 300;
         public int DnsLogIntervalSeconds { get; set; } = 300;
         public int UpdateCheckIntervalSeconds { get; set; } = 1800;
+
+        /// <summary>
+        /// Učestalije od DNS/Event Log sync-a (300s) namerno - cilj je
+        /// uhvatiti AKTIVNU remote-access sesiju u toku, ne ostaviti
+        /// istorijski trag koji stigne prekasno.
+        /// </summary>
+        public int ProcessMonitorIntervalSeconds { get; set; } = 60;
+
+        /// <summary>
+        /// Watchlist za ProcessMonitor.ProcessWatchCollector - substring,
+        /// case-insensitive poređenje sa imenom pokrenutog procesa (bez
+        /// ".exe" ekstenzije). Built-in default pokriva trenutne i starije
+        /// TeamViewer izvršne nazive - admin dopunjuje/menja preko
+        /// "Upiši key/value u config.json" preset skripte, bez potrebe za
+        /// rebuild/redeploy agenta.
+        /// </summary>
+        public List<string> WatchedProcessNames { get; set; } = new List<string>
+        {
+            "anydesk",
+            "teamviewer",
+            "tv_w32",
+            "tvnserver",
+        };
 
         /// <summary>
         /// Port na kom lokalni UltraVNC server (instaliran pored agenta,

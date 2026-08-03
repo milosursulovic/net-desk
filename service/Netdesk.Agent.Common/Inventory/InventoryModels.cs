@@ -75,6 +75,9 @@ namespace NetdeskAgent.Common.Inventory
 
         [JsonProperty("dnsQueries")]
         public List<DnsQueryItem> DnsQueries { get; set; }
+
+        [JsonProperty("processDetections")]
+        public List<ProcessDetectionItem> ProcessDetections { get; set; }
     }
 
     /// <summary>Odgovor POST /api/agents/inventory - metadata sadržaj nam ovde ne treba, samo potvrda.</summary>
@@ -317,6 +320,20 @@ namespace NetdeskAgent.Common.Inventory
     public class DnsQueryItem
     {
         public string Domain { get; set; }
+        public string FirstSeen { get; set; }
+        public string LastSeen { get; set; }
+        public int Count { get; set; }
+    }
+
+    /// <summary>
+    /// Pogodak sa watchlist-e pokrenutih procesa (npr. portable AnyDesk/
+    /// TeamViewer) - computer_process_detections na backend-u, upsert-uje
+    /// se PO (računar, ime procesa), isti obrazac kao DnsQueryItem. Videti
+    /// ProcessMonitor.ProcessWatchCollector.Scan().
+    /// </summary>
+    public class ProcessDetectionItem
+    {
+        public string ProcessName { get; set; }
         public string FirstSeen { get; set; }
         public string LastSeen { get; set; }
         public int Count { get; set; }

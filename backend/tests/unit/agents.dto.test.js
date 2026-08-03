@@ -104,4 +104,14 @@ describe("InventorySyncSchema", () => {
     });
     expect(out.success).toBe(true);
   });
+
+  it("accepts a minimal process-detections-only payload", () => {
+    const out = InventorySyncSchema.safeParse({
+      ip: "10.230.62.81",
+      processDetections: [
+        { processName: "anydesk", firstSeen: "2026-01-01T00:00:00Z", lastSeen: "2026-01-01T00:05:00Z", count: 1 },
+      ],
+    });
+    expect(out.success).toBe(true);
+  });
 });

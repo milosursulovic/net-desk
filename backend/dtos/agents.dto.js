@@ -45,5 +45,6 @@ export const InventorySyncSchema = z
     availableUpdates: z.array(z.record(z.string(), z.any())).optional(),
     eventLogs: z.array(z.record(z.string(), z.any())).optional(),
     dnsQueries: z.array(z.record(z.string(), z.any())).optional(),
+    processDetections: z.array(z.record(z.string(), z.any())).optional(),
   })
   .passthrough();

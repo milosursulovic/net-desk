@@ -30,6 +30,7 @@ const LogsView = () => import('@/views/LogsView.vue')
 const ConfigView = () => import('@/views/ConfigView.vue')
 const ServerHealthView = () => import('@/views/ServerHealthView.vue')
 const DnsLogsView = () => import('@/views/DnsLogsView.vue')
+const ProcessDetectionsView = () => import('@/views/ProcessDetectionsView.vue')
 const VncSessionView = () => import('@/views/VncSessionView.vue')
 
 const router = createRouter({
@@ -243,6 +244,12 @@ const router = createRouter({
           name: 'dns-logs',
           meta: { title: 'DNS Logovi - NetDesk', breadcrumb: 'DNS Logovi', requiresAdmin: true },
           component: DnsLogsView,
+        },
+        {
+          path: 'process-detections',
+          name: 'process-detections',
+          meta: { title: 'Sumnjivi procesi - NetDesk', breadcrumb: 'Sumnjivi procesi', requiresAdmin: true },
+          component: ProcessDetectionsView,
         },
       ],
     },

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using NetdeskAgent.Common.Jobs;
 using NetdeskAgent.Common.Monitoring;
 using NetdeskAgent.Common.EventLogs;
 using NetdeskAgent.Common.DnsLogs;
+using NetdeskAgent.Common.ProcessMonitor;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
 
@@ -71,6 +73,7 @@ namespace NetdeskAgent.Service
                 var lastJobsPoll = DateTime.MinValue;
                 var lastEventLogSync = DateTime.MinValue;
                 var lastDnsLogSync = DateTime.MinValue;
+                var lastProcessMonitor = DateTime.MinValue;
                 var lastUpdateCheck = DateTime.MinValue;
 
                 while (!token.IsCancellationRequested)
@@ -100,6 +103,11 @@ namespace NetdeskAgent.Service
                         {
                             await DoDnsLogSyncAsync(client, state, dnsCollector).ConfigureAwait(false);
                             lastDnsLogSync = DateTime.UtcNow;
+                        }
+                        else if ((DateTime.UtcNow - lastProcessMonitor).TotalSeconds >= settings.ProcessMonitorIntervalSeconds)
+                        {
+                            await DoProcessMonitorAsync(client, state, settings).ConfigureAwait(false);
+                            lastProcessMonitor = DateTime.UtcNow;
                         }
                         else if ((DateTime.UtcNow - lastUpdateCheck).TotalSeconds >= settings.UpdateCheckIntervalSeconds)
                         {
@@ -272,6 +280,45 @@ namespace NetdeskAgent.Service
             catch (Exception ex)
             {
                 FileLogger.Error("DNS log sync neuspešan", ex);
+            }
+        }
+
+        private static async Task DoProcessMonitorAsync(NetdeskApiClient client, AgentState state, AgentSettings settings)
+        {
+            try
+            {
+                var entries = ProcessWatchCollector.Scan(settings.WatchedProcessNames);
+                if (entries.Count == 0)
+                {
+                    return;
+                }
+
+                var ip = HardwareCollector.GetPrimaryIPv4();
+                if (string.IsNullOrEmpty(ip))
+                {
+                    FileLogger.Warn("Nije pronađena IPv4 adresa - process monitor sync se preskače ovog ciklusa.");
+                    return;
+                }
+
+                // Isti obrazac kao DoDnsLogSyncAsync - lagan zahtev, samo ip +
+                // processDetections, merge (patch) semantika na backend-u ne dira
+                // ostale metapodatke.
+                var request = new InventoryRequest { Ip = ip, ProcessDetections = entries };
+                await client.PostInventoryAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
+
+                // Imena procesa direktno u log liniju (ne samo broj) - odmah vidljivo
+                // u agent.log bez čekanja na DB/frontend, s obzirom na hitnost ovog
+                // konkretnog security scenarija (portable remote-access alat u radu).
+                var names = string.Join(", ", entries.Select(e => e.ProcessName));
+                FileLogger.Info("Process monitor: detektovan(i) sa watchlist-e - " + names + ".");
+            }
+            catch (NetdeskApiException apiEx)
+            {
+                FileLogger.Error("Process monitor sync odbijen od servera (HTTP " + apiEx.StatusCode + ")", apiEx);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Process monitor sync neuspešan", ex);
             }
         }
 

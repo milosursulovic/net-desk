@@ -36,6 +36,7 @@ import {
 } from "./pdsu.service.js";
 import { ingestEventLogs } from "./eventLogs.service.js";
 import { ingestDnsQueries } from "./dnsLogs.service.js";
+import { ingestProcessDetections } from "./processDetections.service.js";
 import { notFound } from "../utils/httpError.js";
 
 export async function enrollAgent(dto) {
@@ -272,6 +273,9 @@ export async function syncAgentInventory(agent, body) {
   }
   if (Array.isArray(body.dnsQueries)) {
     await ingestDnsQueries(ipEntryId, body.dnsQueries);
+  }
+  if (Array.isArray(body.processDetections)) {
+    await ingestProcessDetections(ipEntryId, body.processDetections);
   }
 
   return { ok: true, ipEntryId, metadata };
