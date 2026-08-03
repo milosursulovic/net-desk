@@ -1288,10 +1288,14 @@ export async function getComputersWithMostPrinters(limit = 10, site) {
   }));
 }
 
-// "Unikatan pravi štampač po računaru" - JEDAN red po računaru, onaj
-// označen kao podrazumevani (Win32_Printer.Default preko WMI-ja je jedini
-// realan signal koji Windows daje za "trenutno se koristi" - nema
-// "poslednji put korišćen" podatak).
+// Štampači po računaru za "aktivni štampač" izveštaj. Win32_Printer.Default
+// (WMI) je jedini realan signal koji Windows daje za "trenutno se koristi" -
+// nema "poslednji put korišćen" podatak - ali dosta mašina nema NIJEDAN
+// štampač markiran kao default, ili je default ispao neki softverski/
+// virtuelni štampač (Print to PDF, AnyDesk...). Zato ovo namerno vraća SVE
+// sinhronizovane štampače po računaru (ne samo default), da nijedan računar
+// ne ispadne iz izveštaja - isDefault na svakom redu govori da li je taj
+// konkretan štampač Windows-ov podrazumevani.
 export async function getActivePrinterPerComputer(site) {
   const [rows] = await pool.execute(
     `
@@ -1304,11 +1308,12 @@ export async function getActivePrinterPerComputer(site) {
         cp.driver_name AS driverName,
         cp.port_name AS portName,
         cp.status,
+        cp.is_default AS isDefault,
         cp.inventory_date AS inventoryDate
       FROM ip_entries ip
-      JOIN computer_printers cp ON cp.ip_entry_id = ip.id AND cp.is_default = 1
+      JOIN computer_printers cp ON cp.ip_entry_id = ip.id
       WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
-      ORDER BY ip.computer_name ASC, ip.ip ASC
+      ORDER BY ip.computer_name ASC, ip.ip ASC, cp.is_default DESC, cp.name ASC
     `,
     site ? [site] : [],
   );
@@ -1322,6 +1327,7 @@ export async function getActivePrinterPerComputer(site) {
     driverName: row.driverName,
     portName: row.portName,
     status: row.status,
+    isDefault: Boolean(row.isDefault),
     inventoryDate: row.inventoryDate,
   }));
 }

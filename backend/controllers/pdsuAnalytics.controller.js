@@ -158,9 +158,10 @@ export async function exportPdsuAnalyticsController(req, res) {
         rows: updates,
       },
       {
-        // Jedan red po računaru - podrazumevani (aktivni) štampač, ne svi
-        // instalirani. "Podrazumevani" (Win32_Printer.Default preko WMI-ja)
-        // je jedini realan signal koji Windows daje za "trenutno se koristi".
+        // Svi sinhronizovani štampači po računaru (ne samo podrazumevani) -
+        // dosta mašina nema nijedan štampač markiran kao "Podrazumevani",
+        // pa bi filtriranje samo na Default izbacilo te računare iz izveštaja.
+        // Kolona "Podrazumevani" govori koji red je Windows-ov Default, ako ga ima.
         name: "Aktivni štampači",
         columns: [
           { header: "Računar", key: "computerName", width: 22 },
@@ -171,6 +172,7 @@ export async function exportPdsuAnalyticsController(req, res) {
           { header: "Drajver", key: "driverName", width: 26 },
           { header: "Port", key: "portName", width: 16 },
           { header: "Status", key: "status", width: 14 },
+          { header: "Podrazumevani", key: "isDefault", width: 16 },
           { header: "Datum inventara", key: "inventoryDate", width: 20 },
         ],
         rows: activePrinters,
@@ -200,18 +202,19 @@ export async function exportActivePrintersPdfController(req, res) {
 
   sendTablePdf(res, {
     title: "NetDesk — Aktivni štampači po računaru",
-    subtitle: `Podrazumevani štampač po računaru, grupisano po proizvođaču — ukupno: ${items.length}, generisano ${dateStamp}`,
+    subtitle: `Svi sinhronizovani štampači po računaru, grupisano po proizvođaču — ukupno: ${items.length}, generisano ${dateStamp}`,
     filename: `NetDesk_Aktivni_stampaci_${dateStamp}.pdf`,
     columns: [
-      { header: "Proizvođač", key: "manufacturer", width: 100 },
-      { header: "Računar", key: "computerName", width: 140 },
-      { header: "IP", key: "ip", width: 90 },
-      { header: "Odeljenje", key: "department", width: 120 },
-      { header: "Štampač", key: "name", width: 180 },
-      { header: "Drajver", key: "driverName", width: 160 },
-      { header: "Status", key: "status", width: 80 },
+      { header: "Proizvođač", key: "manufacturer", width: 90 },
+      { header: "Računar", key: "computerName", width: 130 },
+      { header: "IP", key: "ip", width: 80 },
+      { header: "Odeljenje", key: "department", width: 100 },
+      { header: "Štampač", key: "name", width: 160 },
+      { header: "Drajver", key: "driverName", width: 140 },
+      { header: "Status", key: "status", width: 70 },
+      { header: "Podrazumevani", key: "isDefaultLabel", width: 80 },
     ],
-    rows: items,
-    emptyText: "Nema računara sa podešenim podrazumevanim štampačem.",
+    rows: items.map((item) => ({ ...item, isDefaultLabel: item.isDefault ? "Da" : "Ne" })),
+    emptyText: "Nema sinhronizovanih štampača.",
   });
 }

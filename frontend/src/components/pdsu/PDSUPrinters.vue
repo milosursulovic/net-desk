@@ -43,6 +43,19 @@ function statusBadgeClass(status) {
   return 'bg-red-600 text-white'
 }
 
+// Grupisanje po proizvođaču sad broji SVAKI štampač (ne jedan po računaru),
+// pa isti računar može da se pojavi više puta u group.computers ako ima
+// više štampača istog brenda - značke ovde treba da budu po računaru, ne po štampaču.
+function uniqueComputers(computers) {
+  const seen = new Set()
+  return (computers || []).filter((c) => {
+    const key = c.ipEntryId ?? c.ip
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 const exportingActivePrintersPdf = ref(false)
 
 async function exportActivePrintersPdf() {
@@ -138,13 +151,15 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Aktivni štampač po računaru (unikatan, jedan red po računaru) -->
+    <!-- Aktivni štampač po računaru (svi sinhronizovani štampači, ne samo podrazumevani) -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Aktivni štampač po računaru</h5>
           <div class="text-xs text-slate-500">
-            Jedan red po računaru - podrazumevani (trenutno korišćeni) štampač.
+            Svi sinhronizovani štampači po računaru - dosta mašina nema nijedan štampač
+            markiran kao podrazumevani, pa se ovde prikazuju svi da nijedan računar ne bude
+            izostavljen. "Podrazumevani" označava Windows-ov Default štampač, ako postoji.
             Ovo je isto što se izvozi u "Aktivni štampači" list pri XLSX izvozu.
           </div>
         </div>
@@ -175,11 +190,14 @@ async function exportActivePrintersPdf() {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in activePerComputer" :key="item.ipEntryId ?? `${item.ip}-${index}`">
+            <tr v-for="(item, index) in activePerComputer" :key="item.ipEntryId ? `${item.ipEntryId}-${item.name}` : `${item.ip}-${index}`">
               <td class="font-semibold text-slate-900">{{ item.computerName || 'Nepoznat računar' }}</td>
               <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
               <td>{{ item.department || '—' }}</td>
-              <td>{{ item.name || '—' }}</td>
+              <td>
+                <div>{{ item.name || '—' }}</div>
+                <span v-if="item.isDefault" class="text-xs text-blue-600">Podrazumevani</span>
+              </td>
               <td>{{ item.manufacturer || 'Nepoznato' }}</td>
               <td>{{ item.driverName || '—' }}</td>
               <td class="text-center">
@@ -191,7 +209,7 @@ async function exportActivePrintersPdf() {
             </tr>
             <tr v-if="activePerComputer.length === 0">
               <td colspan="8" class="text-center text-slate-500 py-4">
-                Nema računara sa podešenim podrazumevanim štampačem.
+                Nema sinhronizovanih štampača.
               </td>
             </tr>
           </tbody>
@@ -206,7 +224,7 @@ async function exportActivePrintersPdf() {
           <h5 class="pdsu-card-title">Aktivni štampači po proizvođaču</h5>
           <div class="text-xs text-slate-500">
             Grupisano po brendu (izvedeno iz naziva drajvera/štampača - Win32_Printer nema strukturiran
-            proizvođač podatak).
+            proizvođač podatak). Broji sve sinhronizovane štampače, ne samo podrazumevane.
           </div>
         </div>
         <span class="pdsu-badge bg-slate-900 text-white">{{ formatNumber(groupedByManufacturer.length) }}</span>
@@ -217,7 +235,7 @@ async function exportActivePrintersPdf() {
           <thead>
             <tr>
               <th>Proizvođač</th>
-              <th class="text-center">Računari</th>
+              <th class="text-center">Štampača</th>
               <th>Računari</th>
             </tr>
           </thead>
@@ -230,7 +248,7 @@ async function exportActivePrintersPdf() {
               <td>
                 <div class="flex flex-wrap gap-1">
                   <span
-                    v-for="computer in group.computers"
+                    v-for="computer in uniqueComputers(group.computers)"
                     :key="computer.ipEntryId"
                     class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
                   >

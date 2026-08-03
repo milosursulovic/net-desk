@@ -88,7 +88,7 @@ describe("pdsuAnalytics printers (integration, real DB)", () => {
     await expect(searchPdsuAnalytics("bogus", "x", undefined)).rejects.toMatchObject({ status: 400 });
   });
 
-  it("getActivePrinterPerComputer (via stats) returns only the default printer per computer", async () => {
+  it("getActivePrinterPerComputer (via stats) returns EVERY synced printer per computer, flagging the default one", async () => {
     const entry = await createService({
       ip: testIp(),
       site: "bolnica",
@@ -106,10 +106,13 @@ describe("pdsuAnalytics printers (integration, real DB)", () => {
       ]);
 
       const out = await pdsuAnalyticsStatsService("bolnica");
-      const row = out.printers.tables.activePerComputer.find((p) => p.ipEntryId === entry.id);
+      const rows = out.printers.tables.activePerComputer.filter((p) => p.ipEntryId === entry.id);
 
-      expect(row).toBeTruthy();
-      expect(row.name).toBe(activePrinterName);
+      expect(rows).toHaveLength(2);
+      const activeRow = rows.find((r) => r.name === activePrinterName);
+      const oldRow = rows.find((r) => r.name === oldPrinterName);
+      expect(activeRow.isDefault).toBe(true);
+      expect(oldRow.isDefault).toBe(false);
     } finally {
       await deleteTestIpEntry(entry.id);
     }
