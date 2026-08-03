@@ -121,6 +121,28 @@ export async function countWuServiceUnavailable(site) {
   return Number(cnt) || 0;
 }
 
+// Broji DISTINKTNE računare (ne redove) čiji je last_seen na bar JEDNOM
+// crnolistiranom domenu u prozoru - namerno vremenski prozor (kao
+// countFailedJobsRecent), ne "ikad ceo istorijat", da notifikacija prirodno
+// nestane kad prestane skorašnja aktivnost (isti "self-resolving" duh kao
+// sve ostalo u listNotifications - inače bi ostala zauvek vidljiva jer
+// computer_dns_queries redovi nikad ne nestaju).
+export async function countBlacklistedDomainHits(hours = 24, site) {
+  const [[{ cnt }]] = await pool.execute(
+    `
+    SELECT COUNT(DISTINCT cdq.ip_entry_id) AS cnt
+    FROM computer_dns_queries cdq
+    JOIN flagged_domains fd
+      ON cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+    ${site ? "JOIN ip_entries ie ON ie.id = cdq.ip_entry_id" : ""}
+    WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    [hours, ...(site ? [site] : [])],
+  );
+  return Number(cnt) || 0;
+}
+
 export async function countStaleUpdateComputers(staleDays = 90, site) {
   const safeDays = Math.max(1, Math.min(Number(staleDays) || 90, 3650));
 

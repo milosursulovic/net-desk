@@ -1,7 +1,17 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
-import { ingestDnsQueries, listDnsQueriesService } from "../../services/dnsLogs.service.js";
+import {
+  ingestDnsQueries,
+  listDnsQueriesService,
+  addFlaggedDomainService,
+  removeFlaggedDomainService,
+} from "../../services/dnsLogs.service.js";
 import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
+import { pool } from "../../db/pool.js";
+
+async function deleteFlaggedDomainByName(domain) {
+  await pool.execute("DELETE FROM flagged_domains WHERE domain = ?", [domain]);
+}
 
 describe("dnsLogs.service (integration, real DB)", () => {
   let ipEntryId;
@@ -89,5 +99,52 @@ describe("dnsLogs.service (integration, real DB)", () => {
 
     const out = await listDnsQueriesService({ search: "", page: 1, limit: 1000 });
     expect(out.items.every((i) => i.ipEntryId !== ipEntryId)).toBe(true);
+  });
+
+  describe("crna lista domena (flagged_domains)", () => {
+    afterEach(async () => {
+      await deleteFlaggedDomainByName("vitest-blacklisted.example.com");
+    });
+
+    it("addFlaggedDomainService rejects a duplicate (case-insensitive)", async () => {
+      const domain = "vitest-blacklisted.example.com";
+      await addFlaggedDomainService({ domain }, null);
+
+      await expect(
+        addFlaggedDomainService({ domain: domain.toUpperCase() }, null),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it("removeFlaggedDomainService deletes the entry", async () => {
+      const domain = "vitest-blacklisted.example.com";
+      const created = await addFlaggedDomainService({ domain }, null);
+
+      const out = await removeFlaggedDomainService(created.id);
+      expect(out.affected).toBe(1);
+    });
+
+    it("listDnsQueriesService marks exact AND subdomain matches as isBlacklisted, but not unrelated domains", async () => {
+      const blacklisted = "vitest-blacklisted.example.com";
+      await addFlaggedDomainService({ domain: blacklisted }, null);
+
+      const entry = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+      ipEntryId = entry.id;
+
+      const subdomain = `sub.${blacklisted}`;
+      const unrelated = `not-${blacklisted}`; // shares the substring but is NOT a subdomain
+
+      await ingestDnsQueries(ipEntryId, [
+        { domain: blacklisted, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+        { domain: subdomain, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+        { domain: unrelated, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+      ]);
+
+      const out = await listDnsQueriesService({ search: blacklisted, page: 1, limit: 50 });
+      const byDomain = Object.fromEntries(out.items.map((i) => [i.domain, i]));
+
+      expect(byDomain[blacklisted].isBlacklisted).toBe(true);
+      expect(byDomain[subdomain].isBlacklisted).toBe(true);
+      expect(byDomain[unrelated].isBlacklisted).toBe(false);
+    });
   });
 });

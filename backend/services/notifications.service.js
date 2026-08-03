@@ -9,6 +9,7 @@ import {
   countFirewallInactiveAgents,
   countFailedJobsRecent,
   countWuServiceUnavailable,
+  countBlacklistedDomainHits,
 } from "../repositories/notifications.repo.js";
 
 export async function listNotifications(site) {
@@ -23,6 +24,7 @@ export async function listNotifications(site) {
     fwInactive,
     failedJobs,
     wuUnavailable,
+    blacklistedDomainHits,
   ] = await Promise.all([
     countOfflineEntries(site),
     countDuplicateNameGroups(site),
@@ -34,6 +36,7 @@ export async function listNotifications(site) {
     countFirewallInactiveAgents(site),
     countFailedJobsRecent(24, site),
     countWuServiceUnavailable(site),
+    countBlacklistedDomainHits(24, site),
   ]);
 
   const notifications = [];
@@ -62,6 +65,15 @@ export async function listNotifications(site) {
       level: "critical",
       message: `${fwInactive} računara nema aktivan firewall`,
       to: "/agents",
+    });
+  }
+
+  if (blacklistedDomainHits > 0) {
+    notifications.push({
+      id: "blacklisted-domain",
+      level: "critical",
+      message: `${blacklistedDomainHits} računara je poslednjih 24h posetilo domen sa crne liste`,
+      to: "/dns-logs",
     });
   }
 

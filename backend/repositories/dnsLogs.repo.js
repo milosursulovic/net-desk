@@ -81,7 +81,11 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
       ie.ip,
       ie.computer_name AS computerName,
       ie.department,
-      ie.site
+      ie.site,
+      EXISTS (
+        SELECT 1 FROM flagged_domains fd
+        WHERE cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+      ) AS isBlacklisted
     FROM computer_dns_queries cdq
     JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
     ${whereSql}
@@ -92,4 +96,54 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
   );
 
   return { items: rows, total: Number(total) || 0 };
+}
+
+// =========================
+// Crna lista domena (flagged_domains) - isti CRUD obrazac kao
+// flagged.repo.js (software/services), ali smešten ovde (ne u flagged.repo.js)
+// jer je namerno admin-only (isto kao DNS logovi sami), ne operator-writable
+// kao flagged_software/flagged_services.
+// =========================
+
+export async function listFlaggedDomains(search) {
+  const { where, params } = buildLikeSearch(["domain"], search);
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      id,
+      domain,
+      reason,
+      created_by_user_id AS createdByUserId,
+      created_at AS createdAt
+    FROM flagged_domains
+    ${where ? `WHERE ${where}` : ""}
+    ORDER BY domain
+    `,
+    params,
+  );
+  return rows;
+}
+
+export async function findFlaggedDomainMatch(domain) {
+  const [rows] = await pool.execute(
+    `SELECT id FROM flagged_domains WHERE LOWER(domain) = LOWER(?) LIMIT 1`,
+    [domain],
+  );
+  return rows?.[0] || null;
+}
+
+export async function insertFlaggedDomain({ domain, reason, createdByUserId }) {
+  const [result] = await pool.execute(
+    `
+    INSERT INTO flagged_domains (domain, reason, created_by_user_id)
+    VALUES (?, ?, ?)
+    `,
+    [domain, reason ?? null, createdByUserId ?? null],
+  );
+  return result.insertId;
+}
+
+export async function deleteFlaggedDomain(id) {
+  const [result] = await pool.execute(`DELETE FROM flagged_domains WHERE id = ?`, [id]);
+  return result.affectedRows;
 }

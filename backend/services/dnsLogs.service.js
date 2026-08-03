@@ -1,5 +1,13 @@
-import { upsertDnsQueriesBulk, listDnsQueries } from "../repositories/dnsLogs.repo.js";
+import {
+  upsertDnsQueriesBulk,
+  listDnsQueries,
+  listFlaggedDomains,
+  findFlaggedDomainMatch,
+  insertFlaggedDomain,
+  deleteFlaggedDomain,
+} from "../repositories/dnsLogs.repo.js";
 import { paginate } from "../utils/pagination.js";
+import { badRequest } from "../utils/httpError.js";
 
 export async function ingestDnsQueries(ipEntryId, entries) {
   if (!entries.length) return true;
@@ -63,5 +71,33 @@ export async function listDnsQueriesService(query) {
   });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
-  return { items, page: safePage, limit, total, totalPages, search };
+  // Boolean(...) namerno - EXISTS(...) u repo-u vraća mysql2-ovu sirovu
+  // 0/1 vrednost, ne pravi JSON boolean.
+  const mappedItems = items.map((item) => ({ ...item, isBlacklisted: Boolean(item.isBlacklisted) }));
+
+  return { items: mappedItems, page: safePage, limit, total, totalPages, search };
+}
+
+// =========================
+// Crna lista domena - isti dedup-on-insert obrazac kao flagged.service.js
+// (software/services).
+// =========================
+
+export async function listFlaggedDomainsService(search) {
+  return await listFlaggedDomains(search);
+}
+
+export async function addFlaggedDomainService({ domain, reason }, userId) {
+  const normalized = String(domain || "").trim().toLowerCase();
+  const existing = await findFlaggedDomainMatch(normalized);
+  if (existing) {
+    throw badRequest("Ovaj domen je već na crnoj listi");
+  }
+  const id = await insertFlaggedDomain({ domain: normalized, reason, createdByUserId: userId });
+  return { id, domain: normalized, reason };
+}
+
+export async function removeFlaggedDomainService(id) {
+  const affected = await deleteFlaggedDomain(id);
+  return { affected };
 }
