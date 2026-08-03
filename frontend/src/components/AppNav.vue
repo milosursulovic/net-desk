@@ -13,20 +13,25 @@ const baseLinks = [
   { to: '/reports', label: 'Izveštaji' },
 ]
 
-const { isAdmin } = useCurrentUser()
-const links = computed(() =>
-  isAdmin.value
-    ? [
-        ...baseLinks,
-        { to: '/users', label: 'Korisnici' },
-        { to: '/logs', label: 'Logovi' },
-        { to: '/config', label: 'Konfiguracija' },
-        { to: '/server-health', label: 'Server' },
-        { to: '/dns-logs', label: 'DNS Logovi' },
-        { to: '/process-detections', label: 'Sumnjivi procesi' },
-      ]
-    : baseLinks,
-)
+const { isAdmin, isOperatorOrAdmin } = useCurrentUser()
+const links = computed(() => {
+  const extra = []
+  if (isAdmin.value) {
+    extra.push(
+      { to: '/users', label: 'Korisnici' },
+      { to: '/logs', label: 'Logovi' },
+      { to: '/config', label: 'Konfiguracija' },
+    )
+  }
+  if (isOperatorOrAdmin.value) {
+    extra.push(
+      { to: '/server-health', label: 'Server' },
+      { to: '/dns-logs', label: 'DNS Logovi' },
+      { to: '/process-detections', label: 'Sumnjivi procesi' },
+    )
+  }
+  return [...baseLinks, ...extra]
+})
 
 const route = useRoute()
 

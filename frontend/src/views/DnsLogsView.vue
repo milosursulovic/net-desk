@@ -109,7 +109,7 @@
             <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.lastSeen) }}</td>
             <td class="py-2 pr-3 text-right tabular-nums">{{ row.queryCount }}</td>
             <td class="py-2 pr-3 text-right">
-              <button v-if="!row.isBlacklisted" @click="blacklistDomain(row.domain)"
+              <button v-if="!row.isBlacklisted && isAdmin" @click="blacklistDomain(row.domain)"
                 class="text-red-600 hover:underline text-xs whitespace-nowrap">
                 Na crnu listu
               </button>
@@ -131,7 +131,7 @@
         <span class="rounded-full bg-red-600 text-white text-xs px-2 py-0.5">{{ blacklist.length }}</span>
       </div>
 
-      <form @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-slate-100">
+      <form v-if="isAdmin" @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-slate-100">
         <div class="flex-1 min-w-40">
           <label class="text-xs text-slate-600">Domen</label>
           <input v-model.trim="newBlacklistDomain" type="text" class="app-input w-full" placeholder="npr. malware-c2.example.com" />
@@ -152,7 +152,7 @@
               <th class="py-2 px-4">Domen</th>
               <th class="py-2 px-4">Napomena</th>
               <th class="py-2 px-4">Dodato</th>
-              <th class="py-2 px-4"></th>
+              <th v-if="isAdmin" class="py-2 px-4"></th>
             </tr>
           </thead>
           <tbody>
@@ -160,7 +160,7 @@
               <td class="py-2 px-4 font-mono">{{ item.domain }}</td>
               <td class="py-2 px-4">{{ item.reason || '—' }}</td>
               <td class="py-2 px-4 whitespace-nowrap">{{ fmtDate(item.createdAt) }}</td>
-              <td class="py-2 px-4 text-right">
+              <td v-if="isAdmin" class="py-2 px-4 text-right">
                 <button @click="removeFromBlacklist(item.id)" class="text-red-600 hover:underline text-xs">
                   Ukloni
                 </button>
@@ -184,12 +184,14 @@ import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useToast } from '@/composables/useToast.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const site = useCurrentSite()
 const { getSignal, abort } = useAbortableFetch()
 const { showToast } = useToast()
+const { isAdmin } = useCurrentUser()
 
 const { page, limit, search, sortBy, sortOrder, nextPage, prevPage, applyServerPagination } =
   usePaginatedRoute({

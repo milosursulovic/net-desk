@@ -21,3 +21,12 @@ export const writeRequiresOperator = (req, res, next) => {
   if (req.method === "GET") return next();
   return requireRole("admin", "operator")(req, res, next);
 };
+
+// For modules that are otherwise fully admin-only (server health, DNS logs,
+// process detections): operator is let in to read, but every write still
+// needs admin - mirrors writeRequiresOperator's GET-vs-write split, just one
+// tier stricter on both sides.
+export const readRequiresOperator = (req, res, next) => {
+  if (req.method === "GET") return requireRole("admin", "operator")(req, res, next);
+  return requireRole("admin")(req, res, next);
+};

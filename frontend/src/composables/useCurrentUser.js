@@ -24,7 +24,8 @@ function load() {
 export function useCurrentUser() {
   load()
   const isAdmin = computed(() => currentUser.value?.role === 'admin')
-  return { currentUser, isAdmin }
+  const isOperatorOrAdmin = computed(() => ['admin', 'operator'].includes(currentUser.value?.role))
+  return { currentUser, isAdmin, isOperatorOrAdmin }
 }
 
 // `currentUser`/`loadPromise` are module-level so every component shares one

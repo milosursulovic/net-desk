@@ -29,18 +29,28 @@ describe("db cleanup routes (integration, real DB)", () => {
     entryId = undefined;
   });
 
-  it("rejects non-admin roles with 403", async () => {
-    for (const token of [operatorToken(), viewerToken()]) {
-      const auditRes = await request(app)
-        .get("/api/protected/server-health/ghost-audit")
-        .set("Authorization", `Bearer ${token}`);
-      expect(auditRes.status).toBe(403);
+  it("rejects viewer with 403 on both audit and cleanup", async () => {
+    const auditRes = await request(app)
+      .get("/api/protected/server-health/ghost-audit")
+      .set("Authorization", `Bearer ${viewerToken()}`);
+    expect(auditRes.status).toBe(403);
 
-      const cleanupRes = await request(app)
-        .post("/api/protected/server-health/ghost-cleanup")
-        .set("Authorization", `Bearer ${token}`);
-      expect(cleanupRes.status).toBe(403);
-    }
+    const cleanupRes = await request(app)
+      .post("/api/protected/server-health/ghost-cleanup")
+      .set("Authorization", `Bearer ${viewerToken()}`);
+    expect(cleanupRes.status).toBe(403);
+  });
+
+  it("operator can read the ghost-audit report but is blocked from the destructive cleanup", async () => {
+    const auditRes = await request(app)
+      .get("/api/protected/server-health/ghost-audit")
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(auditRes.status).toBe(200);
+
+    const cleanupRes = await request(app)
+      .post("/api/protected/server-health/ghost-cleanup")
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(cleanupRes.status).toBe(403);
   });
 
   it("audit reports zero orphans when the DB is clean", async () => {

@@ -1,6 +1,6 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { requireRole } from "../middlewares/requireRole.middleware.js";
+import { readRequiresOperator } from "../middlewares/requireRole.middleware.js";
 import {
   listDnsQueriesController,
   listFlaggedDomainsController,
@@ -10,12 +10,10 @@ import {
 
 const router = express.Router();
 
-// Admin-only, uključujući čitanje - istorija DNS upita zaposlenih je
-// osetljiv employee-monitoring podatak (isti obrazac kao users.routes.js).
-// Crna lista domena je smeštena ovde (ne u flagged.routes.js) baš zato što
-// treba da nasledi ISTI admin-only nivo, za razliku od flagged_software/
-// flagged_services koji su operator-writable.
-router.use(requireRole("admin"));
+// Istorija DNS upita zaposlenih je osetljiv employee-monitoring podatak, pa
+// je čitanje ograničeno na admin+operator (ne i viewer); pisanje (crna
+// lista domena) ostaje isključivo admin.
+router.use(readRequiresOperator);
 
 router.get("/", asyncHandler(listDnsQueriesController));
 

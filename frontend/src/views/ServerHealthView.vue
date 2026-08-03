@@ -4,12 +4,14 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 const LIVE_POLL_MS = 4000
 
@@ -399,7 +401,7 @@ onBeforeUnmount(() => {
               {{ ghostAuditLoading ? 'Proveravam…' : 'Proveri ponovo' }}
             </AppButton>
             <AppButton
-              v-if="ghostAudit && ghostAudit.totalOrphans > 0"
+              v-if="isAdmin && ghostAudit && ghostAudit.totalOrphans > 0"
               variant="danger"
               :disabled="ghostCleaning"
               @click="cleanGhostReferences"

@@ -158,6 +158,43 @@ describe("role enforcement across modules (integration, real DB)", () => {
     });
   });
 
+  describe("operator-readable, admin-only-write modules (dns-logs, process-detections)", () => {
+    it("operator can read dns-logs and process-detections, viewer is blocked", async () => {
+      const dnsOperator = await request(app)
+        .get("/api/protected/dns-logs")
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(dnsOperator.status).toBe(200);
+
+      const dnsViewer = await request(app)
+        .get("/api/protected/dns-logs")
+        .set("Authorization", `Bearer ${viewerToken()}`);
+      expect(dnsViewer.status).toBe(403);
+
+      const procOperator = await request(app)
+        .get("/api/protected/process-detections")
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(procOperator.status).toBe(200);
+
+      const procViewer = await request(app)
+        .get("/api/protected/process-detections")
+        .set("Authorization", `Bearer ${viewerToken()}`);
+      expect(procViewer.status).toBe(403);
+    });
+
+    it("operator is blocked (403) from writing to the DNS blacklist (add or remove)", async () => {
+      const addRes = await request(app)
+        .post("/api/protected/dns-logs/blacklist")
+        .set("Authorization", `Bearer ${operatorToken()}`)
+        .send({ domain: "vitest-role-test.example.com" });
+      expect(addRes.status).toBe(403);
+
+      const delRes = await request(app)
+        .delete("/api/protected/dns-logs/blacklist/999999999")
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(delRes.status).toBe(403);
+    });
+  });
+
   describe("batch job endpoint (POST /agents/jobs/batch)", () => {
     let agentId;
 

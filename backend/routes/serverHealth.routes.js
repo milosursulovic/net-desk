@@ -1,7 +1,7 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
-import { requireRole } from "../middlewares/requireRole.middleware.js";
+import { readRequiresOperator } from "../middlewares/requireRole.middleware.js";
 import {
   getLiveServerHealthController,
   listServerHealthHistoryController,
@@ -13,10 +13,9 @@ const router = express.Router();
 
 router.use(cacheNoStore);
 
-// Admin-only, including reads - server internals (request rates, DB load,
-// process memory) aren't something an operator/viewer needs, same
-// reasoning as activity-log/users.
-router.use(requireRole("admin"));
+// Reading (live/history/ghost-audit) is open to admin+operator, not viewer;
+// the destructive ghost-cleanup write stays admin-only.
+router.use(readRequiresOperator);
 
 router.get("/live", asyncHandler(getLiveServerHealthController));
 router.get("/history", asyncHandler(listServerHealthHistoryController));

@@ -7,18 +7,33 @@ import { pool } from "../../db/pool.js";
 const app = createApp();
 
 describe("server health routes (integration, real DB)", () => {
-  it("rejects non-admin roles with 403", async () => {
-    for (const token of [operatorToken(), viewerToken()]) {
-      const liveRes = await request(app)
-        .get("/api/protected/server-health/live")
-        .set("Authorization", `Bearer ${token}`);
-      expect(liveRes.status).toBe(403);
+  it("rejects viewer with 403 (not operator-readable-by-viewer)", async () => {
+    const liveRes = await request(app)
+      .get("/api/protected/server-health/live")
+      .set("Authorization", `Bearer ${viewerToken()}`);
+    expect(liveRes.status).toBe(403);
 
-      const historyRes = await request(app)
-        .get("/api/protected/server-health/history")
-        .set("Authorization", `Bearer ${token}`);
-      expect(historyRes.status).toBe(403);
-    }
+    const historyRes = await request(app)
+      .get("/api/protected/server-health/history")
+      .set("Authorization", `Bearer ${viewerToken()}`);
+    expect(historyRes.status).toBe(403);
+  });
+
+  it("operator can read live/history, but not run the destructive ghost-cleanup", async () => {
+    const liveRes = await request(app)
+      .get("/api/protected/server-health/live")
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(liveRes.status).toBe(200);
+
+    const historyRes = await request(app)
+      .get("/api/protected/server-health/history")
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(historyRes.status).toBe(200);
+
+    const cleanupRes = await request(app)
+      .post("/api/protected/server-health/ghost-cleanup")
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(cleanupRes.status).toBe(403);
   });
 
   it("admin gets a live snapshot with system/db/process/requests sections", async () => {

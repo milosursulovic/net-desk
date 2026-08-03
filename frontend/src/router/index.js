@@ -236,19 +236,19 @@ const router = createRouter({
         {
           path: 'server-health',
           name: 'server-health',
-          meta: { title: 'Server - NetDesk', breadcrumb: 'Server', requiresAdmin: true },
+          meta: { title: 'Server - NetDesk', breadcrumb: 'Server', requiresOperator: true },
           component: ServerHealthView,
         },
         {
           path: 'dns-logs',
           name: 'dns-logs',
-          meta: { title: 'DNS Logovi - NetDesk', breadcrumb: 'DNS Logovi', requiresAdmin: true },
+          meta: { title: 'DNS Logovi - NetDesk', breadcrumb: 'DNS Logovi', requiresOperator: true },
           component: DnsLogsView,
         },
         {
           path: 'process-detections',
           name: 'process-detections',
-          meta: { title: 'Sumnjivi procesi - NetDesk', breadcrumb: 'Sumnjivi procesi', requiresAdmin: true },
+          meta: { title: 'Sumnjivi procesi - NetDesk', breadcrumb: 'Sumnjivi procesi', requiresOperator: true },
           component: ProcessDetectionsView,
         },
       ],
@@ -299,6 +299,9 @@ router.beforeEach((to, from, next) => {
       return next(`/login?returnTo=${returnTo}`)
     }
     if (to.meta.requiresAdmin && decodeJwt(token)?.role !== 'admin') {
+      return next('/')
+    }
+    if (to.meta.requiresOperator && !['admin', 'operator'].includes(decodeJwt(token)?.role)) {
       return next('/')
     }
 
