@@ -16,7 +16,11 @@ function drawTable(doc, startX, usableWidth, { columns, rows, emptyText }) {
     const y = doc.y;
     let x = startX;
     for (const col of columns) {
-      doc.text(col.header, x, y, { width: col.width, ellipsis: true });
+      // pdfkit only truncates with `ellipsis` when `height` is also given -
+      // without it, text.wrap() ignores ellipsis and just keeps wrapping to
+      // extra lines, which then overlap the next row (fixed rowHeight below
+      // doesn't grow to fit). A one-line height forces single-line + ellipsis.
+      doc.text(col.header, x, y, { width: col.width, height: doc.currentLineHeight(), ellipsis: true });
       x += col.width;
     }
     doc.moveDown(0.6);
@@ -47,10 +51,12 @@ function drawTable(doc, startX, usableWidth, { columns, rows, emptyText }) {
 
     const y = doc.y;
     let x = startX;
+    const lineHeight = doc.currentLineHeight();
     for (const col of columns) {
       const value = row[col.key];
       doc.text(value == null || value === "" ? "—" : String(value), x, y, {
         width: col.width,
+        height: lineHeight,
         ellipsis: true,
       });
       x += col.width;
