@@ -632,7 +632,6 @@ watch(site, loadStats)
               v-else-if="activeTab === 'printers'"
               key="printers"
               :printers="printers"
-              @patterns-changed="loadStats"
             />
 
             <PDSUFlagged

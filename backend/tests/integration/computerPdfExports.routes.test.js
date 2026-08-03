@@ -126,4 +126,22 @@ describe("single-computer PDF exports (integration, real DB)", () => {
       expect(withSw.body.length).toBeGreaterThan(empty.body.length);
     });
   });
+
+  describe("active printers export", () => {
+    it("streams a PDF even with no printer data (empty state)", async () => {
+      const res = await request(app)
+        .get("/api/protected/pdsu-analytics/printers/active/export-pdf?site=bolnica")
+        .set("Authorization", `Bearer ${adminToken()}`)
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks = [];
+          res.on("data", (c) => chunks.push(c));
+          res.on("end", () => cb(null, Buffer.concat(chunks)));
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toBe("application/pdf");
+      expect(res.body.slice(0, 5).toString()).toBe("%PDF-");
+    });
+  });
 });

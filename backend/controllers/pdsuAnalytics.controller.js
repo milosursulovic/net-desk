@@ -4,6 +4,7 @@ import {
   searchPdsuAnalytics,
   listComputersWithoutPdsuService,
   listComputersWithoutUltravncService,
+  activePrintersForPdfExport,
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
 import { sendTablePdf } from "../utils/pdfTable.js";
@@ -157,15 +158,16 @@ export async function exportPdsuAnalyticsController(req, res) {
         rows: updates,
       },
       {
-        // Jedan red po računaru - podrazumevani (aktivni), ne-virtuelni
-        // štampač. Ovo je "čist" fleet-wide pregled bez starih/dodatnih
-        // instaliranih štampača i bez softverskih (Print to PDF i sl.).
+        // Jedan red po računaru - podrazumevani (aktivni) štampač, ne svi
+        // instalirani. "Podrazumevani" (Win32_Printer.Default preko WMI-ja)
+        // je jedini realan signal koji Windows daje za "trenutno se koristi".
         name: "Aktivni štampači",
         columns: [
           { header: "Računar", key: "computerName", width: 22 },
           { header: "IP", key: "ip", width: 14 },
           { header: "Odeljenje", key: "department", width: 18 },
           { header: "Naziv", key: "name", width: 26 },
+          { header: "Proizvođač", key: "manufacturer", width: 18 },
           { header: "Drajver", key: "driverName", width: 26 },
           { header: "Port", key: "portName", width: 16 },
           { header: "Status", key: "status", width: 14 },
@@ -189,5 +191,27 @@ export async function exportPdsuAnalyticsController(req, res) {
         rows: printers,
       },
     ],
+  });
+}
+
+export async function exportActivePrintersPdfController(req, res) {
+  const items = await activePrintersForPdfExport(siteFilter(req.query.site));
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendTablePdf(res, {
+    title: "NetDesk — Aktivni štampači po računaru",
+    subtitle: `Podrazumevani štampač po računaru, grupisano po proizvođaču — ukupno: ${items.length}, generisano ${dateStamp}`,
+    filename: `NetDesk_Aktivni_stampaci_${dateStamp}.pdf`,
+    columns: [
+      { header: "Proizvođač", key: "manufacturer", width: 100 },
+      { header: "Računar", key: "computerName", width: 140 },
+      { header: "IP", key: "ip", width: 90 },
+      { header: "Odeljenje", key: "department", width: 120 },
+      { header: "Štampač", key: "name", width: 180 },
+      { header: "Drajver", key: "driverName", width: 160 },
+      { header: "Status", key: "status", width: 80 },
+    ],
+    rows: items,
+    emptyText: "Nema računara sa podešenim podrazumevanim štampačem.",
   });
 }

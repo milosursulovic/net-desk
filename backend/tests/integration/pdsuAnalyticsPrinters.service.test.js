@@ -1,17 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { pdsuAnalyticsStatsService, searchPdsuAnalytics } from "../../services/pdsuAnalytics.service.js";
-import { syncComputerPrinters, getComputerPrinters } from "../../services/pdsu.service.js";
 import {
-  addIgnoredPrinterPatternService,
-  removeIgnoredPrinterPatternService,
-} from "../../services/printerPatterns.service.js";
+  pdsuAnalyticsStatsService,
+  searchPdsuAnalytics,
+  activePrintersForPdfExport,
+} from "../../services/pdsuAnalytics.service.js";
+import { syncComputerPrinters } from "../../services/pdsu.service.js";
 import { createService } from "../../services/ipAddresses.service.js";
 import { deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
-import { pool } from "../../db/pool.js";
-
-async function deleteIgnoredPatternByText(pattern) {
-  await pool.execute("DELETE FROM ignored_printer_patterns WHERE pattern = ?", [pattern.toLowerCase()]);
-}
 
 describe("pdsuAnalytics printers (integration, real DB)", () => {
   it("pdsuAnalyticsStatsService reports printer stats, coverage, and problem-status/top tables", async () => {
@@ -93,90 +88,102 @@ describe("pdsuAnalytics printers (integration, real DB)", () => {
     await expect(searchPdsuAnalytics("bogus", "x", undefined)).rejects.toMatchObject({ status: 400 });
   });
 
-  describe("ignored printer patterns (virtual/software printers)", () => {
-    it("addIgnoredPrinterPatternService rejects a duplicate (case-insensitive)", async () => {
-      const pattern = `vitest print to pdf ${Date.now()}`;
-      try {
-        await addIgnoredPrinterPatternService({ pattern }, null);
-        await expect(
-          addIgnoredPrinterPatternService({ pattern: pattern.toUpperCase() }, null),
-        ).rejects.toMatchObject({ status: 400 });
-      } finally {
-        await deleteIgnoredPatternByText(pattern);
+  it("getActivePrinterPerComputer (via stats) returns only the default printer per computer", async () => {
+    const entry = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+
+    const oldPrinterName = `VITEST Old Canon ${Date.now()}`;
+    const activePrinterName = `VITEST Active HP ${Date.now()}`;
+
+    try {
+      await syncComputerPrinters(entry.id, [
+        { name: oldPrinterName, driverName: "Canon Generic", portName: "USB002", status: "OK", isDefault: false },
+        { name: activePrinterName, driverName: "HP Universal", portName: "USB001", status: "OK", isDefault: true },
+      ]);
+
+      const out = await pdsuAnalyticsStatsService("bolnica");
+      const row = out.printers.tables.activePerComputer.find((p) => p.ipEntryId === entry.id);
+
+      expect(row).toBeTruthy();
+      expect(row.name).toBe(activePrinterName);
+    } finally {
+      await deleteTestIpEntry(entry.id);
+    }
+  });
+
+  it("groups active printers by manufacturer (via stats) and annotates each row with .manufacturer", async () => {
+    const hpComputer = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+    const canonComputer = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+
+    try {
+      await syncComputerPrinters(hpComputer.id, [
+        { name: `VITEST HP ${Date.now()}`, driverName: "HP Universal Printing PCL 6", portName: "USB001", status: "OK", isDefault: true },
+      ]);
+      await syncComputerPrinters(canonComputer.id, [
+        { name: `VITEST Canon ${Date.now()}`, driverName: "Canon Generic Plus PCL6", portName: "USB002", status: "OK", isDefault: true },
+      ]);
+
+      const out = await pdsuAnalyticsStatsService("bolnica");
+
+      const hpRow = out.printers.tables.activePerComputer.find((p) => p.ipEntryId === hpComputer.id);
+      expect(hpRow.manufacturer).toBe("HP");
+
+      const canonRow = out.printers.tables.activePerComputer.find((p) => p.ipEntryId === canonComputer.id);
+      expect(canonRow.manufacturer).toBe("Canon");
+
+      const hpGroup = out.printers.tables.groupedByManufacturer.find((g) => g.manufacturer === "HP");
+      expect(hpGroup).toBeTruthy();
+      expect(hpGroup.computers.some((c) => c.ipEntryId === hpComputer.id)).toBe(true);
+
+      const canonGroup = out.printers.tables.groupedByManufacturer.find((g) => g.manufacturer === "Canon");
+      expect(canonGroup).toBeTruthy();
+      expect(canonGroup.computers.some((c) => c.ipEntryId === canonComputer.id)).toBe(true);
+    } finally {
+      await deleteTestIpEntry(hpComputer.id);
+      await deleteTestIpEntry(canonComputer.id);
+    }
+  });
+
+  it("activePrintersForPdfExport annotates manufacturer and sorts by manufacturer then computer name", async () => {
+    const entry = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+
+    try {
+      await syncComputerPrinters(entry.id, [
+        { name: `VITEST Epson ${Date.now()}`, driverName: "Epson Universal Print Driver", portName: "USB003", status: "OK", isDefault: true },
+      ]);
+
+      const items = await activePrintersForPdfExport("bolnica");
+      const row = items.find((p) => p.ipEntryId === entry.id);
+
+      expect(row).toBeTruthy();
+      expect(row.manufacturer).toBe("Epson");
+
+      // Sorted by manufacturer ascending - every consecutive pair must be
+      // non-decreasing in manufacturer name.
+      for (let i = 1; i < items.length; i++) {
+        expect(items[i - 1].manufacturer.localeCompare(items[i].manufacturer)).toBeLessThanOrEqual(0);
       }
-    });
-
-    it("removeIgnoredPrinterPatternService deletes the entry", async () => {
-      const pattern = `vitest anydesk printer ${Date.now()}`;
-      const created = await addIgnoredPrinterPatternService({ pattern }, null);
-      const out = await removeIgnoredPrinterPatternService(created.id);
-      expect(out.affected).toBe(1);
-    });
-
-    it("a matching pattern hides the printer from the per-computer list, search, and stats", async () => {
-      const entry = await createService({
-        ip: testIp(),
-        site: "bolnica",
-        entryType: "computer",
-        computerName: testHostname(),
-      });
-
-      const virtualPrinterName = `VITEST Microsoft Print to PDF ${Date.now()}`;
-      const realPrinterName = `VITEST HP LaserJet ${Date.now()}`;
-      const pattern = "print to pdf";
-
-      try {
-        await syncComputerPrinters(entry.id, [
-          { name: virtualPrinterName, driverName: "Microsoft", portName: "PORTPROMPT:", status: "OK", isDefault: false },
-          { name: realPrinterName, driverName: "HP Universal", portName: "USB001", status: "OK", isDefault: true },
-        ]);
-
-        // Before ignoring: both printers are visible.
-        const beforeList = await getComputerPrinters(entry.id);
-        expect(beforeList.some((p) => p.name === virtualPrinterName)).toBe(true);
-
-        await addIgnoredPrinterPatternService({ pattern }, null);
-
-        const afterList = await getComputerPrinters(entry.id);
-        expect(afterList.some((p) => p.name === virtualPrinterName)).toBe(false);
-        expect(afterList.some((p) => p.name === realPrinterName)).toBe(true);
-
-        const searchResult = await searchPdsuAnalytics("printers", virtualPrinterName, "bolnica");
-        expect(searchResult).toHaveLength(0);
-
-        const realSearchResult = await searchPdsuAnalytics("printers", realPrinterName, "bolnica");
-        expect(realSearchResult.some((p) => p.name === realPrinterName)).toBe(true);
-      } finally {
-        await deleteIgnoredPatternByText(pattern);
-        await deleteTestIpEntry(entry.id);
-      }
-    });
-
-    it("getActivePrinterPerComputer (via stats) returns only the default, non-virtual printer per computer", async () => {
-      const entry = await createService({
-        ip: testIp(),
-        site: "bolnica",
-        entryType: "computer",
-        computerName: testHostname(),
-      });
-
-      const oldPrinterName = `VITEST Old Canon ${Date.now()}`;
-      const activePrinterName = `VITEST Active HP ${Date.now()}`;
-
-      try {
-        await syncComputerPrinters(entry.id, [
-          { name: oldPrinterName, driverName: "Canon Generic", portName: "USB002", status: "OK", isDefault: false },
-          { name: activePrinterName, driverName: "HP Universal", portName: "USB001", status: "OK", isDefault: true },
-        ]);
-
-        const out = await pdsuAnalyticsStatsService("bolnica");
-        const row = out.printers.tables.activePerComputer.find((p) => p.ipEntryId === entry.id);
-
-        expect(row).toBeTruthy();
-        expect(row.name).toBe(activePrinterName);
-      } finally {
-        await deleteTestIpEntry(entry.id);
-      }
-    });
+    } finally {
+      await deleteTestIpEntry(entry.id);
+    }
   });
 });

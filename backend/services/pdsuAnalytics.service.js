@@ -41,6 +41,17 @@ import {
   searchPrinterRows,
 } from "../repositories/pdsuAnalytics.repo.js";
 import { badRequest } from "../utils/httpError.js";
+import { classifyPrinterManufacturer, groupByManufacturer } from "../utils/printerManufacturer.js";
+
+// Anotira "aktivni štampač po računaru" red proizvođačem izvedenim iz
+// drajvera/naziva - jedno mesto koje koriste i stats (grupisanje) i PDF
+// izvoz, da se logika klasifikacije ne duplira.
+function annotateManufacturer(activePrinters) {
+  return activePrinters.map((item) => ({
+    ...item,
+    manufacturer: classifyPrinterManufacturer(item),
+  }));
+}
 
 const SEARCH_HANDLERS = {
   software: searchSoftwareRows,
@@ -131,6 +142,8 @@ export async function pdsuAnalyticsStatsService(site) {
   ]);
 
   const totalComputers = Number(coverage.totalComputers) || 0;
+  const activePrintersAnnotated = annotateManufacturer(activePrinterPerComputer);
+  const groupedByManufacturer = groupByManufacturer(activePrintersAnnotated);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -229,7 +242,8 @@ export async function pdsuAnalyticsStatsService(site) {
         problemStatus: printersWithProblemStatus,
         rarePrinters,
         computersWithMostPrinters,
-        activePerComputer: activePrinterPerComputer,
+        activePerComputer: activePrintersAnnotated,
+        groupedByManufacturer,
       },
     },
   };
@@ -275,7 +289,7 @@ export async function searchPdsuAnalytics(category, term, site) {
 }
 
 export async function exportPdsuAnalyticsXlsx(site) {
-  const [software, drivers, services, updates, printers, activePrinters] = await Promise.all([
+  const [software, drivers, services, updates, printers, activePrintersRaw] = await Promise.all([
     getAllSoftwareForExport(site),
     getAllDriversForExport(site),
     getAllServicesForExport(site),
@@ -284,5 +298,16 @@ export async function exportPdsuAnalyticsXlsx(site) {
     getActivePrinterPerComputer(site),
   ]);
 
-  return { software, drivers, services, updates, printers, activePrinters };
+  return { software, drivers, services, updates, printers, activePrinters: annotateManufacturer(activePrintersRaw) };
+}
+
+// Za PDF izvoz "Aktivni štampači" - sortirano po proizvođaču pa računaru,
+// da grupisanje po tipu bude vizuelno vidljivo i u ravnoj (non-nested)
+// PDF tabeli.
+export async function activePrintersForPdfExport(site) {
+  const activePrinters = await getActivePrinterPerComputer(site);
+  return annotateManufacturer(activePrinters).sort(
+    (a, b) =>
+      a.manufacturer.localeCompare(b.manufacturer) || (a.computerName || "").localeCompare(b.computerName || ""),
+  );
 }
