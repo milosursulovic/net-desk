@@ -22,14 +22,22 @@ import {
   getTopHotfixes,
   getLatestUpdateByComputer,
   getStaleUpdateComputers,
+  getPrinterStats,
+  getTopPrinterNames,
+  getTopPrinterDrivers,
+  getPrintersWithProblemStatus,
+  getRarePrinters,
+  getComputersWithMostPrinters,
   getAllSoftwareForExport,
   getAllDriversForExport,
   getAllServicesForExport,
   getAllUpdatesForExport,
+  getAllPrintersForExport,
   searchSoftwareRows,
   searchDriverRows,
   searchServiceRows,
   searchUpdateRows,
+  searchPrinterRows,
 } from "../repositories/pdsuAnalytics.repo.js";
 import { badRequest } from "../utils/httpError.js";
 
@@ -38,6 +46,7 @@ const SEARCH_HANDLERS = {
   drivers: searchDriverRows,
   services: searchServiceRows,
   updates: searchUpdateRows,
+  printers: searchPrinterRows,
 };
 
 function pct(value, total) {
@@ -76,6 +85,13 @@ export async function pdsuAnalyticsStatsService(site) {
     topHotfixes,
     latestUpdatesByComputer,
     staleUpdateComputers,
+
+    printerStats,
+    topPrinterNames,
+    topPrinterDrivers,
+    printersWithProblemStatus,
+    rarePrinters,
+    computersWithMostPrinters,
   ] = await Promise.all([
     getPdsuCoverage(site),
 
@@ -102,6 +118,13 @@ export async function pdsuAnalyticsStatsService(site) {
     getTopHotfixes(10, site),
     getLatestUpdateByComputer(200, site),
     getStaleUpdateComputers(90, 50, site),
+
+    getPrinterStats(site),
+    getTopPrinterNames(10, site),
+    getTopPrinterDrivers(10, site),
+    getPrintersWithProblemStatus(30, site),
+    getRarePrinters(20, site),
+    getComputersWithMostPrinters(10, site),
   ]);
 
   const totalComputers = Number(coverage.totalComputers) || 0;
@@ -120,6 +143,8 @@ export async function pdsuAnalyticsStatsService(site) {
 
       updatesPct: pct(coverage.withUpdates, totalComputers),
 
+      printersPct: pct(coverage.withPrinters, totalComputers),
+
       withoutSoftware: Math.max(
         totalComputers - Number(coverage.withSoftware || 0),
         0,
@@ -137,6 +162,11 @@ export async function pdsuAnalyticsStatsService(site) {
 
       withoutUpdates: Math.max(
         totalComputers - Number(coverage.withUpdates || 0),
+        0,
+      ),
+
+      withoutPrinters: Math.max(
+        totalComputers - Number(coverage.withPrinters || 0),
         0,
       ),
     },
@@ -186,6 +216,18 @@ export async function pdsuAnalyticsStatsService(site) {
         staleComputers: staleUpdateComputers,
       },
     },
+
+    printers: {
+      stats: printerStats,
+
+      tables: {
+        topNames: topPrinterNames,
+        topDrivers: topPrinterDrivers,
+        problemStatus: printersWithProblemStatus,
+        rarePrinters,
+        computersWithMostPrinters,
+      },
+    },
   };
 }
 
@@ -204,17 +246,18 @@ export async function searchPdsuAnalytics(category, term, site) {
 
   if (category === "all") {
     if (!query) {
-      return { software: [], drivers: [], services: [], updates: [] };
+      return { software: [], drivers: [], services: [], updates: [], printers: [] };
     }
 
-    const [software, drivers, services, updates] = await Promise.all([
+    const [software, drivers, services, updates, printers] = await Promise.all([
       searchSoftwareRows(query, 50, site),
       searchDriverRows(query, 50, site),
       searchServiceRows(query, 50, site),
       searchUpdateRows(query, 50, site),
+      searchPrinterRows(query, 50, site),
     ]);
 
-    return { software, drivers, services, updates };
+    return { software, drivers, services, updates, printers };
   }
 
   const handler = SEARCH_HANDLERS[category];
@@ -228,12 +271,13 @@ export async function searchPdsuAnalytics(category, term, site) {
 }
 
 export async function exportPdsuAnalyticsXlsx(site) {
-  const [software, drivers, services, updates] = await Promise.all([
+  const [software, drivers, services, updates, printers] = await Promise.all([
     getAllSoftwareForExport(site),
     getAllDriversForExport(site),
     getAllServicesForExport(site),
     getAllUpdatesForExport(site),
+    getAllPrintersForExport(site),
   ]);
 
-  return { software, drivers, services, updates };
+  return { software, drivers, services, updates, printers };
 }

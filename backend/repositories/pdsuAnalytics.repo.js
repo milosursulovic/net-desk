@@ -40,9 +40,16 @@ export async function getPdsuCoverage(site) {
         FROM computer_updates cu
         JOIN ip_entries ie ON ie.id = cu.ip_entry_id
         WHERE ie.entry_type = 'computer' ${siteSql}
-      ) AS withUpdates
+      ) AS withUpdates,
+
+      (
+        SELECT COUNT(DISTINCT cp.ip_entry_id)
+        FROM computer_printers cp
+        JOIN ip_entries ie ON ie.id = cp.ip_entry_id
+        WHERE ie.entry_type = 'computer' ${siteSql}
+      ) AS withPrinters
     `,
-    [...p, ...p, ...p, ...p, ...p],
+    [...p, ...p, ...p, ...p, ...p, ...p],
   );
 
   return {
@@ -51,10 +58,11 @@ export async function getPdsuCoverage(site) {
     withDrivers: Number(row?.withDrivers) || 0,
     withServices: Number(row?.withServices) || 0,
     withUpdates: Number(row?.withUpdates) || 0,
+    withPrinters: Number(row?.withPrinters) || 0,
   };
 }
 
-// "Bez PDSU" = nema baš nijedan zapis ni u jednoj od 4 tabele (stroži
+// "Bez PDSU" = nema baš nijedan zapis ni u jednoj od 5 tabela (stroži
 // kriterijum od "nedostaje bar jedna kategorija") - videti getPdsuCoverage
 // za per-tabelu brojeve.
 export async function listComputersWithoutPdsu(site) {
@@ -68,6 +76,7 @@ export async function listComputersWithoutPdsu(site) {
       AND NOT EXISTS (SELECT 1 FROM computer_drivers cd WHERE cd.ip_entry_id = ip.id)
       AND NOT EXISTS (SELECT 1 FROM computer_services csv WHERE csv.ip_entry_id = ip.id)
       AND NOT EXISTS (SELECT 1 FROM computer_updates cu WHERE cu.ip_entry_id = ip.id)
+      AND NOT EXISTS (SELECT 1 FROM computer_printers cp WHERE cp.ip_entry_id = ip.id)
     ORDER BY ip.computer_name ASC, ip.ip ASC
     `,
     site ? [site] : [],
@@ -1074,6 +1083,212 @@ export async function getStaleUpdateComputers(staleDays = 90, limit = 50, site) 
 }
 
 /* =========================================================
+   PRINTERS
+   ========================================================= */
+
+export async function getPrinterStats(site) {
+  const [[row]] = await pool.execute(
+    `
+    SELECT
+      COUNT(*) AS totalPrinters,
+
+      COUNT(
+        DISTINCT NULLIF(TRIM(cp.name), '')
+      ) AS uniquePrinters,
+
+      COUNT(DISTINCT cp.ip_entry_id) AS computersWithPrinters,
+
+      SUM(
+        CASE WHEN cp.is_default = 1 THEN 1 ELSE 0 END
+      ) AS defaultCount,
+
+      -- "Zdrav" status pretpostavljen kao OK/Idle/Unknown (Win32_Printer.Status
+      -- vrednosti) - sve ostalo (Error, Offline, Paused, Degraded...) se broji
+      -- kao problem. Prazan/NULL status se NE broji kao problem (nepoznato
+      -- stanje agenta u trenutku upita, ne potvrđen problem).
+      SUM(
+        CASE
+          WHEN cp.status IS NOT NULL AND TRIM(cp.status) <> ''
+           AND LOWER(TRIM(cp.status)) NOT IN ('ok', 'idle', 'unknown')
+          THEN 1
+          ELSE 0
+        END
+      ) AS problemStatus,
+
+      MIN(cp.inventory_date) AS oldestInventoryDate,
+      MAX(cp.inventory_date) AS newestInventoryDate
+
+    FROM computer_printers cp
+    JOIN ip_entries ie ON ie.id = cp.ip_entry_id
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [site] : [],
+  );
+
+  const totalPrinters = Number(row?.totalPrinters) || 0;
+  const computersWithPrinters = Number(row?.computersWithPrinters) || 0;
+
+  return {
+    totalPrinters,
+    uniquePrinters: Number(row?.uniquePrinters) || 0,
+    computersWithPrinters,
+    avgPerComputer: computersWithPrinters
+      ? Math.round((totalPrinters / computersWithPrinters) * 10) / 10
+      : 0,
+    defaultCount: Number(row?.defaultCount) || 0,
+    problemStatus: Number(row?.problemStatus) || 0,
+    oldestInventoryDate: row?.oldestInventoryDate ?? null,
+    newestInventoryDate: row?.newestInventoryDate ?? null,
+  };
+}
+
+export async function getTopPrinterNames(limit = 10, site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        TRIM(cp.name) AS name,
+        COUNT(DISTINCT cp.ip_entry_id) AS computers
+      FROM computer_printers cp
+      JOIN ip_entries ip ON ip.id = cp.ip_entry_id
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
+        AND cp.name IS NOT NULL AND TRIM(cp.name) <> ''
+      GROUP BY TRIM(cp.name)
+      ORDER BY computers DESC, name ASC
+      LIMIT ?
+    `,
+    [...(site ? [site] : []), limit],
+  );
+
+  return rows.map((row) => ({ name: row.name, computers: Number(row.computers) || 0 }));
+}
+
+export async function getTopPrinterDrivers(limit = 10, site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        TRIM(cp.driver_name) AS driverName,
+        COUNT(*) AS printers,
+        COUNT(DISTINCT cp.ip_entry_id) AS computers
+      FROM computer_printers cp
+      JOIN ip_entries ip ON ip.id = cp.ip_entry_id
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
+        AND cp.driver_name IS NOT NULL AND TRIM(cp.driver_name) <> ''
+      GROUP BY TRIM(cp.driver_name)
+      ORDER BY printers DESC, driverName ASC
+      LIMIT ?
+    `,
+    [...(site ? [site] : []), limit],
+  );
+
+  return rows.map((row) => ({
+    driverName: row.driverName,
+    printers: Number(row.printers) || 0,
+    computers: Number(row.computers) || 0,
+  }));
+}
+
+export async function getPrintersWithProblemStatus(limit = 30, site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        ip.id AS ipEntryId,
+        ip.ip,
+        ip.computer_name AS computerName,
+        ip.department,
+        cp.name,
+        cp.driver_name AS driverName,
+        cp.port_name AS portName,
+        cp.status,
+        cp.is_default AS isDefault,
+        cp.inventory_date AS inventoryDate
+      FROM computer_printers cp
+      JOIN ip_entries ip ON ip.id = cp.ip_entry_id
+      WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
+        AND cp.status IS NOT NULL AND TRIM(cp.status) <> ''
+        AND LOWER(TRIM(cp.status)) NOT IN ('ok', 'idle', 'unknown')
+      ORDER BY ip.computer_name ASC, cp.name ASC
+      LIMIT ?
+    `,
+    [...(site ? [site] : []), limit],
+  );
+
+  return rows.map((row) => ({
+    ipEntryId: Number(row.ipEntryId),
+    ip: row.ip,
+    computerName: row.computerName,
+    department: row.department,
+    name: row.name,
+    driverName: row.driverName,
+    portName: row.portName,
+    status: row.status,
+    isDefault: Boolean(row.isDefault),
+    inventoryDate: row.inventoryDate,
+  }));
+}
+
+export async function getRarePrinters(limit = 20, site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        TRIM(cp.name) AS name,
+        COUNT(DISTINCT cp.ip_entry_id) AS computers,
+        GROUP_CONCAT(
+          DISTINCT COALESCE(NULLIF(TRIM(ip.computer_name), ''), ip.ip)
+          ORDER BY ip.computer_name
+          SEPARATOR ', '
+        ) AS computerNames
+      FROM computer_printers cp
+      JOIN ip_entries ip ON ip.id = cp.ip_entry_id
+      WHERE ip.entry_type = 'computer'
+        ${site ? "AND ip.site = ?" : ""}
+        AND cp.name IS NOT NULL AND TRIM(cp.name) <> ''
+      GROUP BY TRIM(cp.name)
+      HAVING COUNT(DISTINCT cp.ip_entry_id) <= 2
+      ORDER BY computers ASC, name ASC
+      LIMIT ?
+    `,
+    [...(site ? [site] : []), limit],
+  );
+
+  return rows.map((row) => ({
+    name: row.name,
+    computers: Number(row.computers) || 0,
+    computerNames: row.computerNames ?? "",
+  }));
+}
+
+export async function getComputersWithMostPrinters(limit = 10, site) {
+  const [rows] = await pool.execute(
+    `
+      SELECT
+        ip.id AS ipEntryId,
+        ip.ip,
+        ip.computer_name AS computerName,
+        ip.department,
+        COUNT(cp.id) AS printerCount,
+        MAX(cp.inventory_date) AS inventoryDate
+      FROM ip_entries ip
+      JOIN computer_printers cp ON cp.ip_entry_id = ip.id
+      WHERE ip.entry_type = 'computer' ${site ? "AND ip.site = ?" : ""}
+      GROUP BY ip.id, ip.ip, ip.computer_name, ip.department
+      ORDER BY printerCount DESC
+      LIMIT ?
+    `,
+    [...(site ? [site] : []), limit],
+  );
+
+  return rows.map((row) => ({
+    ipEntryId: Number(row.ipEntryId),
+    ip: row.ip,
+    computerName: row.computerName,
+    department: row.department,
+    printerCount: Number(row.printerCount) || 0,
+    inventoryDate: row.inventoryDate,
+  }));
+}
+
+/* =========================================================
    EXPORT (pune liste, bez limita/top-N kurirovanja)
    ========================================================= */
 
@@ -1166,6 +1381,30 @@ export async function getAllUpdatesForExport(site) {
     WHERE ie.entry_type = 'computer'
       ${site ? "AND ie.site = ?" : ""}
     ORDER BY ie.computer_name ASC, cu.installed_on DESC
+  `,
+    site ? [site] : [],
+  );
+  return rows || [];
+}
+
+export async function getAllPrintersForExport(site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cp.name,
+      cp.driver_name AS driverName,
+      cp.port_name AS portName,
+      cp.status,
+      cp.is_default AS isDefault,
+      cp.inventory_date AS inventoryDate
+    FROM computer_printers cp
+    JOIN ip_entries ie ON ie.id = cp.ip_entry_id
+    WHERE ie.entry_type = 'computer'
+      ${site ? "AND ie.site = ?" : ""}
+    ORDER BY ie.computer_name ASC, cp.name ASC
   `,
     site ? [site] : [],
   );
@@ -1289,6 +1528,36 @@ export async function searchUpdateRows(term, limit = 100, site) {
     JOIN ip_entries ie ON ie.id = cu.ip_entry_id
     WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY cu.installed_on DESC
+    LIMIT ?
+    `,
+    [...(site ? [site] : []), ...params, limit],
+  );
+  return rows || [];
+}
+
+export async function searchPrinterRows(term, limit = 100, site) {
+  const { where, params } = buildLikeSearch(
+    ["cp.name", "cp.driver_name", "cp.port_name", "ie.computer_name", "ie.ip"],
+    term,
+  );
+  if (!where) return [];
+
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.computer_name AS computerName,
+      ie.ip,
+      ie.department,
+      cp.name,
+      cp.driver_name AS driverName,
+      cp.port_name AS portName,
+      cp.status,
+      cp.is_default AS isDefault,
+      cp.inventory_date AS inventoryDate
+    FROM computer_printers cp
+    JOIN ip_entries ie ON ie.id = cp.ip_entry_id
+    WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
+    ORDER BY ie.computer_name ASC, cp.name ASC
     LIMIT ?
     `,
     [...(site ? [site] : []), ...params, limit],

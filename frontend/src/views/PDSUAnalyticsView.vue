@@ -18,6 +18,7 @@ import PDSUSoftware from '@/components/pdsu/PDSUSoftware.vue'
 import PDSUDrivers from '@/components/pdsu/PDSUDrivers.vue'
 import PDSUServices from '@/components/pdsu/PDSUServices.vue'
 import PDSUUpdates from '@/components/pdsu/PDSUUpdates.vue'
+import PDSUPrinters from '@/components/pdsu/PDSUPrinters.vue'
 import PDSUFlagged from '@/components/pdsu/PDSUFlagged.vue'
 
 const { toast, showToast } = useToast()
@@ -45,14 +46,16 @@ const software = computed(() => stats.value?.software ?? {})
 const drivers = computed(() => stats.value?.drivers ?? {})
 const services = computed(() => stats.value?.services ?? {})
 const updates = computed(() => stats.value?.updates ?? {})
+const printers = computed(() => stats.value?.printers ?? {})
 
-const searchCategories = ['software', 'drivers', 'services', 'updates']
+const searchCategories = ['software', 'drivers', 'services', 'updates', 'printers']
 
 const searchCategoryLabels = {
   software: 'Programi',
   drivers: 'Drajveri',
   services: 'Servisi',
   updates: 'Updates',
+  printers: 'Štampači',
 }
 
 const searchColumnsMap = {
@@ -76,9 +79,14 @@ const searchColumnsMap = {
     { label: 'Opis', key: 'description' },
     { label: 'Datum instalacije', key: 'installedOn' },
   ],
+  printers: [
+    { label: 'Naziv', key: 'name' },
+    { label: 'Drajver', key: 'driverName' },
+    { label: 'Status', key: 'status' },
+  ],
 }
 
-const searchResults = ref({ software: [], drivers: [], services: [], updates: [] })
+const searchResults = ref({ software: [], drivers: [], services: [], updates: [], printers: [] })
 const searchLoading = ref(false)
 let searchTimer = null
 const { getSignal } = useAbortableFetch()
@@ -190,7 +198,7 @@ async function runSearch() {
   const query = search.value.trim()
 
   if (!query) {
-    searchResults.value = { software: [], drivers: [], services: [], updates: [] }
+    searchResults.value = { software: [], drivers: [], services: [], updates: [], printers: [] }
     return
   }
 
@@ -208,11 +216,12 @@ async function runSearch() {
       drivers: Array.isArray(data.drivers) ? data.drivers : [],
       services: Array.isArray(data.services) ? data.services : [],
       updates: Array.isArray(data.updates) ? data.updates : [],
+      printers: Array.isArray(data.printers) ? data.printers : [],
     }
   } catch (err) {
     if (err?.name !== 'AbortError') {
       console.error('PDSU pretraga greška:', err)
-      searchResults.value = { software: [], drivers: [], services: [], updates: [] }
+      searchResults.value = { software: [], drivers: [], services: [], updates: [], printers: [] }
     }
   } finally {
     searchLoading.value = false
@@ -336,7 +345,7 @@ watch(site, loadStats)
         <h1 class="text-2xl font-bold text-slate-800">PDSU analitika</h1>
 
         <p class="text-sm text-slate-500 mt-1">
-          Centralni pregled programa, drajvera, servisa i Windows update podataka.
+          Centralni pregled programa, drajvera, servisa, Windows update podataka i štampača.
           Prikazani su samo računari (Aparati su isključeni iz analitike).
         </p>
       </div>
@@ -392,7 +401,7 @@ watch(site, loadStats)
             v-model="search"
             type="text"
             class="app-input w-full"
-            placeholder="Pretraži programe, drajvere, servise i update-e u celoj bazi..."
+            placeholder="Pretraži programe, drajvere, servise, update-e i štampače u celoj bazi..."
           />
 
           <button
@@ -413,7 +422,7 @@ watch(site, loadStats)
           <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
             <span class="sr-only">Pretraživanje...</span>
           </div>
-          <p class="text-slate-500 mb-0">Pretražujem programe, drajvere, servise i update-e...</p>
+          <p class="text-slate-500 mb-0">Pretražujem programe, drajvere, servise, update-e i štampače...</p>
         </div>
 
         <template v-else>
@@ -558,6 +567,16 @@ watch(site, loadStats)
           <button
             type="button"
             class="pdsu-tab"
+            :class="{ 'pdsu-tab-active': activeTab === 'printers' }"
+            @click="activeTab = 'printers'"
+          >
+            <span class="pdsu-tab-icon">Š</span>
+            <span>Štampači</span>
+          </button>
+
+          <button
+            type="button"
+            class="pdsu-tab"
             :class="{ 'pdsu-tab-active': activeTab === 'flagged' }"
             @click="activeTab = 'flagged'"
           >
@@ -576,6 +595,7 @@ watch(site, loadStats)
               :drivers="drivers"
               :services="services"
               :updates="updates"
+              :printers="printers"
               :missing-computers="missingPdsu"
               :exporting-missing="exportingMissingPdf"
               @export-missing="exportMissingPdsuPdf"
@@ -606,6 +626,12 @@ watch(site, loadStats)
               v-else-if="activeTab === 'updates'"
               key="updates"
               :updates="updates"
+            />
+
+            <PDSUPrinters
+              v-else-if="activeTab === 'printers'"
+              key="printers"
+              :printers="printers"
             />
 
             <PDSUFlagged

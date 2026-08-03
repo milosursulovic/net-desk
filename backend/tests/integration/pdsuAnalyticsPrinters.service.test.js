@@ -1,0 +1,86 @@
+import { describe, it, expect } from "vitest";
+import { pdsuAnalyticsStatsService, searchPdsuAnalytics } from "../../services/pdsuAnalytics.service.js";
+import { syncComputerPrinters } from "../../services/pdsu.service.js";
+import { createService } from "../../services/ipAddresses.service.js";
+import { deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
+
+describe("pdsuAnalytics printers (integration, real DB)", () => {
+  it("pdsuAnalyticsStatsService reports printer stats, coverage, and problem-status/top tables", async () => {
+    const okComputer = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+    const problemComputer = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+
+    const uniquePrinterName = `VITEST_PRINTER_${Date.now()}`;
+
+    try {
+      await syncComputerPrinters(okComputer.id, [
+        { name: uniquePrinterName, driverName: "HP Universal", portName: "USB001", status: "OK", isDefault: true },
+      ]);
+      await syncComputerPrinters(problemComputer.id, [
+        { name: `VITEST_PRINTER_ERR_${Date.now()}`, driverName: "Canon Generic", portName: "IP_10.0.0.5", status: "Error", isDefault: false },
+      ]);
+
+      const out = await pdsuAnalyticsStatsService("bolnica");
+
+      expect(out.printers).toBeTruthy();
+      expect(out.printers.stats.totalPrinters).toBeGreaterThanOrEqual(2);
+      expect(out.printers.stats.problemStatus).toBeGreaterThanOrEqual(1);
+
+      expect(out.coverage.withPrinters).toBeGreaterThanOrEqual(2);
+      expect(out.coverage.printersPct).toBeGreaterThan(0);
+
+      const problemRow = out.printers.tables.problemStatus.find((p) => p.ipEntryId === problemComputer.id);
+      expect(problemRow).toBeTruthy();
+      expect(problemRow.status).toBe("Error");
+
+      // getTopPrinterNames is a ranked, LIMIT-10 table ordered by computer
+      // count - on a real, already-populated dev DB it may not include a
+      // single-computer test printer, so that ranking isn't asserted here.
+      // Direct repo-level search (next test) covers exact-match lookup instead.
+    } finally {
+      await deleteTestIpEntry(okComputer.id);
+      await deleteTestIpEntry(problemComputer.id);
+    }
+  });
+
+  it("searchPdsuAnalytics('printers', ...) finds printers by name/driver/computer, scoped by site", async () => {
+    const entry = await createService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: testHostname(),
+    });
+
+    const uniquePrinterName = `VITEST_SEARCH_PRINTER_${Date.now()}`;
+
+    try {
+      await syncComputerPrinters(entry.id, [
+        { name: uniquePrinterName, driverName: "Xerox WorkCentre", portName: "IP_10.0.0.9", status: "OK", isDefault: false },
+      ]);
+
+      const matched = await searchPdsuAnalytics("printers", uniquePrinterName, "bolnica");
+      expect(matched.some((row) => row.name === uniquePrinterName)).toBe(true);
+
+      const wrongSite = await searchPdsuAnalytics("printers", uniquePrinterName, "dom_zdravlja");
+      expect(wrongSite.some((row) => row.name === uniquePrinterName)).toBe(false);
+
+      const viaAll = await searchPdsuAnalytics("all", uniquePrinterName, "bolnica");
+      expect(viaAll.printers.some((row) => row.name === uniquePrinterName)).toBe(true);
+    } finally {
+      await deleteTestIpEntry(entry.id);
+    }
+  });
+
+  it("searchPdsuAnalytics rejects an unknown category", async () => {
+    await expect(searchPdsuAnalytics("bogus", "x", undefined)).rejects.toMatchObject({ status: 400 });
+  });
+});

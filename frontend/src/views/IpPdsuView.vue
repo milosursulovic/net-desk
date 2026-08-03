@@ -84,6 +84,20 @@
           Ažuriranja
           <span v-if="loaded.updates" class="ml-1"> ({{ updates.length }}) </span>
         </button>
+
+        <button
+          type="button"
+          @click="selectTab('printers')"
+          class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
+          :class="
+            tab === 'printers'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          "
+        >
+          Štampači
+          <span v-if="loaded.printers" class="ml-1"> ({{ printers.length }}) </span>
+        </button>
       </div>
 
       <div class="relative">
@@ -97,7 +111,9 @@
               ? 'Pretraži uređaj, drajver ili proizvođača...'
               : tab === 'services'
               ? 'Pretraži servis, status ili putanju...'
-              : 'Pretraži KB, opis ili korisnika...'
+              : tab === 'updates'
+              ? 'Pretraži KB, opis ili korisnika...'
+              : 'Pretraži štampač, drajver ili port...'
           "
           class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
         />
@@ -127,7 +143,11 @@
           {{ filteredServices.length }} od {{ services.length }}
         </template>
 
-        <template v-else> {{ filteredUpdates.length }} od {{ updates.length }} </template>
+        <template v-else-if="tab === 'updates'">
+          {{ filteredUpdates.length }} od {{ updates.length }}
+        </template>
+
+        <template v-else> {{ filteredPrinters.length }} od {{ printers.length }} </template>
       </div>
 
       <div v-if="tabLoading[tab]" class="text-slate-600">Učitavanje inventara…</div>
@@ -270,6 +290,45 @@
             </div>
           </div>
         </div>
+
+        <div v-else-if="tab === 'printers'">
+          <div v-if="filteredPrinters.length === 0" class="text-slate-500">
+            Nema podataka o štampačima.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div v-for="item in filteredPrinters" :key="item.id" class="rounded-lg border bg-white p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <div class="font-medium text-slate-800">{{ item.name || 'Nepoznat štampač' }}</div>
+                  <span
+                    v-if="item.is_default"
+                    class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                  >
+                    Podrazumevani
+                  </span>
+                </div>
+
+                <span
+                  class="rounded-full border px-2 py-0.5 text-xs"
+                  :class="
+                    item.status === 'OK' || item.status === 'Idle' || item.status === 'Unknown'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-red-200 bg-red-50 text-red-700'
+                  "
+                >
+                  {{ item.status || 'Nepoznato' }}
+                </span>
+              </div>
+
+              <div class="mt-1 text-sm text-slate-600">Drajver: {{ item.driver_name || '—' }}</div>
+
+              <div class="text-sm text-slate-600">Port: {{ item.port_name || '—' }}</div>
+
+              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -308,17 +367,18 @@ const entry = ref(null)
 const entryLoading = ref(false)
 const entryError = ref('')
 
-const TAB_NAMES = ['software', 'drivers', 'services', 'updates']
+const TAB_NAMES = ['software', 'drivers', 'services', 'updates', 'printers']
 
 const software = ref([])
 const drivers = ref([])
 const services = ref([])
 const updates = ref([])
+const printers = ref([])
 const exportingPdf = ref(false)
 
-const loaded = ref({ software: false, drivers: false, services: false, updates: false })
-const tabLoading = ref({ software: false, drivers: false, services: false, updates: false })
-const tabError = ref({ software: '', drivers: '', services: '', updates: '' })
+const loaded = ref({ software: false, drivers: false, services: false, updates: false, printers: false })
+const tabLoading = ref({ software: false, drivers: false, services: false, updates: false, printers: false })
+const tabError = ref({ software: '', drivers: '', services: '', updates: '', printers: '' })
 
 const { search, tab } = usePaginatedRoute({
   fields: {
@@ -336,7 +396,8 @@ const hasAnyPdsuData = computed(() =>
   software.value.length > 0 ||
   drivers.value.length > 0 ||
   services.value.length > 0 ||
-  updates.value.length > 0
+  updates.value.length > 0 ||
+  printers.value.length > 0
 )
 
 async function exportPdf() {
@@ -357,7 +418,7 @@ async function exportPdf() {
 
 async function clearPdsu() {
   const ok = await askConfirm(
-    'Da li želiš da obrišeš SVE PDSU podatke (softver, drajveri, servisi, ažuriranja) za ovaj računar? Ova akcija se ne može poništiti.',
+    'Da li želiš da obrišeš SVE PDSU podatke (softver, drajveri, servisi, ažuriranja, štampači) za ovaj računar? Ova akcija se ne može poništiti.',
     { title: 'Brisanje PDSU podataka' },
   )
   if (!ok) return
@@ -369,6 +430,7 @@ async function clearPdsu() {
     drivers.value = []
     services.value = []
     updates.value = []
+    printers.value = []
     showToast('PDSU podaci obrisani.')
   } catch (err) {
     console.error('Greška pri brisanju PDSU podataka:', err)
@@ -396,6 +458,7 @@ async function loadTabData(name) {
     else if (name === 'drivers') drivers.value = rows
     else if (name === 'services') services.value = rows
     else if (name === 'updates') updates.value = rows
+    else if (name === 'printers') printers.value = rows
 
     loaded.value[name] = true
   } catch (err) {
@@ -447,6 +510,16 @@ const filteredUpdates = computed(() => {
   if (!q) return updates.value
   return updates.value.filter((item) =>
     [item.description, item.hotfix_id, item.installed_on, item.installed_by].some((value) =>
+      String(value ?? '').toLowerCase().includes(q)
+    )
+  )
+})
+
+const filteredPrinters = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return printers.value
+  return printers.value.filter((item) =>
+    [item.name, item.driver_name, item.port_name, item.status].some((value) =>
       String(value ?? '').toLowerCase().includes(q)
     )
   )

@@ -36,6 +36,11 @@ const props = defineProps({
     default: () => ({}),
   },
 
+  printers: {
+    type: Object,
+    default: () => ({}),
+  },
+
   missingComputers: {
     type: Array,
     default: () => [],
@@ -63,6 +68,7 @@ const softwareStats = computed(() => props.software?.stats ?? {})
 const driverStats = computed(() => props.drivers?.stats ?? {})
 const serviceStats = computed(() => props.services?.stats ?? {})
 const updateStats = computed(() => props.updates?.stats ?? {})
+const printerStats = computed(() => props.printers?.stats ?? {})
 
 const updateFreshness = computed(() => updateStats.value?.freshness ?? {})
 
@@ -105,6 +111,15 @@ const coverageItems = computed(() => [
     percent: Number(props.coverage?.updatesPct) || 0,
     barClass: 'bg-red-600',
   },
+  {
+    key: 'printers',
+    label: 'Štampači',
+    description: 'Računari sa prikupljenim podacima o štampačima',
+    value: Number(props.coverage?.withPrinters) || 0,
+    missing: Number(props.coverage?.withoutPrinters) || 0,
+    percent: Number(props.coverage?.printersPct) || 0,
+    barClass: 'bg-purple-600',
+  },
 ])
 
 const alertItems = computed(() => [
@@ -137,6 +152,13 @@ const alertItems = computed(() => [
     value: Number(driverStats.value?.withoutDate) || 0,
     badgeClass:
       Number(driverStats.value?.withoutDate) > 0 ? 'bg-amber-500 text-amber-950' : 'bg-green-600 text-white',
+  },
+  {
+    key: 'printerProblemStatus',
+    label: 'Štampači sa problematičnim statusom',
+    value: Number(printerStats.value?.problemStatus) || 0,
+    badgeClass:
+      Number(printerStats.value?.problemStatus) > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white',
   },
 ])
 

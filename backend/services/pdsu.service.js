@@ -199,6 +199,7 @@ export async function clearComputerPdsu(ipEntryId) {
     computerDriversDelete(ipEntryId),
     computerServicesDelete(ipEntryId),
     computerUpdatesDelete(ipEntryId),
+    computerPrintersDelete(ipEntryId),
   ]);
 
   return true;

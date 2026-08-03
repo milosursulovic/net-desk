@@ -89,7 +89,7 @@ export async function exportWithoutUltravncPdfController(req, res) {
 }
 
 export async function exportPdsuAnalyticsController(req, res) {
-  const { software, drivers, services, updates } =
+  const { software, drivers, services, updates, printers } =
     await exportPdsuAnalyticsXlsx(siteFilter(req.query.site));
 
   const dateStamp = new Date().toISOString().slice(0, 10);
@@ -155,6 +155,21 @@ export async function exportPdsuAnalyticsController(req, res) {
           { header: "Datum inventara", key: "inventoryDate", width: 20 },
         ],
         rows: updates,
+      },
+      {
+        name: "Štampači",
+        columns: [
+          { header: "Računar", key: "computerName", width: 22 },
+          { header: "IP", key: "ip", width: 14 },
+          { header: "Odeljenje", key: "department", width: 18 },
+          { header: "Naziv", key: "name", width: 26 },
+          { header: "Drajver", key: "driverName", width: 26 },
+          { header: "Port", key: "portName", width: 16 },
+          { header: "Status", key: "status", width: 14 },
+          { header: "Podrazumevani", key: "isDefault", width: 16 },
+          { header: "Datum inventara", key: "inventoryDate", width: 20 },
+        ],
+        rows: printers,
       },
     ],
   });

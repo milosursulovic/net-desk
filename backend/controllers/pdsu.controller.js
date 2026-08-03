@@ -82,12 +82,13 @@ function fmtRowDates(rows, dateKeys) {
 export async function exportComputerPdsuPdfController(req, res) {
   const id = parseIdParam(req, "id", "ID racunara");
 
-  const [computer, software, drivers, services, updates] = await Promise.all([
+  const [computer, software, drivers, services, updates, printers] = await Promise.all([
     getComputer(id),
     getComputerSoftware(id),
     getComputerDrivers(id),
     getComputerServices(id),
     getComputerUpdates(id),
+    getComputerPrinters(id),
   ]);
 
   const dateStamp = new Date().toISOString().slice(0, 10);
@@ -143,6 +144,18 @@ export async function exportComputerPdsuPdfController(req, res) {
         ],
         rows: fmtRowDates(updates, ["installed_on"]),
         emptyText: "Nema podataka o Windows ažuriranjima.",
+      },
+      {
+        heading: `Štampači (${printers.length})`,
+        columns: [
+          { header: "Naziv", key: "name", width: 200 },
+          { header: "Drajver", key: "driver_name", width: 180 },
+          { header: "Port", key: "port_name", width: 120 },
+          { header: "Status", key: "status", width: 100 },
+          { header: "Podrazumevani", key: "is_default", width: 100 },
+        ],
+        rows: printers.map((p) => ({ ...p, is_default: p.is_default ? "Da" : "Ne" })),
+        emptyText: "Nema podataka o štampačima.",
       },
     ],
   });
