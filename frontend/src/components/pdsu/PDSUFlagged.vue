@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { fmtDateSr } from '@/utils/format.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
+
+const { isAdmin } = useCurrentUser()
 
 const props = defineProps({
   flaggedSoftware: {

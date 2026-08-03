@@ -86,7 +86,7 @@
               <button @click="openEdit(p)" class="text-blue-600 hover:underline text-sm">
                 Izmeni
               </button>
-              <button @click="confirmDelete(p)" class="text-red-600 hover:underline text-sm">
+              <button v-if="isAdmin" @click="confirmDelete(p)" class="text-red-600 hover:underline text-sm">
                 Obriši
               </button>
             </div>
@@ -275,6 +275,7 @@ import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { SITE_OPTIONS } from '@/constants/sites.js'
 import FormInput from '@/components/FormInput.vue'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
@@ -287,6 +288,7 @@ const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 const { page, limit, search, nextPage, prevPage, applyServerPagination } =
   usePaginatedRoute({

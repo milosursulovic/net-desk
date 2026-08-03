@@ -1,6 +1,7 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   listAgentsController,
   listAgentIdsController,
@@ -44,7 +45,7 @@ router.post("/:id/revoke", asyncHandler(revokeAgentController));
 
 router.get("/:id/jobs", asyncHandler(listJobsController));
 router.post("/:id/jobs", asyncHandler(createJobController));
-router.delete("/:id/jobs", asyncHandler(clearJobsController));
+router.delete("/:id/jobs", requireRole("admin"), asyncHandler(clearJobsController));
 // "/jobs/batch(es)" and "/:id/jobs" never collide (different second
 // segment), registration order doesn't matter.
 router.post("/jobs/batch", asyncHandler(createBatchJobController));

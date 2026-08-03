@@ -1,6 +1,7 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 
 import {
   listComputersController,
@@ -34,7 +35,7 @@ router.get("/by-ip/:ip", asyncHandler(getComputerByIpController));
 
 router.get("/:id", asyncHandler(getComputerController));
 
-router.delete("/:id", asyncHandler(clearPdsuController));
+router.delete("/:id", requireRole("admin"), asyncHandler(clearPdsuController));
 
 router.get("/:id/export-pdf", asyncHandler(exportComputerPdsuPdfController));
 

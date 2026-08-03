@@ -1,6 +1,7 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   exportInventoryController,
   getInventoryItemController,
@@ -19,6 +20,6 @@ router.get("/", asyncHandler(listInventoryController));
 router.get("/:id", asyncHandler(getInventoryItemController));
 router.post("/", asyncHandler(createInventoryItemController));
 router.put("/:id", asyncHandler(updateInventoryItemController));
-router.delete("/:id", asyncHandler(deleteInventoryItemController));
+router.delete("/:id", requireRole("admin"), asyncHandler(deleteInventoryItemController));
 
 export default router;

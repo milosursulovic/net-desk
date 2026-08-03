@@ -151,7 +151,7 @@
           <button @click="openEditModal(item)" class="text-blue-600 hover:underline text-sm">
             Izmeni
           </button>
-          <button @click="confirmDelete(item)" class="text-red-600 hover:underline text-sm">
+          <button v-if="isAdmin" @click="confirmDelete(item)" class="text-red-600 hover:underline text-sm">
             Obriši
           </button>
         </div>
@@ -270,6 +270,7 @@ import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { SITE_OPTIONS, labelForSite } from '@/constants/sites.js'
 import {
   INVENTORY_TYPE_OPTIONS,
@@ -316,6 +317,7 @@ const totalPages = ref(0)
 const typeOptions = INVENTORY_TYPE_OPTIONS
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 

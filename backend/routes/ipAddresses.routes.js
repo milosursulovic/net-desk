@@ -1,5 +1,6 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   scanPortsController,
   duplicatesController,
@@ -26,7 +27,7 @@ router.get("/:id", asyncHandler(getByIdController));
 router.get("/:id/uptime", asyncHandler(uptimeHistoryController));
 router.post("/", asyncHandler(createController));
 router.put("/:id", asyncHandler(updateController));
-router.delete("/:id", asyncHandler(deleteController));
+router.delete("/:id", requireRole("admin"), asyncHandler(deleteController));
 
 router.use("/", metadataForIpRoutes);
 

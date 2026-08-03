@@ -35,7 +35,7 @@ describe("flagged software/services routes (integration, real DB)", () => {
     expect(createRes.status).toBe(403);
   });
 
-  it("operator can create and delete a flagged software entry, duplicates are rejected", async () => {
+  it("operator can create a flagged software entry (duplicates rejected), but only admin can delete it", async () => {
     const createRes = await request(app)
       .post("/api/protected/flagged/software")
       .set("Authorization", `Bearer ${operatorToken()}`)
@@ -48,6 +48,11 @@ describe("flagged software/services routes (integration, real DB)", () => {
       .set("Authorization", `Bearer ${operatorToken()}`)
       .send({ displayName: "VITEST_TEAMVIEWER", publisher: "TeamViewer GmbH" });
     expect(dupRes.status).toBe(400);
+
+    const operatorDelRes = await request(app)
+      .delete(`/api/protected/flagged/software/${id}`)
+      .set("Authorization", `Bearer ${operatorToken()}`);
+    expect(operatorDelRes.status).toBe(403);
 
     const delRes = await request(app)
       .delete(`/api/protected/flagged/software/${id}`)

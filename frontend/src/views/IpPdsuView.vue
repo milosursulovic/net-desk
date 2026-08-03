@@ -14,7 +14,7 @@
           {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
         </AppButton>
         <AppButton
-          v-if="hasAnyPdsuData"
+          v-if="hasAnyPdsuData && isAdmin"
           variant="danger"
           @click="clearPdsu"
         >
@@ -354,6 +354,7 @@ import { fmtDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -362,6 +363,7 @@ const route = useRoute()
 const router = useRouter()
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 const entry = ref(null)
 const entryLoading = ref(false)

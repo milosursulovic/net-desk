@@ -1,5 +1,6 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   exportXlsxPrintersController,
   listPrintersController,
@@ -21,7 +22,7 @@ router.get("/", asyncHandler(listPrintersController));
 router.get("/:id", asyncHandler(getPrinterController));
 router.post("/", asyncHandler(createPrinterController));
 router.put("/:id", asyncHandler(updatePrinterController));
-router.delete("/:id", asyncHandler(deletePrinterController));
+router.delete("/:id", requireRole("admin"), asyncHandler(deletePrinterController));
 
 router.post("/:id/set-host", asyncHandler(setHostController));
 router.post("/:id/unset-host", asyncHandler(unsetHostController));

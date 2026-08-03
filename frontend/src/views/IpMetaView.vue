@@ -8,7 +8,7 @@
         <AppButton v-if="meta" variant="secondary" :disabled="exportingPdf" @click="exportPdf">
           {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
         </AppButton>
-        <AppButton v-if="meta" variant="danger" @click="clearMetadata">
+        <AppButton v-if="meta && isAdmin" variant="danger" @click="clearMetadata">
           Očisti metapodatke
         </AppButton>
         <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
@@ -260,6 +260,7 @@ import { downloadFromResponse } from '@/utils/download.js'
 import { fmtDate, fmtGb, fmtMbps, safe } from '@/utils/format.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 import UptimeTimeline from '@/components/UptimeTimeline.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
@@ -267,6 +268,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 const route = useRoute()
 const router = useRouter()

@@ -171,7 +171,7 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <div class="font-medium">Istorija komandi</div>
-            <button v-if="jobs.length" @click="confirmClearJobs" class="text-red-600 hover:underline text-sm">
+            <button v-if="jobs.length && isAdmin" @click="confirmClearJobs" class="text-red-600 hover:underline text-sm">
               Očisti logove
             </button>
           </div>
@@ -252,6 +252,7 @@ import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
 import { COMMAND_TYPES, COMMAND_LABELS, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
 import FormInput from '@/components/FormInput.vue'
@@ -268,6 +269,7 @@ const route = useRoute()
 const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
+const { isAdmin } = useCurrentUser()
 
 // Deployment grupa je slobodan tekst - predlozi (klasične vrednosti +
 // odeljenja + grupe već u upotrebi) dolaze sa /agents/filter-options.

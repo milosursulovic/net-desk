@@ -130,6 +130,34 @@ describe("role enforcement across modules (integration, real DB)", () => {
     expect(res.body.openedAt).not.toBeNull();
   });
 
+  describe("delete routes require admin (operator can create/update but not delete)", () => {
+    // requireRole runs before the controller, so it 403s before any DB
+    // lookup - a nonexistent id is enough to exercise the role gate itself.
+    const deleteRoutes = [
+      "/api/protected/inventory/999999999",
+      "/api/protected/ip-addresses/999999999",
+      "/api/protected/pdsu/999999999",
+      "/api/protected/metadata/999999999",
+      "/api/protected/printers/999999999",
+      "/api/protected/agents/999999999/jobs",
+      "/api/protected/flagged/services/999999999",
+    ];
+
+    it.each(deleteRoutes)("operator is blocked (403) from DELETE %s", async (path) => {
+      const res = await request(app)
+        .delete(path)
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(res.status).toBe(403);
+    });
+
+    it.each(deleteRoutes)("viewer is blocked (403) from DELETE %s", async (path) => {
+      const res = await request(app)
+        .delete(path)
+        .set("Authorization", `Bearer ${viewerToken()}`);
+      expect(res.status).toBe(403);
+    });
+  });
+
   describe("batch job endpoint (POST /agents/jobs/batch)", () => {
     let agentId;
 

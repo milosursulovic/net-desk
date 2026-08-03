@@ -1,6 +1,7 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
+import { requireRole } from "../middlewares/requireRole.middleware.js";
 import {
   listMetadataController,
   statsController,
@@ -24,6 +25,6 @@ router.get("/missing/export-pdf", asyncHandler(exportWithoutMetadataPdfControlle
 // this would otherwise shadow them (":ipEntryId" happily matches the
 // literal string "missing").
 router.get("/:ipEntryId/export-pdf", asyncHandler(exportComputerMetadataPdfController));
-router.delete("/:ipEntryId", asyncHandler(clearMetadataController));
+router.delete("/:ipEntryId", requireRole("admin"), asyncHandler(clearMetadataController));
 
 export default router;
