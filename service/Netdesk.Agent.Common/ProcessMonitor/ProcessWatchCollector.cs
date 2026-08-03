@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using NetdeskAgent.Common.Inventory;
+using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.ProcessMonitor
 {
@@ -26,7 +27,15 @@ namespace NetdeskAgent.Common.ProcessMonitor
     /// </summary>
     public static class ProcessWatchCollector
     {
-        public static List<ProcessDetectionItem> Scan(IEnumerable<string> watchedNames)
+        /// <summary>
+        /// killMatches=true ubija SVAKU instancu (ne samo jednu po imenu) svakog
+        /// pokrenutog procesa čije ime pogađa watchlist - kontejnment zahteva
+        /// gašenje svih instanci, ne samo prve na koju se naiđe (npr. TeamViewer
+        /// tipično ima i tv_w32/tv_x64 GUI proces i TeamViewer_Service.exe
+        /// istovremeno). Kill je best-effort po instanci - greška na JEDNOJ
+        /// instanci (npr. access denied) ne sme da spreči pokušaj na ostalima.
+        /// </summary>
+        public static List<ProcessDetectionItem> Scan(IEnumerable<string> watchedNames, bool killMatches = false)
         {
             var watchlist = (watchedNames ?? Enumerable.Empty<string>())
                 .Where(n => !string.IsNullOrWhiteSpace(n))
@@ -39,6 +48,7 @@ namespace NetdeskAgent.Common.ProcessMonitor
             }
 
             var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var killed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var process in Process.GetProcesses())
             {
@@ -47,9 +57,25 @@ namespace NetdeskAgent.Common.ProcessMonitor
                     // Process.ProcessName ne uključuje ".exe" ekstenziju - watchlist
                     // unosi su takođe bez ekstenzije (npr. "anydesk", "teamviewer").
                     var name = process.ProcessName;
-                    if (watchlist.Any(w => name.ToLowerInvariant().Contains(w)))
+                    if (!watchlist.Any(w => name.ToLowerInvariant().Contains(w)))
                     {
-                        matched.Add(name);
+                        continue;
+                    }
+
+                    matched.Add(name);
+
+                    if (killMatches)
+                    {
+                        try
+                        {
+                            process.Kill();
+                            killed.Add(name);
+                            FileLogger.Warn("Process monitor: ubijen sumnjiv proces \"" + name + "\" (PID " + process.Id + ").");
+                        }
+                        catch (Exception killEx)
+                        {
+                            FileLogger.Error("Process monitor: neuspešan pokušaj ubijanja procesa \"" + name + "\" (PID " + process.Id + ")", killEx);
+                        }
                     }
                 }
                 catch
@@ -78,6 +104,7 @@ namespace NetdeskAgent.Common.ProcessMonitor
                     FirstSeen = nowIso,
                     LastSeen = nowIso,
                     Count = 1,
+                    Killed = killed.Contains(name) ? 1 : 0,
                 })
                 .ToList();
         }

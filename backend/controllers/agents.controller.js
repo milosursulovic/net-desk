@@ -2,6 +2,7 @@ import {
   EnrollSchema,
   HeartbeatSchema,
   InventorySyncSchema,
+  ProcessKillExemptSchema,
 } from "../dtos/agents.dto.js";
 import {
   enrollAgent,
@@ -14,6 +15,7 @@ import {
   getAgentService,
   revokeAgentService,
   syncAgentInventory,
+  setAgentProcessKillExemptService,
 } from "../services/agents.service.js";
 import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
@@ -152,5 +154,15 @@ export async function getAgentController(req, res) {
 export async function revokeAgentController(req, res) {
   const id = parseIdParam(req, "id", "ID agenta");
   const agent = await revokeAgentService(id);
+  res.json(agent);
+}
+
+export async function setProcessKillExemptController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+
+  const parsed = ProcessKillExemptSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const agent = await setAgentProcessKillExemptService(id, parsed.data.processKillExempt);
   res.json(agent);
 }

@@ -39,6 +39,16 @@ namespace NetdeskAgent.Common.Models
         public string AgentId { get; set; }
         public string Status { get; set; }
         public string LastHeartbeatAt { get; set; }
+
+        /// <summary>
+        /// "Whitelist" postavljena od admina (agent detail stranica,
+        /// PATCH /api/protected/agents/:id/process-kill-exempt) - kad je true,
+        /// ProcessMonitor i dalje detektuje/loguje watched procese na ovoj
+        /// mašini, ali ih NIKAD ne ubija (bez obzira na
+        /// AgentSettings.KillWatchedProcesses). Videti AgentWorker.
+        /// DoProcessMonitorAsync i AgentState.ProcessKillExempt.
+        /// </summary>
+        public bool ProcessKillExempt { get; set; }
     }
 
     /// <summary>Odgovor GET /api/agents/ping - test konekcije bez sporednih efekata.</summary>

@@ -31,6 +31,7 @@
           <option value="firstSeen">Prvi put viđen</option>
           <option value="processName">Proces</option>
           <option value="detectionCount">Broj detekcija</option>
+          <option value="killCount">Broj ubijanja</option>
           <option value="computerName">Računar</option>
         </select>
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
@@ -87,6 +88,7 @@
             <th class="py-2 pr-3">Prvi put viđen</th>
             <th class="py-2 pr-3">Poslednji put viđen</th>
             <th class="py-2 pr-3 text-right">Broj detekcija</th>
+            <th class="py-2 pr-3 text-right">Broj ubijanja</th>
           </tr>
         </thead>
         <tbody>
@@ -102,6 +104,10 @@
             <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.firstSeen) }}</td>
             <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.lastSeen) }}</td>
             <td class="py-2 pr-3 text-right tabular-nums">{{ row.detectionCount }}</td>
+            <td class="py-2 pr-3 text-right tabular-nums">
+              <span v-if="row.killCount" class="text-red-600 font-medium">{{ row.killCount }}</span>
+              <span v-else class="text-slate-400">0</span>
+            </td>
           </tr>
         </tbody>
       </table>

@@ -22,6 +22,10 @@ export async function ingestProcessDetections(ipEntryId, entries) {
         first_seen: isNaN(firstSeen) ? new Date() : firstSeen,
         last_seen: isNaN(lastSeen) ? new Date() : lastSeen,
         detection_count: Number(item.count) > 0 ? Number(item.count) : 1,
+        // Agent šalje killed=1 SAMO kad je AgentSettings.KillWatchedProcesses
+        // uključen i bar jedna instanca ovog procesa uspešno ubijena ovog
+        // ciklusa - Number(item.killed) > 0 pokriva i broj i truthy JSON bool.
+        kill_count: Number(item.killed) > 0 ? 1 : 0,
       };
     })
     .filter(Boolean);
@@ -38,6 +42,7 @@ const SORT_FIELDS = {
   firstSeen: "cpd.first_seen",
   lastSeen: "cpd.last_seen",
   detectionCount: "cpd.detection_count",
+  killCount: "cpd.kill_count",
   computerName: "ie.computer_name",
 };
 

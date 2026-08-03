@@ -3,6 +3,7 @@ import {
   EnrollSchema,
   HeartbeatSchema,
   InventorySyncSchema,
+  ProcessKillExemptSchema,
 } from "../../dtos/agents.dto.js";
 
 describe("EnrollSchema", () => {
@@ -113,5 +114,17 @@ describe("InventorySyncSchema", () => {
       ],
     });
     expect(out.success).toBe(true);
+  });
+});
+
+describe("ProcessKillExemptSchema", () => {
+  it("accepts a boolean", () => {
+    expect(ProcessKillExemptSchema.safeParse({ processKillExempt: true }).success).toBe(true);
+    expect(ProcessKillExemptSchema.safeParse({ processKillExempt: false }).success).toBe(true);
+  });
+
+  it("rejects a missing or non-boolean value", () => {
+    expect(ProcessKillExemptSchema.safeParse({}).success).toBe(false);
+    expect(ProcessKillExemptSchema.safeParse({ processKillExempt: "yes" }).success).toBe(false);
   });
 });

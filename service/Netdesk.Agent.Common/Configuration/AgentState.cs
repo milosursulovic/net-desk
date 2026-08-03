@@ -17,6 +17,17 @@ namespace NetdeskAgent.Common.Configuration
         [JsonIgnore]
         public bool IsEnrolled => !string.IsNullOrEmpty(AgentId) && !string.IsNullOrEmpty(ApiKey);
 
+        /// <summary>
+        /// Osvežava se pri SVAKOM uspešnom heartbeat-u (server-side "whitelist"
+        /// postavka za ovaj agent) - namerno [JsonIgnore], NE perzistira se u
+        /// state.json. Podrazumevano false posle restarta servisa dok se ne
+        /// desi prvi uspešan heartbeat - zanemarljivo, jer je heartbeat prvi u
+        /// prioritetu tick petlje i dešava se skoro odmah pri startu, mnogo
+        /// pre prvog ProcessMonitor ciklusa (ProcessMonitorIntervalSeconds).
+        /// </summary>
+        [JsonIgnore]
+        public bool ProcessKillExempt { get; set; }
+
         public static AgentState Load(string path)
         {
             if (!File.Exists(path))

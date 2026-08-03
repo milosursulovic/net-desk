@@ -337,5 +337,13 @@ namespace NetdeskAgent.Common.Inventory
         public string FirstSeen { get; set; }
         public string LastSeen { get; set; }
         public int Count { get; set; }
+
+        /// <summary>
+        /// 1 ako je BAR JEDNA instanca ovog procesa uspešno ubijena u ovom
+        /// ciklusu (samo kad je AgentSettings.KillWatchedProcesses uključen),
+        /// inače 0. Agregira se na backend-u kao kill_count, isti obrazac
+        /// kao Count/detection_count.
+        /// </summary>
+        public int Killed { get; set; }
     }
 }

@@ -197,6 +197,11 @@ namespace NetdeskAgent.Service
 
                 var response = await client.HeartbeatAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
 
+                if (response.Agent != null)
+                {
+                    state.ProcessKillExempt = response.Agent.ProcessKillExempt;
+                }
+
                 FileLogger.Info("Heartbeat OK. Status=" + (response.Agent != null ? response.Agent.Status : "?"));
             }
             catch (NetdeskApiException apiEx) when (apiEx.StatusCode == 403)
@@ -287,7 +292,12 @@ namespace NetdeskAgent.Service
         {
             try
             {
-                var entries = ProcessWatchCollector.Scan(settings.WatchedProcessNames);
+                // state.ProcessKillExempt - server-side "whitelist" osvežena pri
+                // svakom heartbeat-u (videti DoHeartbeatAsync) - ova mašina i dalje
+                // detektuje/loguje, ali se NIKAD ne ubija na njoj, bez obzira na
+                // globalni settings.KillWatchedProcesses.
+                var killMatches = settings.KillWatchedProcesses && !state.ProcessKillExempt;
+                var entries = ProcessWatchCollector.Scan(settings.WatchedProcessNames, killMatches);
                 if (entries.Count == 0)
                 {
                     return;
@@ -309,8 +319,14 @@ namespace NetdeskAgent.Service
                 // Imena procesa direktno u log liniju (ne samo broj) - odmah vidljivo
                 // u agent.log bez čekanja na DB/frontend, s obzirom na hitnost ovog
                 // konkretnog security scenarija (portable remote-access alat u radu).
+                // Pojedinačne "ubijen sumnjiv proces"/"neuspešan pokušaj ubijanja"
+                // linije već je ispisao ProcessWatchCollector.Scan() po instanci -
+                // ovo je samo sumarni pregled ciklusa.
                 var names = string.Join(", ", entries.Select(e => e.ProcessName));
-                FileLogger.Info("Process monitor: detektovan(i) sa watchlist-e - " + names + ".");
+                var exemptNote = settings.KillWatchedProcesses && state.ProcessKillExempt
+                    ? " (ubijanje preskočeno - ova mašina je na whitelist-i)"
+                    : "";
+                FileLogger.Info("Process monitor: detektovan(i) sa watchlist-e - " + names + "." + exemptNote);
             }
             catch (NetdeskApiException apiEx)
             {

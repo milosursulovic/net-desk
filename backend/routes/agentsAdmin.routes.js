@@ -9,6 +9,7 @@ import {
   exportComputersWithoutAgentPdfController,
   getAgentController,
   revokeAgentController,
+  setProcessKillExemptController,
 } from "../controllers/agents.controller.js";
 import {
   createJobController,
@@ -51,6 +52,7 @@ router.get("/jobs/batch/:batchId", asyncHandler(getBatchStatusController));
 router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 
 router.patch("/:id/deployment-group", asyncHandler(setDeploymentGroupController));
+router.patch("/:id/process-kill-exempt", asyncHandler(setProcessKillExemptController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));

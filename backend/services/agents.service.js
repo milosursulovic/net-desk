@@ -16,6 +16,7 @@ import {
   upsertAgentMonitoring,
   findAgentMonitoring,
   updateAgentDeploymentGroup,
+  updateAgentProcessKillExempt,
 } from "../repositories/agents.repo.js";
 import {
   findIpEntryIdByIp,
@@ -88,6 +89,10 @@ export async function heartbeat(agentId, dto, remoteIp) {
       agentId: agent.agentUid,
       status: agent.status,
       lastHeartbeatAt: agent.lastHeartbeatAt,
+      // Boolean(...) namerno - mysql2 vraća TINYINT(1) kao JS broj (0/1), a
+      // C#-ov HeartbeatAgentInfo.ProcessKillExempt je pravi bool - Json.NET
+      // baca JsonSerializationException na broj tamo gde očekuje true/false.
+      processKillExempt: Boolean(agent.processKillExempt),
     },
   };
 }
@@ -190,6 +195,18 @@ export async function getAgentService(id) {
 
 export async function setAgentDeploymentGroupService(id, deploymentGroup) {
   const affected = await updateAgentDeploymentGroup(id, deploymentGroup);
+  if (!affected) {
+    throw notFound("Agent nije pronađen");
+  }
+  return await findAgentById(id);
+}
+
+// "Whitelist" - agent i dalje detektuje/loguje procese sa watchlist-e na ovom
+// računaru (vidljivost/audit trag se ne gubi), ali ih NIKAD ne ubija čak i
+// kad je AgentSettings.KillWatchedProcesses globalno uključen (npr. IT admin
+// koristi TeamViewer za legitimnu podršku na ovoj mašini).
+export async function setAgentProcessKillExemptService(id, exempt) {
+  const affected = await updateAgentProcessKillExempt(id, exempt);
   if (!affected) {
     throw notFound("Agent nije pronađen");
   }

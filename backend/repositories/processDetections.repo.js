@@ -14,6 +14,7 @@ export async function upsertProcessDetectionsBulk(rows) {
     item.first_seen,
     item.last_seen,
     item.detection_count,
+    item.kill_count,
   ]);
 
   await pool.query(
@@ -24,13 +25,15 @@ export async function upsertProcessDetectionsBulk(rows) {
       process_name,
       first_seen,
       last_seen,
-      detection_count
+      detection_count,
+      kill_count
     )
     VALUES ?
     ON DUPLICATE KEY UPDATE
       first_seen = LEAST(first_seen, VALUES(first_seen)),
       last_seen = GREATEST(last_seen, VALUES(last_seen)),
-      detection_count = detection_count + VALUES(detection_count)
+      detection_count = detection_count + VALUES(detection_count),
+      kill_count = kill_count + VALUES(kill_count)
     `,
     [values],
   );
@@ -78,6 +81,7 @@ export async function listProcessDetections({ search, site, page, limit, sortBy,
       cpd.first_seen AS firstSeen,
       cpd.last_seen AS lastSeen,
       cpd.detection_count AS detectionCount,
+      cpd.kill_count AS killCount,
       ie.id AS ipEntryId,
       ie.ip,
       ie.computer_name AS computerName,

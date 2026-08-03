@@ -8,6 +8,7 @@ import {
   listAgentsService,
   listAgentIdsService,
   setAgentDeploymentGroupService,
+  setAgentProcessKillExemptService,
 } from "../../services/agents.service.js";
 import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
@@ -73,6 +74,38 @@ describe("agents.service (integration, real DB)", () => {
 
     await expect(
       heartbeat(999999999, {}, "10.230.62.81"),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("heartbeat response reflects processKillExempt as a real boolean (not raw TINYINT 0/1)", async () => {
+    const enrolled = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const byUid = await findAgentByUid(enrolled.agentId);
+    agentId = byUid.id;
+
+    const before = await heartbeat(agentId, {}, "10.230.62.81");
+    expect(before.agent.processKillExempt).toBe(false);
+
+    await setAgentProcessKillExemptService(agentId, true);
+
+    const after = await heartbeat(agentId, {}, "10.230.62.81");
+    expect(after.agent.processKillExempt).toBe(true);
+  });
+
+  it("setAgentProcessKillExemptService toggles the flag and rejects an unknown agent", async () => {
+    const enrolled = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const byUid = await findAgentByUid(enrolled.agentId);
+    agentId = byUid.id;
+
+    const updated = await setAgentProcessKillExemptService(agentId, true);
+    expect(Boolean(updated.processKillExempt)).toBe(true);
+
+    const reverted = await setAgentProcessKillExemptService(agentId, false);
+    expect(Boolean(reverted.processKillExempt)).toBe(false);
+
+    await expect(
+      setAgentProcessKillExemptService(999999999, true),
     ).rejects.toMatchObject({ status: 404 });
   });
 

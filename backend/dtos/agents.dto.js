@@ -21,6 +21,10 @@ export const MonitoringSchema = z.object({
   temperatureC: z.coerce.number().nullable().optional(),
 });
 
+export const ProcessKillExemptSchema = z.object({
+  processKillExempt: z.boolean(),
+});
+
 export const HeartbeatSchema = z.object({
   hostname: z.string().max(255).nullable().optional(),
   agentVersion: z.string().max(50).nullable().optional(),

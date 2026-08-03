@@ -114,4 +114,40 @@ describe("processDetections.service (integration, real DB)", () => {
     expect(out.items).toHaveLength(1);
     expect(out.items[0].processName).toBe(processName);
   });
+
+  it("ingestProcessDetections defaults killCount to 0 when the agent didn't attempt a kill", async () => {
+    const entry = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+    ipEntryId = entry.id;
+
+    const uniqueProcess = `vitest-proc-nokill-${Date.now()}`;
+
+    await ingestProcessDetections(ipEntryId, [
+      { processName: uniqueProcess, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+    ]);
+
+    const out = await listProcessDetectionsService({ search: uniqueProcess, page: 1, limit: 50 });
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0].killCount).toBe(0);
+  });
+
+  it("ingestProcessDetections aggregates killCount across cycles (killed=1 flag sums into a running total)", async () => {
+    const entry = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+    ipEntryId = entry.id;
+
+    const uniqueProcess = `vitest-proc-kill-${Date.now()}`;
+
+    // Cycle 1: detected but NOT killed (e.g. KillWatchedProcesses off, or kill failed).
+    await ingestProcessDetections(ipEntryId, [
+      { processName: uniqueProcess, firstSeen: new Date(), lastSeen: new Date(), count: 1, killed: 0 },
+    ]);
+    // Cycle 2: detected AND killed.
+    await ingestProcessDetections(ipEntryId, [
+      { processName: uniqueProcess, firstSeen: new Date(), lastSeen: new Date(), count: 1, killed: 1 },
+    ]);
+
+    const out = await listProcessDetectionsService({ search: uniqueProcess, page: 1, limit: 50 });
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0].detectionCount).toBe(2);
+    expect(out.items[0].killCount).toBe(1);
+  });
 });

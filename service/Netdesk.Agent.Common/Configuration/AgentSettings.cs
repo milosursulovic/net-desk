@@ -51,6 +51,17 @@ namespace NetdeskAgent.Common.Configuration
         };
 
         /// <summary>
+        /// Master prekidač za AKTIVNO ubijanje procesa sa WatchedProcessNames
+        /// (ne samo detekcija/log) - namerno podrazumevano FALSE. Watchlist
+        /// gore je popunjena podrazumevanim vrednostima, pa bi TRUE kao
+        /// default značio da rollout NOVE verzije agenta odmah, tiho počinje
+        /// da ubija te procese na celoj floti bez ikakvog eksplicitnog
+        /// opt-in koraka. Admin ovo svesno uključuje preko "Upiši key/value
+        /// u config.json" preset skripte, po mogućstvu prvo na pilot mašini.
+        /// </summary>
+        public bool KillWatchedProcesses { get; set; } = false;
+
+        /// <summary>
         /// Port na kom lokalni UltraVNC server (instaliran pored agenta,
         /// vezan samo na 127.0.0.1) sluša. Podrazumevani VNC port 5900 NIJE
         /// korišćen kao default ovde jer je na upravljanim mašinama već

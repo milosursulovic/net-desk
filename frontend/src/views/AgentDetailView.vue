@@ -57,6 +57,16 @@
             <option v-for="g in DEPLOYMENT_GROUPS" :key="g" :value="g">{{ g }}</option>
           </select>
         </div>
+
+        <div class="flex items-center gap-2 pt-2 border-t">
+          <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input type="checkbox" v-model="processKillExemptInput" @change="saveProcessKillExempt" class="rounded" />
+            Izuzet od ubijanja sumnjivih procesa (whitelist)
+          </label>
+        </div>
+        <p class="text-xs text-slate-500 -mt-2">
+          Watched procesi (npr. AnyDesk/TeamViewer) se i dalje detektuju i loguju na ovom računaru, ali se nikad ne ubijaju.
+        </p>
       </div>
 
       <!-- Monitoring -->
@@ -270,6 +280,7 @@ const agent = ref(null)
 const loading = ref(false)
 const loadError = ref('')
 const deploymentGroupInput = ref('rest')
+const processKillExemptInput = ref(false)
 
 const jobs = ref([])
 const jobsLoading = ref(false)
@@ -338,6 +349,9 @@ async function loadAgent() {
     }
     agent.value = await res.json()
     deploymentGroupInput.value = agent.value.deploymentGroup || 'rest'
+    // Boolean(...) namerno - backend vraća mysql2-ovu sirovu TINYINT(1)
+    // vrednost (0/1) za ovo polje, ne pravi JSON boolean.
+    processKillExemptInput.value = Boolean(agent.value.processKillExempt)
   } catch (err) {
     console.error(err)
     loadError.value = 'Neuspešno učitan agent'
@@ -359,6 +373,24 @@ async function saveDeploymentGroup() {
   } catch (err) {
     console.error(err)
     showToast('Greška pri čuvanju grupe', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function saveProcessKillExempt() {
+  const value = processKillExemptInput.value
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/process-kill-exempt`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ processKillExempt: value }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju whitelist-e'))
+    agent.value = { ...agent.value, processKillExempt: value }
+    showToast(value ? 'Računar dodat na whitelist' : 'Računar uklonjen sa whitelist-e')
+  } catch (err) {
+    console.error(err)
+    processKillExemptInput.value = !value
+    showToast('Greška pri čuvanju whitelist-e', { prefix: '❌ ', duration: 3000 })
   }
 }
 

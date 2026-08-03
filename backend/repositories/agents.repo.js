@@ -54,6 +54,7 @@ export async function findAgentById(id) {
       os_build AS osBuild,
       agent_version AS agentVersion,
       deployment_group AS deploymentGroup,
+      process_kill_exempt AS processKillExempt,
       status,
       last_ip AS lastIp,
       last_heartbeat_at AS lastHeartbeatAt,
@@ -431,6 +432,14 @@ export async function updateAgentDeploymentGroup(id, deploymentGroup) {
   const [result] = await pool.execute(
     `UPDATE agents SET deployment_group = ? WHERE id = ?`,
     [deploymentGroup, id],
+  );
+  return result.affectedRows;
+}
+
+export async function updateAgentProcessKillExempt(id, exempt) {
+  const [result] = await pool.execute(
+    `UPDATE agents SET process_kill_exempt = ? WHERE id = ?`,
+    [exempt ? 1 : 0, id],
   );
   return result.affectedRows;
 }
