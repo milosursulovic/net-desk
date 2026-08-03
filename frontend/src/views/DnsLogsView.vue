@@ -14,7 +14,7 @@
       <!-- Pretraga -->
       <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
-          placeholder="Pretraga po delu domena..."
+          placeholder="Pretraga po domenu, računaru, IP-u ili odeljenju..."
           class="app-input w-full pr-10"
           aria-label="Pretraga DNS logova" />
         <button v-if="searchInput" @click="clearSearch"

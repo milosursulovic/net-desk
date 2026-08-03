@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { buildLikeSearch } from "../utils/sqlSearch.js";
 
 // Za razliku od insertEventLogsBulk (INSERT IGNORE - event logovi su
 // append-only distinktni redovi), DNS upiti se agregiraju PO (ip_entry_id,
@@ -42,9 +43,13 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
   const whereParts = [];
   const params = [];
 
-  if (search) {
-    whereParts.push("cdq.domain LIKE ?");
-    params.push(`%${search}%`);
+  const { where: searchWhere, params: searchParams } = buildLikeSearch(
+    ["cdq.domain", "ie.computer_name", "ie.ip", "ie.department"],
+    search,
+  );
+  if (searchWhere) {
+    whereParts.push(searchWhere);
+    params.push(...searchParams);
   }
   if (site) {
     whereParts.push("ie.site = ?");
