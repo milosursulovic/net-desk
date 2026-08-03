@@ -72,11 +72,13 @@ export async function exportWithoutUltravncPdfController(req, res) {
     title: "NetDesk — Računari bez UltraVNC",
     subtitle: `Nema servis nalik UltraVNC u servis inventaru — ukupno: ${items.length}, generisano ${dateStamp}`,
     filename: `NetDesk_bez_UltraVNC_${dateStamp}.pdf`,
+    // Isti razlog kao komentar u exportActivePrintersPdfController - širine
+    // moraju stati u ~762pt korisne širine A4 landscape stranice.
     columns: [
       { header: "Računar", key: "computerName", width: 160 },
       { header: "IP", key: "ip", width: 100 },
-      { header: "Odeljenje", key: "department", width: 140 },
-      { header: "OS", key: "os", width: 200 },
+      { header: "Odeljenje", key: "department", width: 130 },
+      { header: "OS", key: "os", width: 185 },
       { header: "Status", key: "onlineLabel", width: 80 },
       { header: "Agent", key: "agentLabel", width: 100 },
     ],
@@ -204,15 +206,18 @@ export async function exportActivePrintersPdfController(req, res) {
     title: "NetDesk — Aktivni štampači po računaru",
     subtitle: `Svi sinhronizovani štampači po računaru, grupisano po proizvođaču — ukupno: ${items.length}, generisano ${dateStamp}`,
     filename: `NetDesk_Aktivni_stampaci_${dateStamp}.pdf`,
+    // A4 landscape usable width (842 - 2*40 margin) je ~762pt - ove širine
+    // moraju sabrati na manje od toga, inače krajnje kolone fizički padaju
+    // van stranice (pdfTable.js ne prelama/skalira kolone automatski).
     columns: [
-      { header: "Proizvođač", key: "manufacturer", width: 90 },
-      { header: "Računar", key: "computerName", width: 130 },
-      { header: "IP", key: "ip", width: 80 },
-      { header: "Odeljenje", key: "department", width: 100 },
-      { header: "Štampač", key: "name", width: 160 },
-      { header: "Drajver", key: "driverName", width: 140 },
-      { header: "Status", key: "status", width: 70 },
-      { header: "Podrazumevani", key: "isDefaultLabel", width: 80 },
+      { header: "Proizvođač", key: "manufacturer", width: 75 },
+      { header: "Računar", key: "computerName", width: 105 },
+      { header: "IP", key: "ip", width: 70 },
+      { header: "Odeljenje", key: "department", width: 90 },
+      { header: "Štampač", key: "name", width: 135 },
+      { header: "Drajver", key: "driverName", width: 130 },
+      { header: "Status", key: "status", width: 55 },
+      { header: "Podrazumevani", key: "isDefaultLabel", width: 85 },
     ],
     rows: items.map((item) => ({ ...item, isDefaultLabel: item.isDefault ? "Da" : "Ne" })),
     emptyText: "Nema sinhronizovanih štampača.",

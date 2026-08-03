@@ -99,25 +99,29 @@ export async function exportComputerPdsuPdfController(req, res) {
     filename: `NetDesk_PDSU_${computer.computer_name || computer.ip}_${dateStamp}.pdf`,
     sections: [
       {
+        // Širine moraju stati u ~762pt korisne širine A4 landscape stranice
+        // (pdfTable.js ne prelama/skalira kolone automatski) - ova sekcija
+        // je ranije sabirala na 820pt, pa je poslednja kolona padala van stranice.
         heading: `Programi (${software.length})`,
         columns: [
-          { header: "Program", key: "display_name", width: 220 },
-          { header: "Verzija", key: "display_version", width: 140 },
-          { header: "Izdavač", key: "publisher", width: 180 },
-          { header: "Datum instalacije", key: "install_date", width: 140 },
-          { header: "Datum inventara", key: "inventory_date", width: 140 },
+          { header: "Program", key: "display_name", width: 200 },
+          { header: "Verzija", key: "display_version", width: 110 },
+          { header: "Izdavač", key: "publisher", width: 160 },
+          { header: "Datum instalacije", key: "install_date", width: 130 },
+          { header: "Datum inventara", key: "inventory_date", width: 130 },
         ],
         rows: fmtRowDates(software, ["install_date", "inventory_date"]),
         emptyText: "Nema podataka o instaliranom softveru.",
       },
       {
+        // Isto - ranije 800pt, poslednja kolona padala van stranice.
         heading: `Drajveri (${drivers.length})`,
         columns: [
-          { header: "Uređaj", key: "device_name", width: 220 },
-          { header: "Verzija drajvera", key: "driver_version", width: 140 },
-          { header: "Datum drajvera", key: "driver_date", width: 120 },
-          { header: "Proizvođač", key: "manufacturer", width: 160 },
-          { header: "Provider", key: "driver_provider_name", width: 160 },
+          { header: "Uređaj", key: "device_name", width: 200 },
+          { header: "Verzija drajvera", key: "driver_version", width: 120 },
+          { header: "Datum drajvera", key: "driver_date", width: 110 },
+          { header: "Proizvođač", key: "manufacturer", width: 140 },
+          { header: "Provider", key: "driver_provider_name", width: 140 },
         ],
         rows: fmtRowDates(drivers, ["driver_date"]),
         emptyText: "Nema podataka o drajverima.",
