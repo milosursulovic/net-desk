@@ -9,11 +9,17 @@ export const DEPLOYMENT_GROUPS = ["test", "it", "pilot", "rest"];
 
 const DeploymentGroupValue = z.string().trim().min(1).max(150);
 
+// 100 (ne 20) - čisto sanity ceiling, ne poslovno pravilo. Organizacija ima
+// već 49 stvarnih odeljenja preko obe lokacije (deployment grupe su sad
+// usklađene sa odeljenjima, ne fiksna 4-vrednosna lista), pa je 20 bilo
+// stvarno dostižno i blokiralo je legitiman rollout na sva odeljenja.
+const MAX_DEPLOYMENT_GROUPS = 100;
+
 export const CreateReleaseSchema = z.object({
   version: z.string().min(1).max(50),
   // Release sada cilja VIŠE grupa odjednom (agent_release_groups tabela) -
   // ne jednu skalarnu vrednost kao ranije.
-  deploymentGroups: z.array(DeploymentGroupValue).min(1).max(20),
+  deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
   releaseNotes: z.string().nullable().optional(),
 });
 
@@ -32,5 +38,5 @@ export const DeploymentGroupSchema = z.object({
 // release-u (pun replace, ne append - frontend šalje stari set + nove
 // grupe da bi "proširio", ili manji set da bi suzio).
 export const UpdateReleaseGroupsSchema = z.object({
-  deploymentGroups: z.array(DeploymentGroupValue).min(1).max(20),
+  deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
 });
