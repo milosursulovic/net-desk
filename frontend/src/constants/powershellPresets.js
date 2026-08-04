@@ -346,6 +346,116 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'uninstall-program',
+    label: '⚠️ Deinstaliraj program (po nazivu)',
+    // Destruktivno i teško povratno (treba ponovna instalacija) - proveri
+    // $appName i testiraj na JEDNOM agentu pre batch slanja.
+    //
+    // Traži po DisplayName (deo imena je dovoljan) kroz oba uninstall
+    // registry čvora (64-bit i 32-bit-na-64-bit/"WOW6432Node") - HKCU se
+    // namerno ne pretražuje, agent radi kao LocalSystem u Session 0 bez
+    // učitanog korisničkog hive-a, pa po-korisnika instalirani programi
+    // (retko, ali postoje) ionako ne bi bili vidljivi/uklonjivi odavde.
+    //
+    // Prioritet metode gašenja:
+    //   1) QuietUninstallString ako ga instalater sam publikuje - najpouzdanije
+    //   2) MSI (UninstallString sadrži MsiExec.exe) - rekonstruiše se u
+    //      potpuno tih msiexec /x {GUID} /quiet /norestart poziv
+    //   3) Nepoznat EXE deinstaler bez tihe varijante - pokrene se kako jeste,
+    //      NIJE garantovano tiho (može tražiti klik) - proveri ručno posle.
+    script:
+      '# --- Izmeni ovaj red pre slanja (deo imena programa je dovoljan) ---\n' +
+      '$appName = "Ime programa"\n' +
+      '# ----------------------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '$results = New-Object System.Collections.Generic.List[string]\n' +
+      '\n' +
+      '$uninstallRoots = @(\n' +
+      '    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*",\n' +
+      '    "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"\n' +
+      ')\n' +
+      '\n' +
+      '$apps = Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |\n' +
+      '    Where-Object { $_.DisplayName -like "*$appName*" }\n' +
+      '\n' +
+      'if (-not $apps) {\n' +
+      '    "Nije pronadjen nijedan instaliran program koji sadrzi \'$appName\' u nazivu."\n' +
+      '    exit 0\n' +
+      '}\n' +
+      '\n' +
+      'foreach ($app in $apps) {\n' +
+      '    $name = $app.DisplayName\n' +
+      '    try {\n' +
+      '        if ($app.QuietUninstallString) {\n' +
+      '            cmd.exe /c $app.QuietUninstallString | Out-Null\n' +
+      '            $results.Add(("{0}: deinstaliran (tiha komanda instalera)" -f $name))\n' +
+      '        }\n' +
+      '        elseif ($app.UninstallString -match "MsiExec\\.exe") {\n' +
+      '            $guid = [regex]::Match($app.UninstallString, "\\{[0-9A-Fa-f\\-]+\\}").Value\n' +
+      '            Start-Process "msiexec.exe" -ArgumentList "/x $guid /quiet /norestart" -Wait\n' +
+      '            $results.Add(("{0}: deinstaliran (MSI, tiho)" -f $name))\n' +
+      '        }\n' +
+      '        elseif ($app.UninstallString) {\n' +
+      '            cmd.exe /c $app.UninstallString | Out-Null\n' +
+      '            $results.Add(("{0}: pokrenut deinstaler (nije garantovano tiho, proveri rucno)" -f $name))\n' +
+      '        }\n' +
+      '        else {\n' +
+      '            $results.Add(("{0}: nema UninstallString, preskoceno" -f $name))\n' +
+      '        }\n' +
+      '    }\n' +
+      '    catch {\n' +
+      '        $results.Add(("{0}: GRESKA - {1}" -f $name, $_.Exception.Message))\n' +
+      '    }\n' +
+      '}\n' +
+      '\n' +
+      'Write-Output ($results -join "`n")',
+  },
+  {
+    id: 'delete-service',
+    label: '⚠️ Obriši Windows servis (po nazivu)',
+    // Destruktivno i nepovratno (treba ponovna instalacija softvera koji ga
+    // je registrovao) - proveri $serviceName i testiraj na JEDNOM agentu
+    // pre batch slanja. Zaustavlja servis prvo ako radi (sc.exe delete na
+    // servisu koji radi ga samo markira "pending deletion" dok se ne
+    // zaustavi i svi handle-ovi zatvore, pa je čist zaustavi-pa-obriši
+    // pouzdaniji).
+    //
+    // sc.exe delete (ne Remove-Service cmdlet) namerno - Remove-Service
+    // postoji tek od PowerShell 6+, a agent cilja i starije Windows/
+    // PowerShell verzije (5.1 i niže, uključujući Windows 7).
+    script:
+      '# --- Izmeni ovaj red pre slanja ---\n' +
+      '$serviceName = "Naziv servisa"\n' +
+      '# -----------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '\n' +
+      '$svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue\n' +
+      'if (-not $svc) {\n' +
+      '    "Servis \'$serviceName\' ne postoji na ovoj masini."\n' +
+      '    exit 0\n' +
+      '}\n' +
+      '\n' +
+      'try {\n' +
+      '    if ($svc.Status -ne "Stopped") {\n' +
+      '        Stop-Service -Name $serviceName -Force -ErrorAction Stop\n' +
+      '    }\n' +
+      '\n' +
+      '    $out = sc.exe delete $serviceName\n' +
+      '    if ($LASTEXITCODE -eq 0) {\n' +
+      '        "Servis \'$serviceName\' obrisan."\n' +
+      '    } else {\n' +
+      '        Write-Output "GRESKA pri brisanju servisa \'$serviceName\': $out"\n' +
+      '        exit 1\n' +
+      '    }\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
