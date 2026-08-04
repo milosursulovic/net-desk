@@ -1,9 +1,17 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { fmtDateSr } from '@/utils/format.js'
+import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import { parseError } from '@/utils/api.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
+import { useToast } from '@/composables/useToast.js'
 
 const { isAdmin } = useCurrentUser()
+const router = useRouter()
+const site = useCurrentSite()
+const { showToast } = useToast()
 
 const props = defineProps({
   flaggedSoftware: {
@@ -49,6 +57,37 @@ const filteredDrivers = computed(() => {
     [item.deviceName, item.driverProviderName].some((v) => String(v ?? '').toLowerCase().includes(q)),
   )
 })
+
+const selectingAgentsFor = ref(null)
+
+// Jednim klikom: nadji sve agente (na trenutnom sajtu) na kojima je
+// instaliran/prisutan ovaj konkretan neželjeni program/servis/drajver
+// (isti LIKE-substring pattern match kao is_flagged kolona), pa ih
+// prosledi na stranicu Agenti kao već selektovane za batch komandu -
+// isti obrazac kao "Ponovi batch" (?repeatBatchId=), samo sa ?agentIds=.
+async function selectAgentsFor(kind, id) {
+  const key = `${kind}-${id}`
+  selectingAgentsFor.value = key
+  try {
+    const res = await fetchWithAuth(`/api/protected/flagged/${kind}/${id}/agents?site=${site.value}`)
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri traženju agenata'))
+    const data = await res.json()
+    const ids = data.agentIds || []
+    if (!ids.length) {
+      showToast('Nijedan agent na ovom sajtu trenutno nema ovo instalirano/prisutno.', {
+        prefix: 'ℹ️ ',
+        duration: 3000,
+      })
+      return
+    }
+    router.push({ path: '/agents', query: { site: site.value, agentIds: ids.join(',') } })
+  } catch (e) {
+    console.error('Neuspešna selekcija agenata za flagged stavku', e)
+    showToast('Greška pri traženju agenata', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    selectingAgentsFor.value = null
+  }
+}
 </script>
 
 <template>
@@ -90,7 +129,15 @@ const filteredDrivers = computed(() => {
               <td>{{ item.publisher || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
-              <td class="text-right">
+              <td class="text-right space-x-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  :disabled="selectingAgentsFor === `software-${item.id}`"
+                  @click="selectAgentsFor('software', item.id)"
+                >
+                  🎯 Selektuj agente
+                </button>
                 <button
                   type="button"
                   class="text-red-600 hover:underline text-sm"
@@ -151,7 +198,15 @@ const filteredDrivers = computed(() => {
               <td>{{ item.displayName || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
-              <td class="text-right">
+              <td class="text-right space-x-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  :disabled="selectingAgentsFor === `services-${item.id}`"
+                  @click="selectAgentsFor('services', item.id)"
+                >
+                  🎯 Selektuj agente
+                </button>
                 <button
                   type="button"
                   class="text-red-600 hover:underline text-sm"
@@ -212,7 +267,15 @@ const filteredDrivers = computed(() => {
               <td>{{ item.driverProviderName || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
-              <td class="text-right">
+              <td class="text-right space-x-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  :disabled="selectingAgentsFor === `drivers-${item.id}`"
+                  @click="selectAgentsFor('drivers', item.id)"
+                >
+                  🎯 Selektuj agente
+                </button>
                 <button
                   type="button"
                   class="text-red-600 hover:underline text-sm"

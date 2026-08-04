@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app.js";
 import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { createService } from "../../services/ipAddresses.service.js";
-import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
+import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
 import {
   syncComputerSoftware,
   getComputerSoftware,
@@ -12,6 +12,8 @@ import {
   syncComputerDrivers,
   getComputerDrivers,
 } from "../../services/pdsu.service.js";
+import { enrollAgent } from "../../services/agents.service.js";
+import { findAgentByUid, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { pool } from "../../db/pool.js";
 
 const app = createApp();
@@ -185,6 +187,48 @@ describe("flagged software/services routes (integration, real DB)", () => {
         const item = listRes.body.entries.find((i) => i.id === entry.id);
         expect(Number(item.flaggedDriverCount)).toBe(1);
       } finally {
+        await deleteTestIpEntry(entry.id);
+      }
+    },
+  );
+
+  it(
+    "GET /flagged/software/:id/agents returns only the active agent(s) matching the flagged pattern " +
+      "on the requested site, and none on a different site",
+    async () => {
+      const entry = await createService({ ip: testIp(), entryType: "computer", site: "bolnica" });
+      let agentId;
+      try {
+        const enrolled = await enrollAgent({ hostname: testHostname() });
+        const byUid = await findAgentByUid(enrolled.agentId);
+        agentId = byUid.id;
+        await linkAgentToIpEntry(agentId, entry.id);
+
+        await syncComputerSoftware(entry.id, [
+          { displayName: "VITEST_TEAMVIEWER 15", displayVersion: "15.0", publisher: "TeamViewer GmbH" },
+          { displayName: "VITEST_Unrelated App", displayVersion: "1.0", publisher: "Someone" },
+        ]);
+
+        const flagRes = await request(app)
+          .post("/api/protected/flagged/software")
+          .set("Authorization", `Bearer ${operatorToken()}`)
+          .send({ displayName: "VITEST_TEAMVIEWER" });
+        expect(flagRes.status).toBe(201);
+        const flaggedId = flagRes.body.id;
+
+        const sameSiteRes = await request(app)
+          .get(`/api/protected/flagged/software/${flaggedId}/agents?site=bolnica`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(sameSiteRes.status).toBe(200);
+        expect(sameSiteRes.body.agentIds).toContain(agentId);
+
+        const otherSiteRes = await request(app)
+          .get(`/api/protected/flagged/software/${flaggedId}/agents?site=dom_zdravlja`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(otherSiteRes.status).toBe(200);
+        expect(otherSiteRes.body.agentIds).not.toContain(agentId);
+      } finally {
+        await deleteTestAgent(agentId);
         await deleteTestIpEntry(entry.id);
       }
     },

@@ -54,6 +54,24 @@ export async function deleteFlaggedSoftware(id) {
   return result.affectedRows;
 }
 
+export async function findAgentIdsForFlaggedSoftware(id, site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT agents.id AS agentId
+    FROM flagged_software fs
+    JOIN computer_software cs
+      ON LOWER(cs.display_name) LIKE CONCAT('%', LOWER(fs.display_name), '%')
+     AND (fs.publisher IS NULL OR LOWER(cs.publisher) = LOWER(fs.publisher))
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    JOIN agents ON agents.ip_entry_id = ie.id AND agents.status = 'active'
+    WHERE fs.id = ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [id, site] : [id],
+  );
+  return rows.map((r) => r.agentId);
+}
+
 // =========================
 // Services
 // =========================
@@ -100,6 +118,23 @@ export async function insertFlaggedService({ name, displayName, reason, createdB
 export async function deleteFlaggedService(id) {
   const [result] = await pool.execute(`DELETE FROM flagged_services WHERE id = ?`, [id]);
   return result.affectedRows;
+}
+
+export async function findAgentIdsForFlaggedService(id, site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT agents.id AS agentId
+    FROM flagged_services fsv
+    JOIN computer_services cs
+      ON LOWER(cs.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
+    JOIN ip_entries ie ON ie.id = cs.ip_entry_id
+    JOIN agents ON agents.ip_entry_id = ie.id AND agents.status = 'active'
+    WHERE fsv.id = ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [id, site] : [id],
+  );
+  return rows.map((r) => r.agentId);
 }
 
 // =========================
@@ -153,4 +188,22 @@ export async function insertFlaggedDriver({ deviceName, driverProviderName, reas
 export async function deleteFlaggedDriver(id) {
   const [result] = await pool.execute(`DELETE FROM flagged_drivers WHERE id = ?`, [id]);
   return result.affectedRows;
+}
+
+export async function findAgentIdsForFlaggedDriver(id, site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT agents.id AS agentId
+    FROM flagged_drivers fd
+    JOIN computer_drivers cd
+      ON LOWER(cd.device_name) LIKE CONCAT('%', LOWER(fd.device_name), '%')
+     AND (fd.driver_provider_name IS NULL OR LOWER(cd.driver_provider_name) = LOWER(fd.driver_provider_name))
+    JOIN ip_entries ie ON ie.id = cd.ip_entry_id
+    JOIN agents ON agents.ip_entry_id = ie.id AND agents.status = 'active'
+    WHERE fd.id = ?
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [id, site] : [id],
+  );
+  return rows.map((r) => r.agentId);
 }

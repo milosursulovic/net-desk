@@ -789,11 +789,32 @@ async function loadRepeatBatch(batchId) {
   }
 }
 
+// Dolazak sa PDSU strane - "selektuj agente koji imaju ovaj neželjeni
+// program/servis/drajver" (PDSUFlagged.vue). Za razliku od repeatBatchId,
+// ovde su id-jevi već poznati (server ih je izračunao preko flagged
+// pattern-a), pa se samo direktno postave kao selekcija - nema dodatnog
+// fetch-a agenata, i oni se prikazuju izabrani i kad nisu na trenutnoj
+// stranici liste (isti obrazac kao selectAllMatching).
+function loadPreselectedAgentIds(raw) {
+  const ids = String(raw)
+    .split(',')
+    .map((v) => Number(v.trim()))
+    .filter((v) => Number.isInteger(v) && v > 0)
+  if (ids.length) {
+    selectedIds.value = new Set(ids)
+    showToast(`Selektovano ${ids.length} agenata - podesi komandu i pošalji batch.`)
+  }
+  const { agentIds, ...restQuery } = route.query
+  router.replace({ query: restQuery })
+}
+
 onMounted(() => {
   fetchFilterOptions()
   fetchData()
   if (route.query.repeatBatchId) {
     loadRepeatBatch(route.query.repeatBatchId)
+  } else if (route.query.agentIds) {
+    loadPreselectedAgentIds(route.query.agentIds)
   }
 })
 </script>

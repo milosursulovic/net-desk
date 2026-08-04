@@ -3,14 +3,17 @@ import {
   findFlaggedSoftwareMatch,
   insertFlaggedSoftware,
   deleteFlaggedSoftware,
+  findAgentIdsForFlaggedSoftware,
   listFlaggedServices,
   findFlaggedServiceMatch,
   insertFlaggedService,
   deleteFlaggedService,
+  findAgentIdsForFlaggedService,
   listFlaggedDrivers,
   findFlaggedDriverMatch,
   insertFlaggedDriver,
   deleteFlaggedDriver,
+  findAgentIdsForFlaggedDriver,
 } from "../repositories/flagged.repo.js";
 import { badRequest } from "../utils/httpError.js";
 
@@ -37,6 +40,10 @@ export async function removeFlaggedSoftwareService(id) {
   return { affected };
 }
 
+export async function listAgentIdsForFlaggedSoftwareService(id, site) {
+  return await findAgentIdsForFlaggedSoftware(id, site);
+}
+
 export async function listFlaggedServicesService(search) {
   return await listFlaggedServices(search);
 }
@@ -53,6 +60,10 @@ export async function addFlaggedServiceService({ name, displayName, reason }, us
 export async function removeFlaggedServiceService(id) {
   const affected = await deleteFlaggedService(id);
   return { affected };
+}
+
+export async function listAgentIdsForFlaggedServiceService(id, site) {
+  return await findAgentIdsForFlaggedService(id, site);
 }
 
 export async function listFlaggedDriversService(search) {
@@ -76,4 +87,8 @@ export async function addFlaggedDriverService({ deviceName, driverProviderName, 
 export async function removeFlaggedDriverService(id) {
   const affected = await deleteFlaggedDriver(id);
   return { affected };
+}
+
+export async function listAgentIdsForFlaggedDriverService(id, site) {
+  return await findAgentIdsForFlaggedDriver(id, site);
 }
