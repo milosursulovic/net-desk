@@ -250,6 +250,11 @@ export async function listIpEntries({
        JOIN flagged_services fsv
          ON LOWER(csv.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
        WHERE csv.ip_entry_id = ip_entries.id) AS flaggedServiceCount,
+      (SELECT COUNT(*) FROM computer_drivers cd
+       JOIN flagged_drivers fd
+         ON LOWER(cd.device_name) LIKE CONCAT('%', LOWER(fd.device_name), '%')
+        AND (fd.driver_provider_name IS NULL OR LOWER(cd.driver_provider_name) = LOWER(fd.driver_provider_name))
+       WHERE cd.ip_entry_id = ip_entries.id) AS flaggedDriverCount,
       -- Isti obrazac poklapanja kao listComputersWithoutUltravnc() u
       -- pdsuAnalytics.repo.js (uvnc_service je stvarni naziv koji registruje
       -- Deploy-NetdeskVnc.ps1, ultravnc/winvnc su dodatni obrasci za

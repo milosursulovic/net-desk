@@ -12,3 +12,9 @@ export const FlagServiceSchema = z.object({
   displayName: z.any().optional().transform(emptyToNull),
   reason: z.any().optional().transform(emptyToNull),
 });
+
+export const FlagDriverSchema = z.object({
+  deviceName: z.string().min(1),
+  driverProviderName: z.any().optional().transform(emptyToNull),
+  reason: z.any().optional().transform(emptyToNull),
+});

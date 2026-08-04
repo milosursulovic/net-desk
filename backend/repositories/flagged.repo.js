@@ -101,3 +101,56 @@ export async function deleteFlaggedService(id) {
   const [result] = await pool.execute(`DELETE FROM flagged_services WHERE id = ?`, [id]);
   return result.affectedRows;
 }
+
+// =========================
+// Drajveri
+// =========================
+
+export async function listFlaggedDrivers(search) {
+  const { where, params } = buildLikeSearch(["device_name", "driver_provider_name"], search);
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      id,
+      device_name AS deviceName,
+      driver_provider_name AS driverProviderName,
+      reason,
+      created_by_user_id AS createdByUserId,
+      created_at AS createdAt
+    FROM flagged_drivers
+    ${where ? `WHERE ${where}` : ""}
+    ORDER BY device_name
+    `,
+    params,
+  );
+  return rows;
+}
+
+export async function findFlaggedDriverMatch(deviceName, driverProviderName) {
+  const [rows] = await pool.execute(
+    `
+    SELECT id FROM flagged_drivers
+    WHERE LOWER(device_name) = LOWER(?)
+      AND (driver_provider_name IS NULL OR LOWER(driver_provider_name) = LOWER(?))
+    LIMIT 1
+    `,
+    [deviceName, driverProviderName ?? ""],
+  );
+  return rows?.[0] || null;
+}
+
+export async function insertFlaggedDriver({ deviceName, driverProviderName, reason, createdByUserId }) {
+  const [result] = await pool.execute(
+    `
+    INSERT INTO flagged_drivers (device_name, driver_provider_name, reason, created_by_user_id)
+    VALUES (?, ?, ?, ?)
+    `,
+    [deviceName, driverProviderName ?? null, reason ?? null, createdByUserId ?? null],
+  );
+  return result.insertId;
+}
+
+export async function deleteFlaggedDriver(id) {
+  const [result] = await pool.execute(`DELETE FROM flagged_drivers WHERE id = ?`, [id]);
+  return result.affectedRows;
+}

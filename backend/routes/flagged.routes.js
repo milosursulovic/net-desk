@@ -9,6 +9,9 @@ import {
   listFlaggedServicesController,
   createFlaggedServiceController,
   deleteFlaggedServiceController,
+  listFlaggedDriversController,
+  createFlaggedDriverController,
+  deleteFlaggedDriverController,
 } from "../controllers/flagged.controller.js";
 
 const router = express.Router();
@@ -22,5 +25,9 @@ router.delete("/software/:id", requireRole("admin"), asyncHandler(deleteFlaggedS
 router.get("/services", asyncHandler(listFlaggedServicesController));
 router.post("/services", asyncHandler(createFlaggedServiceController));
 router.delete("/services/:id", requireRole("admin"), asyncHandler(deleteFlaggedServiceController));
+
+router.get("/drivers", asyncHandler(listFlaggedDriversController));
+router.post("/drivers", asyncHandler(createFlaggedDriverController));
+router.delete("/drivers/:id", requireRole("admin"), asyncHandler(deleteFlaggedDriverController));
 
 export default router;

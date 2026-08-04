@@ -14,12 +14,17 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  flaggedDrivers: {
+    type: Array,
+    default: () => [],
+  },
 })
 
-const emit = defineEmits(['remove-software', 'remove-service'])
+const emit = defineEmits(['remove-software', 'remove-service', 'remove-driver'])
 
 const softwareFilter = ref('')
 const serviceFilter = ref('')
+const driverFilter = ref('')
 
 const filteredSoftware = computed(() => {
   const q = softwareFilter.value.trim().toLowerCase()
@@ -34,6 +39,14 @@ const filteredServices = computed(() => {
   if (!q) return props.flaggedServices
   return props.flaggedServices.filter((item) =>
     [item.name, item.displayName].some((v) => String(v ?? '').toLowerCase().includes(q)),
+  )
+})
+
+const filteredDrivers = computed(() => {
+  const q = driverFilter.value.trim().toLowerCase()
+  if (!q) return props.flaggedDrivers
+  return props.flaggedDrivers.filter((item) =>
+    [item.deviceName, item.driverProviderName].some((v) => String(v ?? '').toLowerCase().includes(q)),
   )
 })
 </script>
@@ -153,6 +166,67 @@ const filteredServices = computed(() => {
                 {{
                   flaggedServices.length === 0
                     ? 'Još uvek nema označenih neželjenih servisa. Pretraži servise iznad i klikni "Označi kao neželjen".'
+                    : 'Nema rezultata za dati filter.'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pdsu-card">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
+        <div>
+          <h5 class="pdsu-card-title">⚠ Neželjeni drajveri</h5>
+          <div class="text-xs text-slate-500">
+            Drajveri koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
+          </div>
+        </div>
+        <span class="pdsu-badge bg-red-600 text-white">{{ flaggedDrivers.length }}</span>
+      </div>
+
+      <div class="p-4 pb-0">
+        <input
+          v-model="driverFilter"
+          type="text"
+          class="app-input w-full"
+          placeholder="Pretraži po nazivu uređaja ili provideru..."
+        />
+      </div>
+
+      <div class="pdsu-table-wrap">
+        <table class="pdsu-table">
+          <thead>
+            <tr>
+              <th>Uređaj</th>
+              <th>Provider</th>
+              <th>Napomena</th>
+              <th>Označeno</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in filteredDrivers" :key="item.id">
+              <td class="font-semibold text-slate-900">{{ item.deviceName }}</td>
+              <td>{{ item.driverProviderName || '—' }}</td>
+              <td>{{ item.reason || '—' }}</td>
+              <td>{{ fmtDateSr(item.createdAt) }}</td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="text-red-600 hover:underline text-sm"
+                  @click="emit('remove-driver', item.id)"
+                >
+                  Ukloni
+                </button>
+              </td>
+            </tr>
+            <tr v-if="filteredDrivers.length === 0">
+              <td colspan="5" class="text-center text-slate-500 py-4">
+                {{
+                  flaggedDrivers.length === 0
+                    ? 'Još uvek nema označenih neželjenih drajvera. Pretraži drajvere iznad i klikni "Označi kao neželjen".'
                     : 'Nema rezultata za dati filter.'
                 }}
               </td>

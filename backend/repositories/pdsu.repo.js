@@ -147,16 +147,21 @@ export async function computerDriversList(ipEntryId) {
   const [rows] = await pool.query(
     `
     SELECT
-      id,
-      device_name,
-      driver_version,
-      driver_date,
-      manufacturer,
-      driver_provider_name,
-      inventory_date
-    FROM computer_drivers
-    WHERE ip_entry_id = ?
-    ORDER BY device_name
+      cd.id,
+      cd.device_name,
+      cd.driver_version,
+      cd.driver_date,
+      cd.manufacturer,
+      cd.driver_provider_name,
+      cd.inventory_date,
+      EXISTS(
+        SELECT 1 FROM flagged_drivers fd
+        WHERE LOWER(cd.device_name) LIKE CONCAT('%', LOWER(fd.device_name), '%')
+          AND (fd.driver_provider_name IS NULL OR LOWER(cd.driver_provider_name) = LOWER(fd.driver_provider_name))
+      ) AS is_flagged
+    FROM computer_drivers cd
+    WHERE cd.ip_entry_id = ?
+    ORDER BY cd.device_name
     `,
     [ipEntryId],
   );

@@ -101,17 +101,20 @@ const nonEmptySearchCategories = computed(() =>
 
 const flaggedSoftware = ref([])
 const flaggedServices = ref([])
+const flaggedDrivers = ref([])
 
 async function fetchFlagged() {
   try {
-    const [swRes, svcRes] = await Promise.all([
+    const [swRes, svcRes, drvRes] = await Promise.all([
       fetchWithAuth('/api/protected/flagged/software'),
       fetchWithAuth('/api/protected/flagged/services'),
+      fetchWithAuth('/api/protected/flagged/drivers'),
     ])
     flaggedSoftware.value = swRes.ok ? (await swRes.json()).items || [] : []
     flaggedServices.value = svcRes.ok ? (await svcRes.json()).items || [] : []
+    flaggedDrivers.value = drvRes.ok ? (await drvRes.json()).items || [] : []
   } catch (err) {
-    console.error('Greška pri učitavanju neželjenih programa/servisa:', err)
+    console.error('Greška pri učitavanju neželjenih programa/servisa/drajvera:', err)
   }
 }
 
@@ -126,6 +129,14 @@ function isSoftwareFlagged(item) {
 function isServiceFlagged(item) {
   return flaggedServices.value.some(
     (f) => f.name.toLowerCase() === String(item.name || '').toLowerCase(),
+  )
+}
+
+function isDriverFlagged(item) {
+  return flaggedDrivers.value.some(
+    (f) =>
+      f.deviceName.toLowerCase() === String(item.deviceName || '').toLowerCase() &&
+      (f.driverProviderName ?? '').toLowerCase() === String(item.driverProviderName || '').toLowerCase(),
   )
 }
 
@@ -161,6 +172,22 @@ async function flagService(item) {
   }
 }
 
+async function flagDriver(item) {
+  try {
+    const res = await fetchWithAuth('/api/protected/flagged/drivers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceName: item.deviceName, driverProviderName: item.driverProviderName }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju drajvera'))
+    await fetchFlagged()
+    showToast('Drajver označen kao neželjen')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri označavanju drajvera', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
 async function removeFlaggedSoftware(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/software/${id}`, { method: 'DELETE' })
@@ -176,6 +203,18 @@ async function removeFlaggedSoftware(id) {
 async function removeFlaggedService(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/services/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    await fetchFlagged()
+    showToast('Uklonjeno sa liste neželjenih')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function removeFlaggedDriver(id) {
+  try {
+    const res = await fetchWithAuth(`/api/protected/flagged/drivers/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
     await fetchFlagged()
     showToast('Uklonjeno sa liste neželjenih')
@@ -455,7 +494,7 @@ watch(site, loadStats)
                       <th>IP</th>
                       <th>Odeljenje</th>
                       <th v-for="col in searchColumnsMap[cat]" :key="col.key">{{ col.label }}</th>
-                      <th v-if="cat === 'software' || cat === 'services'"></th>
+                      <th v-if="cat === 'software' || cat === 'services' || cat === 'drivers'"></th>
                     </tr>
                   </thead>
 
@@ -498,6 +537,20 @@ watch(site, loadStats)
                           type="button"
                           class="text-red-600 hover:underline text-sm whitespace-nowrap"
                           @click="flagService(item)"
+                        >
+                          🚫 Označi kao neželjen
+                        </button>
+                      </td>
+
+                      <td v-else-if="cat === 'drivers'" class="text-right">
+                        <span v-if="isDriverFlagged(item)" class="pdsu-badge bg-red-600 text-white">
+                          ✓ Već označeno
+                        </span>
+                        <button
+                          v-else
+                          type="button"
+                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          @click="flagDriver(item)"
                         >
                           🚫 Označi kao neželjen
                         </button>
@@ -639,8 +692,10 @@ watch(site, loadStats)
               key="flagged"
               :flagged-software="flaggedSoftware"
               :flagged-services="flaggedServices"
+              :flagged-drivers="flaggedDrivers"
               @remove-software="removeFlaggedSoftware"
               @remove-service="removeFlaggedService"
+              @remove-driver="removeFlaggedDriver"
             />
           </Transition>
         </section>

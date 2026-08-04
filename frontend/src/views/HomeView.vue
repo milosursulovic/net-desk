@@ -195,14 +195,14 @@
           </div>
         </div>
 
-        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.hasUltravnc" class="mt-2 flex flex-wrap gap-2">
+        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc" class="mt-2 flex flex-wrap gap-2">
           <router-link
-            v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount"
+            v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
             :to="`/ip/${entry.id}/pdsu`"
             class="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 hover:bg-red-100"
-            :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa`"
+            :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa, ${entry.flaggedDriverCount || 0} drajvera`"
           >
-            ⚠ Neželjeni programi/servisi
+            ⚠ Neželjeni programi/servisi/drajveri
           </router-link>
 
           <span

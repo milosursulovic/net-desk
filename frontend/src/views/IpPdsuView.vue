@@ -201,8 +201,21 @@
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="item in filteredDrivers" :key="item.id" class="rounded-lg border bg-white p-3">
-              <div class="font-medium text-slate-800">{{ item.device_name || 'Nepoznat uređaj' }}</div>
+            <div
+              v-for="item in filteredDrivers"
+              :key="item.id"
+              class="rounded-lg border bg-white p-3"
+              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+            >
+              <div class="flex items-center gap-2">
+                <div class="font-medium text-slate-800">{{ item.device_name || 'Nepoznat uređaj' }}</div>
+                <span
+                  v-if="item.is_flagged"
+                  class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                >
+                  ⚠ Neželjen
+                </span>
+              </div>
 
               <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.driver_version || '—' }}</div>
 

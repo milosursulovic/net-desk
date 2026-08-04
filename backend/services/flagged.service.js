@@ -7,6 +7,10 @@ import {
   findFlaggedServiceMatch,
   insertFlaggedService,
   deleteFlaggedService,
+  listFlaggedDrivers,
+  findFlaggedDriverMatch,
+  insertFlaggedDriver,
+  deleteFlaggedDriver,
 } from "../repositories/flagged.repo.js";
 import { badRequest } from "../utils/httpError.js";
 
@@ -48,5 +52,28 @@ export async function addFlaggedServiceService({ name, displayName, reason }, us
 
 export async function removeFlaggedServiceService(id) {
   const affected = await deleteFlaggedService(id);
+  return { affected };
+}
+
+export async function listFlaggedDriversService(search) {
+  return await listFlaggedDrivers(search);
+}
+
+export async function addFlaggedDriverService({ deviceName, driverProviderName, reason }, userId) {
+  const existing = await findFlaggedDriverMatch(deviceName, driverProviderName);
+  if (existing) {
+    throw badRequest("Ovaj drajver je već označen kao neželjen");
+  }
+  const id = await insertFlaggedDriver({
+    deviceName,
+    driverProviderName,
+    reason,
+    createdByUserId: userId,
+  });
+  return { id, deviceName, driverProviderName, reason };
+}
+
+export async function removeFlaggedDriverService(id) {
+  const affected = await deleteFlaggedDriver(id);
   return { affected };
 }
