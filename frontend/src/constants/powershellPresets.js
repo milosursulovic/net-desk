@@ -235,6 +235,47 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'update-agent-config-keys',
+    label: 'Upiši više key/value parova u config.json',
+    // Isto kao update-agent-config-key iznad, samo za VIŠE ključeva
+    // odjednom - $updates hashtable na vrhu je ono što se menja pre slanja
+    // (dodaj/ukloni parove po potrebi), ostatak skripte se ne dira.
+    //
+    // VAŽNO - tip vrednosti u hashtable-u isto određuje JSON tip kao u
+    // pojedinačnom preset-u iznad:
+    //   300        -> upisuje se kao BROJ u JSON
+    //   "300"      -> upisuje se kao STRING u JSON
+    //   $true      -> upisuje se kao BOOLEAN u JSON
+    // Poklopi svaku vrednost sa stvarnim tipom tog polja u AgentSettings.cs.
+    //
+    // Add-Member -Force po ključu (ista logika kao pojedinačni preset,
+    // ponovljena za svaki par u petlji) - radi i ako ključ već postoji
+    // (prepiše ga) i ako ne postoji (doda ga bez greške).
+    script:
+      '# --- Izmeni hashtable ispod pre slanja (dodaj/ukloni koliko treba parova) ---\n' +
+      '$updates = @{\n' +
+      '  DnsLogIntervalSeconds    = 300\n' +
+      '  InventoryIntervalSeconds = 3600\n' +
+      '}\n' +
+      '# -------------------------------------------------------------------------\n' +
+      '\n' +
+      '$configPath = "$env:ProgramData\\NetdeskAgent\\config.json"\n' +
+      'if (-not (Test-Path $configPath)) {\n' +
+      '  "config.json nije pronadjen na $configPath"\n' +
+      '} else {\n' +
+      '  $raw = [System.IO.File]::ReadAllText($configPath, [System.Text.Encoding]::UTF8)\n' +
+      '  $config = $raw | ConvertFrom-Json\n' +
+      '  foreach ($pair in $updates.GetEnumerator()) {\n' +
+      '    $config | Add-Member -NotePropertyName $pair.Key -NotePropertyValue $pair.Value -Force\n' +
+      '  }\n' +
+      '  $json = $config | ConvertTo-Json -Depth 5\n' +
+      '  [System.IO.File]::WriteAllText($configPath, $json, (New-Object System.Text.UTF8Encoding($false)))\n' +
+      '\n' +
+      '  $summary = ($updates.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ", "\n' +
+      '  "config.json azuriran ($summary). Restart servisa nije izvrsen - uradi ga posebno."\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
