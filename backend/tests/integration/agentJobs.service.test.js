@@ -264,6 +264,41 @@ describe("agentJobs.service (integration, real DB)", () => {
       }
     });
 
+    it("getBatchStatusService reports each item's agent connectivityStatus, so a pending item shows whether that agent is online", async () => {
+      const otherAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-batch-connectivity",
+        hostname: testHostname("_batch_connectivity"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+
+      try {
+        // agentId se javlja online preko heartbeat-a, otherAgentId nikad
+        // nije - status oba ostaje "pending" (nijedan još nije poll-ovao),
+        // ali connectivityStatus treba da ih razlikuje.
+        await heartbeat(agentId, {}, "10.230.62.81");
+
+        const out = await createBatchJobService(
+          [agentId, otherAgentId],
+          { commandType: "delete_temp_files", payload: null },
+          null,
+        );
+        batchIds.push(out.batchId);
+
+        const status = await getBatchStatusService(out.batchId);
+        const onlineItem = status.items.find((i) => i.agentId === agentId);
+        const unknownItem = status.items.find((i) => i.agentId === otherAgentId);
+        expect(onlineItem.status).toBe("pending");
+        expect(onlineItem.connectivityStatus).toBe("online");
+        expect(unknownItem.connectivityStatus).toBe("unknown");
+      } finally {
+        await deleteTestAgent(otherAgentId);
+      }
+    });
+
     it("getBatchStatusService throws 404 for an unknown batchId", async () => {
       await expect(
         getBatchStatusService("00000000-0000-0000-0000-000000000000"),

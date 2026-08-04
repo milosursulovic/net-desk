@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { isTokenExpired, decodeJwt } from '@/utils/auth.js'
 import { resetCurrentUser } from '@/composables/useCurrentUser.js'
 import { isValidSite } from '@/constants/sites.js'
+import { getRememberedSite, rememberSite } from '@/utils/siteStorage.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
@@ -306,18 +307,23 @@ router.beforeEach((to, from, next) => {
     }
 
     // Lokacija (Bolnica/Dom zdravlja) se nosi kao URL query param na svakoj
-    // strani (korisnikova eksplicitna odluka - ne localStorage, mora se
-    // videti/deliti u linku). Ovo je isti "guard-injektuje-state" pristup
-    // kao auth provera iznad, samo jedno mesto za izmenu umesto diranja
-    // desetina postojećih router-link/router.push poziva.
+    // strani (korisnikova eksplicitna odluka, linkovi ostaju deljivi/tačni) -
+    // ovo je isti "guard-injektuje-state" pristup kao auth provera iznad,
+    // samo jedno mesto za izmenu umesto diranja desetina postojećih
+    // router-link/router.push poziva. localStorage (preko siteStorage.js) je
+    // fallback ISPOD from.query.site - rešava svež tab/bookmark bez ?site=
+    // koji je ranije uvek bacao na /select-site čak i kad je korisnik uvek
+    // na istoj lokaciji.
     if (to.meta.requiresSite !== false) {
       if (!isValidSite(to.query.site)) {
-        if (isValidSite(from.query.site)) {
-          return next({ ...to, query: { ...to.query, site: from.query.site } })
+        const fallbackSite = isValidSite(from.query.site) ? from.query.site : getRememberedSite()
+        if (isValidSite(fallbackSite)) {
+          return next({ ...to, query: { ...to.query, site: fallbackSite } })
         }
         const returnTo = encodeURIComponent(to.fullPath || '/')
         return next(`/select-site?returnTo=${returnTo}`)
       }
+      rememberSite(to.query.site)
     }
   }
 

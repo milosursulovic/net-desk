@@ -43,9 +43,17 @@
             <RouterLink :to="`/agents/${item.agentId}`" class="font-medium text-blue-600 hover:underline">
               {{ item.hostname || item.agentUid }}
             </RouterLink>
-            <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(item.status)">
-              {{ item.status }}
-            </span>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span v-if="item.status === 'pending'"
+                class="rounded-full border px-2 py-0.5 text-xs"
+                :class="connectivityBadgeClass(item.connectivityStatus)"
+                title="Da li je agent online dok komanda čeka">
+                {{ connectivityLabel(item.connectivityStatus) }}
+              </span>
+              <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(item.status)">
+                {{ item.status }}
+              </span>
+            </div>
           </div>
           <div class="text-xs text-slate-500 mt-1">
             <span v-if="item.sentAt">Poslato: {{ fmtDate(item.sentAt) }}</span>
@@ -102,6 +110,21 @@ function jobStatusClass(status) {
   if (status === 'failed') return 'bg-red-50 text-red-700 border-red-200'
   if (status === 'sent') return 'bg-blue-50 text-blue-700 border-blue-200'
   return 'bg-slate-50 text-slate-600 border-slate-200'
+}
+
+// Isto mapiranje/boje kao connectivityLabel/connectivityBadgeClass na
+// AgentDetailView.vue, samo po stavci (ovde ima više agenata na jednoj
+// strani) - da se na "na čekanju" komandama vidi da li agent uopšte
+// odgovara, ne samo da čeka na sledeći poll ciklus.
+function connectivityLabel(status) {
+  const map = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
+  return map[status] || 'Nepoznato'
+}
+function connectivityBadgeClass(status) {
+  if (status === 'online') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (status === 'stale') return 'bg-amber-50 text-amber-700 border-amber-200'
+  if (status === 'offline') return 'bg-red-50 text-red-700 border-red-200'
+  return 'bg-slate-100 text-slate-500 border-slate-200'
 }
 
 async function loadStatus() {

@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { CONNECTIVITY_STATUS_SQL } from "./agents.repo.js";
 
 // mysql2 auto-parsira `payload` u objekat SAMO ako je kolona pravi MariaDB
 // JSON tip (CHECK (json_valid(...))) - na okruženjima gde je kolona obična
@@ -117,16 +118,25 @@ export async function listJobsForBatch(batchId) {
       j.created_at AS createdAt,
       j.sent_at AS sentAt,
       j.completed_at AS completedAt,
-      a.hostname,
-      a.agent_uid AS agentUid
+      agents.hostname,
+      agents.agent_uid AS agentUid,
+      (${CONNECTIVITY_STATUS_SQL}) AS connectivityStatus
     FROM agent_jobs j
-    JOIN agents a ON a.id = j.agent_id
+    JOIN agents ON agents.id = j.agent_id
     WHERE j.batch_id = ?
-    ORDER BY a.hostname ASC
+    ORDER BY agents.hostname ASC
     `,
     [batchId],
   );
-  return rows.map((r) => ({ ...mapRow(r), hostname: r.hostname, agentUid: r.agentUid }));
+  return rows.map((r) => ({
+    ...mapRow(r),
+    hostname: r.hostname,
+    agentUid: r.agentUid,
+    // Da se na "na čekanju" stavkama vidi da li je agent uopšte online -
+    // pending komanda može čekati zauvek ako je agent offline, ne samo dok
+    // dođe na red na sledećem poll ciklusu.
+    connectivityStatus: r.connectivityStatus,
+  }));
 }
 
 export async function listJobBatches({ limit, offset }) {
