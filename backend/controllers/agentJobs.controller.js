@@ -13,6 +13,7 @@ import {
   submitJobResultService,
   getBatchStatusService,
   listJobBatchesService,
+  cancelBatchService,
 } from "../services/agentJobs.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
@@ -46,6 +47,14 @@ export async function getBatchStatusController(req, res) {
   if (!batchId) throw badRequest("Neispravan ID batch-a");
 
   const out = await getBatchStatusService(batchId);
+  res.json(out);
+}
+
+export async function cancelBatchController(req, res) {
+  const batchId = String(req.params.batchId || "").trim();
+  if (!batchId) throw badRequest("Neispravan ID batch-a");
+
+  const out = await cancelBatchService(batchId);
   res.json(out);
 }
 

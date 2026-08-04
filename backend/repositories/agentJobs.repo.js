@@ -153,7 +153,8 @@ export async function listJobBatches({ limit, offset }) {
       SUM(j.status = 'pending') AS pendingCount,
       SUM(j.status = 'sent') AS sentCount,
       SUM(j.status = 'completed') AS completedCount,
-      SUM(j.status = 'failed') AS failedCount
+      SUM(j.status = 'failed') AS failedCount,
+      SUM(j.status = 'cancelled') AS cancelledCount
     FROM job_batches jb
     LEFT JOIN agent_jobs j ON j.batch_id = jb.id
     GROUP BY jb.id
@@ -174,6 +175,7 @@ export async function listJobBatches({ limit, offset }) {
       sentCount: Number(r.sentCount) || 0,
       completedCount: Number(r.completedCount) || 0,
       failedCount: Number(r.failedCount) || 0,
+      cancelledCount: Number(r.cancelledCount) || 0,
     })),
     total: Number(total) || 0,
   };
@@ -198,6 +200,21 @@ export async function findPendingJobsForAgent(agentId) {
     [agentId],
   );
   return rows.map(mapRow);
+}
+
+// Otkazuje samo komande koje agent JOŠ NIJE pokupio (status='pending') -
+// već poslate ('sent') komande se ne mogu prekinuti (agent nema kanal za
+// prekid u toku izvršavanja, samo poll za nove poslove), pa ostaju kako jesu.
+export async function cancelPendingJobsInBatch(batchId) {
+  const [result] = await pool.execute(
+    `
+    UPDATE agent_jobs
+    SET status = 'cancelled', completed_at = NOW(), error_output = 'Otkazano od strane korisnika'
+    WHERE batch_id = ? AND status = 'pending'
+    `,
+    [batchId],
+  );
+  return result.affectedRows;
 }
 
 export async function markJobsSent(ids) {
@@ -268,7 +285,7 @@ export async function listJobsForAgent({ agentId, status, limit, offset }) {
   const whereParts = ["agent_id = ?"];
   const params = [agentId];
 
-  if (status === "pending" || status === "sent" || status === "completed" || status === "failed") {
+  if (["pending", "sent", "completed", "failed", "cancelled"].includes(status)) {
     whereParts.push("status = ?");
     params.push(status);
   }

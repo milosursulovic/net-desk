@@ -11,6 +11,9 @@
         </p>
       </div>
       <div class="flex gap-2 shrink-0">
+        <AppButton v-if="counts.pending" variant="danger" :disabled="cancelling" @click="cancelBatch">
+          {{ cancelling ? 'Otkazujem…' : `✖️ Otkaži (${counts.pending})` }}
+        </AppButton>
         <AppButton v-if="items.length" variant="secondary" @click="repeatWithNewCommand">
           🔁 Ponovi sa novom komandom
         </AppButton>
@@ -34,6 +37,9 @@
         </span>
         <span class="rounded-full border px-2 py-0.5 text-xs bg-red-50 text-red-700 border-red-200">
           Neuspešno: {{ counts.failed }}
+        </span>
+        <span v-if="counts.cancelled" class="rounded-full border px-2 py-0.5 text-xs bg-slate-100 text-slate-500 border-slate-200">
+          Otkazano: {{ counts.cancelled }}
         </span>
       </div>
 
@@ -65,6 +71,16 @@
         </div>
       </div>
     </div>
+
+    <ToastNotification :message="toast" />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>
 
@@ -76,11 +92,17 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { COMMAND_LABELS } from '@/constants/agentCommands.js'
+import { useToast } from '@/composables/useToast.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import AppButton from '@/components/AppButton.vue'
+import ToastNotification from '@/components/ToastNotification.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const route = useRoute()
 const router = useRouter()
+const { toast, showToast } = useToast()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 // Vodi na Agenti stranicu, koja učitava ciljane agente ovog batch-a preko
 // repeatBatchId query param-a i predpuni formu (ali ostaje izmenljivo -
@@ -94,11 +116,12 @@ const items = ref([])
 const loading = ref(false)
 const error = ref('')
 const polling = ref(false)
+const cancelling = ref(false)
 
 let pollTimer = null
 
 const counts = computed(() => {
-  const out = { pending: 0, sent: 0, completed: 0, failed: 0 }
+  const out = { pending: 0, sent: 0, completed: 0, failed: 0, cancelled: 0 }
   for (const item of items.value) {
     if (out[item.status] !== undefined) out[item.status]++
   }
@@ -109,7 +132,34 @@ function jobStatusClass(status) {
   if (status === 'completed') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (status === 'failed') return 'bg-red-50 text-red-700 border-red-200'
   if (status === 'sent') return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (status === 'cancelled') return 'bg-slate-100 text-slate-500 border-slate-200'
   return 'bg-slate-50 text-slate-600 border-slate-200'
+}
+
+// Otkazuje samo stavke koje su još "na čekanju" - već poslate komande se ne
+// mogu prekinuti (agent nema kanal za prekid usred izvršavanja).
+async function cancelBatch() {
+  const ok = await askConfirm(
+    `Otkazati ${counts.value.pending} komandi na čekanju? Već poslate komande (${counts.value.sent}) se ne mogu prekinuti i nastaviće da se izvršavaju.`,
+    { title: 'Otkazivanje batch komande' },
+  )
+  if (!ok) return
+
+  cancelling.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/jobs/batch/${route.params.batchId}/cancel`, {
+      method: 'POST',
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otkazivanju batch-a'))
+    const data = await res.json()
+    showToast(data.cancelled ? `Otkazano ${data.cancelled} komandi` : 'Nema više komandi na čekanju')
+    await loadStatus()
+  } catch (err) {
+    console.error('Greška pri otkazivanju batch-a:', err)
+    showToast(err?.message || 'Greška pri otkazivanju batch-a', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    cancelling.value = false
+  }
 }
 
 // Isto mapiranje/boje kao connectivityLabel/connectivityBadgeClass na

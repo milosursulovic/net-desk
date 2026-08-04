@@ -61,6 +61,9 @@
           <span v-if="b.failedCount" class="rounded-full border px-2 py-0.5 text-xs bg-red-50 text-red-700 border-red-200">
             Neuspešno: {{ b.failedCount }}
           </span>
+          <span v-if="b.cancelledCount" class="rounded-full border px-2 py-0.5 text-xs bg-slate-100 text-slate-500 border-slate-200">
+            Otkazano: {{ b.cancelledCount }}
+          </span>
         </div>
       </RouterLink>
     </div>

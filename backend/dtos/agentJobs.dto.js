@@ -77,7 +77,7 @@ export const JobListQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(200).default(50),
   status: z
-    .enum(["all", "pending", "sent", "completed", "failed"])
+    .enum(["all", "pending", "sent", "completed", "failed", "cancelled"])
     .optional()
     .default("all"),
 });

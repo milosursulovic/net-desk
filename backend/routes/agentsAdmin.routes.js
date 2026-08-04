@@ -19,6 +19,7 @@ import {
   clearJobsController,
   getBatchStatusController,
   listJobBatchesController,
+  cancelBatchController,
 } from "../controllers/agentJobs.controller.js";
 import {
   setDeploymentGroupController,
@@ -50,6 +51,7 @@ router.delete("/:id/jobs", requireRole("admin"), asyncHandler(clearJobsControlle
 // segment), registration order doesn't matter.
 router.post("/jobs/batch", asyncHandler(createBatchJobController));
 router.get("/jobs/batch/:batchId", asyncHandler(getBatchStatusController));
+router.post("/jobs/batch/:batchId/cancel", asyncHandler(cancelBatchController));
 router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 
 router.patch("/:id/deployment-group", asyncHandler(setDeploymentGroupController));

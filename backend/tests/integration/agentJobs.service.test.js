@@ -7,6 +7,7 @@ import {
   submitJobResultService,
   getBatchStatusService,
   listJobBatchesService,
+  cancelBatchService,
 } from "../../services/agentJobs.service.js";
 import { pool } from "../../db/pool.js";
 import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
@@ -297,6 +298,53 @@ describe("agentJobs.service (integration, real DB)", () => {
       } finally {
         await deleteTestAgent(otherAgentId);
       }
+    });
+
+    it("cancelBatchService cancels only still-pending items, leaves already-sent ones untouched", async () => {
+      const otherAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-batch-cancel",
+        hostname: testHostname("_batch_cancel"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
+
+      try {
+        const out = await createBatchJobService(
+          [agentId, otherAgentId],
+          { commandType: "delete_temp_files", payload: null },
+          null,
+        );
+        batchIds.push(out.batchId);
+
+        // agentId poll-uje i pokupi svoj posao (postaje "sent", ne sme da se
+        // otkaže) - otherAgentId nikad ne poll-uje (ostaje "pending").
+        await pollJobsService(agentId);
+
+        const result = await cancelBatchService(out.batchId);
+        expect(result.cancelled).toBe(1);
+
+        const status = await getBatchStatusService(out.batchId);
+        const sentItem = status.items.find((i) => i.agentId === agentId);
+        const cancelledItem = status.items.find((i) => i.agentId === otherAgentId);
+        expect(sentItem.status).toBe("sent");
+        expect(cancelledItem.status).toBe("cancelled");
+        expect(cancelledItem.errorOutput).toBe("Otkazano od strane korisnika");
+
+        // Ponovno otkazivanje ne nalazi ništa novo za otkazivanje.
+        const again = await cancelBatchService(out.batchId);
+        expect(again.cancelled).toBe(0);
+      } finally {
+        await deleteTestAgent(otherAgentId);
+      }
+    });
+
+    it("cancelBatchService throws 404 for an unknown batchId", async () => {
+      await expect(
+        cancelBatchService("00000000-0000-0000-0000-000000000000"),
+      ).rejects.toMatchObject({ status: 404 });
     });
 
     it("getBatchStatusService throws 404 for an unknown batchId", async () => {
