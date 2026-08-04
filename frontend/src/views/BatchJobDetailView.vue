@@ -10,7 +10,12 @@
           <span v-if="polling" class="text-blue-600">· automatski se osvežava…</span>
         </p>
       </div>
-      <AppButton variant="neutral" to="/agent-batches">Nazad na istoriju</AppButton>
+      <div class="flex gap-2 shrink-0">
+        <AppButton v-if="items.length" variant="secondary" @click="repeatWithNewCommand">
+          🔁 Ponovi sa novom komandom
+        </AppButton>
+        <AppButton variant="neutral" to="/agent-batches">Nazad na istoriju</AppButton>
+      </div>
     </div>
 
     <div v-if="loading" class="text-slate-600">Učitavanje…</div>
@@ -57,7 +62,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
@@ -67,6 +72,14 @@ import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const route = useRoute()
+const router = useRouter()
+
+// Vodi na Agenti stranicu, koja učitava ciljane agente ovog batch-a preko
+// repeatBatchId query param-a i predpuni formu (ali ostaje izmenljivo -
+// ovo NIJE "pošalji isti batch ponovo").
+function repeatWithNewCommand() {
+  router.push({ path: '/agents', query: { site: route.query.site, repeatBatchId: route.params.batchId } })
+}
 
 const batch = ref(null)
 const items = ref([])

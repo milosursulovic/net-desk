@@ -338,7 +338,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -356,6 +356,7 @@ import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
+const route = useRoute()
 const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
@@ -729,8 +730,42 @@ onBeforeUnmount(() => {
   clearTimeout(searchT)
 })
 
+// "Ponovi sa novom komandom" sa BatchJobDetailView.vue - preuzima ciljane
+// agente iz TOG batch-a (svež upit, ne stara snimljena lista) i predpuni
+// formu njegovom komandom kao polaznu tačku, ali ostaje potpuno izmenljivo
+// pre slanja (ovo NIJE "pošalji isti batch ponovo" - selekcija agenata je
+// ista, komanda ne mora biti). Query param se čisti posle čitanja da
+// osvežavanje strane ne ponavlja selekciju iznova.
+async function loadRepeatBatch(batchId) {
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/jobs/batch/${batchId}`)
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju batch-a za ponavljanje'))
+    const data = await res.json()
+
+    selectedIds.value = new Set((data.items || []).map((i) => i.agentId))
+    if (data.batch?.commandType) {
+      batchForm.value.commandType = data.batch.commandType
+    }
+    const firstPayload = data.items?.[0]?.payload
+    if (firstPayload) {
+      batchForm.value.serviceName = firstPayload.serviceName || ''
+      batchForm.value.script = firstPayload.script || ''
+    }
+    showToast(`Selektovano ${selectedIds.value.size} agenata iz prethodnog batch-a - izmeni komandu po potrebi pre slanja.`)
+  } catch (e) {
+    console.error('Neuspešno učitavanje batch-a za ponavljanje', e)
+    showToast('Greška pri učitavanju agenata iz batch-a', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    const { repeatBatchId, ...restQuery } = route.query
+    router.replace({ query: restQuery })
+  }
+}
+
 onMounted(() => {
   fetchFilterOptions()
   fetchData()
+  if (route.query.repeatBatchId) {
+    loadRepeatBatch(route.query.repeatBatchId)
+  }
 })
 </script>
