@@ -15,7 +15,10 @@ import {
   listIpEntriesCreatedSince,
   countIpEntriesCreatedSince,
 } from "../repositories/ipEntries.repo.js";
-import { countOfflineEntries } from "../repositories/notifications.repo.js";
+import {
+  countOfflineEntries,
+  listBlacklistedDomainHits,
+} from "../repositories/notifications.repo.js";
 import {
   listPrintersCreatedSince,
   countPrintersCreatedSince,
@@ -50,6 +53,13 @@ import {
 // richer window than a threshold projection's slope does, and there's no
 // downside to keeping more history around now while data is still sparse.
 const TREND_WINDOW_DAYS = 90;
+
+// Isti prozor kao countBlacklistedDomainHits(24, site) u notifications.
+// service.js - izveštaj prikazuje ISTIH 24h koje već pokreću upozorenje,
+// samo sa detaljima (koji računar/domen), ne fiksno vezano za periodStart
+// (koji može biti duži/kraći od 24h u zavisnosti kad je prošli izveštaj
+// generisan).
+const BLACKLISTED_DOMAIN_WINDOW_HOURS = 24;
 
 // Postojeći redovi u daily_reports pre uvođenja lokacija su svi stvarno iz
 // bolnice (potvrđeno uživo pri planiranju multi-site feature-a) - isti
@@ -94,6 +104,7 @@ export async function generateDailyReport(
     failedUpdatesCount,
     statusTransitions,
     alerts,
+    blacklistedDomainHits,
   ] = await Promise.all([
     countAgentsByConnectivity(site),
     countIpEntriesTotal(site),
@@ -110,6 +121,7 @@ export async function generateDailyReport(
     countFailedUpdatesSince(periodStart, site),
     countStatusTransitionsSince(periodStart, site),
     listNotifications(site),
+    listBlacklistedDomainHits(BLACKLISTED_DOMAIN_WINDOW_HOURS, site),
   ]);
 
   if (!skipSnapshot) {
@@ -166,6 +178,7 @@ export async function generateDailyReport(
       diskFillProjections,
       anomalies,
     },
+    blacklistedDomainHits,
     sinceLastReport: {
       newAgents,
       newAgentsCount,
@@ -235,6 +248,9 @@ function buildPushSummary(content) {
   }
   if (content.trends.anomalies.length) {
     parts.push(`${content.trends.anomalies.length} anomalija u ponašanju agenata`);
+  }
+  if (content.blacklistedDomainHits.length) {
+    parts.push(`${content.blacklistedDomainHits.length} poseta domenima sa crne liste`);
   }
   if (!parts.length) {
     return "Sve mirno od poslednjeg izveštaja.";

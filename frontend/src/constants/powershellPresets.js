@@ -178,6 +178,21 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'read-agent-config',
+    label: 'Pročitaj sadržaj config.json',
+    // Isti razlog kao agent.log presetima iznad - File.ReadAllText sa
+    // eksplicitnim UTF8 (bez BOM-a), ne Get-Content, da se ne oslanja na
+    // auto-detekciju encoding-a (update-agent-config-key preset ispod piše
+    // config.json na isti način).
+    script:
+      '$configPath = "$env:ProgramData\\NetdeskAgent\\config.json"\n' +
+      'if (Test-Path $configPath) {\n' +
+      '  [System.IO.File]::ReadAllText($configPath, [System.Text.Encoding]::UTF8)\n' +
+      '} else {\n' +
+      '  "config.json nije pronadjen na $configPath"\n' +
+      '}',
+  },
+  {
     id: 'update-agent-config-key',
     label: 'Upiši key/value u config.json',
     // Generička skripta, NE hardkodovana na jedan konkretan ključ - $key/

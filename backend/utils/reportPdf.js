@@ -99,6 +99,17 @@ export function sendReportPdf(res, report) {
     });
   }
 
+  const blacklistedDomainHits = content.blacklistedDomainHits || [];
+  if (blacklistedDomainHits.length) {
+    heading(doc, `Posete domenima sa crne liste - 24h (${blacklistedDomainHits.length})`);
+    bulletOrEmpty(doc, blacklistedDomainHits, "", (d) => {
+      return (
+        `${d.computerName || d.ip || "—"}${d.department ? ` (${d.department})` : ""} — ` +
+        `${d.domain} (poslednji put ${fmtDate(d.lastSeen)}, ${d.queryCount}× upit)`
+      );
+    });
+  }
+
   heading(doc, `Novi agenti (${since.newAgentsCount ?? 0})`);
   bulletOrEmpty(
     doc,

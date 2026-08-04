@@ -106,6 +106,25 @@
         </ul>
       </div>
 
+      <!-- Posete crnolistiranim domenima -->
+      <div
+        v-if="blacklistedDomainHits.length"
+        class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm"
+      >
+        <h2 class="font-semibold text-red-900 mb-1">🚫 Posete domenima sa crne liste (24h)</h2>
+        <p class="text-sm text-red-800 mb-3">
+          Računari koji su u poslednjih 24h upitivali domen sa crne liste (uključujući poddomene).
+        </p>
+        <ul class="space-y-1 text-sm">
+          <li v-for="(d, idx) in blacklistedDomainHits" :key="idx">
+            <span class="font-medium">{{ d.computerName || d.ip || '—' }}</span>
+            <span v-if="d.department" class="text-slate-500"> ({{ d.department }})</span>
+            — <code class="font-mono">{{ d.domain }}</code>
+            <span class="text-slate-400"> (poslednji put {{ fmtDate(d.lastSeen) }}, {{ d.queryCount }}× upit)</span>
+          </li>
+        </ul>
+      </div>
+
       <!-- Alerts -->
       <div v-if="report.content.alerts.length" class="rounded-xl border bg-white p-4 shadow-sm">
         <h2 class="font-semibold text-slate-800 mb-3">Aktivna upozorenja</h2>
@@ -273,6 +292,9 @@ const trendGroups = computed(() => [
   },
 ].filter((g) => g.items.length))
 const anomalies = computed(() => report.value?.content?.trends?.anomalies || [])
+// Optional chaining namerno - stariji izveštaji (pre nego što je ovo dodato)
+// nemaju content.blacklistedDomainHits u sačuvanom JSON-u.
+const blacklistedDomainHits = computed(() => report.value?.content?.blacklistedDomainHits || [])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)

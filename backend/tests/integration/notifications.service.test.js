@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
 import { ingestDnsQueries, addFlaggedDomainService } from "../../services/dnsLogs.service.js";
 import { listNotifications } from "../../services/notifications.service.js";
-import { countBlacklistedDomainHits } from "../../repositories/notifications.repo.js";
+import { countBlacklistedDomainHits, listBlacklistedDomainHits } from "../../repositories/notifications.repo.js";
 import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
 
@@ -66,5 +66,30 @@ describe("notifications (integration, real DB) - blacklisted domain check", () =
     const found = out.notifications.find((n) => n.id === "blacklisted-domain");
     expect(found).toBeTruthy();
     expect(found.level).toBe("critical");
+  });
+
+  it("listBlacklistedDomainHits returns which computer visited which blacklisted domain, scoped by site and recency", async () => {
+    await addFlaggedDomainService({ domain: blacklisted }, null);
+
+    const entry = await createIpEntryService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: "VITEST-BLACKLIST-PC",
+    });
+    ipEntryId = entry.id;
+    await ingestDnsQueries(ipEntryId, [
+      { domain: blacklisted, firstSeen: new Date(), lastSeen: new Date(), count: 3 },
+    ]);
+
+    const bolnica = await listBlacklistedDomainHits(24, "bolnica");
+    const row = bolnica.find((r) => r.ipEntryId === ipEntryId);
+    expect(row).toBeTruthy();
+    expect(row.domain).toBe(blacklisted);
+    expect(row.computerName).toBe("VITEST-BLACKLIST-PC");
+    expect(row.queryCount).toBe(3);
+
+    const domZdravlja = await listBlacklistedDomainHits(24, "dom_zdravlja");
+    expect(domZdravlja.some((r) => r.ipEntryId === ipEntryId)).toBe(false);
   });
 });

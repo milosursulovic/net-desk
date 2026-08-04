@@ -7,12 +7,20 @@ import {
   markReportReadService,
 } from "../../services/dailyReport.service.js";
 import { enrollAgent, heartbeat } from "../../services/agents.service.js";
+import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
+import { ingestDnsQueries, addFlaggedDomainService } from "../../services/dnsLogs.service.js";
 import { pool } from "../../db/pool.js";
 import {
   deleteTestDailyReport,
   deleteTestAgent,
+  deleteTestIpEntry,
   testHostname,
+  testIp,
 } from "../helpers/testDb.js";
+
+async function deleteFlaggedDomainByName(domain) {
+  await pool.execute("DELETE FROM flagged_domains WHERE domain = ?", [domain]);
+}
 
 describe("dailyReport.service (integration, real DB)", () => {
   let reportId;
@@ -233,6 +241,37 @@ describe("dailyReport.service (integration, real DB)", () => {
       expect(Math.abs(anomaly.zScore)).toBeGreaterThan(3);
     } finally {
       await deleteTestAgent(agentId);
+    }
+  });
+
+  it("generateDailyReport surfaces which computer visited which blacklisted domain in the last 24h", async () => {
+    const blacklisted = "vitest-dailyreport-blacklisted.example.com";
+    let ipEntryId;
+    try {
+      await addFlaggedDomainService({ domain: blacklisted }, null);
+
+      const entry = await createIpEntryService({
+        ip: testIp(),
+        site: "bolnica",
+        entryType: "computer",
+        computerName: "VITEST-DAILYREPORT-PC",
+      });
+      ipEntryId = entry.id;
+      await ingestDnsQueries(ipEntryId, [
+        { domain: blacklisted, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+      ]);
+
+      const generated = await generateDailyReport("bolnica");
+      reportId = generated.id;
+
+      expect(Array.isArray(generated.content.blacklistedDomainHits)).toBe(true);
+      const hit = generated.content.blacklistedDomainHits.find((h) => h.ipEntryId === ipEntryId);
+      expect(hit).toBeTruthy();
+      expect(hit.domain).toBe(blacklisted);
+      expect(hit.computerName).toBe("VITEST-DAILYREPORT-PC");
+    } finally {
+      await deleteTestIpEntry(ipEntryId);
+      await deleteFlaggedDomainByName(blacklisted);
     }
   });
 });

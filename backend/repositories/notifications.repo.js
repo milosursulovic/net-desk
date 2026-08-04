@@ -143,6 +143,33 @@ export async function countBlacklistedDomainHits(hours = 24, site) {
   return Number(cnt) || 0;
 }
 
+// Isti JOIN/vremenski-prozor obrazac kao countBlacklistedDomainHits iznad,
+// samo vraća redove (koji računar, koji domen) umesto samo broja - za
+// dnevni izveštaj, gde je bitno i ŠTA je posećeno, ne samo koliko računara.
+export async function listBlacklistedDomainHits(hours = 24, site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      cdq.domain,
+      cdq.last_seen AS lastSeen,
+      cdq.query_count AS queryCount,
+      ie.id AS ipEntryId,
+      ie.ip,
+      ie.computer_name AS computerName,
+      ie.department
+    FROM computer_dns_queries cdq
+    JOIN flagged_domains fd
+      ON cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+    JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
+    WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
+      ${site ? "AND ie.site = ?" : ""}
+    ORDER BY cdq.last_seen DESC
+    `,
+    [hours, ...(site ? [site] : [])],
+  );
+  return rows;
+}
+
 export async function countStaleUpdateComputers(staleDays = 90, site) {
   const safeDays = Math.max(1, Math.min(Number(staleDays) || 90, 3650));
 
