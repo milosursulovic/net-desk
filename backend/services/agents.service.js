@@ -132,6 +132,9 @@ export async function listAgentsService({
   enrolledTo,
   heartbeatFrom,
   heartbeatTo,
+  antivirusInactive,
+  firewallInactive,
+  windowsUpdateInactive,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -148,6 +151,9 @@ export async function listAgentsService({
     enrolledTo,
     heartbeatFrom,
     heartbeatTo,
+    antivirusInactive,
+    firewallInactive,
+    windowsUpdateInactive,
     limit,
     offset,
   });

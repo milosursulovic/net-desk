@@ -13,6 +13,7 @@ import {
 } from "../../services/agents.service.js";
 import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
+import { upsertMetadataForIpEntry } from "../../services/metadata.service.js";
 import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
 
 describe("agents.service (integration, real DB)", () => {
@@ -319,6 +320,82 @@ describe("agents.service (integration, real DB)", () => {
         os: "Some Other OS",
       });
       expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by antivirusInactive (agent_monitoring.antivirus_status != 'enabled', including no data yet)", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      // Nema još monitoring podataka - i dalje treba da se pojavi (NULL se
+      // tretira kao "nije potvrđeno aktivan", ne kao "propušteno").
+      const noDataYet = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", antivirusInactive: true,
+      });
+      expect(noDataYet.items.map((a) => a.id)).toContain(agentId);
+
+      await heartbeat(agentId, { monitoring: { antivirusStatus: "disabled" } }, "10.230.62.81");
+      const disabled = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", antivirusInactive: true,
+      });
+      expect(disabled.items.map((a) => a.id)).toContain(agentId);
+
+      await heartbeat(agentId, { monitoring: { antivirusStatus: "enabled" } }, "10.230.62.81");
+      const enabledNow = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", antivirusInactive: true,
+      });
+      expect(enabledNow.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by firewallInactive (agent_monitoring.firewall_status != 'enabled')", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      await heartbeat(agentId, { monitoring: { firewallStatus: "disabled" } }, "10.230.62.81");
+      const disabled = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", firewallInactive: true,
+      });
+      expect(disabled.items.map((a) => a.id)).toContain(agentId);
+
+      await heartbeat(agentId, { monitoring: { firewallStatus: "enabled" } }, "10.230.62.81");
+      const enabledNow = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", firewallInactive: true,
+      });
+      expect(enabledNow.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by windowsUpdateInactive (computer_metadata.wu_service_status != 'Running', joined via agents.ip_entry_id)", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const entry = await createIpEntryService({
+        ip: testIp(),
+        site: "bolnica",
+        entryType: "computer",
+        computerName: hostname,
+      });
+      ipEntryId = entry.id;
+      await linkAgentToIpEntry(agentId, ipEntryId);
+
+      await upsertMetadataForIpEntry(ipEntryId, { WindowsUpdate: { ServiceStatus: "Stopped" } });
+      const stopped = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", windowsUpdateInactive: true,
+      });
+      expect(stopped.items.map((a) => a.id)).toContain(agentId);
+
+      await upsertMetadataForIpEntry(ipEntryId, { WindowsUpdate: { ServiceStatus: "Running" } });
+      const running = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", windowsUpdateInactive: true,
+      });
+      expect(running.items.map((a) => a.id)).not.toContain(agentId);
     });
 
     it("filters by enrolledFrom/enrolledTo date range", async () => {

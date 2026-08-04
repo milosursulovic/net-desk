@@ -128,6 +128,9 @@ function buildAgentsWhereClause({
   enrolledTo,
   heartbeatFrom,
   heartbeatTo,
+  antivirusInactive,
+  firewallInactive,
+  windowsUpdateInactive,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -188,19 +191,40 @@ function buildAgentsWhereClause({
     whereParts.push("DATE(agents.last_heartbeat_at) <= ?");
     params.push(heartbeatTo);
   }
+  // "Neaktivan" = nema potvrdu da je uključen - i "disabled" i "unknown" i
+  // "nikad prijavljeno" (NULL/nema reda uopšte) se tretiraju isto, jer je
+  // administratoru svejedno KOJI je razlog, samo da mašina nije potvrđeno
+  // zaštićena.
+  if (antivirusInactive) {
+    whereParts.push("(am.antivirus_status IS NULL OR am.antivirus_status != 'enabled')");
+  }
+  if (firewallInactive) {
+    whereParts.push("(am.firewall_status IS NULL OR am.firewall_status != 'enabled')");
+  }
+  if (windowsUpdateInactive) {
+    whereParts.push("(cm.wu_service_status IS NULL OR cm.wu_service_status != 'Running')");
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
 }
 
 const AGENTS_IP_ENTRY_JOIN = "LEFT JOIN ip_entries ie ON ie.id = agents.ip_entry_id";
+// antivirus_status/firewall_status žive na agent_monitoring (heartbeat
+// signal, jedan red po agentu preko upsertAgentMonitoring), wu_service_status
+// živi na computer_metadata (deo hourly inventory sync-a, vezan preko
+// ip_entry_id kao i ostatak metapodataka) - dva odvojena izvora/ciklusa
+// osvežavanja, zato dva odvojena LEFT JOIN-a umesto jednog.
+const AGENTS_MONITORING_JOIN = "LEFT JOIN agent_monitoring am ON am.agent_id = agents.id";
+const AGENTS_METADATA_JOIN = "LEFT JOIN computer_metadata cm ON cm.ip_entry_id = agents.ip_entry_id";
 
 export async function listAgents(filters) {
   const { whereSql, params } = buildAgentsWhereClause(filters);
   const { limit, offset } = filters;
+  const joins = `${AGENTS_IP_ENTRY_JOIN} ${AGENTS_MONITORING_JOIN} ${AGENTS_METADATA_JOIN}`;
 
   const [[{ total }]] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM agents ${AGENTS_IP_ENTRY_JOIN} ${whereSql}`,
+    `SELECT COUNT(*) AS total FROM agents ${joins} ${whereSql}`,
     params,
   );
 
@@ -222,9 +246,12 @@ export async function listAgents(filters) {
       agents.enrolled_at AS enrolledAt,
       agents.created_at AS createdAt,
       agents.updated_at AS updatedAt,
-      ie.department
+      ie.department,
+      am.antivirus_status AS antivirusStatus,
+      am.firewall_status AS firewallStatus,
+      cm.wu_service_status AS windowsUpdateStatus
     FROM agents
-    ${AGENTS_IP_ENTRY_JOIN}
+    ${joins}
     ${whereSql}
     ORDER BY agents.enrolled_at DESC
     LIMIT ? OFFSET ?
@@ -243,9 +270,10 @@ const MAX_MATCHING_IDS = 1000;
 
 export async function listAgentIds(filters) {
   const { whereSql, params } = buildAgentsWhereClause(filters);
+  const joins = `${AGENTS_IP_ENTRY_JOIN} ${AGENTS_MONITORING_JOIN} ${AGENTS_METADATA_JOIN}`;
 
   const [rows] = await pool.execute(
-    `SELECT agents.id FROM agents ${AGENTS_IP_ENTRY_JOIN} ${whereSql} ORDER BY agents.enrolled_at DESC LIMIT ${MAX_MATCHING_IDS}`,
+    `SELECT agents.id FROM agents ${joins} ${whereSql} ORDER BY agents.enrolled_at DESC LIMIT ${MAX_MATCHING_IDS}`,
     params,
   );
   return rows.map((r) => r.id);

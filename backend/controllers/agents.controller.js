@@ -88,6 +88,9 @@ function parseAgentListFilters(query) {
     enrolledTo: dateFilter(query.enrolledTo),
     heartbeatFrom: dateFilter(query.heartbeatFrom),
     heartbeatTo: dateFilter(query.heartbeatTo),
+    antivirusInactive: query.antivirusInactive === "true",
+    firewallInactive: query.firewallInactive === "true",
+    windowsUpdateInactive: query.windowsUpdateInactive === "true",
   };
 }
 

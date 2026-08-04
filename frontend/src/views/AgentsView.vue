@@ -83,6 +83,33 @@
             <option value="">Sva odeljenja</option>
             <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
           </select>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="antivirusInactive === 'true'"
+              @change="antivirusInactive = antivirusInactive === 'true' ? '' : 'true'"
+            />
+            Bez aktivnog antivirusa
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="firewallInactive === 'true'"
+              @change="firewallInactive = firewallInactive === 'true' ? '' : 'true'"
+            />
+            Bez aktivnog firewall-a
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="windowsUpdateInactive === 'true'"
+              @change="windowsUpdateInactive = windowsUpdateInactive === 'true' ? '' : 'true'"
+            />
+            Isključen Windows Update
+          </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -268,6 +295,25 @@
             </div>
           </div>
 
+          <div v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running'"
+            class="mt-2 flex flex-wrap gap-1.5">
+            <span v-if="a.antivirusStatus !== 'enabled'"
+              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+              title="Antivirus nije potvrđen kao aktivan">
+              🦠 Antivirus
+            </span>
+            <span v-if="a.firewallStatus !== 'enabled'"
+              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+              title="Firewall nije potvrđen kao aktivan">
+              🧱 Firewall
+            </span>
+            <span v-if="a.windowsUpdateStatus !== 'Running'"
+              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+              title="Windows Update servis nije potvrđen kao pokrenut">
+              🔄 Windows Update
+            </span>
+          </div>
+
           <div class="mt-3 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
             <span>Enroll: {{ fmtDate(a.enrolledAt) }}</span>
             <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="text-red-600 hover:underline text-sm">
@@ -333,6 +379,9 @@ const {
   enrolledTo,
   heartbeatFrom,
   heartbeatTo,
+  antivirusInactive,
+  firewallInactive,
+  windowsUpdateInactive,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -360,6 +409,9 @@ const {
     enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
     heartbeatFrom: { type: 'string', default: '', omitIfEmpty: true },
     heartbeatTo: { type: 'string', default: '', omitIfEmpty: true },
+    antivirusInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    firewallInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    windowsUpdateInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
     'search',
@@ -374,6 +426,9 @@ const {
     'enrolledTo',
     'heartbeatFrom',
     'heartbeatTo',
+    'antivirusInactive',
+    'firewallInactive',
+    'windowsUpdateInactive',
   ],
   useReplace: true,
 })
@@ -394,6 +449,9 @@ watch(
     enrolledTo,
     heartbeatFrom,
     heartbeatTo,
+    antivirusInactive,
+    firewallInactive,
+    windowsUpdateInactive,
     site,
   ],
   fetchData,
@@ -435,6 +493,9 @@ const activeDetailedFilterCount = computed(() => {
   if (enrolledTo.value) n++
   if (heartbeatFrom.value) n++
   if (heartbeatTo.value) n++
+  if (antivirusInactive.value) n++
+  if (firewallInactive.value) n++
+  if (windowsUpdateInactive.value) n++
   return n
 })
 
@@ -465,6 +526,9 @@ function clearDetailedFilters() {
   enrolledTo.value = ''
   heartbeatFrom.value = ''
   heartbeatTo.value = ''
+  antivirusInactive.value = ''
+  firewallInactive.value = ''
+  windowsUpdateInactive.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -483,6 +547,9 @@ function buildFilterParams() {
   if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
   if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)
   if (heartbeatTo.value) params.set('heartbeatTo', heartbeatTo.value)
+  if (antivirusInactive.value) params.set('antivirusInactive', antivirusInactive.value)
+  if (firewallInactive.value) params.set('firewallInactive', firewallInactive.value)
+  if (windowsUpdateInactive.value) params.set('windowsUpdateInactive', windowsUpdateInactive.value)
   return params
 }
 
