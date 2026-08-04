@@ -102,6 +102,76 @@ export const POWERSHELL_PRESETS = [
     script: 'Get-NetFirewallProfile | Select-Object Name, Enabled | Format-Table -AutoSize | Out-String',
   },
   {
+    id: 'disable-browser-secure-dns',
+    label: 'Isključi Secure DNS (DoH) u Chrome/Edge/Brave/Firefox',
+    // Bez #requires -RunAsAdministrator (originalna verzija skripte ga je
+    // imala) - to je parse-time provera VAN try/catch-a, pa bi eventualni
+    // neuspeh te provere zaobišao skriptin sopstveni error-handling i javio
+    // se kao sirova PowerShell greška umesto lepe "ERROR: ..." poruke. Agent
+    // pokreće run_powershell_script jobove pod LocalSystem nalogom
+    // (JobExecutor.cs), koji već ima puna prava nad HKLM bez obzira na tu
+    // proveru - dodavala bi rizik bez stvarne dodatne zaštite u ovom
+    // kontekstu (dispatch je već admin-only na nivou same aplikacije).
+    // Registry putanje/vrednosti su stvarne, dokumentovane enterprise
+    // politike svakog browsera (Chromium trojka deli DnsOverHttpsMode šemu,
+    // Firefox ima svoju DNSOverHTTPS/Enabled+Locked šemu) - browseri
+    // moraju biti restartovani da bi promena stvarno stupila na snagu.
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      '\n' +
+      '$results = New-Object System.Collections.Generic.List[string]\n' +
+      '\n' +
+      'function Set-RegistryPolicy {\n' +
+      '    param(\n' +
+      '        [Parameter(Mandatory = $true)]\n' +
+      '        [string]$Path,\n' +
+      '\n' +
+      '        [Parameter(Mandatory = $true)]\n' +
+      '        [string]$Name,\n' +
+      '\n' +
+      '        [Parameter(Mandatory = $true)]\n' +
+      '        $Value,\n' +
+      '\n' +
+      '        [Parameter(Mandatory = $true)]\n' +
+      '        [ValidateSet("String", "DWord")]\n' +
+      '        [string]$Type\n' +
+      '    )\n' +
+      '\n' +
+      '    if (-not (Test-Path $Path)) {\n' +
+      '        New-Item -Path $Path -Force | Out-Null\n' +
+      '    }\n' +
+      '\n' +
+      '    New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force | Out-Null\n' +
+      '}\n' +
+      '\n' +
+      'try {\n' +
+      '    $chromePath = "HKLM:\\SOFTWARE\\Policies\\Google\\Chrome"\n' +
+      '    Set-RegistryPolicy -Path $chromePath -Name "DnsOverHttpsMode" -Value "off" -Type String\n' +
+      '    $results.Add("Chrome: Secure DNS isključen")\n' +
+      '\n' +
+      '    $edgePath = "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge"\n' +
+      '    Set-RegistryPolicy -Path $edgePath -Name "DnsOverHttpsMode" -Value "off" -Type String\n' +
+      '    $results.Add("Edge: Secure DNS isključen")\n' +
+      '\n' +
+      '    $bravePath = "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave"\n' +
+      '    Set-RegistryPolicy -Path $bravePath -Name "DnsOverHttpsMode" -Value "off" -Type String\n' +
+      '    $results.Add("Brave: Secure DNS isključen")\n' +
+      '\n' +
+      '    $firefoxPath = "HKLM:\\SOFTWARE\\Policies\\Mozilla\\Firefox\\DNSOverHTTPS"\n' +
+      '    Set-RegistryPolicy -Path $firefoxPath -Name "Enabled" -Value 0 -Type DWord\n' +
+      '    Set-RegistryPolicy -Path $firefoxPath -Name "Locked" -Value 1 -Type DWord\n' +
+      '    $results.Add("Firefox: DNS over HTTPS isključen i zaključan")\n' +
+      '\n' +
+      '    $summary = $results -join "; "\n' +
+      '    Write-Output "SUCCESS: $summary"\n' +
+      '    Write-Output "Browseri moraju biti restartovani da bi politike sigurno bile primenjene."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "ERROR: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
     id: 'network-config',
     label: 'Prikaži mrežnu konfiguraciju (IP/DNS/Gateway)',
     script:
