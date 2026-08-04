@@ -14,6 +14,7 @@ import {
 import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
 import { upsertMetadataForIpEntry } from "../../services/metadata.service.js";
+import { pool } from "../../db/pool.js";
 import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
 
 describe("agents.service (integration, real DB)", () => {
@@ -396,6 +397,39 @@ describe("agents.service (integration, real DB)", () => {
         page: 1, limit: 50, search: hostname, status: "all", windowsUpdateInactive: true,
       });
       expect(running.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by agentOfflineIpOnline (agent not online while its ip_entries.is_online = 1 - possible agent malfunction)", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const entry = await createIpEntryService({
+        ip: testIp(),
+        site: "bolnica",
+        entryType: "computer",
+        computerName: hostname,
+      });
+      ipEntryId = entry.id;
+      await linkAgentToIpEntry(agentId, ipEntryId);
+      await pool.execute("UPDATE ip_entries SET is_online = 1 WHERE id = ?", [ipEntryId]);
+
+      // Agent nikad nije poslao heartbeat -> connectivityStatus 'unknown',
+      // ne 'online' - dok je ip_entries.is_online = 1 = mismatch.
+      const mismatch = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", agentOfflineIpOnline: true,
+      });
+      expect(mismatch.items.map((a) => a.id)).toContain(agentId);
+
+      // Agent se javi online preko heartbeat-a -> mismatch nestaje (oba
+      // signala se sad slažu).
+      await heartbeat(agentId, {}, "10.230.62.81");
+      const resolved = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", agentOfflineIpOnline: true,
+      });
+      expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
     });
 
     it("filters by enrolledFrom/enrolledTo date range", async () => {

@@ -10,6 +10,7 @@ import {
   countFailedJobsRecent,
   countWuServiceUnavailable,
   countBlacklistedDomainHits,
+  countAgentOfflineButIpOnline,
 } from "../repositories/notifications.repo.js";
 
 export async function listNotifications(site) {
@@ -25,6 +26,7 @@ export async function listNotifications(site) {
     failedJobs,
     wuUnavailable,
     blacklistedDomainHits,
+    agentOfflineIpOnline,
   ] = await Promise.all([
     countOfflineEntries(site),
     countDuplicateNameGroups(site),
@@ -37,6 +39,7 @@ export async function listNotifications(site) {
     countFailedJobsRecent(24, site),
     countWuServiceUnavailable(site),
     countBlacklistedDomainHits(24, site),
+    countAgentOfflineButIpOnline(site),
   ]);
 
   const notifications = [];
@@ -74,6 +77,15 @@ export async function listNotifications(site) {
       level: "critical",
       message: `${blacklistedDomainHits} računara je poslednjih 24h posetilo domen sa crne liste`,
       to: "/dns-logs",
+    });
+  }
+
+  if (agentOfflineIpOnline > 0) {
+    notifications.push({
+      id: "agent-offline-ip-online",
+      level: "warning",
+      message: `${agentOfflineIpOnline} agenata je offline dok je računar dostupan na mreži - moguć kvar agenta`,
+      to: "/agents?agentOfflineIpOnline=true",
     });
   }
 

@@ -2,8 +2,14 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
 import { ingestDnsQueries, addFlaggedDomainService } from "../../services/dnsLogs.service.js";
 import { listNotifications } from "../../services/notifications.service.js";
-import { countBlacklistedDomainHits, listBlacklistedDomainHits } from "../../repositories/notifications.repo.js";
-import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
+import { enrollAgent, heartbeat } from "../../services/agents.service.js";
+import { linkAgentToIpEntry } from "../../repositories/agents.repo.js";
+import {
+  countBlacklistedDomainHits,
+  listBlacklistedDomainHits,
+  countAgentOfflineButIpOnline,
+} from "../../repositories/notifications.repo.js";
+import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
 
 async function deleteFlaggedDomainByName(domain) {
@@ -91,5 +97,69 @@ describe("notifications (integration, real DB) - blacklisted domain check", () =
 
     const domZdravlja = await listBlacklistedDomainHits(24, "dom_zdravlja");
     expect(domZdravlja.some((r) => r.ipEntryId === ipEntryId)).toBe(false);
+  });
+});
+
+describe("notifications (integration, real DB) - possible agent malfunction check", () => {
+  let ipEntryId;
+  let agentId;
+
+  afterEach(async () => {
+    await deleteTestAgent(agentId);
+    agentId = undefined;
+    await deleteTestIpEntry(ipEntryId);
+    ipEntryId = undefined;
+  });
+
+  it("countAgentOfflineButIpOnline counts an agent that hasn't reported online while its computer is reachable on the network, scoped by site", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    const entry = await createIpEntryService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: hostname,
+    });
+    ipEntryId = entry.id;
+    await linkAgentToIpEntry(agentId, ipEntryId);
+    await pool.execute("UPDATE ip_entries SET is_online = 1 WHERE id = ?", [ipEntryId]);
+
+    const bolnica = await countAgentOfflineButIpOnline("bolnica");
+    expect(bolnica).toBeGreaterThanOrEqual(1);
+
+    const domZdravlja = await countAgentOfflineButIpOnline("dom_zdravlja");
+    expect(domZdravlja).toBe(0);
+
+    // Agent se javi online -> više nije mismatch.
+    await heartbeat(agentId, {}, "10.230.62.81");
+    const afterHeartbeat = await countAgentOfflineButIpOnline("bolnica");
+    expect(afterHeartbeat).toBe(bolnica - 1);
+  });
+
+  it("listNotifications includes an agent-offline-ip-online entry when there's a mismatch", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    const entry = await createIpEntryService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: hostname,
+    });
+    ipEntryId = entry.id;
+    await linkAgentToIpEntry(agentId, ipEntryId);
+    await pool.execute("UPDATE ip_entries SET is_online = 1 WHERE id = ?", [ipEntryId]);
+
+    const out = await listNotifications("bolnica");
+    const found2 = out.notifications.find((n) => n.id === "agent-offline-ip-online");
+    expect(found2).toBeTruthy();
+    expect(found2.level).toBe("warning");
   });
 });

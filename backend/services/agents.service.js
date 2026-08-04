@@ -135,6 +135,7 @@ export async function listAgentsService({
   antivirusInactive,
   firewallInactive,
   windowsUpdateInactive,
+  agentOfflineIpOnline,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -154,6 +155,7 @@ export async function listAgentsService({
     antivirusInactive,
     firewallInactive,
     windowsUpdateInactive,
+    agentOfflineIpOnline,
     limit,
     offset,
   });

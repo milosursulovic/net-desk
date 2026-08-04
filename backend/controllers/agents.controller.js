@@ -91,6 +91,7 @@ function parseAgentListFilters(query) {
     antivirusInactive: query.antivirusInactive === "true",
     firewallInactive: query.firewallInactive === "true",
     windowsUpdateInactive: query.windowsUpdateInactive === "true",
+    agentOfflineIpOnline: query.agentOfflineIpOnline === "true",
   };
 }
 

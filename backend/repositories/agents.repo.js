@@ -95,8 +95,11 @@ export async function updateHeartbeat(id, { hostname, agentVersion, lastIp }) {
 // Mirrors agents.service.js's ONLINE_THRESHOLD_MS (300s) / STALE_THRESHOLD_MS
 // (1800s) computeConnectivityStatus() logic, but as SQL so it can be
 // filtered/paginated in the same query instead of after the fact in JS -
-// keep both in sync if the thresholds ever change.
-const CONNECTIVITY_STATUS_SQL = `
+// keep both in sync if the thresholds ever change. Exported so
+// notifications.repo.js can reuse the exact same "is this agent online"
+// definition (agent-vs-ping mismatch check), instead of a second copy of
+// the same thresholds drifting out of sync.
+export const CONNECTIVITY_STATUS_SQL = `
   CASE
     WHEN agents.last_heartbeat_at IS NULL THEN 'unknown'
     WHEN TIMESTAMPDIFF(SECOND, agents.last_heartbeat_at, NOW()) <= 300 THEN 'online'
@@ -131,6 +134,7 @@ function buildAgentsWhereClause({
   antivirusInactive,
   firewallInactive,
   windowsUpdateInactive,
+  agentOfflineIpOnline,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -204,6 +208,14 @@ function buildAgentsWhereClause({
   if (windowsUpdateInactive) {
     whereParts.push("(cm.wu_service_status IS NULL OR cm.wu_service_status != 'Running')");
   }
+  // Mreža (ping-based ip_entries.is_online) kaže da je računar gore, ali
+  // AGENT se ne javlja online - jak signal da je agent proces/servis
+  // zaglavljen ili pao (npr. posle lošeg deploy-a), ne da je računar
+  // ugašen. Suprotan smer (agent online, mreža offline - obično samo spor/
+  // flaky ping) se namerno ne tretira kao problem ovde.
+  if (agentOfflineIpOnline) {
+    whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) != 'online' AND ie.is_online = 1`);
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
@@ -247,6 +259,7 @@ export async function listAgents(filters) {
       agents.created_at AS createdAt,
       agents.updated_at AS updatedAt,
       ie.department,
+      ie.is_online AS ipIsOnline,
       am.antivirus_status AS antivirusStatus,
       am.firewall_status AS firewallStatus,
       cm.wu_service_status AS windowsUpdateStatus

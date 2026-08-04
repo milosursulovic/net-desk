@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { CONNECTIVITY_STATUS_SQL } from "./agents.repo.js";
 
 export async function countOfflineEntries(site) {
   const [[{ cnt }]] = await pool.execute(
@@ -84,6 +85,30 @@ export async function countFirewallInactiveAgents(site) {
     FROM agent_monitoring am
     ${site ? "JOIN agents a ON a.id = am.agent_id JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
     WHERE am.firewall_status = 'disabled'
+      ${site ? "AND ie.site = ?" : ""}
+    `,
+    site ? [site] : [],
+  );
+  return Number(cnt) || 0;
+}
+
+// Mreža (ping-based ip_entries.is_online) kaže da je računar gore, ali AGENT
+// (last_heartbeat_at, isti CONNECTIVITY_STATUS_SQL izraz kao /agents lista i
+// njen filter) se ne javlja online - jak signal da je agent proces/servis
+// zaglavljen ili pao (npr. posle lošeg deploy-a), ne da je računar ugašen.
+// Suprotan smer (agent online, mreža offline - obično samo spor/flaky ping)
+// se namerno ne prijavljuje ovde, mnogo je češći i manje značajan. INNER
+// JOIN na ip_entries namerno (ne LEFT) - agent bez povezanog ip_entry-ja
+// nema sa čim da se uporedi, pa ne može biti "mismatch".
+export async function countAgentOfflineButIpOnline(site) {
+  const [[{ cnt }]] = await pool.execute(
+    `
+    SELECT COUNT(*) AS cnt
+    FROM agents
+    JOIN ip_entries ie ON ie.id = agents.ip_entry_id
+    WHERE agents.status = 'active'
+      AND ie.is_online = 1
+      AND (${CONNECTIVITY_STATUS_SQL}) != 'online'
       ${site ? "AND ie.site = ?" : ""}
     `,
     site ? [site] : [],
