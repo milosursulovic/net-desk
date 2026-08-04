@@ -456,6 +456,56 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'delete-driver',
+    label: '⚠️ Obriši drajver uređaja (po nazivu)',
+    // Destruktivno i teško povratno (bez originalnog instalacionog paketa
+    // teško se vraća) - proveri $driverName i testiraj na JEDNOM agentu pre
+    // batch slanja.
+    //
+    // Traži po DeviceName (deo imena je dovoljan) kroz Win32_PnPSignedDriver
+    // (isti WMI izvor koji koristi DriverCollector.cs na agentu za PDSU
+    // "Drajveri" tab), uzima InfName (npr. "oem12.inf") i briše ga preko
+    // pnputil-a - deinstalira i sam uređaj (/uninstall), ne samo drajver
+    // paket iz store-a.
+    //
+    // pnputil /delete-driver ... /uninstall /force je Windows 10 1607+
+    // sintaksa - na Windows 7/8 pnputil ima drugačiji, ograničeniji skup
+    // opcija (nema /uninstall), pa ovaj preset tamo neće raditi kako treba.
+    script:
+      '# --- Izmeni ovaj red pre slanja (deo naziva uredjaja je dovoljan) ---\n' +
+      '$driverName = "Naziv uredjaja/drajvera"\n' +
+      '# ----------------------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '$results = New-Object System.Collections.Generic.List[string]\n' +
+      '\n' +
+      '$drivers = Get-CimInstance -ClassName Win32_PnPSignedDriver -ErrorAction SilentlyContinue |\n' +
+      '    Where-Object { $_.DeviceName -like "*$driverName*" -and $_.InfName }\n' +
+      '\n' +
+      'if (-not $drivers) {\n' +
+      '    "Nije pronadjen nijedan drajver koji sadrzi \'$driverName\' u nazivu uredjaja."\n' +
+      '    exit 0\n' +
+      '}\n' +
+      '\n' +
+      'foreach ($drv in ($drivers | Sort-Object InfName -Unique)) {\n' +
+      '    $device = $drv.DeviceName\n' +
+      '    $inf = $drv.InfName\n' +
+      '    try {\n' +
+      '        $out = pnputil.exe /delete-driver $inf /uninstall /force\n' +
+      '        if ($LASTEXITCODE -eq 0) {\n' +
+      '            $results.Add(("{0} ({1}): drajver obrisan" -f $device, $inf))\n' +
+      '        } else {\n' +
+      '            $results.Add(("{0} ({1}): GRESKA - {2}" -f $device, $inf, ($out -join " ")))\n' +
+      '        }\n' +
+      '    }\n' +
+      '    catch {\n' +
+      '        $results.Add(("{0} ({1}): GRESKA - {2}" -f $device, $inf, $_.Exception.Message))\n' +
+      '    }\n' +
+      '}\n' +
+      '\n' +
+      'Write-Output ($results -join "`n")',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
