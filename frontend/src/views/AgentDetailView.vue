@@ -170,7 +170,10 @@
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <div class="font-medium">Istorija komandi</div>
+            <div class="font-medium">
+              Istorija komandi
+              <span v-if="jobsPolling" class="text-blue-600 text-xs font-normal">· automatski se osvežava…</span>
+            </div>
             <button v-if="jobs.length && isAdmin" @click="confirmClearJobs" class="text-red-600 hover:underline text-sm">
               Očisti logove
             </button>
@@ -244,7 +247,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
@@ -303,6 +306,7 @@ const processKillExemptInput = ref(false)
 const jobs = ref([])
 const jobsLoading = ref(false)
 const jobsLoaded = ref(false)
+const jobsPolling = ref(false)
 
 const updateLog = ref([])
 const updateLogLoading = ref(false)
@@ -428,18 +432,38 @@ async function confirmRevoke() {
   }
 }
 
-async function loadJobs() {
-  jobsLoading.value = true
+let jobsPollTimer = null
+
+function stopJobsPolling() {
+  clearTimeout(jobsPollTimer)
+  jobsPollTimer = null
+  jobsPolling.value = false
+}
+
+// isBackgroundPoll=true (automatski osvežavanje dok ima pending/sent komandi,
+// isti obrazac kao BatchJobDetailView.vue) namerno ne dira jobsLoading - inače
+// bi se "Učitavanje…" tekst treperio na svakih 4s dok se čeka rezultat.
+async function loadJobs(isBackgroundPoll = false) {
+  stopJobsPolling()
+  if (!isBackgroundPoll) jobsLoading.value = true
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs?limit=50`)
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju komandi'))
     const data = await res.json()
     jobs.value = data.items || []
     jobsLoaded.value = true
+
+    const stillGoing = jobs.value.some((j) => j.status === 'pending' || j.status === 'sent')
+    if (stillGoing && tab.value === 'jobs') {
+      jobsPolling.value = true
+      jobsPollTimer = setTimeout(() => loadJobs(true), 4000)
+    } else {
+      jobsPolling.value = false
+    }
   } catch (err) {
     console.error(err)
   } finally {
-    jobsLoading.value = false
+    if (!isBackgroundPoll) jobsLoading.value = false
   }
 }
 
@@ -527,14 +551,33 @@ async function loadEventLogs() {
 
 function selectTab(name) {
   tab.value = name
-  if (name === 'jobs' && !jobsLoaded.value) loadJobs()
-  else if (name === 'updates' && !updateLogLoaded.value) loadUpdateLog()
-  else if (name === 'events' && !eventLogsLoaded.value) loadEventLogs()
+  if (name === 'jobs') {
+    if (!jobsLoaded.value) {
+      loadJobs()
+    } else if (!jobsPollTimer) {
+      // Vraćanje na tab dok nešto još čeka - nastavi osvežavanje umesto da
+      // ostane zauvek na starom snimku.
+      const stillGoing = jobs.value.some((j) => j.status === 'pending' || j.status === 'sent')
+      if (stillGoing) {
+        jobsPolling.value = true
+        jobsPollTimer = setTimeout(() => loadJobs(true), 4000)
+      }
+    }
+  } else {
+    // Ne osvežavaj u pozadini dok korisnik ne gleda ovaj tab.
+    stopJobsPolling()
+    if (name === 'updates' && !updateLogLoaded.value) loadUpdateLog()
+    else if (name === 'events' && !eventLogsLoaded.value) loadEventLogs()
+  }
 }
 
 onMounted(async () => {
   fetchDeploymentGroupOptions()
   await loadAgent()
   if (!loadError.value) selectTab(tab.value)
+})
+
+onBeforeUnmount(() => {
+  stopJobsPolling()
 })
 </script>
