@@ -19,6 +19,7 @@ import {
   updateAgentDeploymentGroup,
   updateAgentProcessKillExempt,
 } from "../repositories/agents.repo.js";
+import { isFeatureEnabled } from "./appSettings.service.js";
 import {
   findIpEntryIdByIp,
   insertIpEntry,
@@ -85,6 +86,14 @@ export async function heartbeat(agentId, dto, remoteIp) {
 
   const agent = await findAgentById(agentId);
 
+  // Globalni prekidač (Config strana, process_monitor_enabled) se namerno
+  // NE prosleđuje agentu kao posebno polje - umesto toga se OR-uje u
+  // POSTOJEĆE processKillExempt polje pre slanja. Agent (AgentWorker.cs)
+  // već tretira "exempt" kao "ne ubijaj na ovoj mašini" bez ikakve razlike
+  // da li je to zbog per-agent whitelist-e ili globalnog isključivanja -
+  // nula izmena/rekompajliranja na C# strani je potrebno za ovaj prekidač.
+  const monitorEnabled = await isFeatureEnabled("process_monitor_enabled");
+
   return {
     ok: true,
     serverTime: new Date().toISOString(),
@@ -95,7 +104,7 @@ export async function heartbeat(agentId, dto, remoteIp) {
       // Boolean(...) namerno - mysql2 vraća TINYINT(1) kao JS broj (0/1), a
       // C#-ov HeartbeatAgentInfo.ProcessKillExempt je pravi bool - Json.NET
       // baca JsonSerializationException na broj tamo gde očekuje true/false.
-      processKillExempt: Boolean(agent.processKillExempt),
+      processKillExempt: Boolean(agent.processKillExempt) || !monitorEnabled,
     },
   };
 }

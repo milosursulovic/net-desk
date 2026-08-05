@@ -12,6 +12,17 @@ export const APP_SETTINGS = [
     type: "boolean",
     default: "false",
   },
+  {
+    key: "process_monitor_enabled",
+    label: "Ubijanje sumnjivih procesa",
+    description:
+      "Globalni prekidač za automatsko ubijanje watchlist procesa (AnyDesk, TeamViewer i sl.) na svim agentima. " +
+      "Detekcija i dalje radi (vidljivo na 'Sumnjivi procesi') dok je isključeno - samo se ništa ne ubija, kao da su " +
+      "svi agenti privremeno na whitelisti. Podrazumevano uključeno da ne bi nadogradnja app-a tiho ugasila " +
+      "postojeću zaštitu.",
+    type: "boolean",
+    default: "true",
+  },
 ];
 
 export const SETTING_KEYS = APP_SETTINGS.map((s) => s.key);

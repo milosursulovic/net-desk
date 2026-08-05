@@ -95,6 +95,30 @@ describe("agents.service (integration, real DB)", () => {
     expect(after.agent.processKillExempt).toBe(true);
   });
 
+  it("the global process_monitor_enabled setting forces processKillExempt=true fleet-wide when off, regardless of the per-agent flag", async () => {
+    const enrolled = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const byUid = await findAgentByUid(enrolled.agentId);
+    agentId = byUid.id;
+
+    const { updateSettingService } = await import("../../services/appSettings.service.js");
+    try {
+      // Baseline: default-enabled monitor, agent NOT individually exempt.
+      const enabled = await heartbeat(agentId, {}, "10.230.62.81");
+      expect(enabled.agent.processKillExempt).toBe(false);
+
+      await updateSettingService("process_monitor_enabled", false, null);
+      const disabled = await heartbeat(agentId, {}, "10.230.62.81");
+      expect(disabled.agent.processKillExempt).toBe(true);
+
+      await updateSettingService("process_monitor_enabled", true, null);
+      const reenabled = await heartbeat(agentId, {}, "10.230.62.81");
+      expect(reenabled.agent.processKillExempt).toBe(false);
+    } finally {
+      await pool.execute("DELETE FROM app_settings WHERE setting_key = 'process_monitor_enabled'");
+    }
+  });
+
   it("setAgentProcessKillExemptService toggles the flag and rejects an unknown agent", async () => {
     const enrolled = await enrollAgent({ hostname: testHostname() });
     const { findAgentByUid } = await import("../../repositories/agents.repo.js");

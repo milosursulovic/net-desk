@@ -8,10 +8,13 @@ const app = createApp();
 
 describe("app settings routes (integration, real DB)", () => {
   afterEach(async () => {
-    // Restore vnc_enabled to its real default (off) so other test files
-    // (e.g. vncSessions.routes.test.js) see a clean slate - vitest.config.js
-    // disables file parallelism, so this can't race.
-    await pool.execute("DELETE FROM app_settings WHERE setting_key = 'vnc_enabled'");
+    // Restore vnc_enabled/process_monitor_enabled to their real defaults so
+    // other test files (e.g. vncSessions.routes.test.js, agents.service.test.js)
+    // see a clean slate - vitest.config.js disables file parallelism, so
+    // this can't race.
+    await pool.execute(
+      "DELETE FROM app_settings WHERE setting_key IN ('vnc_enabled', 'process_monitor_enabled')",
+    );
   });
 
   it("rejects non-admin roles with 403", async () => {
@@ -29,13 +32,14 @@ describe("app settings routes (integration, real DB)", () => {
     }
   });
 
-  it("admin gets the registered settings, defaulting to off", async () => {
+  it("admin gets the registered settings, each defaulting per its own registry entry", async () => {
     const res = await request(app)
       .get("/api/protected/settings")
       .set("Authorization", `Bearer ${adminToken()}`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
       expect.objectContaining({ key: "vnc_enabled", value: false }),
+      expect.objectContaining({ key: "process_monitor_enabled", value: true }),
     ]);
   });
 
