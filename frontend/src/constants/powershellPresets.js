@@ -718,6 +718,65 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'create-hidden-admin-account',
+    label: '⚠️ Kreiraj skriveni admin nalog (RemoteAdmin)',
+    // Kreira lokalni admin nalog i sakriva ga sa ekrana za prijavu (upisom u
+    // Winlogon\SpecialAccounts\UserList) - nalog i dalje normalno radi za
+    // RDP/net use/itd, samo se ne nudi kao opcija na login ekranu.
+    // Idempotentno - ako korisnik već postoji, samo se preskoči kreiranje
+    // (i dalje se primeni "sakrij" korak, bezopasno ako je već sakriven).
+    //
+    // Namerno net.exe (net user/net localgroup) umesto New-LocalUser/
+    // Get-LocalUser cmdleta - ovi poslednji dolaze iz LocalAccounts modula
+    // koji postoji tek od Windows 10/Server 2016, pa bi preset tiho pao na
+    // Windows 7 delu flote. net.exe radi identično na svim verzijama.
+    //
+    // Napomena: lozinka je vidljiva u tekstu skripte (i u job output/istoriji
+    // na serveru) - isto kao i sa ConvertTo-SecureString varijantom, samo je
+    // ovde dodatno kratko vidljiva i kao CLI argument dok net.exe radi.
+    script:
+      '# --- OBAVEZNO izmeni korisnicko ime i lozinku pre slanja! ---\n' +
+      '$Username = "RemoteAdmin"\n' +
+      '$Password = "gibson"\n' +
+      '# ----------------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '\n' +
+      'try {\n' +
+      '    net user $Username 2>&1 | Out-Null\n' +
+      '    $userExists = ($LASTEXITCODE -eq 0)\n' +
+      '\n' +
+      '    if (-not $userExists) {\n' +
+      '        net user $Username $Password /add /fullname:"Remote Administration" /comment:"Remote administration account" | Out-Null\n' +
+      '        if ($LASTEXITCODE -ne 0) {\n' +
+      '            throw "net user /add zavrsio sa exit kodom $LASTEXITCODE"\n' +
+      '        }\n' +
+      '\n' +
+      '        net localgroup Administrators $Username /add | Out-Null\n' +
+      '        if ($LASTEXITCODE -ne 0) {\n' +
+      '            throw "net localgroup /add zavrsio sa exit kodom $LASTEXITCODE"\n' +
+      '        }\n' +
+      '\n' +
+      '        Write-Output "Korisnik \'$Username\' kreiran i dodat u Administrators."\n' +
+      '    }\n' +
+      '    else {\n' +
+      '        Write-Output "Korisnik \'$Username\' vec postoji, preskoceno kreiranje."\n' +
+      '    }\n' +
+      '\n' +
+      '    $specialAccountsPath = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList"\n' +
+      '    if (-not (Test-Path $specialAccountsPath)) {\n' +
+      '        New-Item -Path $specialAccountsPath -Force | Out-Null\n' +
+      '    }\n' +
+      '    New-ItemProperty -Path $specialAccountsPath -Name $Username -PropertyType DWord -Value 0 -Force | Out-Null\n' +
+      '\n' +
+      '    Write-Output "Korisnik \'$Username\' sakriven sa ekrana za prijavu."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
