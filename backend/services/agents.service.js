@@ -255,6 +255,43 @@ export async function revokeAgentService(id) {
   return await findAgentById(id);
 }
 
+// Isti obrazac poklapanja za UltraVNC kao listComputersWithoutUltravnc() u
+// pdsuAnalytics.repo.js/hasUltravnc u ipEntries.repo.js - držati u sinhronizaciji.
+// Poredi samo protiv servisnog "name" polja (ne displayName), isto kao ta
+// mesta i kao is_flagged EXISTS upiti u pdsu.repo.js.
+const RDP_APP_PATTERNS = [
+  { label: "AnyDesk", patterns: ["anydesk"] },
+  { label: "TeamViewer", patterns: ["teamviewer"] },
+  { label: "UltraVNC", patterns: ["uvnc", "ultravnc", "winvnc"] },
+  { label: "VNC Server", patterns: ["vncserver", "realvnc"] },
+];
+
+// Vraća `undefined` kad services nije poslat u ovom sync-u (ne diraj
+// postojeću vrednost), a `null`/spojen string kad JESTE poslat (potpuna
+// zamena na svakom sync-u sa listom servisa - isto ponašanje kao
+// computer_name/department, čak i kad se ništa od poznatih alata ne nađe).
+function detectRdpApps(services) {
+  if (!Array.isArray(services)) return undefined;
+
+  const found = RDP_APP_PATTERNS.filter(({ patterns }) =>
+    services.some((s) => {
+      const name = String(s?.name ?? "").toLowerCase();
+      return patterns.some((p) => name.includes(p));
+    }),
+  ).map((p) => p.label);
+
+  return found.length ? found.join(", ") : null;
+}
+
+// Agent šalje InventoryRequest sa PascalCase poljima (RawJsonSettings, vidi
+// NetdeskApiClient.cs) - OS objekat i njegov Caption se zato tolerantno
+// čitaju u oba slova, isti obrazac kao metadata.service.js-ov pick().
+function extractOsCaption(body) {
+  const os = body?.OS ?? body?.os;
+  if (!os) return undefined;
+  return emptyToNull(os.Caption ?? os.caption);
+}
+
 async function resolveIpEntryId(agent, body) {
   if (agent.ipEntryId) {
     // Once an agent is linked to an ip_entry, every sync unconditionally
@@ -273,6 +310,18 @@ async function resolveIpEntryId(agent, body) {
       params.push(emptyToNull(body.department));
     }
 
+    const osCaption = extractOsCaption(body);
+    if (osCaption !== undefined) {
+      sets.push("os = ?");
+      params.push(osCaption);
+    }
+
+    const rdpApp = detectRdpApps(body.services);
+    if (rdpApp !== undefined) {
+      sets.push("rdp_app = ?");
+      params.push(rdpApp);
+    }
+
     await updateIpEntryPatch(agent.ipEntryId, sets.join(", "), params);
     return agent.ipEntryId;
   }
@@ -283,8 +332,8 @@ async function resolveIpEntryId(agent, body) {
       ip: body.ip,
       ipNumeric: ipToNumeric(body.ip),
       computerName: emptyToNull(body.hostname),
-      rdpApp: null,
-      os: null,
+      rdpApp: detectRdpApps(body.services) ?? null,
+      os: extractOsCaption(body) ?? null,
       department: emptyToNull(body.department),
       description: null,
       remoteScript: null,

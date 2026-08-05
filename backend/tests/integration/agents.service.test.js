@@ -12,7 +12,10 @@ import {
   agentFilterOptionsService,
 } from "../../services/agents.service.js";
 import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
-import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
+import {
+  createService as createIpEntryService,
+  getByIdService as getIpEntryByIdService,
+} from "../../services/ipAddresses.service.js";
 import { upsertMetadataForIpEntry } from "../../services/metadata.service.js";
 import { pool } from "../../db/pool.js";
 import { deleteTestAgent, deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
@@ -237,6 +240,57 @@ describe("agents.service (integration, real DB)", () => {
     expect(minimalSync.metadata.OS.Caption).toBe("Microsoft Windows 10 Pro");
     expect(minimalSync.metadata.System.Manufacturer).toBe("HP");
   });
+
+  it(
+    "inventory sync auto-fills ip_entries.os from OS.Caption and rdp_app from detected " +
+      "remote-access services, then a services-less sync leaves both untouched",
+    async () => {
+      const ip = testIp();
+      const hostname = testHostname();
+
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const fullSync = await syncAgentInventory(found, {
+        ip,
+        hostname,
+        OS: { Caption: "Microsoft Windows 10 Pro" },
+        services: [
+          { name: "AnyDesk Service", displayName: "AnyDesk", state: "Running" },
+          { name: "TeamViewer", displayName: "TeamViewer", state: "Running" },
+          { name: "Spooler", displayName: "Print Spooler", state: "Running" },
+        ],
+      });
+      ipEntryId = fullSync.ipEntryId;
+
+      let entry = await getIpEntryByIdService(ipEntryId);
+      expect(entry.os).toBe("Microsoft Windows 10 Pro");
+      expect(entry.rdpApp).toBe("AnyDesk, TeamViewer");
+
+      // A sync that includes NO services array at all (e.g. an event-log-only
+      // ping) must not wipe the previously-detected rdp_app/os - same
+      // merge-not-overwrite contract as computer_name/department.
+      const reloaded = await findAgentById(agentId);
+      await syncAgentInventory(reloaded, { ip, eventLogs: [{ logName: "System" }] });
+
+      entry = await getIpEntryByIdService(ipEntryId);
+      expect(entry.os).toBe("Microsoft Windows 10 Pro");
+      expect(entry.rdpApp).toBe("AnyDesk, TeamViewer");
+
+      // A later sync that DOES include services, but none matching any known
+      // tool, clears rdp_app back to null (full replace, not additive).
+      const reloadedAgain = await findAgentById(agentId);
+      await syncAgentInventory(reloadedAgain, {
+        ip,
+        services: [{ name: "Spooler", displayName: "Print Spooler", state: "Running" }],
+      });
+
+      entry = await getIpEntryByIdService(ipEntryId);
+      expect(entry.rdpApp).toBeNull();
+    },
+  );
 
   describe("listAgentsService detailed filters", () => {
     it("filters by connectivityStatus=online after a heartbeat, and excludes it under offline", async () => {
