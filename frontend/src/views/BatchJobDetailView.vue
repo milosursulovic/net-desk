@@ -43,8 +43,41 @@
         </span>
       </div>
 
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="text-xs text-slate-500">Status:</label>
+        <select v-model="statusFilter" class="app-input text-sm py-1 w-auto">
+          <option value="">Svi ({{ items.length }})</option>
+          <option value="pending">Na čekanju ({{ counts.pending }})</option>
+          <option value="sent">Poslato ({{ counts.sent }})</option>
+          <option value="completed">Završeno ({{ counts.completed }})</option>
+          <option value="failed">Neuspešno ({{ counts.failed }})</option>
+          <option v-if="counts.cancelled" value="cancelled">Otkazano ({{ counts.cancelled }})</option>
+        </select>
+
+        <label class="text-xs text-slate-500 ml-2">Dostupnost:</label>
+        <select v-model="connectivityFilter" class="app-input text-sm py-1 w-auto">
+          <option value="">Sve</option>
+          <option value="online">Online</option>
+          <option value="stale">Neaktivan</option>
+          <option value="offline">Offline</option>
+          <option value="unknown">Nepoznato</option>
+        </select>
+
+        <button
+          v-if="statusFilter || connectivityFilter"
+          type="button"
+          class="text-xs text-blue-600 hover:underline ml-1"
+          @click="statusFilter = ''; connectivityFilter = ''"
+        >
+          Poništi filter
+        </button>
+      </div>
+
       <div class="space-y-2">
-        <div v-for="item in items" :key="item.id" class="rounded-lg border bg-white p-3 text-sm">
+        <div v-if="items.length && !filteredItems.length" class="text-sm text-slate-500 py-4 text-center">
+          Nema stavki koje odgovaraju filteru.
+        </div>
+        <div v-for="item in filteredItems" :key="item.id" class="rounded-lg border bg-white p-3 text-sm">
           <div class="flex items-start justify-between gap-3">
             <RouterLink :to="`/agents/${item.agentId}`" class="font-medium text-blue-600 hover:underline">
               {{ item.hostname || item.agentUid }}
@@ -126,6 +159,17 @@ const counts = computed(() => {
     if (out[item.status] !== undefined) out[item.status]++
   }
   return out
+})
+
+const statusFilter = ref('')
+const connectivityFilter = ref('')
+
+const filteredItems = computed(() => {
+  return items.value.filter((item) => {
+    if (statusFilter.value && item.status !== statusFilter.value) return false
+    if (connectivityFilter.value && item.connectivityStatus !== connectivityFilter.value) return false
+    return true
+  })
 })
 
 function jobStatusClass(status) {
