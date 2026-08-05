@@ -30,7 +30,6 @@ export const UpsertIpSchema = z.object({
   department: z.string().nullable().optional(),
   site: z.enum(SITES),
   description: z.string().nullable().optional(),
-  remoteScript: z.string().nullable().optional(),
   entryType: EntryTypeEnum.nullable().optional(),
 });
 
@@ -39,15 +38,7 @@ export const ListSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(1000).default(10),
   sortBy: z
-    .enum([
-      "ip",
-      "computerName",
-      "rdpApp",
-      "os",
-      "department",
-      "description",
-      "remoteScript",
-    ])
+    .enum(["ip", "computerName", "rdpApp", "os", "department", "description"])
     .optional()
     .default("ip"),
   sortOrder: z.enum(["asc", "desc"]).optional().default("asc"),

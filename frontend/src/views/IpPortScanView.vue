@@ -46,17 +46,6 @@
             </button>
           </div>
         </div>
-
-        <div class="mt-3">
-          <button
-            @click="runWinrmCheck"
-            :disabled="portScanLoading"
-            class="px-3 py-1.5 rounded border border-blue-300 bg-blue-50 text-blue-700 text-sm hover:bg-blue-100 disabled:opacity-50"
-            title="Proveri portove 5985 (HTTP) i 5986 (HTTPS)"
-          >
-            Proveri WinRM
-          </button>
-        </div>
       </div>
 
       <div v-if="portScanLoading" class="text-slate-600">Skeniram…</div>
@@ -151,11 +140,6 @@ async function runPortScan() {
   } finally {
     portScanLoading.value = false
   }
-}
-
-async function runWinrmCheck() {
-  portScanPorts.value = '5985,5986'
-  await runPortScan()
 }
 
 async function loadEntry() {

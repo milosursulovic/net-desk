@@ -237,10 +237,6 @@
               <div class="text-xs text-slate-500">Sistem</div>
               <div class="text-sm font-medium break-all">{{ entry.os || '—' }}</div>
             </div>
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">Remote skripta?</div>
-              <div class="text-sm font-medium break-all">{{ entry.remoteScript || '—' }}</div>
-            </div>
           </div>
         </div>
 
@@ -422,7 +418,6 @@ const sortOptions = [
   { value: 'department', label: 'Odeljenje' },
   { value: 'rdpApp', label: 'RDP App' },
   { value: 'os', label: 'Sistem' },
-  { value: 'remoteScript', label: 'Remote skripta?' },
 ]
 
 const addEntry = () => router.push('/add')

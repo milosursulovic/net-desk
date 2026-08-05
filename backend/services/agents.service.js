@@ -336,7 +336,6 @@ async function resolveIpEntryId(agent, body) {
       os: extractOsCaption(body) ?? null,
       department: emptyToNull(body.department),
       description: null,
-      remoteScript: null,
       entryType: "computer",
     });
   }

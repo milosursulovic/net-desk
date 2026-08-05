@@ -70,7 +70,6 @@ export async function findIpEntryById(id) {
       computer_name AS computerName,
       rdp_app AS rdpApp,
       os,
-      remote_script AS remoteScript,
       department,
       site,
       entry_type AS entryType,
@@ -128,8 +127,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, department, site, description, remote_script, entry_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, department, site, description, entry_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -140,7 +139,6 @@ export async function insertIpEntry(row) {
       row.department,
       row.site ?? null,
       row.description,
-      row.remoteScript,
       row.entryType ?? null,
     ],
   );
@@ -232,7 +230,6 @@ export async function listIpEntries({
     rdpApp: "rdp_app",
     os: "os",
     department: "department",
-    remoteScript: "remote_script",
   };
 
   const safeSort = sortMap[sortBy] || "ip_numeric";
@@ -253,7 +250,6 @@ export async function listIpEntries({
       is_online AS isOnline,
       last_checked AS lastChecked,
       last_status_change AS lastStatusChange,
-      remote_script AS remoteScript,
       description,
       pending_repack AS pendingRepack,
       agents.id AS agentId,
@@ -643,7 +639,6 @@ export async function exportIpEntriesForXlsx(search, site) {
       department,
       site,
       entry_type AS entryType,
-      remote_script AS remoteScript,
       metadata_id AS metadataId,
       description
     FROM ip_entries

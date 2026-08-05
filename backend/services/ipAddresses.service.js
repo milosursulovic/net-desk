@@ -29,8 +29,6 @@ const WELL_KNOWN_PORTS = {
   3306: "MySQL",
   3389: "RDP",
   5432: "PostgreSQL",
-  5985: "WinRM (HTTP)",
-  5986: "WinRM (HTTPS)",
   6379: "Redis",
   8080: "HTTP (alt)",
   8443: "HTTPS (alt)",
@@ -251,7 +249,6 @@ export async function createService(dto) {
     department: emptyToNull(dto.department),
     site: dto.site,
     description: emptyToNull(dto.description),
-    remoteScript: emptyToNull(dto.remoteScript),
     entryType: dto.entryType ?? null,
   });
 
@@ -293,10 +290,6 @@ export async function updateService(id, patch) {
     sets.push("description = ?");
     params.push(emptyToNull(patch.description));
   }
-  if (patch.remoteScript !== undefined) {
-    sets.push("remote_script = ?");
-    params.push(emptyToNull(patch.remoteScript));
-  }
   if (patch.entryType !== undefined) {
     sets.push("entry_type = ?");
     params.push(patch.entryType ?? null);
@@ -335,7 +328,6 @@ export async function exportXlsxRowsService(search, site) {
     os: e.os || "",
     department: e.department || "",
     entryType: labelForEntryType(e.entryType),
-    remoteScript: e.remoteScript || "",
     description: e.description || "",
   }));
 }
