@@ -718,6 +718,52 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'allow-cross-subnet-icmp',
+    label: 'Dozvoli ping sa druge podmreže (cross-site ICMP)',
+    // Uživo otkriven uzrok: ugrađeno "File and Printer Sharing (Echo
+    // Request - ICMPv4-In)" pravilo za Private/Domain profile ima domet
+    // (RemoteAddress) ograničen na LocalSubnet - server na drugoj lokaciji/
+    // podmreži (npr. Bolnica 10.230.62.x -> Dom zdravlja agent 10.160.64.x)
+    // se nikad ne poklopi, bez obzira što pravilo pokazuje "Enabled: True".
+    // Postoji i "restriktivna" varijanta sa dometom Any, ali je ugrađeno
+    // uključena SAMO za Public profil - zato menjanje mreže na Public
+    // "popravi" ping, a ostajanje na Private (ispravnijem, bezbednijem
+    // izboru za internu mrežu) ne radi.
+    //
+    // Namerno netsh advfirewall umesto Get/Set-NetFirewallRule cmdleta:
+    // 1) NetSecurity modul (te cmdlete obezbeđuje) postoji tek od Windows 8/
+    //    Server 2012 - na Windows 7 bi preset tiho pao. netsh advfirewall
+    //    radi identično od Windows 7 do 11.
+    // 2) Ugrađena pravila imaju LOKALIZOVAN DisplayName (npr. "Deljenje
+    //    datoteka i štampača..." na srpskom, "File and Printer Sharing..."
+    //    na engleskom) - pokušaj da se nađe/uključi POSTOJEĆE pravilo po
+    //    imenu bio bi lomljiv na mešovitoj floti. Umesto toga, ova skripta
+    //    dodaje SOPSTVENO, potpuno novo pravilo sa fiksnim (ne-lokalizovanim)
+    //    imenom - bez zavisnosti od jezika sistema ili tačnog naziva
+    //    postojećih pravila.
+    //
+    // Brisanje pa ponovno dodavanje na početku čini skriptu bezbednom za
+    // ponovno slanje (ne gomila duple kopije istog pravila).
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      '$RuleName = "NetDesk - Allow ICMPv4 Echo Request (cross-subnet)"\n' +
+      '\n' +
+      'try {\n' +
+      '    netsh advfirewall firewall delete rule name="$RuleName" | Out-Null\n' +
+      '\n' +
+      '    $out = netsh advfirewall firewall add rule name="$RuleName" dir=in action=allow protocol=icmpv4:8,any profile=any remoteip=any\n' +
+      '    if ($LASTEXITCODE -ne 0) {\n' +
+      '        throw "netsh je vratio exit kod $LASTEXITCODE - $($out -join \' \')"\n' +
+      '    }\n' +
+      '\n' +
+      '    Write-Output "Dodato pravilo \'$RuleName\' - ICMPv4 Echo Request dozvoljen sa bilo koje adrese, sva tri profila (Private/Domain/Public)."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
     id: 'create-hidden-admin-account',
     label: '⚠️ Kreiraj skriveni admin nalog (RemoteAdmin)',
     // Kreira lokalni admin nalog i sakriva ga sa ekrana za prijavu (upisom u
