@@ -61,8 +61,9 @@ export async function cancelBatchController(req, res) {
 export async function listJobBatchesController(req, res) {
   const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
   const limit = clamp(toInt(req.query.limit, 20), 1, 100);
+  const onlyUnfinished = req.query.onlyUnfinished === "1" || req.query.onlyUnfinished === "true";
 
-  const out = await listJobBatchesService({ page, limit });
+  const out = await listJobBatchesService({ page, limit, onlyUnfinished });
   res.json(out);
 }
 

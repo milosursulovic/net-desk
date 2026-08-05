@@ -18,6 +18,13 @@
 
       <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
 
+      <label class="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer">
+        <input type="checkbox" v-model="onlyUnfinishedChecked" class="rounded" />
+        Samo nezavršeni (na čekanju/poslato)
+      </label>
+
+      <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
       <button @click="prevPage" :disabled="page === 1 || loading"
         class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
         ⬅️
@@ -31,7 +38,7 @@
 
     <div v-if="loading" class="text-slate-600">Učitavanje…</div>
     <div v-else-if="!items.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
-      Još nema poslatih batch komandi.
+      {{ onlyUnfinishedChecked ? 'Nema batch komandi koje su još u toku.' : 'Još nema poslatih batch komandi.' }}
     </div>
 
     <div v-else class="space-y-2">
@@ -71,7 +78,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
@@ -81,12 +88,21 @@ import AppButton from '@/components/AppButton.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 
-const { page, limit, nextPage, prevPage, applyServerPagination } = usePaginatedRoute({
+const { page, limit, onlyUnfinished, nextPage, prevPage, applyServerPagination } = usePaginatedRoute({
   fields: {
     page: { type: 'int', default: 1 },
     limit: { type: 'int', default: 20 },
+    onlyUnfinished: { oneOf: ['', '1'], default: '', omitIfEmpty: true },
   },
+  resetPageOn: ['onlyUnfinished'],
   useReplace: true,
+})
+
+const onlyUnfinishedChecked = computed({
+  get: () => onlyUnfinished.value === '1',
+  set: (v) => {
+    onlyUnfinished.value = v ? '1' : ''
+  },
 })
 
 const items = ref([])
@@ -97,6 +113,7 @@ async function fetchData() {
   loading.value = true
   try {
     const params = new URLSearchParams({ page: page.value, limit: limit.value })
+    if (onlyUnfinished.value === '1') params.set('onlyUnfinished', '1')
     const res = await fetchWithAuth(`/api/protected/agents/jobs/batches?${params.toString()}`)
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const data = await res.json()
@@ -110,6 +127,6 @@ async function fetchData() {
   }
 }
 
-watch([page, limit], fetchData)
+watch([page, limit, onlyUnfinished], fetchData)
 onMounted(fetchData)
 </script>

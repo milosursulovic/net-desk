@@ -99,9 +99,9 @@ export async function cancelBatchService(batchId) {
   return { cancelled };
 }
 
-export async function listJobBatchesService({ page, limit }) {
+export async function listJobBatchesService({ page, limit, onlyUnfinished }) {
   const offset = (page - 1) * limit;
-  const { items, total } = await listJobBatches({ limit, offset });
+  const { items, total } = await listJobBatches({ limit, offset, onlyUnfinished });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
   return { items, page: safePage, limit, total, totalPages };

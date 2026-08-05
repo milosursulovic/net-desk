@@ -265,6 +265,34 @@ describe("agentJobs.service (integration, real DB)", () => {
       }
     });
 
+    it("listJobBatchesService(onlyUnfinished) keeps a batch with a pending item but excludes a fully completed one", async () => {
+      const finishedOut = await createBatchJobService(
+        [agentId],
+        { commandType: "delete_temp_files", payload: null },
+        null,
+      );
+      batchIds.push(finishedOut.batchId);
+      const finishedJobs = await pollJobsService(agentId);
+      await submitJobResultService(agentId, finishedJobs[0].id, { success: true, exitCode: 0 });
+
+      const pendingOut = await createBatchJobService(
+        [agentId],
+        { commandType: "delete_temp_files", payload: null },
+        null,
+      );
+      batchIds.push(pendingOut.batchId);
+
+      const filtered = await listJobBatchesService({ page: 1, limit: 20, onlyUnfinished: true });
+      const filteredIds = filtered.items.map((b) => b.batchId);
+      expect(filteredIds).toContain(pendingOut.batchId);
+      expect(filteredIds).not.toContain(finishedOut.batchId);
+
+      const unfiltered = await listJobBatchesService({ page: 1, limit: 20 });
+      const unfilteredIds = unfiltered.items.map((b) => b.batchId);
+      expect(unfilteredIds).toContain(pendingOut.batchId);
+      expect(unfilteredIds).toContain(finishedOut.batchId);
+    });
+
     it("getBatchStatusService reports each item's agent connectivityStatus, so a pending item shows whether that agent is online", async () => {
       const otherAgentId = await insertAgent({
         agentUid: crypto.randomUUID(),

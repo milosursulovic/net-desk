@@ -139,8 +139,25 @@ export async function listJobsForBatch(batchId) {
   }));
 }
 
-export async function listJobBatches({ limit, offset }) {
-  const [[{ total }]] = await pool.execute(`SELECT COUNT(*) AS total FROM job_batches`);
+export async function listJobBatches({ limit, offset, onlyUnfinished }) {
+  // "Unfinished" = bar jedna stavka u batch-u je jos pending/sent - ne
+  // moze se izraziti kao WHERE (status jos nije agregiran po batch-u u tom
+  // trenutku), pa ide kao HAVING nakon GROUP BY. Isti uslov se ponavlja u
+  // count upitu (obavijen u podupit) da paginacija racuna tacan total nad
+  // filtriranim skupom, ne nad svim batch-evima.
+  const having = onlyUnfinished ? "HAVING SUM(j.status IN ('pending', 'sent')) > 0" : "";
+
+  const [[{ total }]] = await pool.execute(
+    `
+    SELECT COUNT(*) AS total FROM (
+      SELECT jb.id
+      FROM job_batches jb
+      LEFT JOIN agent_jobs j ON j.batch_id = jb.id
+      GROUP BY jb.id
+      ${having}
+    ) t
+    `,
+  );
 
   const [rows] = await pool.execute(
     `
@@ -158,6 +175,7 @@ export async function listJobBatches({ limit, offset }) {
     FROM job_batches jb
     LEFT JOIN agent_jobs j ON j.batch_id = jb.id
     GROUP BY jb.id
+    ${having}
     ORDER BY jb.created_at DESC
     LIMIT ? OFFSET ?
     `,
