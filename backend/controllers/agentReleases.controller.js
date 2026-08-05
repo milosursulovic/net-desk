@@ -14,6 +14,7 @@ import {
   reportUpdateResultService,
   listUpdateLogService,
   updateReleaseGroupsService,
+  listReleaseFilesOnDiskService,
 } from "../services/agentReleases.service.js";
 import { setAgentDeploymentGroupService } from "../services/agents.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -51,6 +52,11 @@ export async function createReleaseController(req, res) {
     req.user?.userId ?? null,
   );
   res.status(201).json(release);
+}
+
+export async function listReleaseFilesController(req, res) {
+  const items = await listReleaseFilesOnDiskService();
+  res.json({ items });
 }
 
 export async function listReleasesController(req, res) {

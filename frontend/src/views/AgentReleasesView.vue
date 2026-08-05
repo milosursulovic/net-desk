@@ -77,6 +77,36 @@
       </div>
     </div>
 
+    <div class="space-y-2">
+      <h2 class="text-lg font-semibold text-slate-800">Fajlovi na disku (uploads/agent-releases)</h2>
+      <p class="text-sm text-slate-500">
+        Read-only uvid u stvarno stanje foldera - za poređenje sa verzijama iznad, ne za upravljanje.
+      </p>
+
+      <div v-if="loadingDiskFiles" class="text-slate-600">Učitavanje…</div>
+      <div v-else-if="!diskFiles.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+        Folder je prazan.
+      </div>
+      <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-600 text-left">
+            <tr>
+              <th class="px-4 py-2 font-medium">Naziv</th>
+              <th class="px-4 py-2 font-medium">Veličina</th>
+              <th class="px-4 py-2 font-medium">Izmenjeno</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="f in diskFiles" :key="f.name">
+              <td class="px-4 py-2 break-all">{{ f.name }}</td>
+              <td class="px-4 py-2 whitespace-nowrap">{{ fmtBytes(f.size) }}</td>
+              <td class="px-4 py-2 whitespace-nowrap">{{ fmtDate(f.modifiedAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <SlideOverPanel :open="showUpload" title="Otpremi novu verziju" @close="closeUpload">
       <div class="space-y-4">
         <FormInput v-model.trim="form.version" label="Verzija" placeholder="1.1.0" />
@@ -342,8 +372,32 @@ async function saveGroups() {
   }
 }
 
+const diskFiles = ref([])
+const loadingDiskFiles = ref(false)
+
+// Read-only uvid u ono što je STVARNO na disku (uploads/agent-releases),
+// nezavisno od agent_releases tabele iznad - korisno da se uoči
+// neusklađenost (fajl ručno obrisan mimo aplikacije, ili "osirotela"
+// datoteka bez odgovarajućeg reda u bazi). Namerno bez upload/delete -
+// izmene idu isključivo kroz formu iznad da baza ostane izvor istine.
+async function fetchDiskFiles() {
+  loadingDiskFiles.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/agent-releases/files')
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju fajlova sa diska'))
+    const data = await res.json()
+    diskFiles.value = data.items || []
+  } catch (err) {
+    console.error('Neuspešno učitavanje fajlova sa diska', err)
+    showToast(err?.message || 'Greška pri učitavanju fajlova sa diska', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    loadingDiskFiles.value = false
+  }
+}
+
 onMounted(() => {
   fetchData()
   fetchDeploymentGroupOptions()
+  fetchDiskFiles()
 })
 </script>

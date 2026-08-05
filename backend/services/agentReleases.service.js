@@ -27,6 +27,24 @@ function ensureReleasesDir() {
   fs.mkdirSync(RELEASES_DIR, { recursive: true });
 }
 
+// Read-only uvid u šta je STVARNO na disku (za razliku od listReleasesService
+// koje čita agent_releases tabelu) - koristan da se uoči neusklađenost, npr.
+// fajl obrisan ručno mimo aplikacije dok baza i dalje misli da postoji, ili
+// obrnuto. Namerno bez upload/delete ovde - ta dva moraju ići kroz
+// uploadReleaseService/setReleaseActiveService da baza ostane izvor istine.
+export async function listReleaseFilesOnDiskService() {
+  ensureReleasesDir();
+
+  const entries = fs.readdirSync(RELEASES_DIR, { withFileTypes: true });
+  return entries
+    .filter((e) => e.isFile())
+    .map((e) => {
+      const stat = fs.statSync(path.join(RELEASES_DIR, e.name));
+      return { name: e.name, size: stat.size, modifiedAt: stat.mtime };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function uploadReleaseService(
   { buffer, originalName, version, deploymentGroups, releaseNotes },
   createdByUserId,
