@@ -42,7 +42,9 @@ router.get("/filter-options", asyncHandler(agentFilterOptionsController));
 router.get("/without-agent-computers", asyncHandler(listComputersWithoutAgentController));
 router.get("/without-agent-computers/export-pdf", asyncHandler(exportComputersWithoutAgentPdfController));
 router.get("/:id", asyncHandler(getAgentController));
-router.post("/:id/revoke", asyncHandler(revokeAgentController));
+// Admin-only - povlačenje pristupa je nepovratno bez ponovnog enroll-a na
+// mašini, veći blast radius od rutinskih operator akcija.
+router.post("/:id/revoke", requireRole("admin"), asyncHandler(revokeAgentController));
 
 router.get("/:id/jobs", asyncHandler(listJobsController));
 router.post("/:id/jobs", asyncHandler(createJobController));
@@ -54,7 +56,9 @@ router.get("/jobs/batch/:batchId", asyncHandler(getBatchStatusController));
 router.post("/jobs/batch/:batchId/cancel", asyncHandler(cancelBatchController));
 router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 
-router.patch("/:id/deployment-group", asyncHandler(setDeploymentGroupController));
+// Admin-only - deployment grupa određuje koji release/verzija agent
+// dobija, greška ovde pogađa update rollout za tu mašinu.
+router.patch("/:id/deployment-group", requireRole("admin"), asyncHandler(setDeploymentGroupController));
 router.patch("/:id/process-kill-exempt", asyncHandler(setProcessKillExemptController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 

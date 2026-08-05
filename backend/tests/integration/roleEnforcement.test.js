@@ -158,6 +158,23 @@ describe("role enforcement across modules (integration, real DB)", () => {
     });
   });
 
+  describe("agent revoke/deployment-group require admin (operator blocked)", () => {
+    it("operator is blocked (403) from revoking an agent", async () => {
+      const res = await request(app)
+        .post("/api/protected/agents/999999999/revoke")
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("operator is blocked (403) from changing an agent's deployment group", async () => {
+      const res = await request(app)
+        .patch("/api/protected/agents/999999999/deployment-group")
+        .set("Authorization", `Bearer ${operatorToken()}`)
+        .send({ deploymentGroup: "rest" });
+      expect(res.status).toBe(403);
+    });
+  });
+
   describe("operator-readable, admin-only-write modules (dns-logs, process-detections)", () => {
     it("operator can read dns-logs and process-detections, viewer is blocked", async () => {
       const dnsOperator = await request(app)

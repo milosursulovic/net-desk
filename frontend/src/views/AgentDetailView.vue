@@ -31,7 +31,7 @@
           <span class="text-xs text-slate-500">{{ agent.agentUid }}</span>
           <button @click="copy(agent.agentUid)" class="text-xs text-slate-400 hover:text-slate-600">📋</button>
 
-          <button v-if="agent.status === 'active'" @click="confirmRevoke" class="ml-auto text-red-600 hover:underline text-sm">
+          <button v-if="agent.status === 'active' && isAdmin" @click="confirmRevoke" class="ml-auto text-red-600 hover:underline text-sm">
             Povuci pristup
           </button>
         </div>
@@ -53,16 +53,19 @@
 
         <div class="flex items-center gap-2 pt-2 border-t">
           <label class="text-sm font-medium">Deployment grupa</label>
-          <input
-            v-model.trim="deploymentGroupInput"
-            @change="saveDeploymentGroup"
-            list="deployment-group-options"
-            class="app-input w-auto text-sm py-1"
-            placeholder="npr. Server Sala"
-          />
-          <datalist id="deployment-group-options">
-            <option v-for="g in deploymentGroupOptions" :key="g" :value="g" />
-          </datalist>
+          <template v-if="isAdmin">
+            <input
+              v-model.trim="deploymentGroupInput"
+              @change="saveDeploymentGroup"
+              list="deployment-group-options"
+              class="app-input w-auto text-sm py-1"
+              placeholder="npr. Server Sala"
+            />
+            <datalist id="deployment-group-options">
+              <option v-for="g in deploymentGroupOptions" :key="g" :value="g" />
+            </datalist>
+          </template>
+          <span v-else class="text-sm text-slate-600">{{ agent.deploymentGroup || 'rest' }}</span>
         </div>
 
         <div class="flex items-center gap-2 pt-2 border-t">
