@@ -397,8 +397,7 @@ watch(site, loadStats)
 
         <AppButton variant="primary" :disabled="loading" @click="loadStats">
           <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
-          <span v-else>↻</span>
-          <span>{{ loading ? 'Osvežavanje...' : 'Osveži podatke' }}</span>
+          <span>{{ loading ? 'Osvežavanje...' : 'Osveži' }}</span>
         </AppButton>
       </div>
     </div>
