@@ -611,6 +611,78 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'check-trusted-root-cert',
+    label: 'Proveri instaliran CA sertifikat (Trusted Root)',
+    // Read-only dijagnostika, pandan deploy-trusted-root-cert presetu -
+    // pretražuje Local Machine "Trusted Root Certification Authorities"
+    // store (Cert: provider, dostupan i na Windows 7 iz kutije, bez
+    // zavisnosti od certutil izlaznog formata) po delu Subject/Issuer
+    // teksta i ispisuje sve poklapanje sa Thumbprint/NotBefore/NotAfter -
+    // isti podaci koje smo uživo poredili tokom TLS troubleshoot-a.
+    script:
+      '# --- Izmeni pre slanja ako treba drugaciji filter ---\n' +
+      '$subjectFilter = "mkcert"\n' +
+      '# ------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '\n' +
+      'try {\n' +
+      '    $certs = Get-ChildItem -Path "Cert:\\LocalMachine\\Root" |\n' +
+      '        Where-Object { $_.Subject -like "*$subjectFilter*" -or $_.Issuer -like "*$subjectFilter*" }\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA pri citanju Trusted Root store-a: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}\n' +
+      '\n' +
+      'if (-not $certs) {\n' +
+      '    "Nije pronadjen nijedan sertifikat koji sadrzi \'$subjectFilter\' u Trusted Root store-u."\n' +
+      '} else {\n' +
+      '    foreach ($c in $certs) {\n' +
+      '        "Subject: $($c.Subject)"\n' +
+      '        "Issuer: $($c.Issuer)"\n' +
+      '        "Thumbprint: $($c.Thumbprint)"\n' +
+      '        "NotBefore: $($c.NotBefore)"\n' +
+      '        "NotAfter: $($c.NotAfter)"\n' +
+      '        "---"\n' +
+      '    }\n' +
+      '}',
+  },
+  {
+    id: 'check-intermediate-cert',
+    label: 'Proveri instaliran CA sertifikat (Intermediate CA)',
+    // Isto kao 'check-trusted-root-cert', samo cilja Local Machine
+    // "Intermediate Certification Authorities" store (Cert:\LocalMachine\CA).
+    script:
+      '# --- Izmeni pre slanja ako treba drugaciji filter ---\n' +
+      '$subjectFilter = "mkcert"\n' +
+      '# ------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '\n' +
+      'try {\n' +
+      '    $certs = Get-ChildItem -Path "Cert:\\LocalMachine\\CA" |\n' +
+      '        Where-Object { $_.Subject -like "*$subjectFilter*" -or $_.Issuer -like "*$subjectFilter*" }\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA pri citanju Intermediate CA store-a: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}\n' +
+      '\n' +
+      'if (-not $certs) {\n' +
+      '    "Nije pronadjen nijedan sertifikat koji sadrzi \'$subjectFilter\' u Intermediate CA store-u."\n' +
+      '} else {\n' +
+      '    foreach ($c in $certs) {\n' +
+      '        "Subject: $($c.Subject)"\n' +
+      '        "Issuer: $($c.Issuer)"\n' +
+      '        "Thumbprint: $($c.Thumbprint)"\n' +
+      '        "NotBefore: $($c.NotBefore)"\n' +
+      '        "NotAfter: $($c.NotAfter)"\n' +
+      '        "---"\n' +
+      '    }\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
