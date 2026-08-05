@@ -96,6 +96,29 @@ describe("ipAddresses.service (integration, real DB)", () => {
     expect(ids).not.toContain(b.id);
   });
 
+  it(
+    "listService free-text search matches a multi-word department by any of its words, " +
+      "not just its first word (regression: \"server sala\" used to match nothing)",
+    async () => {
+      const entry = await createService({
+        ip: testIp(),
+        department: "Server sala",
+      });
+      ipEntryId = entry.id;
+
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        search: "server sala",
+      });
+      expect(out.entries.some((e) => e.id === ipEntryId)).toBe(true);
+    },
+  );
+
   it("listService filters by os (exact match)", async () => {
     const uniqueOs = `VITEST_OS_${Date.now()}`;
     const a = await createService({ ip: testIp(), os: uniqueOs, entryType: "computer" });

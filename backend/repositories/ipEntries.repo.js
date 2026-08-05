@@ -27,6 +27,13 @@ function buildFastSearchSql(raw = "") {
 
   for (const t of terms) {
     const likePrefix = `${t}%`;
+    // Uživo otkriven bug: pretraga "server sala" cepa se na termine
+    // ["server", "sala"] AND-ovane, a department "Server sala" NIJE prefiks
+    // reči "sala" (to je DRUGA reč u vrednosti) - bez ovog dodatnog "% reč%"
+    // ogranka, drugi termin nikad ne bi pogodio ništa i ceo AND bi pao.
+    // Malo sporije za taj ogranak (vodeći % ne koristi indeks), ali
+    // department/computer_name su dovoljno mali da to nije problem.
+    const likeWordBoundary = `% ${t}%`;
     const ipPrefix = t.includes(".") ? `${t}%` : null;
 
     const or = [];
@@ -36,8 +43,12 @@ function buildFastSearchSql(raw = "") {
     }
     or.push("LOWER(COALESCE(computer_name,'')) LIKE ?");
     params.push(likePrefix);
+    or.push("LOWER(COALESCE(computer_name,'')) LIKE ?");
+    params.push(likeWordBoundary);
     or.push("LOWER(COALESCE(department,'')) LIKE ?");
     params.push(likePrefix);
+    or.push("LOWER(COALESCE(department,'')) LIKE ?");
+    params.push(likeWordBoundary);
 
     chunks.push(`(${or.join(" OR ")})`);
   }
