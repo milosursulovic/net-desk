@@ -32,6 +32,15 @@ export default defineConfig({
       // precaching (injectManifest strategy) just to add two event listeners.
       workbox: {
         importScripts: ['push-sw.js'],
+        // generateSW registers a catch-all NavigationRoute that serves the
+        // cached index.html for EVERY browser navigation (any link click/
+        // new-tab open), regardless of path - without this denylist, direct
+        // links to /uploads/downloads/* (deployment files served straight
+        // from Express, not part of the SPA) 404 inside the app's own
+        // client-side router instead of reaching the real file on the
+        // server (discovered live: curl got 200, clicking the link in a
+        // browser got the SPA's NotFoundView).
+        navigateFallbackDenylist: [/^\/uploads\//, /^\/api\//],
       },
       manifest: {
         name: 'NetDesk',
