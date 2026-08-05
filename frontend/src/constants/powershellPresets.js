@@ -506,6 +506,68 @@ export const POWERSHELL_PRESETS = [
       'Write-Output ($results -join "`n")',
   },
   {
+    id: 'deploy-trusted-root-cert',
+    label: 'Preuzmi i instaliraj CA sertifikat (Trusted Root)',
+    // Skida sertifikat sa servera (stavi .pem u backend/uploads/downloads/ -
+    // ta ruta je namerno bez auth-a, isti mehanizam kao za UltraVNC
+    // deployment zip-ove, vidi routes/index.js) i uvozi ga u Local Machine
+    // "Trusted Root Certification Authorities" store - agent radi kao
+    // LocalSystem, pa certutil -addstore bez -user cilja bas taj store
+    // (potvrđeno uživo).
+    //
+    // Namenjeno pre svega za UNAPRED distribuiranje novog mkcert CA root-a
+    // na flotu PRE nego što se server-side sertifikat rotira - tako se
+    // izbegava "chicken-and-egg" period kad agent ne veruje novom
+    // sertifikatu jer mu CA nikad nije uvezen (uzivo otkriven scenario).
+    //
+    // TLS 1.2 se eksplicitno forsira na OVAJ PowerShell proces - on je
+    // odvojen .NET runtime od samog agent servisa (agent to postavlja samo
+    // za sebe u NetdeskApiClient.cs), pa bez ovoga isti Windows 7 problem
+    // (TLS handshake ne uspeva) pogađa i sam download unutar ove skripte.
+    //
+    // Windows 7 mašine u floti idu preko netdesk.local (hosts unos), a
+    // Windows 10/11 direktno preko IP-a - sertifikat trenutno pokriva oba
+    // (SAN ima i DNS Name i IP Address), ali skripta ipak bira URL po OS
+    // verziji da prati isti obrazac po kom su agenti stvarno podešeni.
+    // Win32_OperatingSystem.Version za Windows 7 je "6.1.*" (Vista je 6.0,
+    // Windows 8/8.1 su 6.2/6.3, Windows 10 i 11 su oba "10.0.*").
+    script:
+      '# --- Izmeni ova tri reda pre slanja ako se promene ---\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/downloads/rootCA.pem"\n' +
+      '$storeName = "Root"\n' +
+      '# --------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$certUrl = if ($isWin7) { $certUrlWin7 } else { $certUrlModern }\n' +
+      '\n' +
+      '$destPath = Join-Path $env:TEMP "netdesk-deploy-cert.pem"\n' +
+      '\n' +
+      'try {\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($certUrl, $destPath)\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA pri preuzimanju sertifikata (URL: $certUrl): $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}\n' +
+      '\n' +
+      '$out = certutil.exe -addstore -f $storeName $destPath\n' +
+      '$exitCode = $LASTEXITCODE\n' +
+      'Remove-Item $destPath -Force -ErrorAction SilentlyContinue\n' +
+      '\n' +
+      '"Koriscen URL: $certUrl"\n' +
+      'Write-Output ($out -join "`n")\n' +
+      '\n' +
+      'if ($exitCode -ne 0) {\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
     id: 'restart-netdesk-agent-deferred',
     label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
     // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
