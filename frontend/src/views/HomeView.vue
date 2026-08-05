@@ -7,6 +7,10 @@
         <AppButton variant="success" @click="addEntry">Dodaj</AppButton>
 
         <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
+
+        <AppButton variant="secondary" to="/computers-for-repack">
+          📦 Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
+        </AppButton>
       </div>
     </div>
 
@@ -195,7 +199,7 @@
           </div>
         </div>
 
-        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc" class="mt-2 flex flex-wrap gap-2">
+        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc || entry.pendingRepack" class="mt-2 flex flex-wrap gap-2">
           <router-link
             v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
             :to="`/ip/${entry.id}/pdsu`"
@@ -212,6 +216,15 @@
           >
             🖥️ VNC omogućen
           </span>
+
+          <router-link
+            v-if="entry.pendingRepack"
+            to="/computers-for-repack"
+            class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-100"
+            title="Markiran za pakovanje/zamenu komponenti"
+          >
+            📦 Za pakovanje
+          </router-link>
         </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
@@ -260,6 +273,14 @@
         <div class="mt-4 pt-3 border-t flex flex-wrap items-center gap-3">
           <button @click="editEntry(entry)" class="text-blue-600 hover:underline text-sm">
             Izmeni
+          </button>
+          <button
+            @click="togglePendingRepack(entry)"
+            class="text-sm hover:underline"
+            :class="entry.pendingRepack ? 'text-amber-700' : 'text-slate-600'"
+            :title="entry.pendingRepack ? 'Ukloni oznaku za pakovanje' : 'Markiraj za pakovanje'"
+          >
+            {{ entry.pendingRepack ? '📦 Ukloni oznaku' : '📦 Za pakovanje' }}
           </button>
           <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="text-red-600 hover:underline text-sm">
             Obriši
@@ -377,7 +398,7 @@ async function fetchFilterOptions() {
 const entries = ref([])
 const total = ref(0)
 const totalPages = ref(0)
-const counts = ref({ online: 0, offline: 0 })
+const counts = ref({ online: 0, offline: 0, pendingRepack: 0 })
 const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 
 // Filter panel je na mobilnom skupljen po difoltu (ispod sm) - broj na dugmetu
@@ -432,7 +453,7 @@ async function fetchData() {
     entries.value = data.entries
     total.value = data.total
     totalPages.value = data.totalPages
-    counts.value = data.counts || { online: 0, offline: 0 }
+    counts.value = data.counts || { online: 0, offline: 0, pendingRepack: 0 }
 
     // ✅ opcionalno: očisti expand state za obrisane/skrivene entry-je
     const next = {}
@@ -440,6 +461,23 @@ async function fetchData() {
     expandedDesc.value = next
   } catch (err) {
     console.error('Neuspešno dohvatanje podataka')
+  }
+}
+
+const togglePendingRepack = async (entry) => {
+  const nextValue = !entry.pendingRepack
+  try {
+    const res = await fetchWithAuth(`/api/protected/ip-addresses/${entry.id}/pending-repack`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pendingRepack: nextValue }),
+    })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    entry.pendingRepack = nextValue
+    counts.value.pendingRepack += nextValue ? 1 : -1
+  } catch (err) {
+    console.error('Neuspešna izmena oznake za pakovanje', err)
+    showToast('Greška pri izmeni oznake', { prefix: '❌ ', duration: 3000 })
   }
 }
 

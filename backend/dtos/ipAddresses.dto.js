@@ -59,4 +59,15 @@ export const ListSchema = z.object({
   department: z.string().optional(),
   os: z.string().optional(),
   site: z.enum(SITES).optional(),
+  // z.coerce.boolean() bi tretiralo BILO KOJI neprazan string (i "0"/"false")
+  // kao true - query string uvek stiže kao string, pa se namerno poredi sa
+  // eksplicitnom listom "istinitih" vrednosti umesto toga.
+  pendingRepack: z
+    .string()
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
+});
+
+export const PendingRepackSchema = z.object({
+  pendingRepack: z.boolean(),
 });

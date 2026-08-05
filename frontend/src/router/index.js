@@ -19,6 +19,7 @@ const IpMetaView = () => import('@/views/IpMetaView.vue')
 const IpPdsuView = () => import('@/views/IpPdsuView.vue')
 const IpPortScanView = () => import('@/views/IpPortScanView.vue')
 const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
+const ComputersForRepackView = () => import('@/views/ComputersForRepackView.vue')
 const AgentsView = () => import('@/views/AgentsView.vue')
 const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
@@ -115,6 +116,16 @@ const router = createRouter({
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
           },
           component: DuplicateNamesView,
+        },
+        {
+          path: 'computers-for-repack',
+          name: 'computers-for-repack',
+          meta: {
+            title: 'Računari za pakovanje - NetDesk',
+            breadcrumb: 'Računari za pakovanje',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: ComputersForRepackView,
         },
         {
           path: 'metadata',

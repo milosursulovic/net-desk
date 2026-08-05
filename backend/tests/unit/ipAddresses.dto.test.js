@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ScanSchema, UpsertIpSchema, ListSchema } from "../../dtos/ipAddresses.dto.js";
+import { ScanSchema, UpsertIpSchema, ListSchema, PendingRepackSchema } from "../../dtos/ipAddresses.dto.js";
 
 describe("UpsertIpSchema", () => {
   it("requires a valid IPv4 address", () => {
@@ -69,6 +69,27 @@ describe("ListSchema", () => {
     expect(ListSchema.safeParse({}).success).toBe(true);
     expect(ListSchema.safeParse({ site: "bolnica" }).success).toBe(true);
     expect(ListSchema.safeParse({ site: "neka_treca_lokacija" }).success).toBe(false);
+  });
+
+  it(
+    "pendingRepack is false unless the query string is literally '1' or 'true' " +
+      "(query params always arrive as strings, so a naive z.coerce.boolean() would treat '0'/'false' as true)",
+    () => {
+      expect(ListSchema.parse({}).pendingRepack).toBe(false);
+      expect(ListSchema.parse({ pendingRepack: "0" }).pendingRepack).toBe(false);
+      expect(ListSchema.parse({ pendingRepack: "false" }).pendingRepack).toBe(false);
+      expect(ListSchema.parse({ pendingRepack: "1" }).pendingRepack).toBe(true);
+      expect(ListSchema.parse({ pendingRepack: "true" }).pendingRepack).toBe(true);
+    },
+  );
+});
+
+describe("PendingRepackSchema", () => {
+  it("requires a real boolean pendingRepack field", () => {
+    expect(PendingRepackSchema.safeParse({ pendingRepack: true }).success).toBe(true);
+    expect(PendingRepackSchema.safeParse({ pendingRepack: false }).success).toBe(true);
+    expect(PendingRepackSchema.safeParse({}).success).toBe(false);
+    expect(PendingRepackSchema.safeParse({ pendingRepack: "yes" }).success).toBe(false);
   });
 });
 

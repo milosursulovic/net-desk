@@ -12,6 +12,7 @@ import {
   updateController,
   deleteController,
   uptimeHistoryController,
+  setPendingRepackController,
 } from "../controllers/ipAddresses.controller.js";
 import metadataForIpRoutes from "./ipAddressesMetadata.routes.js";
 
@@ -27,6 +28,7 @@ router.get("/:id", asyncHandler(getByIdController));
 router.get("/:id/uptime", asyncHandler(uptimeHistoryController));
 router.post("/", asyncHandler(createController));
 router.put("/:id", asyncHandler(updateController));
+router.patch("/:id/pending-repack", asyncHandler(setPendingRepackController));
 router.delete("/:id", requireRole("admin"), asyncHandler(deleteController));
 
 router.use("/", metadataForIpRoutes);

@@ -80,7 +80,8 @@ export async function findIpEntryById(id) {
       last_status_change AS lastStatusChange,
       created_at AS createdAt,
       updated_at AS updatedAt,
-      description
+      description,
+      pending_repack AS pendingRepack
     FROM ip_entries
     WHERE id = ?
     LIMIT 1
@@ -172,6 +173,7 @@ export async function listIpEntries({
   department,
   os,
   site,
+  pendingRepack,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -214,6 +216,8 @@ export async function listIpEntries({
   if (status === "online") whereListParts.push("is_online = 1");
   if (status === "offline") whereListParts.push("is_online = 0");
 
+  if (pendingRepack) whereListParts.push("pending_repack = 1");
+
   const whereListSql = whereListParts.length
     ? `WHERE ${whereListParts.join(" AND ")}`
     : "";
@@ -251,6 +255,7 @@ export async function listIpEntries({
       last_status_change AS lastStatusChange,
       remote_script AS remoteScript,
       description,
+      pending_repack AS pendingRepack,
       agents.id AS agentId,
       (SELECT COUNT(*) FROM computer_software cs
        JOIN flagged_software fs
@@ -308,10 +313,17 @@ export async function listIpEntries({
     ${whereBaseSql ? whereBaseSql + " AND is_online = 0" : "WHERE is_online = 0"}
   `;
 
-  const [[totalRows], [onlineRows], [offlineRows]] = await Promise.all([
+  const sqlPendingRepack = `
+    SELECT COUNT(*) AS cnt
+    FROM ip_entries
+    ${whereBaseSql ? whereBaseSql + " AND pending_repack = 1" : "WHERE pending_repack = 1"}
+  `;
+
+  const [[totalRows], [onlineRows], [offlineRows], [pendingRepackRows]] = await Promise.all([
     pool.execute(sqlTotal, listParams),
     pool.execute(sqlOnline, baseParams),
     pool.execute(sqlOffline, baseParams),
+    pool.execute(sqlPendingRepack, baseParams),
   ]);
 
   const toNum = (v) => {
@@ -323,6 +335,7 @@ export async function listIpEntries({
   const total = toNum(totalRows?.[0]?.total);
   const onlineCount = toNum(onlineRows?.[0]?.cnt);
   const offlineCount = toNum(offlineRows?.[0]?.cnt);
+  const pendingRepackCount = toNum(pendingRepackRows?.[0]?.cnt);
 
   const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
   const safePage =
@@ -341,8 +354,16 @@ export async function listIpEntries({
     totalPages,
     page: safePage,
     limit,
-    counts: { online: onlineCount, offline: offlineCount },
+    counts: { online: onlineCount, offline: offlineCount, pendingRepack: pendingRepackCount },
   };
+}
+
+export async function updatePendingRepack(id, value) {
+  const [result] = await pool.execute(
+    `UPDATE ip_entries SET pending_repack = ? WHERE id = ?`,
+    [value ? 1 : 0, id],
+  );
+  return result.affectedRows;
 }
 
 export async function listDistinctDepartments(site) {

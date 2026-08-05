@@ -8,6 +8,7 @@ import {
   listService,
   filterOptionsService,
   duplicatesService,
+  setPendingRepackService,
 } from "../../services/ipAddresses.service.js";
 import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
@@ -118,6 +119,47 @@ describe("ipAddresses.service (integration, real DB)", () => {
       expect(out.entries.some((e) => e.id === ipEntryId)).toBe(true);
     },
   );
+
+  it("setPendingRepackService toggles the flag, is reflected in getByIdService, and filters listService", async () => {
+    const entry = await createService({ ip: testIp(), entryType: "computer" });
+    ipEntryId = entry.id;
+
+    expect(Boolean((await getByIdService(entry.id)).pendingRepack)).toBe(false);
+
+    const marked = await setPendingRepackService(entry.id, true);
+    expect(Boolean(marked.pendingRepack)).toBe(true);
+    expect(Boolean((await getByIdService(entry.id)).pendingRepack)).toBe(true);
+
+    const filtered = await listService({
+      page: 1,
+      limit: 50,
+      sortBy: "ip",
+      sortOrder: "asc",
+      status: "all",
+      entryType: "all",
+      pendingRepack: true,
+    });
+    expect(filtered.entries.map((e) => e.id)).toContain(entry.id);
+    expect(filtered.counts.pendingRepack).toBeGreaterThanOrEqual(1);
+
+    const unmarked = await setPendingRepackService(entry.id, false);
+    expect(Boolean(unmarked.pendingRepack)).toBe(false);
+
+    const filteredAfterUnmark = await listService({
+      page: 1,
+      limit: 50,
+      sortBy: "ip",
+      sortOrder: "asc",
+      status: "all",
+      entryType: "all",
+      pendingRepack: true,
+    });
+    expect(filteredAfterUnmark.entries.map((e) => e.id)).not.toContain(entry.id);
+  });
+
+  it("setPendingRepackService rejects an unknown id with 404", async () => {
+    await expect(setPendingRepackService(999999999, true)).rejects.toMatchObject({ status: 404 });
+  });
 
   it("listService filters by os (exact match)", async () => {
     const uniqueOs = `VITEST_OS_${Date.now()}`;

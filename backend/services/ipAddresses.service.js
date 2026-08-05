@@ -9,6 +9,7 @@ import {
   findIpEntryById,
   insertIpEntry,
   updateIpEntryPatch,
+  updatePendingRepack,
   deleteIpEntry,
   duplicateComputerNameGroups,
   exportIpEntriesForXlsx,
@@ -213,6 +214,14 @@ export async function scanPorts({ ip, ports, timeoutMs, concurrency }) {
 
 export async function listService(filters) {
   return await listIpEntries(filters);
+}
+
+export async function setPendingRepackService(id, value) {
+  const affected = await updatePendingRepack(id, value);
+  if (!affected) {
+    throw notFound("Unos nije pronađen");
+  }
+  return await findIpEntryById(id);
 }
 
 export async function filterOptionsService(site) {

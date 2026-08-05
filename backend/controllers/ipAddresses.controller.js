@@ -2,6 +2,7 @@ import {
   ScanSchema,
   ListSchema,
   UpsertIpSchema,
+  PendingRepackSchema,
   SITES,
 } from "../dtos/ipAddresses.dto.js";
 import {
@@ -14,6 +15,7 @@ import {
   deleteService,
   duplicatesService,
   exportXlsxRowsService,
+  setPendingRepackService,
 } from "../services/ipAddresses.service.js";
 import { getUptimeHistory } from "../services/ipStatusHistory.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -111,4 +113,13 @@ export async function deleteController(req, res) {
   const id = parseIdParam(req);
   await deleteService(id);
   res.json({ message: "Unos obrisan" });
+}
+
+export async function setPendingRepackController(req, res) {
+  const id = parseIdParam(req);
+  const parsed = PendingRepackSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const updated = await setPendingRepackService(id, parsed.data.pendingRepack);
+  res.json(updated);
 }
