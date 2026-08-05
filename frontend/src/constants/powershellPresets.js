@@ -533,8 +533,8 @@ export const POWERSHELL_PRESETS = [
     // Windows 8/8.1 su 6.2/6.3, Windows 10 i 11 su oba "10.0.*").
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
-      '$certUrlWin7 = "https://netdesk.local:3000/downloads/rootCA.pem"\n' +
-      '$certUrlModern = "https://10.230.62.81:3000/downloads/rootCA.pem"\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/uploads/downloads/rootCA.pem"\n' +
       '# --------------------------------------------------------\n' +
       '\n' +
       '$storeName = "Root"\n' +
@@ -576,8 +576,8 @@ export const POWERSHELL_PRESETS = [
     // puno objašnjenje TLS 1.2 forsiranja i OS-zavisnog URL-a.
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
-      '$certUrlWin7 = "https://netdesk.local:3000/downloads/rootCA.pem"\n' +
-      '$certUrlModern = "https://10.230.62.81:3000/downloads/rootCA.pem"\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/uploads/downloads/rootCA.pem"\n' +
       '# --------------------------------------------------------\n' +
       '\n' +
       '$storeName = "CA"\n' +
@@ -614,38 +614,56 @@ export const POWERSHELL_PRESETS = [
     id: 'check-trusted-root-cert',
     label: 'Proveri instaliran CA sertifikat (Trusted Root)',
     // Read-only dijagnostika, pandan deploy-trusted-root-cert presetu -
-    // pretražuje Local Machine "Trusted Root Certification Authorities"
-    // store (Cert: provider, dostupan i na Windows 7 iz kutije, bez
-    // zavisnosti od certutil izlaznog formata) po delu Subject/Issuer
-    // teksta i ispisuje sve poklapanje sa Thumbprint/NotBefore/NotAfter -
-    // isti podaci koje smo uživo poredili tokom TLS troubleshoot-a.
+    // umesto labavog pretraživanja po nazivu (moglo bi pogoditi neki STARI
+    // mkcert CA i lažno prijaviti "instaliran" iako je pogrešan), skida
+    // TRENUTNI referentni sertifikat sa servera (isti /uploads/downloads/rootCA.pem
+    // i isti OS-zavisan URL/TLS1.2 kao deploy preset) i poredi ga sa Local
+    // Machine "Trusted Root Certification Authorities" store-om (Cert:
+    // provider) TAČNO po Thumbprint-u.
     script:
-      '# --- Izmeni pre slanja ako treba drugaciji filter ---\n' +
-      '$subjectFilter = "mkcert"\n' +
-      '# ------------------------------------------------------\n' +
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/uploads/downloads/rootCA.pem"\n' +
+      '# --------------------------------------------------------\n' +
       '\n' +
       '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$certUrl = if ($isWin7) { $certUrlWin7 } else { $certUrlModern }\n' +
+      '\n' +
+      '$destPath = Join-Path $env:TEMP "netdesk-check-cert.pem"\n' +
       '\n' +
       'try {\n' +
-      '    $certs = Get-ChildItem -Path "Cert:\\LocalMachine\\Root" |\n' +
-      '        Where-Object { $_.Subject -like "*$subjectFilter*" -or $_.Issuer -like "*$subjectFilter*" }\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($certUrl, $destPath)\n' +
+      '    $refCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($destPath)\n' +
       '}\n' +
       'catch {\n' +
-      '    Write-Output "GRESKA pri citanju Trusted Root store-a: $($_.Exception.Message)"\n' +
+      '    Write-Output "GRESKA pri preuzimanju referentnog sertifikata (URL: $certUrl): $($_.Exception.Message)"\n' +
       '    exit 1\n' +
       '}\n' +
+      'finally {\n' +
+      '    Remove-Item $destPath -Force -ErrorAction SilentlyContinue\n' +
+      '}\n' +
       '\n' +
-      'if (-not $certs) {\n' +
-      '    "Nije pronadjen nijedan sertifikat koji sadrzi \'$subjectFilter\' u Trusted Root store-u."\n' +
+      '"Referentni CA sa servera (URL: $certUrl):"\n' +
+      '"  Subject: $($refCert.Subject)"\n' +
+      '"  Thumbprint: $($refCert.Thumbprint)"\n' +
+      '""\n' +
+      '\n' +
+      '$installed = Get-ChildItem -Path "Cert:\\LocalMachine\\Root" | Where-Object { $_.Thumbprint -eq $refCert.Thumbprint }\n' +
+      '\n' +
+      'if ($installed) {\n' +
+      '    "REZULTAT: Trenutni CA JESTE instaliran u Trusted Root store-u."\n' +
       '} else {\n' +
-      '    foreach ($c in $certs) {\n' +
-      '        "Subject: $($c.Subject)"\n' +
-      '        "Issuer: $($c.Issuer)"\n' +
-      '        "Thumbprint: $($c.Thumbprint)"\n' +
-      '        "NotBefore: $($c.NotBefore)"\n' +
-      '        "NotAfter: $($c.NotAfter)"\n' +
-      '        "---"\n' +
-      '    }\n' +
+      '    "REZULTAT: Trenutni CA NIJE instaliran u Trusted Root store-u."\n' +
+      '    ""\n' +
+      '    "Ostali sertifikati u store-u koji lice na mkcert (za poredjenje):"\n' +
+      '    Get-ChildItem -Path "Cert:\\LocalMachine\\Root" |\n' +
+      '        Where-Object { $_.Subject -like "*mkcert*" -or $_.Issuer -like "*mkcert*" } |\n' +
+      '        ForEach-Object { "  $($_.Subject) | Thumbprint: $($_.Thumbprint)" }\n' +
       '}',
   },
   {
@@ -654,32 +672,49 @@ export const POWERSHELL_PRESETS = [
     // Isto kao 'check-trusted-root-cert', samo cilja Local Machine
     // "Intermediate Certification Authorities" store (Cert:\LocalMachine\CA).
     script:
-      '# --- Izmeni pre slanja ako treba drugaciji filter ---\n' +
-      '$subjectFilter = "mkcert"\n' +
-      '# ------------------------------------------------------\n' +
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/uploads/downloads/rootCA.pem"\n' +
+      '# --------------------------------------------------------\n' +
       '\n' +
       '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$certUrl = if ($isWin7) { $certUrlWin7 } else { $certUrlModern }\n' +
+      '\n' +
+      '$destPath = Join-Path $env:TEMP "netdesk-check-cert.pem"\n' +
       '\n' +
       'try {\n' +
-      '    $certs = Get-ChildItem -Path "Cert:\\LocalMachine\\CA" |\n' +
-      '        Where-Object { $_.Subject -like "*$subjectFilter*" -or $_.Issuer -like "*$subjectFilter*" }\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($certUrl, $destPath)\n' +
+      '    $refCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($destPath)\n' +
       '}\n' +
       'catch {\n' +
-      '    Write-Output "GRESKA pri citanju Intermediate CA store-a: $($_.Exception.Message)"\n' +
+      '    Write-Output "GRESKA pri preuzimanju referentnog sertifikata (URL: $certUrl): $($_.Exception.Message)"\n' +
       '    exit 1\n' +
       '}\n' +
+      'finally {\n' +
+      '    Remove-Item $destPath -Force -ErrorAction SilentlyContinue\n' +
+      '}\n' +
       '\n' +
-      'if (-not $certs) {\n' +
-      '    "Nije pronadjen nijedan sertifikat koji sadrzi \'$subjectFilter\' u Intermediate CA store-u."\n' +
+      '"Referentni CA sa servera (URL: $certUrl):"\n' +
+      '"  Subject: $($refCert.Subject)"\n' +
+      '"  Thumbprint: $($refCert.Thumbprint)"\n' +
+      '""\n' +
+      '\n' +
+      '$installed = Get-ChildItem -Path "Cert:\\LocalMachine\\CA" | Where-Object { $_.Thumbprint -eq $refCert.Thumbprint }\n' +
+      '\n' +
+      'if ($installed) {\n' +
+      '    "REZULTAT: Trenutni CA JESTE instaliran u Intermediate CA store-u."\n' +
       '} else {\n' +
-      '    foreach ($c in $certs) {\n' +
-      '        "Subject: $($c.Subject)"\n' +
-      '        "Issuer: $($c.Issuer)"\n' +
-      '        "Thumbprint: $($c.Thumbprint)"\n' +
-      '        "NotBefore: $($c.NotBefore)"\n' +
-      '        "NotAfter: $($c.NotAfter)"\n' +
-      '        "---"\n' +
-      '    }\n' +
+      '    "REZULTAT: Trenutni CA NIJE instaliran u Intermediate CA store-u."\n' +
+      '    ""\n' +
+      '    "Ostali sertifikati u store-u koji lice na mkcert (za poredjenje):"\n' +
+      '    Get-ChildItem -Path "Cert:\\LocalMachine\\CA" |\n' +
+      '        Where-Object { $_.Subject -like "*mkcert*" -or $_.Issuer -like "*mkcert*" } |\n' +
+      '        ForEach-Object { "  $($_.Subject) | Thumbprint: $($_.Thumbprint)" }\n' +
       '}',
   },
   {

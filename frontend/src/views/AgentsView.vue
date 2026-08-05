@@ -6,6 +6,7 @@
         <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
         <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
         <AppButton variant="secondary" to="/agent-batches">Batch komande</AppButton>
+        <AppButton v-if="isAdmin" variant="secondary" to="/downloads-folder">Deljeni fajlovi</AppButton>
       </div>
     </div>
 
@@ -357,6 +358,7 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { useToast } from '@/composables/useToast.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
@@ -372,6 +374,7 @@ const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
 const route = useRoute()
 const site = useCurrentSite()
+const { isAdmin } = useCurrentUser()
 const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()

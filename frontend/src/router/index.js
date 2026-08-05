@@ -25,6 +25,7 @@ const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
 const BatchJobsView = () => import('@/views/BatchJobsView.vue')
 const BatchJobDetailView = () => import('@/views/BatchJobDetailView.vue')
 const ComputersWithoutAgentView = () => import('@/views/ComputersWithoutAgentView.vue')
+const DownloadsFolderView = () => import('@/views/DownloadsFolderView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
 const UsersView = () => import('@/views/UsersView.vue')
 const LogsView = () => import('@/views/LogsView.vue')
@@ -199,6 +200,17 @@ const router = createRouter({
             breadcrumbParent: { label: 'Agenti', to: '/agents' },
           },
           component: ComputersWithoutAgentView,
+        },
+        {
+          path: 'downloads-folder',
+          name: 'downloads-folder',
+          meta: {
+            title: 'Deljeni fajlovi - NetDesk',
+            breadcrumb: 'Deljeni fajlovi',
+            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            requiresAdmin: true,
+          },
+          component: DownloadsFolderView,
         },
         {
           path: 'reports',

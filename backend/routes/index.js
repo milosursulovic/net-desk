@@ -18,6 +18,6 @@ router.use("/api/protected", authenticateToken, auditLog, protectedRoutes);
 // pravu "logon session" za eksplicitne network kredencijale na Windows 7
 // (System error 1312, otkriveno uživo) - obična HTTPS konekcija tu nema
 // isto ograničenje, isti mehanizam agent već koristi za sve ostalo.
-router.use("/downloads", express.static(path.join(process.cwd(), "uploads", "downloads")));
+router.use("/uploads/downloads", express.static(path.join(process.cwd(), "uploads", "downloads")));
 
 export default router;
