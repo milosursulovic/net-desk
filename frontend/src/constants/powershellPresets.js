@@ -532,12 +532,55 @@ export const POWERSHELL_PRESETS = [
     // Win32_OperatingSystem.Version za Windows 7 je "6.1.*" (Vista je 6.0,
     // Windows 8/8.1 su 6.2/6.3, Windows 10 i 11 su oba "10.0.*").
     script:
-      '# --- Izmeni ova tri reda pre slanja ako se promene ---\n' +
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
       '$certUrlWin7 = "https://netdesk.local:3000/downloads/rootCA.pem"\n' +
       '$certUrlModern = "https://10.230.62.81:3000/downloads/rootCA.pem"\n' +
-      '$storeName = "Root"\n' +
       '# --------------------------------------------------------\n' +
       '\n' +
+      '$storeName = "Root"\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$certUrl = if ($isWin7) { $certUrlWin7 } else { $certUrlModern }\n' +
+      '\n' +
+      '$destPath = Join-Path $env:TEMP "netdesk-deploy-cert.pem"\n' +
+      '\n' +
+      'try {\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($certUrl, $destPath)\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA pri preuzimanju sertifikata (URL: $certUrl): $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}\n' +
+      '\n' +
+      '$out = certutil.exe -addstore -f $storeName $destPath\n' +
+      '$exitCode = $LASTEXITCODE\n' +
+      'Remove-Item $destPath -Force -ErrorAction SilentlyContinue\n' +
+      '\n' +
+      '"Koriscen URL: $certUrl"\n' +
+      'Write-Output ($out -join "`n")\n' +
+      '\n' +
+      'if ($exitCode -ne 0) {\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
+    id: 'deploy-intermediate-cert',
+    label: 'Preuzmi i instaliraj CA sertifikat (Intermediate CA)',
+    // Isto kao 'deploy-trusted-root-cert', samo cilja Local Machine
+    // "Intermediate Certification Authorities" store (certutil naziv "CA")
+    // umesto "Trusted Root Certification Authorities" - vidi taj preset za
+    // puno objašnjenje TLS 1.2 forsiranja i OS-zavisnog URL-a.
+    script:
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '$certUrlWin7 = "https://netdesk.local:3000/downloads/rootCA.pem"\n' +
+      '$certUrlModern = "https://10.230.62.81:3000/downloads/rootCA.pem"\n' +
+      '# --------------------------------------------------------\n' +
+      '\n' +
+      '$storeName = "CA"\n' +
       '$ErrorActionPreference = "Stop"\n' +
       '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
       '\n' +
