@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server",
     "dev": "nodemon server",
+    "migrate": "node scripts/migrate.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -15,6 +15,9 @@ frontend/dev-dist/
 # Uploaded agent release packages
 backend/uploads/
 
+# Server-specific auto-deploy script (hardcoded paths/task names, not shared)
+deploy/
+
 # .NET (service/)
 service/**/bin/
 service/**/obj/
