@@ -292,6 +292,49 @@ describe("agents.service (integration, real DB)", () => {
     },
   );
 
+  it(
+    "inventory sync auto-fills ip_entries.os_architecture and has_izvolte_folder, " +
+      "then a sync without those fields leaves both untouched (not falsely reset to null/false)",
+    async () => {
+      const ip = testIp();
+      const hostname = testHostname();
+
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const fullSync = await syncAgentInventory(found, {
+        ip,
+        hostname,
+        OS: { Caption: "Microsoft Windows 10 Pro", Architecture: "64-bit" },
+        hasIzvolteFolder: true,
+      });
+      ipEntryId = fullSync.ipEntryId;
+
+      let entry = await getIpEntryByIdService(ipEntryId);
+      expect(entry.osArchitecture).toBe("64-bit");
+      expect(Boolean(entry.hasIzvolteFolder)).toBe(true);
+
+      // A minimal sync (e.g. event-log-only, exactly how AgentWorker.cs builds
+      // its lightweight requests) omits OS/hasIzvolteFolder entirely - must not
+      // wipe either field, same merge-not-overwrite contract as os/rdp_app.
+      const reloaded = await findAgentById(agentId);
+      await syncAgentInventory(reloaded, { ip, eventLogs: [{ logName: "System" }] });
+
+      entry = await getIpEntryByIdService(ipEntryId);
+      expect(entry.osArchitecture).toBe("64-bit");
+      expect(Boolean(entry.hasIzvolteFolder)).toBe(true);
+
+      // A later real sync reporting the folder is now gone DOES flip it back.
+      const reloadedAgain = await findAgentById(agentId);
+      await syncAgentInventory(reloadedAgain, { ip, hasIzvolteFolder: false });
+
+      entry = await getIpEntryByIdService(ipEntryId);
+      expect(Boolean(entry.hasIzvolteFolder)).toBe(false);
+    },
+  );
+
   describe("listAgentsService detailed filters", () => {
     it("filters by connectivityStatus=online after a heartbeat, and excludes it under offline", async () => {
       const hostname = testHostname();

@@ -70,6 +70,8 @@ export async function findIpEntryById(id) {
       computer_name AS computerName,
       rdp_app AS rdpApp,
       os,
+      os_architecture AS osArchitecture,
+      has_izvolte_folder AS hasIzvolteFolder,
       department,
       site,
       entry_type AS entryType,
@@ -127,8 +129,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, department, site, description, entry_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, os_architecture, has_izvolte_folder, department, site, description, entry_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -136,6 +138,8 @@ export async function insertIpEntry(row) {
       row.computerName,
       row.rdpApp,
       row.os,
+      row.osArchitecture ?? null,
+      row.hasIzvolteFolder ? 1 : 0,
       row.department,
       row.site ?? null,
       row.description,
@@ -243,6 +247,8 @@ export async function listIpEntries({
       computer_name AS computerName,
       rdp_app AS rdpApp,
       os,
+      os_architecture AS osArchitecture,
+      has_izvolte_folder AS hasIzvolteFolder,
       department,
       site,
       entry_type AS entryType,

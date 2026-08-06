@@ -17,7 +17,9 @@ namespace NetdeskAgent.Common.Inventory
     {
         public static OsInfo CollectOs()
         {
-            using (var mo = QueryFirst("SELECT Caption, Version, BuildNumber, InstallDate FROM Win32_OperatingSystem"))
+            // OSArchitecture vraća npr. "64-bit"/"32-bit" - postoji na Win32_OperatingSystem
+            // od Windows 7/Server 2008 R2 naovamo, pa je bezbedno za celu flotu.
+            using (var mo = QueryFirst("SELECT Caption, Version, BuildNumber, InstallDate, OSArchitecture FROM Win32_OperatingSystem"))
             {
                 if (mo == null) return null;
                 return new OsInfo
@@ -26,6 +28,7 @@ namespace NetdeskAgent.Common.Inventory
                     Version = WmiUtils.GetString(mo, "Version"),
                     Build = WmiUtils.GetString(mo, "BuildNumber"),
                     InstallDate = WmiUtils.GetDateTimeIso(mo, "InstallDate"),
+                    Architecture = WmiUtils.GetString(mo, "OSArchitecture"),
                 };
             }
         }

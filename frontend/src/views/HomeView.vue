@@ -199,7 +199,7 @@
           </div>
         </div>
 
-        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc || entry.pendingRepack" class="mt-2 flex flex-wrap gap-2">
+        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc || entry.pendingRepack || entry.hasIzvolteFolder" class="mt-2 flex flex-wrap gap-2">
           <router-link
             v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
             :to="`/ip/${entry.id}/pdsu`"
@@ -225,10 +225,18 @@
           >
             📦 Za pakovanje
           </router-link>
+
+          <span
+            v-if="entry.hasIzvolteFolder"
+            class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700"
+            title="Folder C:\Izvolte pronađen na ovom računaru"
+          >
+            📁 Izvolte folder
+          </span>
         </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
-          <div class="grid grid-cols-2 gap-2 pt-2">
+          <div class="grid grid-cols-3 gap-2 pt-2">
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
               <div class="text-xs text-slate-500">RDP App</div>
               <div class="text-sm font-medium break-all">{{ entry.rdpApp || '—' }}</div>
@@ -236,6 +244,10 @@
             <div class="rounded-lg bg-slate-50 px-2 py-1.5">
               <div class="text-xs text-slate-500">Sistem</div>
               <div class="text-sm font-medium break-all">{{ entry.os || '—' }}</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+              <div class="text-xs text-slate-500">Arhitektura</div>
+              <div class="text-sm font-medium break-all">{{ entry.osArchitecture || '—' }}</div>
             </div>
           </div>
         </div>

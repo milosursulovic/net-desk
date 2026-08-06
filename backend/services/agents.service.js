@@ -292,6 +292,22 @@ function extractOsCaption(body) {
   return emptyToNull(os.Caption ?? os.caption);
 }
 
+function extractOsArchitecture(body) {
+  const os = body?.OS ?? body?.os;
+  if (!os) return undefined;
+  return emptyToNull(os.Architecture ?? os.architecture);
+}
+
+// hasIzvolteFolder je nullable na C# strani (vidi InventoryModels.cs) - kad
+// nije poslato (minimalni event-log/DNS/process-detection sync-evi ga nikad
+// ne postavljaju), RawJsonSettings.NullValueHandling.Ignore ga potpuno
+// izostavi iz JSON-a, pa je ovde undefined - "ne diraj postojeću vrednost",
+// isti obrazac kao os/rdp_app.
+function extractHasIzvolteFolder(body) {
+  if (body?.hasIzvolteFolder === undefined || body?.hasIzvolteFolder === null) return undefined;
+  return Boolean(body.hasIzvolteFolder);
+}
+
 async function resolveIpEntryId(agent, body) {
   if (agent.ipEntryId) {
     // Once an agent is linked to an ip_entry, every sync unconditionally
@@ -322,6 +338,18 @@ async function resolveIpEntryId(agent, body) {
       params.push(rdpApp);
     }
 
+    const osArchitecture = extractOsArchitecture(body);
+    if (osArchitecture !== undefined) {
+      sets.push("os_architecture = ?");
+      params.push(osArchitecture);
+    }
+
+    const hasIzvolteFolder = extractHasIzvolteFolder(body);
+    if (hasIzvolteFolder !== undefined) {
+      sets.push("has_izvolte_folder = ?");
+      params.push(hasIzvolteFolder ? 1 : 0);
+    }
+
     await updateIpEntryPatch(agent.ipEntryId, sets.join(", "), params);
     return agent.ipEntryId;
   }
@@ -334,6 +362,8 @@ async function resolveIpEntryId(agent, body) {
       computerName: emptyToNull(body.hostname),
       rdpApp: detectRdpApps(body.services) ?? null,
       os: extractOsCaption(body) ?? null,
+      osArchitecture: extractOsArchitecture(body) ?? null,
+      hasIzvolteFolder: extractHasIzvolteFolder(body) ?? false,
       department: emptyToNull(body.department),
       description: null,
       entryType: "computer",

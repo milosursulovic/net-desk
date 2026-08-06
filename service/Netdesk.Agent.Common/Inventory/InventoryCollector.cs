@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Inventory
@@ -22,6 +23,7 @@ namespace NetdeskAgent.Common.Inventory
                 Ip = HardwareCollector.GetPrimaryIPv4(),
                 Hostname = hostname,
                 Department = department,
+                HasIzvolteFolder = SafeCollect(() => Directory.Exists(@"C:\Izvolte"), "Izvolte folder"),
             };
 
             if (string.IsNullOrEmpty(request.Ip))

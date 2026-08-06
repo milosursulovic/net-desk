@@ -22,6 +22,21 @@ namespace NetdeskAgent.Common.Inventory
         [JsonProperty("department")]
         public string Department { get; set; }
 
+        /// <summary>
+        /// Da li folder C:\Izvolte postoji na ovoj mašini - fiksna, uvek ista
+        /// putanja (ne zavisi od sistemskog diska/instalacije), prosta
+        /// Directory.Exists provera u InventoryCollector.Collect(). Nullable
+        /// (ne obican bool) je NAMERNO - minimalni sync-evi (event log/DNS/
+        /// process detections u AgentWorker.cs) prave InventoryRequest
+        /// direktno bez ovog polja postavljenog, pa bi obican bool uvek nosio
+        /// default(false) i lažno prijavio "folder ne postoji" na svaki takav
+        /// sync. null + RawJsonSettings.NullValueHandling.Ignore znači da se
+        /// polje potpuno izostavi iz JSON-a kad nije stvarno proveravano -
+        /// backend ga onda ne dira (isti obrazac kao OS/rdp_app merge).
+        /// </summary>
+        [JsonProperty("hasIzvolteFolder")]
+        public bool? HasIzvolteFolder { get; set; }
+
         [JsonProperty("OS")]
         public OsInfo Os { get; set; }
 
@@ -103,6 +118,9 @@ namespace NetdeskAgent.Common.Inventory
 
         [JsonProperty("InstallDate")]
         public string InstallDate { get; set; }
+
+        [JsonProperty("Architecture")]
+        public string Architecture { get; set; }
     }
 
     public class SystemHardwareInfo
