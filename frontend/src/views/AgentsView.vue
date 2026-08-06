@@ -2,7 +2,7 @@
   <div class="glass-container space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h1 class="text-2xl font-bold text-slate-800">Netdesk Agenti</h1>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
         <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
         <AppButton variant="secondary" to="/agent-batches">Batch komande</AppButton>
@@ -48,7 +48,7 @@
       <!-- Detaljni filteri - skupljeno na mobilnom po difoltu -->
       <div :class="detailedFiltersOpen ? 'block' : 'hidden sm:block'">
         <div class="flex flex-wrap items-center gap-2">
-          <select v-model="connectivityStatus" class="app-input w-auto" aria-label="Filter po konekciji">
+          <select v-model="connectivityStatus" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po konekciji">
             <option value="">Sve konekcije</option>
             <option value="online">Online</option>
             <option value="stale">Neaktivan</option>
@@ -56,17 +56,17 @@
             <option value="unknown">Nepoznato</option>
           </select>
 
-          <select v-model="deploymentGroup" class="app-input w-auto" aria-label="Filter po deployment grupi">
+          <select v-model="deploymentGroup" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po deployment grupi">
             <option value="">Sve deployment grupe</option>
             <option v-for="g in deploymentGroupOptions" :key="g" :value="g">{{ g }}</option>
           </select>
 
-          <select v-model="os" class="app-input w-auto" aria-label="Filter po operativnom sistemu">
+          <select v-model="os" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po operativnom sistemu">
             <option value="">Svi OS</option>
             <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
           </select>
 
-          <select v-model="version" class="app-input w-auto" aria-label="Filter po verziji agenta">
+          <select v-model="version" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po verziji agenta">
             <option value="">Sve verzije</option>
             <option v-for="v in versionOptions" :key="v" :value="v">{{ v }}</option>
           </select>
@@ -80,7 +80,7 @@
             Isključi (prikaži zaostale)
           </label>
 
-          <select v-model="department" class="app-input w-auto" aria-label="Filter po odeljenju">
+          <select v-model="department" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po odeljenju">
             <option value="">Sva odeljenja</option>
             <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
           </select>

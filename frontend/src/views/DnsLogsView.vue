@@ -94,7 +94,7 @@
           <tr v-for="row in items" :key="row.id"
             class="border-b border-slate-100 hover:bg-slate-50"
             :class="row.isBlacklisted ? 'bg-red-50' : ''">
-            <td class="py-2 pr-3 font-mono break-all">
+            <td class="py-2 pr-3 font-mono whitespace-nowrap">
               {{ row.domain }}
               <span v-if="row.isBlacklisted" class="ml-1 text-red-600" title="Domen je na crnoj listi">🚫</span>
             </td>

@@ -194,7 +194,7 @@
 
       <!-- ================= BEZ METAPODATAKA ================= -->
       <SectionHeader title="Bez metapodataka" />
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
+      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
         <div class="flex items-center justify-between gap-3 mb-3">
           <h2 class="font-semibold text-slate-800">
             Računari bez prikupljenih metapodataka ({{ missingMetadata.length }})

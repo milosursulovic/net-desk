@@ -93,7 +93,7 @@
         </thead>
         <tbody>
           <tr v-for="row in items" :key="row.id" class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="py-2 pr-3 font-mono break-all">{{ row.processName }}</td>
+            <td class="py-2 pr-3 font-mono whitespace-nowrap">{{ row.processName }}</td>
             <td class="py-2 pr-3">
               <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-blue-600 hover:underline">
                 {{ row.computerName || '—' }}

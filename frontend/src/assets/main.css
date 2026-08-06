@@ -606,6 +606,7 @@ textarea {
 
 .pdsu-table {
   width: 100%;
+  min-width: max-content;
   border-collapse: collapse;
   color: #334155;
   font-size: 0.875rem;
@@ -631,6 +632,7 @@ textarea {
   padding: 0.8rem 0.75rem;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .pdsu-table tbody tr {

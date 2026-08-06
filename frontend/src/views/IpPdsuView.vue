@@ -1,10 +1,10 @@
 <template>
   <div class="glass-container w-full max-w-3xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-slate-800">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <h1 class="text-2xl font-bold text-slate-800 break-words">
         Inventar — {{ entry?.computer_name || entry?.ip || 'Nepoznato' }}
       </h1>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <AppButton
           v-if="hasAnyPdsuData"
           variant="secondary"

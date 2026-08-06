@@ -88,7 +88,7 @@
         Folder je prazan.
       </div>
       <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full min-w-max text-sm">
           <thead class="bg-slate-50 text-slate-600 text-left">
             <tr>
               <th class="px-4 py-2 font-medium">Naziv</th>
@@ -98,7 +98,7 @@
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="f in diskFiles" :key="f.name">
-              <td class="px-4 py-2 break-all">{{ f.name }}</td>
+              <td class="px-4 py-2 whitespace-nowrap">{{ f.name }}</td>
               <td class="px-4 py-2 whitespace-nowrap">{{ fmtBytes(f.size) }}</td>
               <td class="px-4 py-2 whitespace-nowrap">{{ fmtDate(f.modifiedAt) }}</td>
             </tr>

@@ -210,7 +210,7 @@
             Nema neuspešnih ažuriranja u ovom periodu.
           </div>
           <ul v-else class="space-y-1 text-sm">
-            <li v-for="(u, idx) in report.content.sinceLastReport.failedUpdates" :key="idx">
+            <li v-for="(u, idx) in report.content.sinceLastReport.failedUpdates" :key="idx" class="break-words">
               {{ u.hostname || '—' }} — {{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}
               <span v-if="u.reason" class="text-slate-400">({{ u.reason }})</span>
             </li>

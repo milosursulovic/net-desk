@@ -29,7 +29,7 @@
     </div>
 
     <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full min-w-max text-sm">
         <thead class="bg-slate-50 text-slate-600 text-left">
           <tr>
             <th class="px-4 py-2 font-medium">Naziv</th>
@@ -41,7 +41,7 @@
         <tbody class="divide-y divide-slate-100">
           <tr v-for="item in items" :key="item.name">
             <td class="px-4 py-2">
-              <a :href="publicUrl(item.name)" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all">
+              <a :href="publicUrl(item.name)" target="_blank" rel="noopener" class="text-blue-600 hover:underline whitespace-nowrap">
                 {{ item.name }}
               </a>
             </td>

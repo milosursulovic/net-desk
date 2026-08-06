@@ -41,30 +41,30 @@
       </div>
 
       <div class="flex-wrap items-center gap-2" :class="filtersOpen ? 'flex' : 'hidden sm:flex'">
-        <select v-model="status" class="app-input w-auto py-2 text-sm" :title="'Filter statusa'">
+        <select v-model="status" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter statusa'">
           <option value="all">Svi statusi</option>
           <option value="online">Samo online</option>
           <option value="offline">Samo offline</option>
         </select>
 
-        <select v-model="entryType" class="app-input w-auto py-2 text-sm" :title="'Filter tipa'">
+        <select v-model="entryType" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter tipa'">
           <option value="all">Svi tipovi</option>
           <option value="computer">Računari</option>
           <option value="device">Aparati</option>
           <option value="unknown">Nepoznato</option>
         </select>
 
-        <select v-model="department" class="app-input w-auto py-2 text-sm" :title="'Filter odeljenja'">
+        <select v-model="department" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter odeljenja'">
           <option value="">Sva odeljenja</option>
           <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
         </select>
 
-        <select v-model="os" class="app-input w-auto py-2 text-sm" :title="'Filter operativnog sistema'">
+        <select v-model="os" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter operativnog sistema'">
           <option value="">Svi OS</option>
           <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
         </select>
 
-        <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
+        <select v-model="sortBy" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
 
@@ -140,7 +140,7 @@
         :key="entry.id"
         class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
       >
-        <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
           <div class="min-w-0">
             <div class="text-sm text-slate-500">IP adresa</div>
             <div class="text-lg font-semibold tracking-tight">
@@ -152,7 +152,7 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center justify-end gap-2">
+          <div class="flex flex-wrap items-center justify-end gap-2 min-w-0">
             <span
               class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
               :class="
@@ -167,8 +167,8 @@
 
             <span
               v-if="entry.department"
-              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700"
-              title="Odeljenje"
+              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700 max-w-40 truncate"
+              :title="entry.department"
             >
               {{ entry.department }}
             </span>
