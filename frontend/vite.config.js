@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 import fs from 'fs'
+import { execSync } from 'node:child_process'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -13,7 +14,23 @@ dotenv.config()
 const ip = process.env.VITE_HOST_IP_ADDRESS || 'localhost'
 const port = process.env.VITE_HOST_PORT || 5173
 
+// "Logička" verzija - broj commit-ova umesto ručno biranog semver broja, da
+// se sama pomera na svaki sledeći commit bez ikakvog održavanja (package.json
+// verzija je odavno zaostala - 1.0.15 posle 260+ commit-ova stvarnog rada).
+// git komanda je best-effort (build ne sme da padne van git repo-a, npr. u
+// nekom čistom Docker kontekstu bez .git foldera).
+function gitCommitCount() {
+  try {
+    return execSync('git rev-list --count HEAD').toString().trim()
+  } catch {
+    return '0'
+  }
+}
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(`1.0.${gitCommitCount()}`),
+  },
   plugins: [
     vue(),
     vueDevTools(),

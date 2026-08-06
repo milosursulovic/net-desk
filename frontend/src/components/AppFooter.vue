@@ -1,6 +1,9 @@
 <template>
   <div :class="wrapperClass">
-    <div>&copy; {{ year }} {{ copyright }}</div>
+    <div>
+      &copy; {{ year }} {{ copyright }}
+      <span v-if="showVersion" class="text-slate-400"> · v{{ version }}</span>
+    </div>
   </div>
 </template>
 
@@ -12,5 +15,5 @@ defineProps({
   wrapperClass: { type: String, default: '' },
 })
 
-const { year, copyright } = useAppInfo()
+const { year, copyright, version } = useAppInfo()
 </script>
