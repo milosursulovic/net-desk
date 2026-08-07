@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 import AppButton from '@/components/AppButton.vue'
@@ -70,13 +70,56 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+
+  sendingManagerInstall: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
   'export-missing',
   'export-without-ultravnc',
   'export-without-netdesk-agent-manager',
+  'send-manager-install',
 ])
+
+// Selekcija na "Bez NetdeskAgentManager-a" listi - samo redovi SA agentom
+// mogu da prime job (bez agenta nema kome da se pošalje). Set od agentId
+// vrednosti, čisto lokalno UI stanje - roditelj (PDSUAnalyticsView.vue) samo
+// dobija konačnu listu ID-jeva kad se pošalje.
+const selectedManagerAgentIds = ref(new Set())
+
+const managerAgentRows = computed(() =>
+  props.withoutNetdeskAgentManager.filter((row) => row.agentId),
+)
+
+const allManagerAgentsSelected = computed(
+  () =>
+    managerAgentRows.value.length > 0 &&
+    managerAgentRows.value.every((row) => selectedManagerAgentIds.value.has(row.agentId)),
+)
+
+function toggleManagerAgentSelection(agentId) {
+  const next = new Set(selectedManagerAgentIds.value)
+  if (next.has(agentId)) {
+    next.delete(agentId)
+  } else {
+    next.add(agentId)
+  }
+  selectedManagerAgentIds.value = next
+}
+
+function toggleSelectAllManagerAgents() {
+  selectedManagerAgentIds.value = allManagerAgentsSelected.value
+    ? new Set()
+    : new Set(managerAgentRows.value.map((row) => row.agentId))
+}
+
+function sendManagerInstallToSelected() {
+  emit('send-manager-install', [...selectedManagerAgentIds.value])
+  selectedManagerAgentIds.value = new Set()
+}
 
 const softwareStats = computed(() => props.software?.stats ?? {})
 const driverStats = computed(() => props.drivers?.stats ?? {})
@@ -508,7 +551,7 @@ function percentageClass(percent) {
 
     <!-- Bez NetdeskAgentManager-a -->
     <div class="pdsu-card mb-4">
-      <div class="pdsu-card-header flex items-center justify-between gap-3">
+      <div class="pdsu-card-header flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h5 class="pdsu-card-title">
             Računari bez NetdeskAgentManager-a ({{ withoutNetdeskAgentManager.length }})
@@ -518,13 +561,23 @@ function percentageClass(percent) {
             preko "Instaliraj/ažuriraj NetdeskAgent Manager servis" preseta
           </div>
         </div>
-        <AppButton
-          variant="secondary"
-          :disabled="!withoutNetdeskAgentManager.length || exportingWithoutNetdeskAgentManager"
-          @click="emit('export-without-netdesk-agent-manager')"
-        >
-          {{ exportingWithoutNetdeskAgentManager ? 'Izvoz…' : 'Izvezi PDF' }}
-        </AppButton>
+        <div class="flex items-center gap-2">
+          <AppButton
+            v-if="managerAgentRows.length"
+            variant="secondary"
+            :disabled="!selectedManagerAgentIds.size || sendingManagerInstall"
+            @click="sendManagerInstallToSelected"
+          >
+            {{ sendingManagerInstall ? 'Slanje…' : `Instaliraj Manager na selektovane (${selectedManagerAgentIds.size})` }}
+          </AppButton>
+          <AppButton
+            variant="secondary"
+            :disabled="!withoutNetdeskAgentManager.length || exportingWithoutNetdeskAgentManager"
+            @click="emit('export-without-netdesk-agent-manager')"
+          >
+            {{ exportingWithoutNetdeskAgentManager ? 'Izvoz…' : 'Izvezi PDF' }}
+          </AppButton>
+        </div>
       </div>
 
       <div
@@ -540,6 +593,15 @@ function percentageClass(percent) {
         <table class="pdsu-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  v-if="managerAgentRows.length"
+                  type="checkbox"
+                  :checked="allManagerAgentsSelected"
+                  title="Selektuj sve (samo računari sa agentom)"
+                  @change="toggleSelectAllManagerAgents"
+                />
+              </th>
               <th>Računar</th>
               <th>IP</th>
               <th>Odeljenje</th>
@@ -551,6 +613,14 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in withoutNetdeskAgentManager" :key="row.id">
+              <td>
+                <input
+                  v-if="row.agentId"
+                  type="checkbox"
+                  :checked="selectedManagerAgentIds.has(row.agentId)"
+                  @change="toggleManagerAgentSelection(row.agentId)"
+                />
+              </td>
               <td class="font-semibold text-slate-900">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}
