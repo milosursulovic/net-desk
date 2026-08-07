@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Inventory
@@ -24,6 +26,7 @@ namespace NetdeskAgent.Common.Inventory
                 Hostname = hostname,
                 Department = department,
                 HasIzvolteFolder = SafeCollect(() => Directory.Exists(@"C:\Izvolte"), "Izvolte folder"),
+                ServiceFiles = SafeCollect(CollectServiceFiles, "Service folder fajlovi"),
             };
 
             if (string.IsNullOrEmpty(request.Ip))
@@ -55,6 +58,38 @@ namespace NetdeskAgent.Common.Inventory
             }
 
             return request;
+        }
+
+        /// <summary>
+        /// Popisuje sopstveni Service instalacioni folder (isti direktorijum
+        /// gde živi ovaj .exe, preko Assembly.GetExecutingAssembly().Location -
+        /// ista tehnika kao UpdateManager.ResolveUpdaterExePath) - relativna
+        /// putanja + veličina po fajlu, rekurzivno (uključuje amd64\/x86\
+        /// podfoldere). Backend poredi ovo sa manifestom release-a.
+        /// </summary>
+        private static List<InstalledFileItem> CollectServiceFiles()
+        {
+            var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (string.IsNullOrEmpty(installDir) || !Directory.Exists(installDir))
+            {
+                return null;
+            }
+
+            var result = new List<InstalledFileItem>();
+            foreach (var filePath in Directory.GetFiles(installDir, "*", SearchOption.AllDirectories))
+            {
+                var relativePath = filePath.Substring(installDir.Length)
+                    .TrimStart('\\', '/')
+                    .Replace('\\', '/');
+
+                result.Add(new InstalledFileItem
+                {
+                    Path = relativePath,
+                    SizeBytes = new FileInfo(filePath).Length,
+                });
+            }
+
+            return result;
         }
 
         private static T SafeCollect<T>(Func<T> collect, string label)

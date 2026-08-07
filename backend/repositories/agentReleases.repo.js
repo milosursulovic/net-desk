@@ -46,6 +46,37 @@ export async function insertReleaseGroups(releaseId, groups) {
   );
 }
 
+// Manifest fajlova unutar release ZIP-a (ime + veličina), popunjen JEDNOM
+// pri upload-u (uploadReleaseService čita zip preko adm-zip pre nego što ga
+// upiše na disk) - koristi se da se poredi sa onim što agent stvarno
+// prijavi da ima u svom Service folderu (checkServiceFilesMismatchService).
+export async function insertReleaseFiles(releaseId, files) {
+  if (!files.length) return;
+  const values = files.map((f) => [releaseId, f.path, f.size]);
+  await pool.query(
+    `INSERT INTO agent_release_files (release_id, file_path, file_size) VALUES ?`,
+    [values],
+  );
+}
+
+export async function findReleaseFiles(releaseId) {
+  const [rows] = await pool.execute(
+    `SELECT file_path AS filePath, file_size AS fileSize FROM agent_release_files WHERE release_id = ?`,
+    [releaseId],
+  );
+  return rows;
+}
+
+// Više release-ova može deliti isti version string (npr. ponovni upload) -
+// uzima se najskorije otpremljeni, isti obrazac kao "best" u checkForUpdateService.
+export async function findReleaseIdByVersion(version) {
+  const [rows] = await pool.execute(
+    `SELECT id FROM agent_releases WHERE version = ? ORDER BY created_at DESC LIMIT 1`,
+    [version],
+  );
+  return rows?.[0]?.id ?? null;
+}
+
 export async function findReleaseGroups(releaseId) {
   const [rows] = await pool.execute(
     `SELECT deployment_group FROM agent_release_groups WHERE release_id = ? ORDER BY deployment_group`,

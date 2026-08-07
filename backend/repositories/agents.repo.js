@@ -55,6 +55,8 @@ export async function findAgentById(id) {
       agent_version AS agentVersion,
       deployment_group AS deploymentGroup,
       process_kill_exempt AS processKillExempt,
+      service_files_mismatch AS serviceFilesMismatch,
+      service_files_mismatch_details AS serviceFilesMismatchDetails,
       status,
       last_ip AS lastIp,
       last_heartbeat_at AS lastHeartbeatAt,
@@ -135,6 +137,7 @@ function buildAgentsWhereClause({
   firewallInactive,
   windowsUpdateInactive,
   agentOfflineIpOnline,
+  serviceFilesMismatch,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -216,6 +219,9 @@ function buildAgentsWhereClause({
   if (agentOfflineIpOnline) {
     whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) != 'online' AND ie.is_online = 1`);
   }
+  if (serviceFilesMismatch) {
+    whereParts.push("agents.service_files_mismatch = 1");
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
@@ -252,6 +258,8 @@ export async function listAgents(filters) {
       agents.os_build AS osBuild,
       agents.agent_version AS agentVersion,
       agents.deployment_group AS deploymentGroup,
+      agents.service_files_mismatch AS serviceFilesMismatch,
+      agents.service_files_mismatch_details AS serviceFilesMismatchDetails,
       agents.status,
       agents.last_ip AS lastIp,
       agents.last_heartbeat_at AS lastHeartbeatAt,
@@ -491,6 +499,16 @@ export async function updateAgentDeploymentGroup(id, deploymentGroup) {
     [deploymentGroup, id],
   );
   return result.affectedRows;
+}
+
+// Rezultat checkServiceFilesMismatchService (agentReleases.service.js),
+// perzistira se po ciklusu inventory sync-a - details je null kad nema
+// neusklađenosti (ili poređenje nije bilo moguće).
+export async function updateAgentServiceFilesMismatch(agentId, mismatch, details) {
+  await pool.execute(
+    `UPDATE agents SET service_files_mismatch = ?, service_files_mismatch_details = ? WHERE id = ?`,
+    [mismatch ? 1 : 0, details, agentId],
+  );
 }
 
 export async function updateAgentProcessKillExempt(id, exempt) {

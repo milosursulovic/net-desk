@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import AdmZip from "adm-zip";
 import {
   insertRelease,
   insertReleaseGroups,
@@ -10,6 +11,9 @@ import {
   findActiveReleasesForGroup,
   listReleases,
   setReleaseActive,
+  insertReleaseFiles,
+  findReleaseFiles,
+  findReleaseIdByVersion,
 } from "../repositories/agentReleases.repo.js";
 import {
   insertUpdateLog,
@@ -82,6 +86,26 @@ export async function uploadReleaseService(
   const uniqueGroups = [...new Set(deploymentGroups.map((g) => g.trim()).filter(Boolean))];
   await insertReleaseGroups(id, uniqueGroups);
 
+  // Manifest fajlova unutar zip-a (ime + veličina) - JEDNOM ovde, iz buffer-a
+  // direktno (bez raspakivanja na disk), da checkServiceFilesMismatchService
+  // kasnije ima sa čim da poredi ono što agent stvarno prijavi da ima
+  // instalirano. Fascikle (isDirectory) se preskaču - zanima nas samo
+  // sadržaj fajlova, isto što agent skenira na svojoj strani. Best-effort
+  // (try/catch) namerno - upload ne sme da propadne samo zato što manifest
+  // nije mogao da se pročita (npr. paket koji nije standardan zip); poređenje
+  // kasnije jednostavno nema manifest za taj release i tiho se preskače
+  // (isti "nema sa čim da se poredi" put kao release bez uploadovanog manifesta).
+  try {
+    const zip = new AdmZip(buffer);
+    const files = zip
+      .getEntries()
+      .filter((e) => !e.isDirectory)
+      .map((e) => ({ path: e.entryName.replace(/\\/g, "/"), size: e.header.size }));
+    await insertReleaseFiles(id, files);
+  } catch {
+    // Vidi komentar iznad - upload ostaje uspešan bez manifesta.
+  }
+
   return await findReleaseById(id);
 }
 
@@ -127,6 +151,55 @@ export async function checkForUpdateService(agent) {
     signatureCertificatePem: best.signature ? getSigningCertificatePem() : null,
     releaseNotes: best.releaseNotes,
     downloadUrl: `/api/agents/update/download/${best.id}`,
+  };
+}
+
+// Poredi šta agent PRIJAVI da ima u svom Service folderu (ime + veličina, iz
+// InventoryCollector.CollectServiceFiles na C# strani) sa manifestom release-a
+// koji odgovara verziji koju agent SAM izveštava (agent.agentVersion) - hvata
+// pokvaren/delimičan update (fajlovi ostali stari/nedostaju iako agent misli
+// da je na novoj verziji), ne "agent je zastareo" (to je već vidljivo preko
+// verzije same). Bez hash-a namerno - ime+veličina je dovoljno za ovu svrhu
+// i ne zahteva da agent čita/heš-uje svaki fajl na svakom inventory sync-u.
+export async function checkServiceFilesMismatchService(agentVersion, reportedFiles) {
+  if (!agentVersion || !Array.isArray(reportedFiles) || !reportedFiles.length) {
+    return { mismatch: false, details: null };
+  }
+
+  const releaseId = await findReleaseIdByVersion(agentVersion);
+  if (!releaseId) {
+    // Verzija bez poznatog release-a u bazi (npr. ručno instalirana, ili
+    // otpremljena pre nego što je ovaj manifest mehanizam postojao) - nema sa
+    // čim da se poredi, ne tretiramo kao neusklađenost.
+    return { mismatch: false, details: null };
+  }
+
+  const manifest = await findReleaseFiles(releaseId);
+  if (!manifest.length) {
+    return { mismatch: false, details: null };
+  }
+
+  const reportedByPath = new Map(
+    reportedFiles
+      .filter((f) => f && f.path)
+      .map((f) => [String(f.path).toLowerCase(), Number(f.size)]),
+  );
+
+  const problems = [];
+  for (const entry of manifest) {
+    const key = entry.filePath.toLowerCase();
+    if (!reportedByPath.has(key)) {
+      problems.push(`nedostaje: ${entry.filePath}`);
+    } else if (reportedByPath.get(key) !== Number(entry.fileSize)) {
+      problems.push(
+        `veličina ne odgovara: ${entry.filePath} (očekivano ${entry.fileSize}, stvarno ${reportedByPath.get(key)})`,
+      );
+    }
+  }
+
+  return {
+    mismatch: problems.length > 0,
+    details: problems.length ? problems.join("; ") : null,
   };
 }
 

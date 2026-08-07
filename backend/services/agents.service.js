@@ -18,8 +18,10 @@ import {
   findAgentMonitoring,
   updateAgentDeploymentGroup,
   updateAgentProcessKillExempt,
+  updateAgentServiceFilesMismatch,
 } from "../repositories/agents.repo.js";
 import { isFeatureEnabled } from "./appSettings.service.js";
+import { checkServiceFilesMismatchService } from "./agentReleases.service.js";
 import {
   findIpEntryIdByIp,
   insertIpEntry,
@@ -308,6 +310,18 @@ function extractHasIzvolteFolder(body) {
   return Boolean(body.hasIzvolteFolder);
 }
 
+// serviceFiles je opciono, isti obrazac kao hasIzvolteFolder iznad -
+// InventoryCollector.CollectServiceFiles() ga popunjava samo na PUNOM
+// inventory sync-u (ne na minimalnim event-log/DNS/process-detection
+// sync-evima), pa je undefined kad nije poslato ("ne diraj postojeći
+// service_files_mismatch flag", ne "obriši ga").
+function extractServiceFiles(body) {
+  if (!Array.isArray(body?.serviceFiles)) return undefined;
+  return body.serviceFiles
+    .map((f) => ({ path: String(f?.path || "").trim(), size: Number(f?.sizeBytes) }))
+    .filter((f) => f.path && Number.isFinite(f.size));
+}
+
 async function resolveIpEntryId(agent, body) {
   if (agent.ipEntryId) {
     // Once an agent is linked to an ip_entry, every sync unconditionally
@@ -405,6 +419,15 @@ export async function syncAgentInventory(agent, body) {
   }
   if (Array.isArray(body.processDetections)) {
     await ingestProcessDetections(ipEntryId, body.processDetections);
+  }
+
+  const serviceFiles = extractServiceFiles(body);
+  if (serviceFiles !== undefined) {
+    const { mismatch, details } = await checkServiceFilesMismatchService(
+      agent.agentVersion,
+      serviceFiles,
+    );
+    await updateAgentServiceFilesMismatch(agent.id, mismatch, details);
   }
 
   return { ok: true, ipEntryId, metadata };

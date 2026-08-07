@@ -37,6 +37,17 @@ namespace NetdeskAgent.Common.Inventory
         [JsonProperty("hasIzvolteFolder")]
         public bool? HasIzvolteFolder { get; set; }
 
+        /// <summary>
+        /// Popis fajlova (relativna putanja + veličina) u sopstvenom Service
+        /// instalacionom folderu - backend to poredi sa manifestom release-a
+        /// koji odgovara agentVersion-u koji ovaj agent prijavljuje preko
+        /// heartbeat-a (checkServiceFilesMismatchService), da uhvati
+        /// pokvaren/delimičan update. Null (ne prazna lista) na minimalnim
+        /// sync-evima gde se ne prikuplja - isti obrazac kao HasIzvolteFolder.
+        /// </summary>
+        [JsonProperty("serviceFiles")]
+        public List<InstalledFileItem> ServiceFiles { get; set; }
+
         [JsonProperty("OS")]
         public OsInfo Os { get; set; }
 
@@ -256,6 +267,20 @@ namespace NetdeskAgent.Common.Inventory
 
         [JsonProperty("LastCheckAt")]
         public string LastCheckAt { get; set; }
+    }
+
+    /// <summary>
+    /// Jedan fajl u sopstvenom Service instalacionom folderu - relativna
+    /// putanja (forward-slash, isti separator kao unutar release ZIP-a) i
+    /// veličina u bajtovima. Videti InventoryCollector.CollectServiceFiles().
+    /// </summary>
+    public class InstalledFileItem
+    {
+        [JsonProperty("path")]
+        public string Path { get; set; }
+
+        [JsonProperty("sizeBytes")]
+        public long SizeBytes { get; set; }
     }
 
     /// <summary>Odgovara syncComputerSoftware stavci u pdsu.service.js.</summary>

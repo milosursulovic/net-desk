@@ -120,6 +120,15 @@
             />
             Agent offline, računar online (moguć kvar)
           </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Instalirani fajlovi u Service folderu se ne poklapaju sa release-om za prijavljenu verziju agenta">
+            <input
+              type="checkbox"
+              :checked="serviceFilesMismatch === 'true'"
+              @change="serviceFilesMismatch = serviceFilesMismatch === 'true' ? '' : 'true'"
+            />
+            Neusklađeni fajlovi agenta
+          </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -305,7 +314,7 @@
             </div>
           </div>
 
-          <div v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a)"
+          <div v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
             class="mt-2 flex flex-wrap gap-1.5">
             <span v-if="a.antivirusStatus !== 'enabled'"
               class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
@@ -326,6 +335,11 @@
               class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
               title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
               ⚠️ Moguć kvar agenta
+            </span>
+            <span v-if="a.serviceFilesMismatch"
+              class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+              :title="a.serviceFilesMismatchDetails || 'Instalirani fajlovi u Service folderu ne odgovaraju release-u za prijavljenu verziju'">
+              🗂️ Fajlovi ne odgovaraju release-u
             </span>
           </div>
 
@@ -401,6 +415,7 @@ const {
   firewallInactive,
   windowsUpdateInactive,
   agentOfflineIpOnline,
+  serviceFilesMismatch,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -432,6 +447,7 @@ const {
     firewallInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     windowsUpdateInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     agentOfflineIpOnline: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    serviceFilesMismatch: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
     'search',
@@ -450,6 +466,7 @@ const {
     'firewallInactive',
     'windowsUpdateInactive',
     'agentOfflineIpOnline',
+    'serviceFilesMismatch',
   ],
   useReplace: true,
 })
@@ -474,6 +491,7 @@ watch(
     firewallInactive,
     windowsUpdateInactive,
     agentOfflineIpOnline,
+    serviceFilesMismatch,
     site,
   ],
   fetchData,
@@ -519,6 +537,7 @@ const activeDetailedFilterCount = computed(() => {
   if (firewallInactive.value) n++
   if (windowsUpdateInactive.value) n++
   if (agentOfflineIpOnline.value) n++
+  if (serviceFilesMismatch.value) n++
   return n
 })
 
@@ -553,6 +572,7 @@ function clearDetailedFilters() {
   firewallInactive.value = ''
   windowsUpdateInactive.value = ''
   agentOfflineIpOnline.value = ''
+  serviceFilesMismatch.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -575,6 +595,7 @@ function buildFilterParams() {
   if (firewallInactive.value) params.set('firewallInactive', firewallInactive.value)
   if (windowsUpdateInactive.value) params.set('windowsUpdateInactive', windowsUpdateInactive.value)
   if (agentOfflineIpOnline.value) params.set('agentOfflineIpOnline', agentOfflineIpOnline.value)
+  if (serviceFilesMismatch.value) params.set('serviceFilesMismatch', serviceFilesMismatch.value)
   return params
 }
 
