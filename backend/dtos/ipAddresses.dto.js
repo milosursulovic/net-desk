@@ -66,6 +66,13 @@ export const ListSchema = z.object({
   osArchitecture: z.string().optional(),
   rdpApp: z.string().optional(),
   site: z.enum(SITES).optional(),
+  // Isti obrazac kao pendingRepack ispod - query string uvek stiže kao
+  // string, pa se eksplicitno poredi sa "istinitim" vrednostima umesto
+  // z.coerce.boolean() (koje bi tretiralo i "0"/"false" kao true).
+  hasIzvolteFolder: z
+    .string()
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
   // z.coerce.boolean() bi tretiralo BILO KOJI neprazan string (i "0"/"false")
   // kao true - query string uvek stiže kao string, pa se namerno poredi sa
   // eksplicitnom listom "istinitih" vrednosti umesto toga.

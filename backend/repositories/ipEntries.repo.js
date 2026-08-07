@@ -178,6 +178,7 @@ export async function listIpEntries({
   rdpApp,
   site,
   pendingRepack,
+  hasIzvolteFolder,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -236,6 +237,7 @@ export async function listIpEntries({
   if (status === "offline") whereListParts.push("is_online = 0");
 
   if (pendingRepack) whereListParts.push("pending_repack = 1");
+  if (hasIzvolteFolder) whereListParts.push("has_izvolte_folder = 1");
 
   const whereListSql = whereListParts.length
     ? `WHERE ${whereListParts.join(" AND ")}`

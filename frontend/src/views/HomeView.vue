@@ -74,6 +74,15 @@
           <option v-for="r in rdpAppOptions" :key="r" :value="r">{{ r }}</option>
         </select>
 
+        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600 shrink-0" title="Folder C:\Izvolte pronađen na računaru">
+          <input
+            type="checkbox"
+            :checked="hasIzvolteFolder === 'true'"
+            @change="hasIzvolteFolder = hasIzvolteFolder === 'true' ? '' : 'true'"
+          />
+          Izvolte folder
+        </label>
+
         <select v-model="sortBy" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
@@ -374,6 +383,7 @@ const {
   os,
   osArchitecture,
   rdpApp,
+  hasIzvolteFolder,
   nextPage,
   prevPage,
 } = usePaginatedRoute({
@@ -393,12 +403,37 @@ const {
     os: { type: 'string', default: '', omitIfEmpty: true },
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
     rdpApp: { type: 'string', default: '', omitIfEmpty: true },
+    hasIzvolteFolder: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
-  resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType', 'department', 'os', 'osArchitecture', 'rdpApp'],
+  resetPageOn: [
+    'sortBy',
+    'sortOrder',
+    'status',
+    'entryType',
+    'department',
+    'os',
+    'osArchitecture',
+    'rdpApp',
+    'hasIzvolteFolder',
+  ],
 })
 
 watch(
-  [page, limit, search, sortBy, sortOrder, status, entryType, department, os, osArchitecture, rdpApp, site],
+  [
+    page,
+    limit,
+    search,
+    sortBy,
+    sortOrder,
+    status,
+    entryType,
+    department,
+    os,
+    osArchitecture,
+    rdpApp,
+    hasIzvolteFolder,
+    site,
+  ],
   fetchData,
   { immediate: true },
 )
@@ -442,6 +477,7 @@ const activeFilterCount = computed(() => {
   if (os.value) n++
   if (osArchitecture.value) n++
   if (rdpApp.value) n++
+  if (hasIzvolteFolder.value) n++
   return n
 })
 
@@ -477,6 +513,7 @@ async function fetchData() {
   if (os.value) params.set('os', os.value)
   if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
   if (rdpApp.value) params.set('rdpApp', rdpApp.value)
+  if (hasIzvolteFolder.value) params.set('hasIzvolteFolder', hasIzvolteFolder.value)
 
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses?${params.toString()}`)
