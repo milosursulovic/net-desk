@@ -31,6 +31,7 @@ import {
   listDistinctDepartments,
 } from "../repositories/ipEntries.repo.js";
 import { patchMetadataForIpEntry } from "./metadata.service.js";
+import { RDP_APP_PATTERNS } from "../dtos/ipAddresses.dto.js";
 import {
   syncComputerSoftware,
   syncComputerDrivers,
@@ -261,13 +262,6 @@ export async function revokeAgentService(id) {
 // pdsuAnalytics.repo.js/hasUltravnc u ipEntries.repo.js - držati u sinhronizaciji.
 // Poredi samo protiv servisnog "name" polja (ne displayName), isto kao ta
 // mesta i kao is_flagged EXISTS upiti u pdsu.repo.js.
-const RDP_APP_PATTERNS = [
-  { label: "AnyDesk", patterns: ["anydesk"] },
-  { label: "TeamViewer", patterns: ["teamviewer"] },
-  { label: "UltraVNC", patterns: ["uvnc", "ultravnc", "winvnc"] },
-  { label: "VNC Server", patterns: ["vncserver", "realvnc"] },
-];
-
 // Vraća `undefined` kad services nije poslat u ovom sync-u (ne diraj
 // postojeću vrednost), a `null`/spojen string kad JESTE poslat (potpuna
 // zamena na svakom sync-u sa listom servisa - isto ponašanje kao

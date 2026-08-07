@@ -174,6 +174,8 @@ export async function listIpEntries({
   entryType,
   department,
   os,
+  osArchitecture,
+  rdpApp,
   site,
   pendingRepack,
 }) {
@@ -201,6 +203,21 @@ export async function listIpEntries({
   if (os) {
     whereBaseParts.push("os = ?");
     baseParams.push(os);
+  }
+
+  if (osArchitecture) {
+    whereBaseParts.push("os_architecture = ?");
+    baseParams.push(osArchitecture);
+  }
+
+  if (rdpApp) {
+    // rdp_app čuva SPOJEN string labela (npr. "AnyDesk, TeamViewer" - jedan
+    // računar može imati do sve četiri) - contains-match po pojedinačnoj
+    // labeli, ne exact-equals. Vrednosti dolaze sa fiksnog dropdown-a
+    // (RDP_APP_PATTERNS), ne slobodan tekst, pa nema potrebe za escape-ovanjem
+    // LIKE wildcard karaktera.
+    whereBaseParts.push("rdp_app LIKE ?");
+    baseParams.push(`%${rdpApp}%`);
   }
 
   if (site) {
@@ -394,6 +411,20 @@ export async function listDistinctOs(site) {
     params,
   );
   return rows.map((r) => r.os);
+}
+
+export async function listDistinctOsArchitectures(site) {
+  const whereParts = ["os_architecture IS NOT NULL", "os_architecture != ''"];
+  const params = [];
+  if (site) {
+    whereParts.push("site = ?");
+    params.push(site);
+  }
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT os_architecture FROM ip_entries WHERE ${whereParts.join(" AND ")} ORDER BY os_architecture`,
+    params,
+  );
+  return rows.map((r) => r.os_architecture);
 }
 
 export async function listIpEntriesCreatedSince(since, limit = 20, site) {

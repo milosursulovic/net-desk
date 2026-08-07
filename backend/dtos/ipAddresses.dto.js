@@ -7,6 +7,20 @@ import { isValidIPv4 } from "../utils/ip.js";
 // korisnikova eksplicitna odluka pri planiranju ovog feature-a.
 export const SITES = ["bolnica", "dom_zdravlja"];
 
+// Poznati/prepoznati remote-access alati (agents.service.js's detectRdpApps
+// ih traži po imenu servisa) - ip_entries.rdp_app čuva SPOJEN string labela
+// (npr. "AnyDesk, TeamViewer", jedan računar može imati i do sve četiri),
+// pa filter na listi treba da poredi PO POJEDINAČNOJ labeli (contains-match,
+// ne exact-equals) - vidi listIpEntries's "rdp_app LIKE" filter. Ovde živi
+// (ne u agents.service.js) jer je rdp_app ip_entries kolona - jedan izvor
+// istine za i detekciju i filter-options predloge.
+export const RDP_APP_PATTERNS = [
+  { label: "AnyDesk", patterns: ["anydesk"] },
+  { label: "TeamViewer", patterns: ["teamviewer"] },
+  { label: "UltraVNC", patterns: ["uvnc", "ultravnc", "winvnc"] },
+  { label: "VNC Server", patterns: ["vncserver", "realvnc"] },
+];
+
 export const ScanSchema = z.object({
   ip: z.string().refine(isValidIPv4, { message: "Neispravan IPv4" }),
   ports: z.string().optional(),
@@ -49,6 +63,8 @@ export const ListSchema = z.object({
     .default("all"),
   department: z.string().optional(),
   os: z.string().optional(),
+  osArchitecture: z.string().optional(),
+  rdpApp: z.string().optional(),
   site: z.enum(SITES).optional(),
   // z.coerce.boolean() bi tretiralo BILO KOJI neprazan string (i "0"/"false")
   // kao true - query string uvek stiže kao string, pa se namerno poredi sa

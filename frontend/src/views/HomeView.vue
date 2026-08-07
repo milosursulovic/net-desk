@@ -64,6 +64,16 @@
           <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
         </select>
 
+        <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter arhitekture OS-a'">
+          <option value="">Sve arhitekture</option>
+          <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
+        </select>
+
+        <select v-model="rdpApp" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter RDP/remote-access alata'">
+          <option value="">Svi RDP alati</option>
+          <option v-for="r in rdpAppOptions" :key="r" :value="r">{{ r }}</option>
+        </select>
+
         <select v-model="sortBy" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm">
           <option v-for="o in sortOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
@@ -362,6 +372,8 @@ const {
   entryType,
   department,
   os,
+  osArchitecture,
+  rdpApp,
   nextPage,
   prevPage,
 } = usePaginatedRoute({
@@ -379,18 +391,22 @@ const {
     },
     department: { type: 'string', default: '', omitIfEmpty: true },
     os: { type: 'string', default: '', omitIfEmpty: true },
+    osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
+    rdpApp: { type: 'string', default: '', omitIfEmpty: true },
   },
-  resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType', 'department', 'os'],
+  resetPageOn: ['sortBy', 'sortOrder', 'status', 'entryType', 'department', 'os', 'osArchitecture', 'rdpApp'],
 })
 
 watch(
-  [page, limit, search, sortBy, sortOrder, status, entryType, department, os, site],
+  [page, limit, search, sortBy, sortOrder, status, entryType, department, os, osArchitecture, rdpApp, site],
   fetchData,
   { immediate: true },
 )
 
 const departmentOptions = ref([])
 const osOptions = ref([])
+const osArchitectureOptions = ref([])
+const rdpAppOptions = ref([])
 
 async function fetchFilterOptions() {
   try {
@@ -401,6 +417,8 @@ async function fetchFilterOptions() {
     const data = await res.json()
     departmentOptions.value = data.departments || []
     osOptions.value = data.os || []
+    osArchitectureOptions.value = data.osArchitectures || []
+    rdpAppOptions.value = data.rdpApps || []
   } catch (err) {
     console.error('Neuspešno dohvatanje opcija filtera')
   }
@@ -422,6 +440,8 @@ const activeFilterCount = computed(() => {
   if (entryType.value !== 'computer') n++
   if (department.value) n++
   if (os.value) n++
+  if (osArchitecture.value) n++
+  if (rdpApp.value) n++
   return n
 })
 
@@ -455,6 +475,8 @@ async function fetchData() {
   })
   if (department.value) params.set('department', department.value)
   if (os.value) params.set('os', os.value)
+  if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
+  if (rdpApp.value) params.set('rdpApp', rdpApp.value)
 
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses?${params.toString()}`)

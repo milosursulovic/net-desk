@@ -15,7 +15,9 @@ import {
   exportIpEntriesForXlsx,
   listDistinctDepartments,
   listDistinctOs,
+  listDistinctOsArchitectures,
 } from "../repositories/ipEntries.repo.js";
+import { RDP_APP_PATTERNS } from "../dtos/ipAddresses.dto.js";
 
 const WELL_KNOWN_PORTS = {
   21: "FTP",
@@ -223,11 +225,16 @@ export async function setPendingRepackService(id, value) {
 }
 
 export async function filterOptionsService(site) {
-  const [departments, os] = await Promise.all([
+  const [departments, os, osArchitectures] = await Promise.all([
     listDistinctDepartments(site),
     listDistinctOs(site),
+    listDistinctOsArchitectures(site),
   ]);
-  return { departments, os };
+  // rdpApps je fiksna poznata lista (RDP_APP_PATTERNS), ne "distinct" upit -
+  // ip_entries.rdp_app čuva SPOJENE kombinacije (npr. "AnyDesk, TeamViewer"),
+  // pa bi distinct nad tom kolonom vratio kombinacije, ne pojedinačne alate.
+  const rdpApps = RDP_APP_PATTERNS.map((p) => p.label);
+  return { departments, os, osArchitectures, rdpApps };
 }
 
 export async function getByIdService(id) {
