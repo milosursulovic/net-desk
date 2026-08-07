@@ -122,6 +122,40 @@ export async function listComputersWithoutUltravnc(site) {
   return rows || [];
 }
 
+// "Bez NetdeskAgentManager-a" - isti obrazac kao listComputersWithoutUltravnc
+// iznad, samo za NetdeskAgentManager servis (service/Netdesk.Agent.Manager -
+// videti ManagerCommandClient.ManagerServiceName za tačan naziv servisa).
+// Servis se pojavljuje u computer_services kroz REDOVAN inventory sync
+// (ServiceCollector na agentu), isto kao bilo koji drugi Windows servis -
+// nema potrebe za posebnim mehanizmom detekcije. hasServiceData razlikuje
+// "potvrđeno nema Manager-a" od "nemamo uopšte servis-inventar", isti razlog
+// kao kod UltraVNC provere.
+export async function listComputersWithoutNetdeskAgentManager(site) {
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ip.id, ip.ip, ip.computer_name AS computerName, ip.department, ip.os,
+      ip.is_online AS isOnline,
+      agents.id AS agentId,
+      EXISTS(
+        SELECT 1 FROM computer_services csv2 WHERE csv2.ip_entry_id = ip.id
+      ) AS hasServiceData
+    FROM ip_entries ip
+    LEFT JOIN agents ON agents.ip_entry_id = ip.id AND agents.status = 'active'
+    WHERE ip.entry_type = 'computer'
+      ${site ? "AND ip.site = ?" : ""}
+      AND NOT EXISTS (
+        SELECT 1 FROM computer_services csv
+        WHERE csv.ip_entry_id = ip.id
+          AND LOWER(csv.name) LIKE '%netdeskagentmanager%'
+      )
+    ORDER BY ip.computer_name ASC, ip.ip ASC
+    `,
+    site ? [site] : [],
+  );
+  return rows || [];
+}
+
 /* =========================================================
    SOFTWARE
    ========================================================= */

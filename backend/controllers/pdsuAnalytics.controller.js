@@ -4,6 +4,7 @@ import {
   searchPdsuAnalytics,
   listComputersWithoutPdsuService,
   listComputersWithoutUltravncService,
+  listComputersWithoutNetdeskAgentManagerService,
   activePrintersForPdfExport,
 } from "../services/pdsuAnalytics.service.js";
 import { sendXlsxExport } from "../utils/exportExcel.js";
@@ -88,6 +89,37 @@ export async function exportWithoutUltravncPdfController(req, res) {
       agentLabel: r.agentId ? "Ima agenta" : "Nema agenta",
     })),
     emptyText: "Svi računari imaju UltraVNC servis.",
+  });
+}
+
+export async function listWithoutNetdeskAgentManagerController(req, res) {
+  const result = await listComputersWithoutNetdeskAgentManagerService(siteFilter(req.query.site));
+
+  res.json(result);
+}
+
+export async function exportWithoutNetdeskAgentManagerPdfController(req, res) {
+  const { items } = await listComputersWithoutNetdeskAgentManagerService(siteFilter(req.query.site));
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  sendTablePdf(res, {
+    title: "NetDesk — Računari bez NetdeskAgentManager-a",
+    subtitle: `Nema NetdeskAgentManager servis u servis inventaru — ukupno: ${items.length}, generisano ${dateStamp}`,
+    filename: `NetDesk_bez_NetdeskAgentManager_${dateStamp}.pdf`,
+    columns: [
+      { header: "Računar", key: "computerName", width: 160 },
+      { header: "IP", key: "ip", width: 100 },
+      { header: "Odeljenje", key: "department", width: 130 },
+      { header: "OS", key: "os", width: 185 },
+      { header: "Status", key: "onlineLabel", width: 80 },
+      { header: "Agent", key: "agentLabel", width: 100 },
+    ],
+    rows: items.map((r) => ({
+      ...r,
+      onlineLabel: r.isOnline ? "Online" : "Offline",
+      agentLabel: r.agentId ? "Ima agenta" : "Nema agenta",
+    })),
+    emptyText: "Svi računari imaju NetdeskAgentManager servis.",
   });
 }
 

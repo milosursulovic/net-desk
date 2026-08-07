@@ -9,6 +9,8 @@ import {
   exportWithoutPdsuPdfController,
   listWithoutUltravncController,
   exportWithoutUltravncPdfController,
+  listWithoutNetdeskAgentManagerController,
+  exportWithoutNetdeskAgentManagerPdfController,
   exportActivePrintersPdfController,
 } from "../controllers/pdsuAnalytics.controller.js";
 
@@ -23,6 +25,11 @@ router.get("/missing", asyncHandler(listWithoutPdsuController));
 router.get("/missing/export-pdf", asyncHandler(exportWithoutPdsuPdfController));
 router.get("/without-ultravnc", asyncHandler(listWithoutUltravncController));
 router.get("/without-ultravnc/export-pdf", asyncHandler(exportWithoutUltravncPdfController));
+router.get("/without-netdesk-agent-manager", asyncHandler(listWithoutNetdeskAgentManagerController));
+router.get(
+  "/without-netdesk-agent-manager/export-pdf",
+  asyncHandler(exportWithoutNetdeskAgentManagerPdfController),
+);
 router.get("/printers/active/export-pdf", asyncHandler(exportActivePrintersPdfController));
 
 export default router;

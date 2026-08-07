@@ -1,6 +1,7 @@
 import {
   listComputersWithoutPdsu,
   listComputersWithoutUltravnc,
+  listComputersWithoutNetdeskAgentManager,
   getPdsuCoverage,
   getSoftwareStats,
   getTopSoftware,
@@ -256,6 +257,11 @@ export async function listComputersWithoutPdsuService(site) {
 
 export async function listComputersWithoutUltravncService(site) {
   const items = await listComputersWithoutUltravnc(site);
+  return { items, total: items.length };
+}
+
+export async function listComputersWithoutNetdeskAgentManagerService(site) {
+  const items = await listComputersWithoutNetdeskAgentManager(site);
   return { items, total: items.length };
 }
 

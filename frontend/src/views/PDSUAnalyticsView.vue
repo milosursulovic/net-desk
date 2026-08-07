@@ -32,6 +32,8 @@ const missingPdsu = ref([])
 const exportingMissingPdf = ref(false)
 const withoutUltravnc = ref([])
 const exportingWithoutUltravncPdf = ref(false)
+const withoutNetdeskAgentManager = ref([])
+const exportingWithoutNetdeskAgentManagerPdf = ref(false)
 
 const activeTab = ref('overview')
 const { search } = usePaginatedRoute({
@@ -294,6 +296,7 @@ async function loadStats() {
     stats.value = await response.json()
     await fetchMissingPdsu()
     await fetchWithoutUltravnc()
+    await fetchWithoutNetdeskAgentManager()
   } catch (err) {
     console.error('PDSU analytics error:', err)
 
@@ -350,6 +353,31 @@ async function exportWithoutUltravncPdf() {
     console.error('Export bez UltraVNC greška:', err)
   } finally {
     exportingWithoutUltravncPdf.value = false
+  }
+}
+
+async function fetchWithoutNetdeskAgentManager() {
+  try {
+    const res = await fetchWithAuth(`/api/protected/pdsu-analytics/without-netdesk-agent-manager?site=${site.value}`)
+    if (!res.ok) return
+    const data = await res.json()
+    withoutNetdeskAgentManager.value = Array.isArray(data.items) ? data.items : []
+  } catch {
+  }
+}
+
+async function exportWithoutNetdeskAgentManagerPdf() {
+  exportingWithoutNetdeskAgentManagerPdf.value = true
+  try {
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    await downloadFromResponse(
+      await fetchWithAuth(`/api/protected/pdsu-analytics/without-netdesk-agent-manager/export-pdf?site=${site.value}`),
+      `NetDesk_bez_NetdeskAgentManager_${dateStamp}.pdf`
+    )
+  } catch (err) {
+    console.error('Export bez NetdeskAgentManager greška:', err)
+  } finally {
+    exportingWithoutNetdeskAgentManagerPdf.value = false
   }
 }
 
@@ -654,6 +682,9 @@ watch(site, loadStats)
               :without-ultravnc="withoutUltravnc"
               :exporting-without-ultravnc="exportingWithoutUltravncPdf"
               @export-without-ultravnc="exportWithoutUltravncPdf"
+              :without-netdesk-agent-manager="withoutNetdeskAgentManager"
+              :exporting-without-netdesk-agent-manager="exportingWithoutNetdeskAgentManagerPdf"
+              @export-without-netdesk-agent-manager="exportWithoutNetdeskAgentManagerPdf"
             />
 
             <PDSUSoftware

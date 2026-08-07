@@ -60,9 +60,23 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+
+  withoutNetdeskAgentManager: {
+    type: Array,
+    default: () => [],
+  },
+
+  exportingWithoutNetdeskAgentManager: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['export-missing', 'export-without-ultravnc'])
+const emit = defineEmits([
+  'export-missing',
+  'export-without-ultravnc',
+  'export-without-netdesk-agent-manager',
+])
 
 const softwareStats = computed(() => props.software?.stats ?? {})
 const driverStats = computed(() => props.drivers?.stats ?? {})
@@ -452,6 +466,91 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in withoutUltravnc" :key="row.id">
+              <td class="font-semibold text-slate-900">
+                <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
+                  {{ row.computerName || 'Nepoznat računar' }}
+                </RouterLink>
+              </td>
+              <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
+              <td>{{ row.department || '—' }}</td>
+              <td>{{ row.os || '—' }}</td>
+              <td>
+                <span
+                  class="pdsu-badge"
+                  :class="row.isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'"
+                >
+                  {{ row.isOnline ? 'Online' : 'Offline' }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="pdsu-badge"
+                  :class="row.hasServiceData ? 'bg-red-600 text-white' : 'bg-slate-400 text-white'"
+                >
+                  {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
+                </span>
+              </td>
+              <td>
+                <RouterLink
+                  v-if="row.agentId"
+                  :to="`/agents/${row.agentId}`"
+                  class="text-emerald-600 hover:underline"
+                >
+                  Otvori agenta
+                </RouterLink>
+                <span v-else class="text-slate-400">Nema agenta</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bez NetdeskAgentManager-a -->
+    <div class="pdsu-card mb-4">
+      <div class="pdsu-card-header flex items-center justify-between gap-3">
+        <div>
+          <h5 class="pdsu-card-title">
+            Računari bez NetdeskAgentManager-a ({{ withoutNetdeskAgentManager.length }})
+          </h5>
+          <div class="text-xs text-slate-500">
+            Nema NetdeskAgentManager servis u servis inventaru - kandidati za instalaciju
+            preko "Instaliraj/ažuriraj NetdeskAgent Manager servis" preseta
+          </div>
+        </div>
+        <AppButton
+          variant="secondary"
+          :disabled="!withoutNetdeskAgentManager.length || exportingWithoutNetdeskAgentManager"
+          @click="emit('export-without-netdesk-agent-manager')"
+        >
+          {{ exportingWithoutNetdeskAgentManager ? 'Izvoz…' : 'Izvezi PDF' }}
+        </AppButton>
+      </div>
+
+      <div
+        v-if="!withoutNetdeskAgentManager.length"
+        class="p-4 text-sm text-slate-500"
+      >
+        Svi računari imaju NetdeskAgentManager servis.
+      </div>
+      <div
+        v-else
+        class="pdsu-table-wrap"
+      >
+        <table class="pdsu-table">
+          <thead>
+            <tr>
+              <th>Računar</th>
+              <th>IP</th>
+              <th>Odeljenje</th>
+              <th>OS</th>
+              <th>Status</th>
+              <th>Servis podaci</th>
+              <th>Agent</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in withoutNetdeskAgentManager" :key="row.id">
               <td class="font-semibold text-slate-900">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}
