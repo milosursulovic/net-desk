@@ -91,6 +91,24 @@ export async function findMetadataIdByIpEntryId(ipEntryId) {
   return row?.id ?? null;
 }
 
+// Za Wake-on-LAN (ipAddresses.service.js's wakeService) - sve poznate MAC
+// adrese za ovaj računar (obično 1-3, Ethernet/WiFi/virtuelni adapteri).
+// Šalje se magic packet za SVAKU (bezopasno - nepostojeći/pogrešan MAC na
+// istom broadcast segmentu se jednostavno ignoriše, samo prava mrežna
+// kartica reaguje), da se ne pogađa koji je "pravi" adapter.
+export async function findMacsForIpEntry(ipEntryId) {
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT n.mac
+    FROM computer_metadata_nics n
+    JOIN computer_metadata m ON m.id = n.metadata_id
+    WHERE m.ip_entry_id = ? AND n.mac IS NOT NULL AND n.mac != ''
+    `,
+    [ipEntryId],
+  );
+  return rows.map((r) => r.mac).filter(Boolean);
+}
+
 export async function listMetadataIds(offset, limit, site) {
   const [rows] = await pool.execute(
     `

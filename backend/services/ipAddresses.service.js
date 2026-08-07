@@ -18,6 +18,15 @@ import {
   listDistinctOsArchitectures,
 } from "../repositories/ipEntries.repo.js";
 import { RDP_APP_PATTERNS } from "../dtos/ipAddresses.dto.js";
+import { findMacsForIpEntry } from "../repositories/metadata.repo.js";
+import { sendMagicPacket } from "../utils/wakeOnLan.js";
+
+// Broadcast adresa lokalnog segmenta svake lokacije - magic paket se ne
+// rutira preko podmreža, mora ići direktno na broadcast ciljne mreže.
+const SITE_BROADCAST_ADDRESS = {
+  bolnica: "10.230.63.255",
+  dom_zdravlja: "10.160.71.255",
+};
 
 const WELL_KNOWN_PORTS = {
   21: "FTP",
@@ -243,6 +252,27 @@ export async function getByIdService(id) {
     throw notFound("Unos nije pronađen");
   }
   return entry;
+}
+
+export async function wakeService(id) {
+  const entry = await findIpEntryById(id);
+  if (!entry) {
+    throw notFound("Unos nije pronađen");
+  }
+
+  const broadcastAddress = SITE_BROADCAST_ADDRESS[entry.site];
+  if (!broadcastAddress) {
+    throw badRequest("Nepoznata lokacija - ne mogu da odredim broadcast adresu za buđenje.");
+  }
+
+  const macs = await findMacsForIpEntry(id);
+  if (macs.length === 0) {
+    throw badRequest("Nema poznate MAC adrese za ovaj računar (potreban je inventar sa mrežnim karticama).");
+  }
+
+  await Promise.all(macs.map((mac) => sendMagicPacket(mac, broadcastAddress)));
+
+  return { macs, broadcastAddress };
 }
 
 export async function createService(dto) {

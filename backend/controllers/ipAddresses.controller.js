@@ -16,6 +16,7 @@ import {
   duplicatesService,
   exportXlsxRowsService,
   setPendingRepackService,
+  wakeService,
 } from "../services/ipAddresses.service.js";
 import { getUptimeHistory } from "../services/ipStatusHistory.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -85,6 +86,12 @@ export async function getByIdController(req, res) {
   const id = parseIdParam(req);
   const out = await getByIdService(id);
   res.json(out);
+}
+
+export async function wakeController(req, res) {
+  const id = parseIdParam(req);
+  const out = await wakeService(id);
+  res.json({ success: true, ...out });
 }
 
 export async function uptimeHistoryController(req, res) {

@@ -8,6 +8,9 @@
         <AppButton v-if="meta" variant="secondary" :disabled="exportingPdf" @click="exportPdf">
           {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
         </AppButton>
+        <AppButton variant="secondary" :disabled="waking" @click="wakeComputer">
+          {{ waking ? 'Buđenje…' : 'Probudi računar' }}
+        </AppButton>
         <AppButton v-if="meta && isAdmin" variant="danger" @click="clearMetadata">
           Očisti metapodatke
         </AppButton>
@@ -281,6 +284,7 @@ const meta = ref(null)
 const metaLoading = ref(false)
 const metaError = ref('')
 const exportingPdf = ref(false)
+const waking = ref(false)
 
 const uptimePeriods = ref([])
 const uptimeLoading = ref(false)
@@ -303,6 +307,20 @@ async function exportPdf() {
     showToast('Greška pri izvozu PDF-a.', { prefix: '❌ ', duration: 3000 })
   } finally {
     exportingPdf.value = false
+  }
+}
+
+async function wakeComputer() {
+  waking.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/ip-addresses/${route.params.id}/wake`, { method: 'POST' })
+    if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
+    showToast('Magic paket poslat, računar bi trebalo da se upali za par trenutaka.')
+  } catch (err) {
+    console.error('Greška pri buđenju računara:', err)
+    showToast(err.message || 'Greška pri buđenju računara.', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    waking.value = false
   }
 }
 

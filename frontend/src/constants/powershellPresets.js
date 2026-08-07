@@ -847,4 +847,85 @@ export const POWERSHELL_PRESETS = [
       '    exit 1\n' +
       '}',
   },
+  {
+    id: 'enable-wake-on-lan',
+    label: 'Uključi Wake-on-LAN na mrežnim karticama',
+    // OS-nivo deo Wake-on-LAN podešavanja (Device Manager "Allow this device
+    // to wake the computer" + "Wake on Magic Packet" napredno podešavanje) -
+    // BIOS/UEFI "Wake on LAN"/"Power On By PCI-E" mora ostati ručno uključen
+    // po mašini, to se ne može podesiti daljinski preko OS-a.
+    //
+    // powercfg /deviceenablewake (ne WMI/registry direktno) namerno - radi
+    // identično od Windows 7 do 11, dok je NetAdapter modul (Set-
+    // NetAdapterPowerManagement / Set-NetAdapterAdvancedProperty, dodatno
+    // uključuje konkretno "Wake on Magic Packet" napredno svojstvo umesto
+    // samo opšteg "dozvoli buđenje") dostupan tek od Windows 8/Server 2012 -
+    // na Windows 7 se taj deo tiho preskoči, powercfg korak iznad je tamo
+    // jedini dostupan mehanizam.
+    //
+    // Win32_NetworkAdapter (WMI, ne Get-NetAdapter -Physical) za listu
+    // fizičkih kartica - dostupno i na Windows 7, gde Get-NetAdapter ne
+    // postoji. "Wake on Magic Packet" DisplayName je uobičajen naziv kod
+    // većine mrežnih drajvera (Intel/Realtek/Broadcom), ali nije garantovano
+    // identičan na svakom - Get-NetAdapterAdvancedProperty pre toga proverava
+    // da li svojstvo uopšte postoji pod tim imenom, pa se preskače bez greške
+    // ako drajver koristi drugačiji naziv.
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      '$results = New-Object System.Collections.Generic.List[string]\n' +
+      '\n' +
+      '$adapters = Get-WmiObject -Class Win32_NetworkAdapter -ErrorAction SilentlyContinue |\n' +
+      '    Where-Object { $_.PhysicalAdapter -eq $true -and $_.NetConnectionID }\n' +
+      '\n' +
+      'if (-not $adapters) {\n' +
+      '    "Nije pronadjena nijedna fizicka mrezna kartica."\n' +
+      '    exit 0\n' +
+      '}\n' +
+      '\n' +
+      'foreach ($adapter in $adapters) {\n' +
+      '    $name = $adapter.Name\n' +
+      '    try {\n' +
+      '        $out = powercfg /deviceenablewake "$name" 2>&1\n' +
+      '        if ($LASTEXITCODE -eq 0) {\n' +
+      '            $results.Add(("{0}: \'Allow this device to wake the computer\' ukljuceno" -f $name))\n' +
+      '        } else {\n' +
+      '            $results.Add(("{0}: powercfg GRESKA - {1}" -f $name, ($out -join \' \')))\n' +
+      '        }\n' +
+      '    }\n' +
+      '    catch {\n' +
+      '        $results.Add(("{0}: GRESKA - {1}" -f $name, $_.Exception.Message))\n' +
+      '    }\n' +
+      '}\n' +
+      '\n' +
+      'if (Get-Module -ListAvailable -Name NetAdapter) {\n' +
+      '    Import-Module NetAdapter -ErrorAction SilentlyContinue\n' +
+      '    Get-NetAdapter -Physical -ErrorAction SilentlyContinue | ForEach-Object {\n' +
+      '        $adapterName = $_.Name\n' +
+      '        try {\n' +
+      '            Set-NetAdapterPowerManagement -Name $adapterName -WakeOnMagicPacket Enabled -ErrorAction Stop\n' +
+      '            $results.Add(("{0}: WakeOnMagicPacket ukljucen (Set-NetAdapterPowerManagement)" -f $adapterName))\n' +
+      '        }\n' +
+      '        catch {\n' +
+      '            $results.Add(("{0}: Set-NetAdapterPowerManagement GRESKA - {1}" -f $adapterName, $_.Exception.Message))\n' +
+      '        }\n' +
+      '\n' +
+      '        try {\n' +
+      '            $prop = Get-NetAdapterAdvancedProperty -Name $adapterName -DisplayName "Wake on Magic Packet" -ErrorAction SilentlyContinue\n' +
+      '            if ($prop) {\n' +
+      '                Set-NetAdapterAdvancedProperty -Name $adapterName -DisplayName "Wake on Magic Packet" -DisplayValue "Enabled" -ErrorAction Stop\n' +
+      '                $results.Add(("{0}: \'Wake on Magic Packet\' napredno podesavanje ukljuceno" -f $adapterName))\n' +
+      '            }\n' +
+      '        }\n' +
+      '        catch {\n' +
+      '            $results.Add(("{0}: \'Wake on Magic Packet\' napredno podesavanje GRESKA - {1}" -f $adapterName, $_.Exception.Message))\n' +
+      '        }\n' +
+      '    }\n' +
+      '} else {\n' +
+      '    $results.Add("NetAdapter modul nije dostupan (verovatno Windows 7) - samo powercfg korak primenjen.")\n' +
+      '}\n' +
+      '\n' +
+      'Write-Output ($results -join "`n")\n' +
+      'Write-Output ""\n' +
+      'Write-Output "NAPOMENA: BIOS/UEFI podesavanje (\'Wake on LAN\'/\'Power On By PCI-E\'/slicno) mora biti rucno ukljuceno na ovoj masini - to se ne moze setovati daljinski."',
+  },
 ]
