@@ -9,7 +9,11 @@ import {
 describe("CreateJobSchema", () => {
   it("accepts every documented command type with no payload", () => {
     for (const commandType of COMMAND_TYPES) {
-      if (["restart_service", "start_service", "stop_service", "run_powershell_script"].includes(commandType)) {
+      if (
+        ["restart_service", "start_service", "stop_service", "run_powershell_script", "force_reinstall_agent"].includes(
+          commandType,
+        )
+      ) {
         continue; // these require a payload, covered separately below
       }
       const out = CreateJobSchema.safeParse({ commandType });
@@ -45,6 +49,24 @@ describe("CreateJobSchema", () => {
       CreateJobSchema.safeParse({
         commandType: "run_powershell_script",
         payload: { script: "Get-Process" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires payload.releaseId/version/sha256 for force_reinstall_agent", () => {
+    expect(
+      CreateJobSchema.safeParse({ commandType: "force_reinstall_agent" }).success,
+    ).toBe(false);
+    expect(
+      CreateJobSchema.safeParse({
+        commandType: "force_reinstall_agent",
+        payload: { releaseId: 13, version: "1.5.3" },
+      }).success,
+    ).toBe(false); // missing sha256
+    expect(
+      CreateJobSchema.safeParse({
+        commandType: "force_reinstall_agent",
+        payload: { releaseId: 13, version: "1.5.3", sha256: "abc123" },
       }).success,
     ).toBe(true);
   });

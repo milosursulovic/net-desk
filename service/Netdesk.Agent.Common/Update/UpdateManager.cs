@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -10,22 +9,24 @@ using System.Threading.Tasks;
 using NetdeskAgent.Common.Configuration;
 using NetdeskAgent.Common.Http;
 using NetdeskAgent.Common.Logging;
+using NetdeskAgent.Common.Manager;
 
 namespace NetdeskAgent.Common.Update
 {
     /// <summary>
     /// Orkestrira proveru/preuzimanje/SHA-256 verifikaciju/digitalni potpis
-    /// nove verzije i pokretanje Netdesk.Agent.Updater.exe (spec sekcija 7).
-    /// Sama zamena fajlova i restart servisa NIJE ovde - to radi Updater kao
-    /// odvojen proces, jer servis ne sme (i ne može, dok je fajl u upotrebi)
-    /// da menja sopstveni izvršni fajl dok je pokrenut.
+    /// nove verzije i prosleđivanje NetdeskAgentManager-u (preko
+    /// ManagerCommandClient) da izvrši stvarnu zamenu fajlova i restart.
+    /// Sama zamena fajlova NIJE ovde - to radi Manager kao odvojen, trajan
+    /// servis, jer NetdeskAgent.Service.exe ne sme (i ne može, dok je fajl u
+    /// upotrebi) da menja sopstveni izvršni fajl dok je pokrenut.
     ///
-    /// Bezbednost: SHA-256 integritet se uvek proverava. Digitalni potpis
-    /// (spec: "mogućnost") se proverava AKO ga server pošalje - organizacija
-    /// već ima internu CA distribuiranu u trusted root store svih upravljanih
-    /// računara (koristi se već za HTTPS ka Netdesk serveru), pa se lanac
-    /// potpisnog sertifikata proverava preko X509Chain protiv te iste trusted
-    /// root - nema potrebe za posebnom distribucijom javnog ključa agentu.
+    /// Bezbednost: SHA-256 integritet se uvek proverava. Digitalni potpis se
+    /// proverava AKO je poslat - organizacija već ima internu CA distribuiranu
+    /// u trusted root store svih upravljanih računara (koristi se već za HTTPS
+    /// ka Netdesk serveru), pa se lanac potpisnog sertifikata proverava preko
+    /// X509Chain protiv te iste trusted root - nema potrebe za posebnom
+    /// distribucijom javnog ključa agentu.
     /// </summary>
     public static class UpdateManager
     {
@@ -49,25 +50,61 @@ namespace NetdeskAgent.Common.Update
 
             FileLogger.Info("Dostupna nova verzija agenta: " + check.Version + " (trenutna: " + currentVersion + ")");
 
+            await DownloadVerifyAndHandOffAsync(
+                client, state, currentVersion, check.Version, check.Sha256,
+                check.Signature, check.SignatureCertificatePem, check.DownloadUrl).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Forsirana reinstalacija konkretnog release-a (force_reinstall_agent
+        /// job, videti AgentWorker.ProcessJobAsync) - BEZ isNewerVersion provere,
+        /// može "reinstalirati" i verziju na kojoj agent VEĆ tvrdi da je (npr.
+        /// popravka oštećene instalacije bez menjanja broja verzije). Digitalni
+        /// potpis se NE proverava ovde - job payload ne nosi potpis/sertifikat
+        /// (admin je eksplicitno izabrao ovaj release iz poverljivog admin
+        /// UI-ja preko autentifikovanog job mehanizma) - SHA-256 integritet i
+        /// dalje OBAVEZNO važi.
+        /// </summary>
+        public static async Task ForceInstallAsync(
+            NetdeskApiClient client, AgentState state, string currentVersion,
+            long releaseId, string toVersion, string sha256)
+        {
+            var downloadUrl = "/api/agents/update/download/" + releaseId;
+
+            await DownloadVerifyAndHandOffAsync(
+                client, state, currentVersion, toVersion, sha256,
+                null, null, downloadUrl).ConfigureAwait(false);
+        }
+
+        private static async Task DownloadVerifyAndHandOffAsync(
+            NetdeskApiClient client,
+            AgentState state,
+            string fromVersion,
+            string toVersion,
+            string sha256,
+            string signature,
+            string signatureCertificatePem,
+            string downloadUrl)
+        {
             var updateRoot = Path.Combine(Paths.DataDir, "update-staging");
             Directory.CreateDirectory(updateRoot);
 
-            var packagePath = Path.Combine(updateRoot, check.Version + ".zip");
-            var stagingDir = Path.Combine(updateRoot, check.Version);
+            var packagePath = Path.Combine(updateRoot, toVersion + ".zip");
+            var stagingDir = Path.Combine(updateRoot, toVersion);
 
             try
             {
-                await client.DownloadUpdateFileAsync(state.AgentId, state.ApiKey, check.DownloadUrl, packagePath)
+                await client.DownloadUpdateFileAsync(state.AgentId, state.ApiKey, downloadUrl, packagePath)
                     .ConfigureAwait(false);
 
-                if (!VerifySha256(packagePath, check.Sha256))
+                if (!VerifySha256(packagePath, sha256))
                 {
                     FileLogger.Error(
                         "SHA-256 provera paketa neuspešna (mogući problem integriteta) - update se odbacuje.", null);
                     return;
                 }
 
-                if (!VerifySignatureIfPresent(packagePath, check))
+                if (!VerifySignatureIfPresent(packagePath, signature, signatureCertificatePem))
                 {
                     // VerifySignatureIfPresent je već ulogovao tačan razlog.
                     return;
@@ -81,20 +118,32 @@ namespace NetdeskAgent.Common.Update
                 ZipFile.ExtractToDirectory(packagePath, stagingDir);
 
                 var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                var updaterExePath = ResolveUpdaterExePath(installDir);
-
-                if (string.IsNullOrEmpty(updaterExePath) || !File.Exists(updaterExePath))
-                {
-                    FileLogger.Error("Netdesk.Agent.Updater.exe nije pronađen na: " + updaterExePath, null);
-                    return;
-                }
-
                 var backupDir = Path.Combine(
-                    Paths.DataDir, "update-backup", currentVersion + "-" + DateTime.UtcNow.Ticks);
+                    Paths.DataDir, "update-backup", fromVersion + "-" + DateTime.UtcNow.Ticks);
 
-                LaunchUpdater(updaterExePath, stagingDir, installDir, backupDir, client.BaseUrl, state, currentVersion, check.Version);
+                var command = new ManagerCommand
+                {
+                    Action = "install_files",
+                    ServiceName = "NetdeskAgent",
+                    StagingDir = stagingDir,
+                    InstallDir = installDir,
+                    BackupDir = backupDir,
+                    ServerBaseUrl = client.BaseUrl,
+                    AgentId = state.AgentId,
+                    ApiKey = state.ApiKey,
+                    FromVersion = fromVersion,
+                    ToVersion = toVersion,
+                };
 
-                FileLogger.Info("Netdesk.Agent.Updater.exe pokrenut - servis će uskoro biti zaustavljen radi ažuriranja.");
+                string failureReason;
+                if (ManagerCommandClient.TrySend(command, out failureReason))
+                {
+                    FileLogger.Info("Instalacija verzije " + toVersion + " prosleđena NetdeskAgentManager-u.");
+                }
+                else
+                {
+                    FileLogger.Error("Prosleđivanje instalacije Manager-u neuspešno: " + failureReason, null);
+                }
             }
             catch (NetdeskApiException apiEx)
             {
@@ -108,50 +157,6 @@ namespace NetdeskAgent.Common.Update
             {
                 TryDelete(packagePath);
             }
-        }
-
-        private static void LaunchUpdater(
-            string updaterExePath,
-            string stagingDir,
-            string installDir,
-            string backupDir,
-            string serverBaseUrl,
-            AgentState state,
-            string fromVersion,
-            string toVersion)
-        {
-            var arguments = string.Format(
-                "--service-name \"NetdeskAgent\" --staging-dir \"{0}\" --install-dir \"{1}\" --backup-dir \"{2}\" " +
-                "--server-base-url \"{3}\" --agent-id \"{4}\" --api-key \"{5}\" --from-version \"{6}\" --to-version \"{7}\"",
-                stagingDir, installDir, backupDir, serverBaseUrl, state.AgentId, state.ApiKey, fromVersion, toVersion);
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = updaterExePath,
-                Arguments = arguments,
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            };
-
-            Process.Start(psi);
-
-            // Servis se ne gasi sam ovde - Updater.exe zaustavlja "NetdeskAgent"
-            // servis preko SCM-a, što prirodno pokreće OnStop() na ovom procesu.
-            // Nema potrebe za posebnom logikom izlaska.
-        }
-
-        /// <summary>
-        /// Konvencija rasporeda instalacije: ...\NetdeskAgent\Service\Netdesk.Agent.Service.exe
-        /// i ...\NetdeskAgent\Updater\Netdesk.Agent.Updater.exe kao rodbraća.
-        /// Updater namerno živi van foldera koji update paket prepisuje, da
-        /// nikad ne prepisuje sopstvene fajlove dok je pokrenut.
-        /// </summary>
-        private static string ResolveUpdaterExePath(string serviceInstallDir)
-        {
-            if (string.IsNullOrEmpty(serviceInstallDir)) return null;
-
-            var parent = Directory.GetParent(serviceInstallDir);
-            return parent == null ? null : Path.Combine(parent.FullName, "Updater", "Netdesk.Agent.Updater.exe");
         }
 
         private static bool VerifySha256(string filePath, string expectedHex)
@@ -168,18 +173,19 @@ namespace NetdeskAgent.Common.Update
         }
 
         /// <summary>
-        /// Vraća true ako je potpis validan ILI ako server nije poslao potpis
-        /// za ovaj release (spec ovo tretira kao "mogućnost", ne obavezu -
-        /// nastavljamo samo sa već potvrđenim SHA-256 integritetom). Vraća
-        /// false SAMO kad je potpis poslat, a verifikacija (lanac ili sam
+        /// Vraća true ako je potpis validan ILI ako nema potpisa za proveru
+        /// (server nema podešeno potpisivanje za ovaj release, ili je
+        /// reinstalacija forsirana preko job-a koji ne nosi potpis). Vraća
+        /// false SAMO kad JE potpis prosleđen, a verifikacija (lanac ili sam
         /// potpis) ne uspe - tada se update pouzdano odbacuje.
         /// </summary>
-        private static bool VerifySignatureIfPresent(string filePath, UpdateCheckResponse check)
+        private static bool VerifySignatureIfPresent(string filePath, string signature, string signatureCertificatePem)
         {
-            if (string.IsNullOrEmpty(check.Signature) || string.IsNullOrEmpty(check.SignatureCertificatePem))
+            if (string.IsNullOrEmpty(signature) || string.IsNullOrEmpty(signatureCertificatePem))
             {
                 FileLogger.Warn(
-                    "Release nema digitalni potpis (server nema podešeno potpisivanje) - preskačem proveru potpisa.");
+                    "Nema digitalnog potpisa za proveru (server nema podešeno potpisivanje za ovaj release, ili je " +
+                    "reinstalacija forsirana bez potpisa) - preskačem proveru potpisa.");
                 return true;
             }
 
@@ -192,7 +198,7 @@ namespace NetdeskAgent.Common.Update
             X509Certificate2 cert = null;
             try
             {
-                var certBytes = PemToDer(check.SignatureCertificatePem);
+                var certBytes = PemToDer(signatureCertificatePem);
                 cert = new X509Certificate2(certBytes);
 
                 if (!VerifyChainToTrustedRoot(cert))
@@ -213,7 +219,7 @@ namespace NetdeskAgent.Common.Update
                 }
 
                 var fileBytes = File.ReadAllBytes(filePath);
-                var signatureBytes = Convert.FromBase64String(check.Signature);
+                var signatureBytes = Convert.FromBase64String(signature);
 
                 if (!rsa.VerifyData(fileBytes, "SHA256", signatureBytes))
                 {

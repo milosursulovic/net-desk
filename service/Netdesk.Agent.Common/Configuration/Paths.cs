@@ -14,5 +14,20 @@ namespace NetdeskAgent.Common.Configuration
         public static string StateFile => Path.Combine(DataDir, "state.json");
         public static string EventLogBookmarksFile => Path.Combine(DataDir, "eventlog-bookmarks.json");
         public static string LogFile => Path.Combine(DataDir, "logs", "agent.log");
+
+        /// <summary>
+        /// "Mailbox" fajl kojim NetdeskAgent.Service.exe naručuje akciju od
+        /// NetdeskAgentManager-a (restart/stop/start sebe, ili instalacija
+        /// update-a) - vidi NetdeskAgent.Common.Manager.ManagerCommandClient.
+        /// Jedna pending komanda odjednom, ne red čekanja.
+        /// </summary>
+        public static string ManagerCommandFile => Path.Combine(DataDir, "manager-command.json");
+
+        /// <summary>
+        /// Odvojen log fajl od LogFile - oba servisa (NetdeskAgent i
+        /// NetdeskAgentManager) rade istovremeno, FileLogger nema cross-process
+        /// koordinaciju pa ne sme da dele isti fajl.
+        /// </summary>
+        public static string ManagerLogFile => Path.Combine(DataDir, "logs", "manager.log");
     }
 }

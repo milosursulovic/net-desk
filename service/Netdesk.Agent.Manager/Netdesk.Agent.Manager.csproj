@@ -4,13 +4,14 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net452</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <AssemblyName>Netdesk.Agent.Updater</AssemblyName>
-    <RootNamespace>NetdeskAgent.Updater</RootNamespace>
+    <AssemblyName>Netdesk.Agent.Manager</AssemblyName>
+    <RootNamespace>NetdeskAgent.Manager</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Configuration.Install" />
   </ItemGroup>
 
   <ItemGroup>

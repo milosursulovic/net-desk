@@ -12,7 +12,8 @@ inventory sync (hardver/softver/servisi/Windows Update/štampači preko WMI i
 registry-ja), job polling/izvršavanje (restart/shutdown/logoff/servisi/
 PowerShell/brisanje temp fajlova), event log sync, i auto-update (provera
 verzije, preuzimanje, SHA-256 + digitalni potpis verifikacija, zamena preko
-odvojenog Updater procesa, rollback pri neuspehu).
+odvojenog NetdeskAgentManager servisa, rollback pri neuspehu - videti sekciju
+"Netdesk Agent Manager" ispod).
 
 **Namerno neurađeno** (videti komentare u kodu za detalje):
 - Instalacija sertifikata i odobrenih paketa kao job komande — zahteva poseban
@@ -78,10 +79,13 @@ instaliranom, što ovo sandboxovano okruženje nema.
 Netdesk.Agent.sln
 Netdesk.Agent.Common/     deljeni kod - modeli, HTTP klijent, WMI/registry
                           kolektori (Inventory/Monitoring/EventLogs/DnsLogs),
-                          job executor, update manager, config/state/logger
+                          job executor, update manager, manager mailbox
+                          protokol, config/state/logger
 Netdesk.Agent.Service/    Netdesk.Agent.Service.exe - Windows Service
-Netdesk.Agent.Updater/    Netdesk.Agent.Updater.exe - odvojen proces koji
-                          fizički menja fajlove servisa i restartuje ga
+Netdesk.Agent.Manager/    Netdesk.Agent.Manager.exe - odvojen, TRAJAN Windows
+                          Service koji na komandu start/stop/restart-uje
+                          NetdeskAgent i fizički menja fajlove pri update-u -
+                          videti sekciju "Netdesk Agent Manager" ispod
 ```
 
 ## Raspored instalacije (bitno za auto-update)
@@ -101,8 +105,8 @@ C:\Program Files\NetdeskAgent\
 │   ├── System.Runtime.CompilerServices.Unsafe.dll
 │   ├── amd64\ (KernelTraceControl.dll, msdia140.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
 │   └── x86\ (isti fajlovi + KernelTraceControl.Win61.dll)
-└── Updater\
-    ├── Netdesk.Agent.Updater.exe
+└── Manager\
+    ├── Netdesk.Agent.Manager.exe
     ├── Netdesk.Agent.Common.dll
     ├── Newtonsoft.Json.dll
     ├── websocket-sharp.dll
@@ -125,7 +129,7 @@ sekciju "DNS query logging" ispod), pinovanog na 2.0.77 jer je to
 poslednja verzija koja i dalje isporučuje `net45` lib target (3.x+ je
 samo `netstandard2.0`/`net462+`, ni jedno net452 ne može da konzumira).
 MSBuild sve ovo kopira u oba foldera (tranzitivna zavisnost preko
-`Netdesk.Agent.Common.dll`) iako ih `Updater.exe` stvarno ne koristi u
+`Netdesk.Agent.Common.dll`) iako ih `Manager.exe` stvarno ne koristi u
 radu - bezopasno, samo dodatni fajlovi. `amd64\`/`x86\` podfolderi
 (native helper DLL-ovi, arh-specifični - managed sklopovi su MSIL/AnyCPU
 i rade na oba, ali proces traži native helpere u podfolderu koji
@@ -135,12 +139,14 @@ kernel provajdera ili .etl merge-a) uopšte zahteva u praksi, ali je cena
 zanemarljiva. `x86\` je posebno bitan zbog `KernelTraceControl.Win61.dll`
 (Windows 7 varijanta) - baš ono što ovaj projekat cilja.
 
-**`Service\` i `Updater\` moraju biti odvojeni folderi.** Auto-update paket
-prepisuje samo sadržaj `Service\` — `Updater\` namerno ostaje netaknut jer
-Updater ne sme (i ne može, zbog file lock-a) da prepisuje sopstvene fajlove
-dok je pokrenut. `Netdesk.Agent.Service.exe` pronalazi Updater po ovoj
-konvenciji (rođeni folder pored svog installDir-a) — videti
-`UpdateManager.ResolveUpdaterExePath`.
+**`Service\` i `Manager\` moraju biti odvojeni folderi.** Auto-update paket
+prepisuje samo sadržaj `Service\` — `Manager\` namerno ostaje netaknut jer
+Manager ne sme (i ne može, zbog file lock-a) da prepisuje sopstvene fajlove
+dok je pokrenut. `Netdesk.Agent.Service.exe` ne zna/ne mora da zna gde
+Manager fizički živi (za razliku od starog `ResolveUpdaterExePath` obrasca) -
+komunikacija ide isključivo preko mailbox fajla i Windows Service imena
+(`NetdeskAgentManager`), ne preko putanje na disku - videti sekciju "Netdesk
+Agent Manager" ispod.
 
 ## Preduslovi za build
 
@@ -149,18 +155,17 @@ konvenciji (rođeni folder pored svog installDir-a) — videti
   Components → ".NET Framework 4.5.2 targeting pack" ako fali).
 - NuGet pristup internetu (za `Newtonsoft.Json`) prilikom prvog build-a.
 
-**Napomena:** Ovaj kod je pisan i proveren van Windows/Visual Studio okruženja
-(nema pristupa punom MSBuild-u/VS-u). Sva tri projekta (Common, Service,
-Updater) su uspešno kompajlirana preko samostalnog modernog Roslyn kompajlera
-(`csc.exe` iz `Microsoft.Net.Compilers.Toolset` NuGet paketa) protiv pravih
-.NET Framework 4.5.2 referenci — to je stvarna kompajl-time provera (tipovi,
-reference, sintaksa), ne samo sintaksno čitanje. Ono što OVO NE proverava:
-MSBuild/NuGet restore ponašanje, generisanje finalnog .exe/.config preko
-Visual Studio-a, i (najbitnije) da li se servis stvarno instalira/pokreće/
-zaustavlja na pravoj Windows mašini, i da li ceo enroll→heartbeat→inventory→
-job→auto-update tok radi end-to-end protiv pravog backend-a. **Prva stvarna
-provera mora da bude ručna, na test mašini/VM-u**, pre distribucije na prave
-računare.
+**Napomena:** Ovaj kod je pisan van Windows/Visual Studio GUI okruženja, ali
+`dotnet build -c Release` (moderna .NET SDK CLI) je uživo potvrđeno da
+uspešno build-uje sva četiri projekta (Common, Service, Manager, i ranije
+Updater) na ovom net452 target-u - stvarna MSBuild kompajl-time provera
+(tipovi, reference, NuGet restore), ne samo sintaksno čitanje. Ono što ovo I
+DALJE ne proverava: da li se servis stvarno instalira/pokreće/zaustavlja na
+pravoj Windows mašini preko `InstallUtil.exe`, da li `ServiceController.
+ExecuteCommand`/`OnCustomCommand` signal stvarno stiže između dva procesa, i
+da li ceo enroll→heartbeat→inventory→job→auto-update tok radi end-to-end
+protiv pravog backend-a. **Prva stvarna provera mora da bude ručna, na test/
+pilot mašini**, pre distribucije na celu flotu.
 
 ## Konfiguracija
 
@@ -193,7 +198,11 @@ u `%ProgramData%\NetdeskAgent\state.json` — `EnrollToken` se posle toga više 
 koristi i može se ukloniti iz config-a pri distribuciji na ostale mašine.
 
 Ostali fajlovi u `%ProgramData%\NetdeskAgent\`:
-- `logs\agent.log` — log rada agenta
+- `logs\agent.log` — log rada NetdeskAgent servisa
+- `logs\manager.log` — log rada NetdeskAgentManager servisa (odvojen fajl -
+  oba servisa rade istovremeno, videti sekciju "Netdesk Agent Manager")
+- `manager-command.json` — mailbox fajl, NetdeskAgent → Manager komande
+  (postoji samo dok komanda čeka da bude obrađena)
 - `eventlog-bookmarks.json` — poslednji pročitan event log record ID (da se
   isti unosi ne šalju ponovo)
 - `update-staging\`, `update-backup\` — privremeni fajlovi tokom auto-update-a
@@ -236,9 +245,15 @@ sc failure NetdeskAgent reset=86400 actions=restart/60000/restart/60000/restart/
 Deinstalacija: isti `InstallUtil.exe` (64-bit ili 32-bit putanja iznad) sa
 `/u Netdesk.Agent.Service.exe`.
 
-Updater se ne instalira kao servis — samo se kopira u `Updater\` folder pored
-`Service\` (videti raspored instalacije gore); Netdesk.Agent.Service.exe ga
-pokreće direktno kao proces kad je update dostupan.
+**Manager se INSTALIRA kao pravi Windows Service** (za razliku od starog
+Updater-a) — isti InstallUtil postupak kao gore, samo nad
+`Netdesk.Agent.Manager.exe` u `Manager\` folderu i sa `NetdeskAgentManager`
+imenom servisa. Za rollout na celu postojeću flotu, preporučen put je preset
+"Instaliraj/ažuriraj NetdeskAgent Manager servis"
+(`frontend/src/constants/powershellPresets.js`) poslat kao
+`run_powershell_script` job preko postojećih agenata (prvo `pilot` grupa) -
+radi ceo InstallUtil/`sc failure` postupak automatski. Ručni koraci iznad
+ostaju kao fallback za prvu pilot mašinu.
 
 ## Auth model (za referencu)
 
@@ -251,14 +266,95 @@ sve posle toga (heartbeat, inventory, jobs, update) sa
 
 `restart_computer`, `shutdown_computer`, `logoff_user`, `restart_service`,
 `start_service`, `stop_service` (zahtevaju `payload.serviceName`),
-`run_powershell_script` (zahteva `payload.script`), `collect_inventory`,
-`refresh_software_list`, `delete_temp_files`. Mora se tačno poklapati sa
-backend `COMMAND_TYPES` (`dtos/agentJobs.dto.js`) — videti
-`Netdesk.Agent.Common/Jobs/JobExecutor.cs`.
+`start_netdesk_agent`, `stop_netdesk_agent`, `restart_netdesk_agent` (bez
+payload-a - cilj je uvek NetdeskAgent), `run_powershell_script` (zahteva
+`payload.script`), `collect_inventory`, `refresh_software_list`,
+`delete_temp_files`. Mora se tačno poklapati sa backend `COMMAND_TYPES`
+(`dtos/agentJobs.dto.js`) — videti `Netdesk.Agent.Common/Jobs/JobExecutor.cs`.
 
-`start_vnc_bridge` je poseban slučaj - kreira ga server programski (ne
-ručno biranje tipa komande), ne prolazi kroz `JobExecutor`, i obrađuje ga
-`AgentWorker.ProcessJobAsync` direktno. Videti sekciju ispod.
+`start_vnc_bridge` i `force_reinstall_agent` su posebni slučajevi - kreira ih
+server/frontend programski (ne ručno biranje tipa komande), ne prolaze kroz
+`JobExecutor`, i obrađuje ih `AgentWorker.ProcessJobAsync` direktno
+(`force_reinstall_agent` poziva `UpdateManager.ForceInstallAsync` - videti
+sekciju "Netdesk Agent Manager" ispod).
+
+`start_netdesk_agent`/`stop_netdesk_agent`/`restart_netdesk_agent` su glavni,
+preporučeni put za RUČNO upravljanje NetdeskAgent servisom - uvek idu preko
+NetdeskAgentManager-a (mailbox), nikad kroz `JobExecutor` direktno. Kao
+odbrana u dubinu, i generički `restart_service`/`start_service`/
+`stop_service` sa `payload.serviceName = "NetdeskAgent"` (case-insensitive)
+se TIHO PREUSMERAVAJU na isti put (`AgentWorker.IsNetdeskAgentServiceControl`)
+umesto da idu kroz `JobExecutor` - agent ne sme sam sebe da (re)startuje
+sinhrono na istoj petlji koja treba da prijavi rezultat serveru. Za SVAKI
+DRUGI naziv servisa, `JobExecutor.ControlService` radi nepromenjeno.
+
+## Netdesk Agent Manager
+
+Odvojen, TRAJAN Windows Service (`NetdeskAgentManager`, `Netdesk.Agent.
+Manager.exe`) - jedini razlog postojanja je da NetdeskAgent.Service.exe
+nikad ne mora sam sebe da (re)startuje ili menja sopstvene fajlove dok je
+pokrenut. "Postavi i zaboravi" komponenta - nema svoju auto-update logiku,
+rollout je ručan preko preseta (videti "Instalacija kao pravi Windows
+Service" iznad).
+
+**Komunikacija (NetdeskAgent → Manager):**
+1. NetdeskAgent piše `ManagerCommand` JSON u `%ProgramData%\NetdeskAgent\
+   manager-command.json` (atomic rename preko `.tmp` fajla - Manager nikad
+   ne čita polu-napisan fajl). Jedna pending komanda odjednom, ne red
+   čekanja (namerno prihvaćen kompromis za v1 - dat realan tempo jobova ovo
+   je nizak rizik).
+2. NetdeskAgent zove `new ServiceController("NetdeskAgentManager").
+   ExecuteCommand(128)` - Windows Service custom control code, "probudi se
+   i proveri mailbox" (kod 128, `ManagerCommandClient.CustomCommandCode`).
+   Neuspeh ovog poziva (npr. Manager trenutno nije pokrenut) NIJE fatalan -
+   komanda već čeka u fajlu.
+3. Manager-ov `OnCustomCommand(128)` samo signalizira event (mora brzo da
+   vrati kontrolu SCM-u) - `ManagerWorker`-ova radna petlja ga obrađuje.
+   Manager TAKOĐE nezavisno pollduje isti fajl na svaki tick (5s) - safety
+   net ako je custom command signal izgubljen (npr. Manager je bio ugašen
+   kad je komanda upisana).
+
+**Dve akcije (`ManagerCommand.Action`):**
+- `control_service` - `ServiceName`/`ServiceAction` ("start"/"stop"/
+  "restart"). `ServiceName` NIJE hardkodovan na "NetdeskAgent" - Manager ume
+  da kontroliše bilo koji naziv servisa (trenutno se koristi samo za
+  NetdeskAgent, ali mehanizam sam po sebi je generički).
+- `install_files` - `StagingDir`/`InstallDir`/`BackupDir` (proizvoljne
+  putanje, NISU hardkodovane na Service folder), `ServiceName` (koji servis
+  zaustaviti/pokrenuti oko kopiranja), i OPCIONO `ServerBaseUrl`/`AgentId`/
+  `ApiKey`/`FromVersion`/`ToVersion` (samo ako pošiljalac želi da Manager
+  javi rezultat serveru - videti ispod). Manager: **prvo eksplicitno
+  proverava da je stop servisa uspeo** (`TryControlService`) - ako NIJE,
+  fajlovi se uopšte ne diraju, javlja se jasan neuspeh sa razlogom, kraj. Tek
+  ako je stop uspeo: backup `InstallDir` u `BackupDir` (rekurzivno,
+  `DirectorySync` - ispravlja stari bug gde Updater nije kopirao `amd64\`/
+  `x86\` podfoldere) → kopira `StagingDir` preko `InstallDir`-a → start
+  servisa. Na grešku POSLE uspešnog stop-a: rollback iz backup-a + ponovni
+  start pre javljanja neuspeha (isti oblik kao stari Updater). Mehanizam NIJE
+  vezan za NetdeskAgent specifično - iste tri putanje + naziv servisa mogu u
+  budućnosti da instaliraju/ažuriraju BILO KOJU komponentu na BILO KOJOJ
+  lokaciji (npr. potpuno odvojen folder/servis van `C:\Program
+  Files\NetdeskAgent\`), bez izmene Manager koda. Trenutna (NetdeskAgent)
+  upotreba ne dira `config.json` - živi van `InstallDir`-a.
+
+  Ako je `ServerBaseUrl` popunjen, Manager posle (uspeha ili neuspeha) javlja
+  rezultat serveru (`POST /api/agents/update/report`) - JEDINI mrežni poziv
+  koji Manager ikad pravi (zato ima sopstveno outbound firewall pravilo,
+  isti razlog kao NetdeskAgent-ovo). Ako `ServerBaseUrl` NIJE popunjen
+  (buduća ne-agent upotreba), ovaj korak se tiho preskače.
+
+**Forsirana reinstalacija** (`force_reinstall_agent` job, pokreće se iz
+"Forsiraj reinstalaciju" dugmeta na `/agent-releases` stranici) ide istim
+`install_files` putem, samo BEZ `isNewerVersion` provere - može
+"reinstalirati" i verziju na kojoj agent VEĆ tvrdi da je (popravka oštećene
+instalacije). Digitalni potpis se u ovom slučaju ne proverava (job payload
+ne nosi ga) - SHA-256 integritet i dalje obavezno važi.
+
+**Nije uživo provereno** (isti razlog kao ostatak agenta): da
+`ServiceController.ExecuteCommand`/`OnCustomCommand` signal stvarno stiže
+između dva procesa na pravoj Windows mašini, i da ceo stop→copy→start
+ciklus ne ostavlja mašinu u pokvarenom stanju. Prva provera mora biti na
+pilot mašini - videti `DEPLOYMENT.md`.
 
 ## Udaljena kontrola ekrana (VNC)
 

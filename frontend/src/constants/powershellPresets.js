@@ -772,4 +772,79 @@ export const POWERSHELL_PRESETS = [
       '  -ArgumentList \'-NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 5; Restart-Service -Name NetdeskAgent -Force"\' `\n' +
       '  -WindowStyle Hidden',
   },
+  {
+    id: 'install-netdesk-agent-manager',
+    label: 'Instaliraj/ažuriraj NetdeskAgent Manager servis',
+    // Bootstrap rollout za NetdeskAgentManager (nov, nezavisan servis - vidi
+    // service/README.md) - "kokoška i jaje" problem, prva instalacija na
+    // flotu ide baš preko ovog run_powershell_script mehanizma. Idempotentan
+    // (bezbedan za ponovno slanje/buduće ručne update-ove Manager-a samog) -
+    // ako servis već postoji, prvo se zaustavi i deinstalira pre svežeg
+    // upisa fajlova. Isti obrazac preuzimanja kao deploy-trusted-root-cert
+    // preset (OS-zavisan URL, TLS 1.2 forsiran, WebClient.DownloadFile) i
+    // isti InstallUtil/OS-bitness/sc failure recept kao ručna Service
+    // instalacija u DEPLOYMENT.md.
+    script:
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
+      '$pkgUrlModern = "https://10.230.62.81:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
+      '# --------------------------------------------------------\n' +
+      '\n' +
+      '$serviceName = "NetdeskAgentManager"\n' +
+      '$installDir = "C:\\Program Files\\NetdeskAgent\\Manager"\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$pkgUrl = if ($isWin7) { $pkgUrlWin7 } else { $pkgUrlModern }\n' +
+      '\n' +
+      '$installUtilPath = if ([Environment]::Is64BitOperatingSystem) {\n' +
+      '  "$env:WINDIR\\Microsoft.NET\\Framework64\\v4.0.30319\\InstallUtil.exe"\n' +
+      '} else {\n' +
+      '  "$env:WINDIR\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe"\n' +
+      '}\n' +
+      '\n' +
+      'try {\n' +
+      '    $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue\n' +
+      '    if ($existing) {\n' +
+      '        if ($existing.Status -ne "Stopped") {\n' +
+      '            Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue\n' +
+      '        }\n' +
+      '        & $installUtilPath /u "$installDir\\Netdesk.Agent.Manager.exe" 2>&1 | Out-Null\n' +
+      '    }\n' +
+      '\n' +
+      '    $zipPath = Join-Path $env:TEMP "NetdeskAgentManager.zip"\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($pkgUrl, $zipPath)\n' +
+      '\n' +
+      '    if (Test-Path $installDir) {\n' +
+      '        Remove-Item $installDir -Recurse -Force\n' +
+      '    }\n' +
+      '    New-Item -ItemType Directory -Path $installDir -Force | Out-Null\n' +
+      '    Expand-Archive -Path $zipPath -DestinationPath $installDir -Force\n' +
+      '    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue\n' +
+      '\n' +
+      '    & $installUtilPath "$installDir\\Netdesk.Agent.Manager.exe"\n' +
+      '    if ($LASTEXITCODE -ne 0) {\n' +
+      '        throw "InstallUtil je vratio exit kod $LASTEXITCODE"\n' +
+      '    }\n' +
+      '\n' +
+      '    sc.exe start $serviceName | Out-Null\n' +
+      '    Start-Sleep -Seconds 2\n' +
+      '    $status = (Get-Service -Name $serviceName -ErrorAction SilentlyContinue).Status\n' +
+      '    if ($status -ne "Running") {\n' +
+      '        throw "Servis \'$serviceName\' nije u Running stanju posle starta (status: $status)."\n' +
+      '    }\n' +
+      '\n' +
+      '    sc.exe failure $serviceName reset=86400 actions=restart/60000/restart/60000/restart/60000 | Out-Null\n' +
+      '\n' +
+      '    "NetdeskAgentManager instaliran i pokrenut (paket: $pkgUrl)."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
 ]

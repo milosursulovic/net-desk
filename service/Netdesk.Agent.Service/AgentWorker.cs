@@ -14,6 +14,7 @@ using NetdeskAgent.Common.Monitoring;
 using NetdeskAgent.Common.EventLogs;
 using NetdeskAgent.Common.DnsLogs;
 using NetdeskAgent.Common.ProcessMonitor;
+using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
 
@@ -396,6 +397,56 @@ namespace NetdeskAgent.Service
         {
             FileLogger.Info("Izvršavam komandu #" + job.Id + " (" + job.CommandType + ")...");
 
+            if (IsNetdeskAgentServiceControl(job.CommandType, job.Payload))
+            {
+                // NetdeskAgent ne sme sam sebe da (re)startuje kroz JobExecutor
+                // (sinhrono na istoj petlji koja treba da prijavi rezultat
+                // serveru - servis bi se ugasio pre nego što stigne da javi
+                // uspeh, job bi ostao zauvek zaglavljen na "sent"). Umesto
+                // toga, prosledi NetdeskAgentManager-u (odvojen, trajan servis)
+                // preko mailbox-a i ODMAH prijavi dispatch, ne completion -
+                // isti fire-and-forget oblik kao start_vnc_bridge ispod. Dva
+                // puta dovode ovde: eksplicitne start_netdesk_agent/
+                // stop_netdesk_agent/restart_netdesk_agent komande (glavni,
+                // preporučen put za ručno upravljanje), ILI generičke
+                // restart_service/start_service/stop_service sa
+                // payload.serviceName="NetdeskAgent" (odbrana u dubinu, ako
+                // neko ipak pošalje generičku komandu na ovaj cilj).
+                // JobExecutor.ControlService i dalje radi nepromenjeno za SVAKI
+                // DRUGI naziv servisa (npr. Spooler).
+                var serviceAction = ServiceActionFor(job.CommandType);
+                var command = new ManagerCommand
+                {
+                    Action = "control_service",
+                    ServiceName = "NetdeskAgent",
+                    ServiceAction = serviceAction,
+                };
+
+                string failureReason;
+                var dispatched = ManagerCommandClient.TrySend(command, out failureReason);
+
+                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+                {
+                    Success = dispatched,
+                    ExitCode = dispatched ? 0 : 1,
+                    Output = dispatched ? "Prosleđeno NetdeskAgentManager-u (" + serviceAction + ")." : null,
+                    ErrorOutput = dispatched ? null : failureReason,
+                    DurationMs = 0,
+                }).ConfigureAwait(false);
+                return;
+            }
+
+            if (job.CommandType == "force_reinstall_agent")
+            {
+                // Ne ide kroz JobExecutor - treba mu NetdeskApiClient/AgentState
+                // pristup (isti razlog kao collect_inventory/refresh_software_list
+                // ispod), i sam update handoff (preuzmi→verifikuj→pošalji
+                // Manager-u) je async.
+                var forceResult = await RunForceReinstallJobAsync(client, state, job.Payload).ConfigureAwait(false);
+                await ReportJobResultAsync(client, state, job.Id, forceResult).ConfigureAwait(false);
+                return;
+            }
+
             if (job.CommandType == "start_vnc_bridge")
             {
                 // Ne ide kroz JobExecutor (blokiralo bi poll petlju za celo
@@ -521,6 +572,97 @@ namespace NetdeskAgent.Service
             catch (Exception ex)
             {
                 sw.Stop();
+                return new JobExecutor.ExecutionResult
+                {
+                    Success = false,
+                    ExitCode = -1,
+                    ErrorOutput = ex.Message,
+                    DurationMs = sw.ElapsedMilliseconds,
+                };
+            }
+        }
+
+        private static bool IsNetdeskAgentServiceControl(string commandType, Newtonsoft.Json.Linq.JObject payload)
+        {
+            if (commandType == "start_netdesk_agent" || commandType == "stop_netdesk_agent" ||
+                commandType == "restart_netdesk_agent")
+            {
+                return true;
+            }
+
+            if (commandType != "restart_service" && commandType != "start_service" && commandType != "stop_service")
+            {
+                return false;
+            }
+
+            var serviceName = payload != null ? (string)payload["serviceName"] : null;
+            return string.Equals((serviceName ?? string.Empty).Trim(), "NetdeskAgent", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ServiceActionFor(string commandType)
+        {
+            switch (commandType)
+            {
+                case "restart_service":
+                case "restart_netdesk_agent":
+                    return "restart";
+                case "start_service":
+                case "start_netdesk_agent":
+                    return "start";
+                case "stop_service":
+                case "stop_netdesk_agent":
+                    return "stop";
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// force_reinstall_agent job - admin je eksplicitno izabrao TAČAN
+        /// release (releaseId/version/sha256 stižu u payload-u iz
+        /// AgentReleasesView.vue), pa se instalira BEZ isNewerVersion provere
+        /// (može "reinstalirati" i istu verziju - popravka oštećene
+        /// instalacije). Vidi UpdateManager.ForceInstallAsync.
+        /// </summary>
+        private static async Task<JobExecutor.ExecutionResult> RunForceReinstallJobAsync(
+            NetdeskApiClient client, AgentState state, Newtonsoft.Json.Linq.JObject payload)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                var releaseId = payload != null ? (long)payload["releaseId"] : 0;
+                var version = payload != null ? (string)payload["version"] : null;
+                var sha256 = payload != null ? (string)payload["sha256"] : null;
+
+                if (releaseId <= 0 || string.IsNullOrEmpty(version) || string.IsNullOrEmpty(sha256))
+                {
+                    sw.Stop();
+                    return new JobExecutor.ExecutionResult
+                    {
+                        Success = false,
+                        ExitCode = -1,
+                        ErrorOutput = "Nedostaju obavezna polja (releaseId/version/sha256) u payload-u.",
+                        DurationMs = sw.ElapsedMilliseconds,
+                    };
+                }
+
+                await UpdateManager.ForceInstallAsync(client, state, AgentVersionInfo.Current, releaseId, version, sha256)
+                    .ConfigureAwait(false);
+                sw.Stop();
+
+                return new JobExecutor.ExecutionResult
+                {
+                    Success = true,
+                    ExitCode = 0,
+                    Output = "Reinstalacija verzije " + version + " prosleđena NetdeskAgentManager-u.",
+                    DurationMs = sw.ElapsedMilliseconds,
+                };
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                FileLogger.Error("Forsirana reinstalacija neuspešna", ex);
                 return new JobExecutor.ExecutionResult
                 {
                     Success = false,

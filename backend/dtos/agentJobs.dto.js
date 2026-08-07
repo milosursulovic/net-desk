@@ -7,6 +7,15 @@ export const COMMAND_TYPES = [
   "restart_service",
   "start_service",
   "stop_service",
+  // Ekvivalent restart_service/start_service/stop_service sa
+  // payload.serviceName="NetdeskAgent", ali kao eksplicitan, odvojen tip
+  // komande (ne oslanja se na string-poklapanje imena servisa) - agent i
+  // ovako i onako preusmerava na NetdeskAgentManager (videti
+  // AgentWorker.ProcessJobAsync), jer NetdeskAgent ne sme sam sebe da
+  // (re)startuje sinhrono kroz JobExecutor.
+  "start_netdesk_agent",
+  "stop_netdesk_agent",
+  "restart_netdesk_agent",
   "run_powershell_script",
   "collect_inventory",
   "refresh_software_list",
@@ -14,6 +23,11 @@ export const COMMAND_TYPES = [
   // Kreira se programski (services/vncSessions.service.js), ne izlazi na
   // frontend "Nova komanda" dropdown ručnog biranja tipa komande.
   "start_vnc_bridge",
+  // Kreira se programski iz AgentReleasesView.vue-ovog "Forsiraj
+  // reinstalaciju" dugmeta (payload već popunjen iz izabranog release-a),
+  // isto kao start_vnc_bridge - ne izlazi na generički dropdown ručnog
+  // biranja tipa komande.
+  "force_reinstall_agent",
 ];
 
 const SERVICE_COMMANDS = new Set([
@@ -49,6 +63,33 @@ function withCommandRefinements(schema) {
       {
         message: "payload.script je obavezan za run_powershell_script",
         path: ["payload", "script"],
+      },
+    )
+    .refine(
+      (data) =>
+        data.commandType !== "force_reinstall_agent" ||
+        (Number.isInteger(data.payload?.releaseId) && data.payload.releaseId > 0),
+      {
+        message: "payload.releaseId je obavezan za force_reinstall_agent",
+        path: ["payload", "releaseId"],
+      },
+    )
+    .refine(
+      (data) =>
+        data.commandType !== "force_reinstall_agent" ||
+        (typeof data.payload?.version === "string" && data.payload.version.trim() !== ""),
+      {
+        message: "payload.version je obavezan za force_reinstall_agent",
+        path: ["payload", "version"],
+      },
+    )
+    .refine(
+      (data) =>
+        data.commandType !== "force_reinstall_agent" ||
+        (typeof data.payload?.sha256 === "string" && data.payload.sha256.trim() !== ""),
+      {
+        message: "payload.sha256 je obavezan za force_reinstall_agent",
+        path: ["payload", "sha256"],
       },
     );
 }

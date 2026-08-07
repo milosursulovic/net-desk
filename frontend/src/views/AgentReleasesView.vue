@@ -68,6 +68,10 @@
               <button @click="openEditGroups(r)" class="text-sm text-blue-600 hover:underline">
                 Uredi grupe
               </button>
+              <button @click="forceReinstall(r)" class="text-sm text-amber-700 hover:underline"
+                title="Zameni fajlove na svim agentima u ciljanim grupama, čak i ako su već na ovoj verziji">
+                Forsiraj reinstalaciju
+              </button>
               <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
                 {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
               </button>
@@ -369,6 +373,64 @@ async function saveGroups() {
     showToast(err?.message || 'Greška pri čuvanju grupa', { prefix: '❌ ', duration: 3000 })
   } finally {
     savingGroups.value = false
+  }
+}
+
+// Mora se poklopiti sa BatchCreateJobSchema.agentIds max u
+// backend/dtos/agentJobs.dto.js - deli veće ciljne grupe u više batch
+// zahteva umesto da jedan pukne na limitu.
+const BATCH_CHUNK_SIZE = 500
+
+// force_reinstall_agent ne izlazi na generički "Nova komanda" dropdown
+// (isti obrazac kao start_vnc_bridge) - ovde se šalje direktno, ka SVIM
+// aktivnim agentima u grupama koje release cilja, sa payload-om već
+// popunjenim iz podataka release-a (releaseId/version/sha256) - agent
+// preuzima preko postojeće /update/download/:releaseId rute, bez potrebe
+// za novim backend endpoint-om.
+async function forceReinstall(release) {
+  if (!release.deploymentGroups.length) {
+    showToast('Release ne cilja nijednu grupu', { prefix: '❌ ', duration: 3000 })
+    return
+  }
+
+  const ok = await askConfirm(
+    `Forsirati reinstalaciju verzije ${release.version} na SVIM aktivnim agentima u grupama: ${release.deploymentGroups.join(', ')}? Zamenjuje fajlove čak i ako je agent već na ovoj verziji.`,
+    { title: 'Forsirana reinstalacija' },
+  )
+  if (!ok) return
+
+  try {
+    const idSet = new Set()
+    for (const group of release.deploymentGroups) {
+      const params = new URLSearchParams({ status: 'active', deploymentGroup: group })
+      const res = await fetchWithAuth(`/api/protected/agents/ids?${params.toString()}`)
+      if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju agenata'))
+      const data = await res.json()
+      for (const id of data.ids || []) idSet.add(id)
+    }
+
+    if (!idSet.size) {
+      showToast('Nema aktivnih agenata u ciljanim grupama', { prefix: '⚠️ ', duration: 3000 })
+      return
+    }
+
+    const ids = [...idSet]
+    const payload = { releaseId: release.id, version: release.version, sha256: release.sha256 }
+
+    for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_CHUNK_SIZE)
+      const res = await fetchWithAuth('/api/protected/agents/jobs/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIds: chunk, commandType: 'force_reinstall_agent', payload }),
+      })
+      if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    }
+
+    showToast(`Forsirana reinstalacija poslata na ${ids.length} agenata`)
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri forsiranoj reinstalaciji', { prefix: '❌ ', duration: 3000 })
   }
 }
 
