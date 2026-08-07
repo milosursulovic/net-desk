@@ -226,13 +226,16 @@
             📦 Za pakovanje
           </router-link>
 
-          <span
+          <a
             v-if="entry.hasIzvolteFolder"
-            class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700"
-            title="Folder C:\Izvolte pronađen na ovom računaru"
+            :href="`file://${entry.ip}/Izvolte`"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700 hover:bg-sky-100"
+            :title="`Otvori \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) u Explorer-u`"
           >
             📁 Izvolte folder
-          </span>
+          </a>
         </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
