@@ -11,7 +11,11 @@ import {
   setAgentProcessKillExemptService,
   agentFilterOptionsService,
 } from "../../services/agents.service.js";
-import { findAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
+import {
+  findAgentById,
+  linkAgentToIpEntry,
+  updateAgentServiceFilesMismatch,
+} from "../../repositories/agents.repo.js";
 import {
   createService as createIpEntryService,
   getByIdService as getIpEntryByIdService,
@@ -549,6 +553,31 @@ describe("agents.service (integration, real DB)", () => {
       await heartbeat(agentId, {}, "10.230.62.81");
       const resolved = await listAgentsService({
         page: 1, limit: 50, search: hostname, status: "all", agentOfflineIpOnline: true,
+      });
+      expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
+    it("filters by serviceFilesMismatch", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const before = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", serviceFilesMismatch: true,
+      });
+      expect(before.items.map((a) => a.id)).not.toContain(agentId);
+
+      await updateAgentServiceFilesMismatch(agentId, true, "Missing DLL");
+      const mismatch = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", serviceFilesMismatch: true,
+      });
+      expect(mismatch.items.map((a) => a.id)).toContain(agentId);
+
+      await updateAgentServiceFilesMismatch(agentId, false, null);
+      const resolved = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", serviceFilesMismatch: true,
       });
       expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
     });
