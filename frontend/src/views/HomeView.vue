@@ -218,7 +218,7 @@
           </div>
         </div>
 
-        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.hasUltravnc || entry.pendingRepack || entry.hasIzvolteFolder" class="mt-2 flex flex-wrap gap-2">
+        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.pendingRepack || entry.hasIzvolteFolder" class="mt-2 flex flex-wrap gap-2">
           <router-link
             v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
             :to="`/ip/${entry.id}/pdsu`"
@@ -227,14 +227,6 @@
           >
             ⚠ Neželjeni programi/servisi/drajveri
           </router-link>
-
-          <span
-            v-if="entry.hasUltravnc"
-            class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-            title="UltraVNC servis pronađen u servis inventaru ovog računara"
-          >
-            🖥️ VNC omogućen
-          </span>
 
           <router-link
             v-if="entry.pendingRepack"
@@ -245,16 +237,15 @@
             📦 Za pakovanje
           </router-link>
 
-          <a
+          <button
             v-if="entry.hasIzvolteFolder"
-            :href="`file://${entry.ip}/Izvolte`"
-            target="_blank"
-            rel="noopener"
+            type="button"
+            @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, 'Putanja do Izvolte foldera kopirana - nalepi je u Explorer-u')"
             class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700 hover:bg-sky-100"
-            :title="`Otvori \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) u Explorer-u`"
+            :title="`Kopiraj putanju \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) - browser ne sme da otvori file:// linkove direktno`"
           >
             📁 Izvolte folder
-          </a>
+          </button>
         </div>
 
         <div class="mt-3 space-y-1.5 text-sm">
