@@ -9,9 +9,11 @@ import {
   filterOptionsService,
   duplicatesService,
   setPendingRepackService,
+  exportXlsxRowsService,
 } from "../../services/ipAddresses.service.js";
 import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
+import { pool } from "../../db/pool.js";
 
 describe("ipAddresses.service (integration, real DB)", () => {
   let ipEntryId;
@@ -38,6 +40,29 @@ describe("ipAddresses.service (integration, real DB)", () => {
     expect(entry.ip).toBe(ip);
     expect(entry.computerName).toBe("TEST-PC");
     expect(entry.entryType).toBe("computer");
+  });
+
+  it("exportXlsxRowsService includes osArchitecture and hasIzvolteFolder", async () => {
+    const ip = testIp();
+    const entry = await createService({
+      ip,
+      computerName: "TEST-PC",
+      entryType: "computer",
+    });
+    ipEntryId = entry.id;
+
+    // osArchitecture/hasIzvolteFolder su agent-derived polja (postavljena
+    // preko inventory sync-a, vidi agents.service.js resolveIpEntryId) - ne
+    // postoje u UpsertIpSchema, pa se za ovaj test postavljaju direktno.
+    await pool.execute(
+      "UPDATE ip_entries SET os_architecture = ?, has_izvolte_folder = 1 WHERE id = ?",
+      ["64-bit", ipEntryId],
+    );
+
+    const rows = await exportXlsxRowsService(ip, undefined);
+    const row = rows.find((r) => r.ip === ip);
+    expect(row.osArchitecture).toBe("64-bit");
+    expect(row.hasIzvolteFolder).toBe("Da");
   });
 
   it("updateService only touches fields explicitly present in the patch", async () => {

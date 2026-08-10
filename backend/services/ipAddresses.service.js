@@ -363,6 +363,8 @@ export async function exportXlsxRowsService(search, site) {
     computerName: e.computerName || "",
     rdpApp: e.rdpApp || "",
     os: e.os || "",
+    osArchitecture: e.osArchitecture || "",
+    hasIzvolteFolder: e.hasIzvolteFolder ? "Da" : "Ne",
     department: e.department || "",
     entryType: labelForEntryType(e.entryType),
     description: e.description || "",

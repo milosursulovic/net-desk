@@ -675,6 +675,8 @@ export async function exportIpEntriesForXlsx(search, site) {
       ip_numeric AS ipNumeric,
       rdp_app AS rdpApp,
       os,
+      os_architecture AS osArchitecture,
+      has_izvolte_folder AS hasIzvolteFolder,
       department,
       site,
       entry_type AS entryType,

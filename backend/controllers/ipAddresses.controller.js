@@ -60,6 +60,8 @@ export async function exportXlsxController(req, res) {
           { header: "computerName", key: "computerName", width: 20 },
           { header: "rdpApp", key: "rdpApp", width: 18 },
           { header: "os", key: "os", width: 22 },
+          { header: "osArchitecture", key: "osArchitecture", width: 14 },
+          { header: "izvolteFolder", key: "hasIzvolteFolder", width: 14 },
           { header: "department", key: "department", width: 16 },
           { header: "entryType", key: "entryType", width: 14 },
           { header: "description", key: "description", width: 24 },
