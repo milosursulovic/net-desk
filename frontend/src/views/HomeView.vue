@@ -241,7 +241,7 @@
             v-if="entry.hasIzvolteFolder"
             type="button"
             @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, 'Putanja do Izvolte foldera kopirana - nalepi je u Explorer-u')"
-            class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs text-sky-700 hover:bg-sky-100"
+            class="appearance-none inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs leading-none text-sky-700 hover:bg-sky-100"
             :title="`Kopiraj putanju \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) - browser ne sme da otvori file:// linkove direktno`"
           >
             📁 Izvolte folder
