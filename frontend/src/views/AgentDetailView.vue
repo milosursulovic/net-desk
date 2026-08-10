@@ -106,14 +106,42 @@
           <div class="rounded-lg bg-slate-50 border p-2">
             <div class="text-xs text-slate-500">Antivirus</div>
             <div class="font-semibold">{{ agent.monitoring.antivirusStatus || '—' }}</div>
+            <button
+              v-if="agent.monitoring.antivirusStatus !== 'enabled' && isAdmin"
+              :disabled="fixingPresetId === 'fix-antivirus-defender'"
+              @click="sendFixJob('fix-antivirus-defender')"
+              class="mt-1 text-xs text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {{ fixingPresetId === 'fix-antivirus-defender' ? 'Šalje se…' : '🔧 Popravi' }}
+            </button>
           </div>
           <div class="rounded-lg bg-slate-50 border p-2">
             <div class="text-xs text-slate-500">Firewall</div>
             <div class="font-semibold">{{ agent.monitoring.firewallStatus || '—' }}</div>
+            <button
+              v-if="agent.monitoring.firewallStatus !== 'enabled' && isAdmin"
+              :disabled="fixingPresetId === 'fix-firewall'"
+              @click="sendFixJob('fix-firewall')"
+              class="mt-1 text-xs text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {{ fixingPresetId === 'fix-firewall' ? 'Šalje se…' : '🔧 Popravi' }}
+            </button>
           </div>
           <div class="rounded-lg bg-slate-50 border p-2">
             <div class="text-xs text-slate-500">BitLocker</div>
             <div class="font-semibold">{{ agent.monitoring.bitlockerStatus || '—' }}</div>
+          </div>
+          <div class="rounded-lg bg-slate-50 border p-2">
+            <div class="text-xs text-slate-500">Windows Update</div>
+            <div class="font-semibold">{{ agent.windowsUpdateStatus || '—' }}</div>
+            <button
+              v-if="agent.windowsUpdateStatus && agent.windowsUpdateStatus !== 'Running' && isAdmin"
+              :disabled="fixingPresetId === 'fix-windows-update-service'"
+              @click="sendFixJob('fix-windows-update-service')"
+              class="mt-1 text-xs text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {{ fixingPresetId === 'fix-windows-update-service' ? 'Šalje se…' : '🔧 Popravi' }}
+            </button>
           </div>
         </div>
         <div class="text-xs text-slate-400 mt-2">Prikupljeno: {{ fmtDate(agent.monitoring.collectedAt) }}</div>
@@ -310,6 +338,7 @@ const jobs = ref([])
 const jobsLoading = ref(false)
 const jobsLoaded = ref(false)
 const jobsPolling = ref(false)
+const fixingPresetId = ref('')
 
 const updateLog = ref([])
 const updateLogLoading = ref(false)
@@ -483,6 +512,34 @@ async function confirmClearJobs() {
   } catch (err) {
     console.error(err)
     showToast('Greška pri čišćenju logova', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+// "Popravi" dugmad pored Antivirus/Firewall/Windows Update statusa u
+// Monitoring kartici - šalju fiksan run_powershell_script preset po id-ju
+// (vidi fix-antivirus-defender/fix-firewall/fix-windows-update-service u
+// powershellPresets.js), isti /jobs endpoint kao ručni "Nova komanda" forma,
+// samo bez ulaska u tab. Best-effort popravka, ne garantovana - detalji
+// zašto u samim skriptama.
+async function sendFixJob(presetId) {
+  const preset = POWERSHELL_PRESETS.find((p) => p.id === presetId)
+  if (!preset) return
+
+  fixingPresetId.value = presetId
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commandType: 'run_powershell_script', payload: { script: preset.script } }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande za popravku'))
+    if (jobsLoaded.value) await loadJobs()
+    showToast('Komanda za popravku poslata - proveri rezultat u tabu "Komande".')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri slanju komande za popravku', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    fixingPresetId.value = ''
   }
 }
 

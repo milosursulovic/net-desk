@@ -155,6 +155,30 @@ describe("agents.service (integration, real DB)", () => {
     expect(out.connectivityStatus).toBe("online");
   });
 
+  it("getAgentService reports windowsUpdateStatus from linked ip_entry's metadata, null when unlinked", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    const unlinked = await getAgentService(agentId);
+    expect(unlinked.windowsUpdateStatus).toBeNull();
+
+    const entry = await createIpEntryService({
+      ip: testIp(),
+      site: "bolnica",
+      entryType: "computer",
+      computerName: hostname,
+    });
+    ipEntryId = entry.id;
+    await linkAgentToIpEntry(agentId, ipEntryId);
+    await upsertMetadataForIpEntry(ipEntryId, { WindowsUpdate: { ServiceStatus: "Stopped" } });
+
+    const linked = await getAgentService(agentId);
+    expect(linked.windowsUpdateStatus).toBe("Stopped");
+  });
+
   it("revokeAgentService flips status to revoked", async () => {
     const enrolled = await enrollAgent({ hostname: testHostname() });
     const { findAgentByUid } = await import("../../repositories/agents.repo.js");

@@ -928,4 +928,108 @@ export const POWERSHELL_PRESETS = [
       'Write-Output ""\n' +
       'Write-Output "NAPOMENA: BIOS/UEFI podesavanje (\'Wake on LAN\'/\'Power On By PCI-E\'/slicno) mora biti rucno ukljuceno na ovoj masini - to se ne moze setovati daljinski."',
   },
+  {
+    id: 'fix-antivirus-defender',
+    label: '🔧 Popravi: Antivirus (Windows Defender realtime)',
+    // "Popravi" dugme na AgentDetailView (pored Antivirus statusa) šalje baš
+    // ovaj preset po id-ju - vidi fixJobPresetId() u toj komponenti. Best-
+    // effort, NE garantovana popravka: agent.monitoring.antivirusStatus se
+    // računa iz WMI root\SecurityCenter2\AntiVirusProduct (vidi
+    // MonitoringCollector.cs CollectAntivirusStatus) - ako je registrovani AV
+    // proizvod treći-strani (ne Windows Defender), ova skripta nema šta da
+    // uključi i to jasno prijavljuje umesto lažnog "uspeha".
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      'try {\n' +
+      '    $svc = Get-Service -Name WinDefend -ErrorAction SilentlyContinue\n' +
+      '    if (-not $svc) {\n' +
+      '        "Windows Defender (WinDefend) servis nije pronadjen na ovoj masini - verovatno je instaliran drugi antivirus program, ova skripta ne moze da ga popravi."\n' +
+      '        exit 0\n' +
+      '    }\n' +
+      '\n' +
+      '    if ($svc.Status -ne "Running") {\n' +
+      '        Start-Service -Name WinDefend\n' +
+      '    }\n' +
+      '    Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction SilentlyContinue\n' +
+      '    Start-Sleep -Seconds 2\n' +
+      '\n' +
+      '    $status = Get-MpComputerStatus -ErrorAction SilentlyContinue\n' +
+      '    if ($status -and $status.RealTimeProtectionEnabled) {\n' +
+      '        "Windows Defender realtime zastita je ukljucena."\n' +
+      '    } else {\n' +
+      '        "Pokusano ukljucivanje Windows Defender-a, ali status se i dalje ne prijavljuje kao aktivan - proveri rucno (moguce je da je iskljucen preko Group Policy-ja ili da postoji drugi AV)."\n' +
+      '        exit 1\n' +
+      '    }\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
+    id: 'fix-firewall',
+    label: '🔧 Popravi: Windows Firewall',
+    // "Popravi" dugme na AgentDetailView (pored Firewall statusa) šalje baš
+    // ovaj preset po id-ju. agent.monitoring.firewallStatus se čita direktno
+    // iz registry-ja (StandardProfile\EnableFirewall - vidi
+    // MonitoringCollector.cs CollectFirewallStatus), zato "netsh advfirewall
+    // set allprofiles state on" (menja tu istu registry vrednost za sve
+    // profile, uključujući StandardProfile) - ne Set-NetFirewallProfile
+    // cmdlet, isti razlog kao allow-cross-subnet-icmp preset iznad (NetSecurity
+    // modul tek od Windows 8, netsh radi identično od XP SP2 do Windows 11).
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      'try {\n' +
+      '    $svc = Get-Service -Name MpsSvc -ErrorAction SilentlyContinue\n' +
+      '    if ($svc -and $svc.Status -ne "Running") {\n' +
+      '        Start-Service -Name MpsSvc\n' +
+      '    }\n' +
+      '\n' +
+      '    $out = netsh advfirewall set allprofiles state on\n' +
+      '    if ($LASTEXITCODE -ne 0) {\n' +
+      '        throw "netsh je vratio exit kod $LASTEXITCODE - $($out -join \' \')"\n' +
+      '    }\n' +
+      '\n' +
+      '    "Windows Firewall ukljucen na svim profilima (Domain/Private/Public)."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
+  {
+    id: 'fix-windows-update-service',
+    label: '🔧 Popravi: Windows Update servis (wuauserv)',
+    // "Popravi" dugme na AgentDetailView (pored Windows Update statusa) šalje
+    // baš ovaj preset po id-ju. agent.windowsUpdateStatus je Status wuauserv
+    // servisa (vidi WindowsUpdateCollector.CollectServiceInfo/GetWuauservState)
+    // - ako je StartType "Disabled" (npr. neka GPO/tweak alatka ga je
+    // onemogućila), samo Start-Service ne bi upalio (baca gresku), zato prvo
+    // StartupType Manual (Windows default za wuauserv - namerno NE Automatic,
+    // da se ne menja ponašanje van onoga što je OS podrazumevano).
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      'try {\n' +
+      '    $svc = Get-Service -Name wuauserv -ErrorAction Stop\n' +
+      '    if ($svc.StartType -eq "Disabled") {\n' +
+      '        Set-Service -Name wuauserv -StartupType Manual\n' +
+      '    }\n' +
+      '    if ($svc.Status -ne "Running") {\n' +
+      '        Start-Service -Name wuauserv\n' +
+      '    }\n' +
+      '    Start-Sleep -Seconds 2\n' +
+      '\n' +
+      '    $status = (Get-Service -Name wuauserv).Status\n' +
+      '    if ($status -eq "Running") {\n' +
+      '        "Windows Update servis (wuauserv) je pokrenut."\n' +
+      '    } else {\n' +
+      '        "Pokusano pokretanje wuauserv servisa, ali status je i dalje \'$status\' - proveri rucno (moguce je da je onemogucen preko Group Policy-ja)."\n' +
+      '        exit 1\n' +
+      '    }\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
 ]

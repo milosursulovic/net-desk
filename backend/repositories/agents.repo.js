@@ -454,6 +454,18 @@ export async function upsertAgentMonitoring(agentId, data) {
   );
 }
 
+// Isti izvor kao AGENTS_METADATA_JOIN (computer_metadata.wu_service_status)
+// korišćen u listAgents - za detail stranicu jednog agenta (findAgentById ne
+// join-uje computer_metadata, samo agents tabelu).
+export async function findAgentWindowsUpdateStatus(ipEntryId) {
+  if (!ipEntryId) return null;
+  const [rows] = await pool.execute(
+    `SELECT wu_service_status AS windowsUpdateStatus FROM computer_metadata WHERE ip_entry_id = ? LIMIT 1`,
+    [ipEntryId],
+  );
+  return rows?.[0]?.windowsUpdateStatus ?? null;
+}
+
 export async function findAgentMonitoring(agentId) {
   const [rows] = await pool.execute(
     `

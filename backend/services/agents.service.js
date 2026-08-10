@@ -16,6 +16,7 @@ import {
   linkAgentToIpEntry,
   upsertAgentMonitoring,
   findAgentMonitoring,
+  findAgentWindowsUpdateStatus,
   updateAgentDeploymentGroup,
   updateAgentProcessKillExempt,
   updateAgentServiceFilesMismatch,
@@ -225,10 +226,12 @@ export async function getAgentService(id) {
     throw notFound("Agent nije pronađen");
   }
   const monitoring = await findAgentMonitoring(id);
+  const windowsUpdateStatus = await findAgentWindowsUpdateStatus(agent.ipEntryId);
   return {
     ...agent,
     connectivityStatus: computeConnectivityStatus(agent.lastHeartbeatAt),
     monitoring,
+    windowsUpdateStatus,
   };
 }
 
