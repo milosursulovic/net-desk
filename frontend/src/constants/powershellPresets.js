@@ -938,6 +938,19 @@ export const POWERSHELL_PRESETS = [
     // MonitoringCollector.cs CollectAntivirusStatus) - ako je registrovani AV
     // proizvod treći-strani (ne Windows Defender), ova skripta nema šta da
     // uključi i to jasno prijavljuje umesto lažnog "uspeha".
+    //
+    // Set-MpPreference/Get-MpComputerStatus dolaze iz Defender PowerShell
+    // modula, koji postoji tek od Windows 8.1/Server 2012 R2 nadalje - stari
+    // Windows Defender na Windows 7 (anti-spyware alat pre modernog AV
+    // engine-a) te cmdlete uopšte nema, bez obzira na PowerShell verziju
+    // (WMF 5.1 upgrade-uje samo sam PowerShell engine, ne i module vezane za
+    // OS komponente) - uživo potvrđeno na Windows 7 SP1 ("term not
+    // recognized"). -ErrorAction SilentlyContinue na SAMOM pozivu tu ne
+    // pomaže - "term not recognized" je CommandNotFoundException koji
+    // $ErrorActionPreference = "Stop" tretira kao terminating GRESKU pre
+    // nego što cmdlet-ov sopstveni -ErrorAction uopšte stigne do izražaja.
+    // Zato se dostupnost modula proverava PRE poziva (Get-Command), umesto
+    // da se osloni na try/catch da uhvati grešku.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       'try {\n' +
@@ -950,6 +963,13 @@ export const POWERSHELL_PRESETS = [
       '    if ($svc.Status -ne "Running") {\n' +
       '        Start-Service -Name WinDefend\n' +
       '    }\n' +
+      '\n' +
+      '    $hasDefenderModule = [bool](Get-Command -Name Set-MpPreference -ErrorAction SilentlyContinue)\n' +
+      '    if (-not $hasDefenderModule) {\n' +
+      '        "WinDefend servis je pokrenut, ali Defender PowerShell modul (Set-MpPreference/Get-MpComputerStatus) nije dostupan na ovoj verziji Windows-a (verovatno Windows 7) - realtime zastita se ovde ne moze programski ukljuciti/proveriti, proveri rucno kroz Defender/Security Center UI."\n' +
+      '        exit 0\n' +
+      '    }\n' +
+      '\n' +
       '    Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction SilentlyContinue\n' +
       '    Start-Sleep -Seconds 2\n' +
       '\n' +
