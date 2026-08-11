@@ -80,10 +80,17 @@ export default defineConfig({
     },
   },
   server: {
-    https: {
-      key: fs.readFileSync(process.env.VITE_SSL_KEY_PATH),
-      cert: fs.readFileSync(process.env.VITE_SSL_CERT_PATH),
-    },
+    // Samo za `vite dev`/`vite preview` - `vite build` (npr. u Docker image-u,
+    // koji nema frontend/.env niti C:\mkcert\... putanje) ne sme da zavisi od
+    // ovih fajlova uopšte, ranije bi fs.readFileSync bezuslovno pukao ovde i
+    // srušio build čim VITE_SSL_KEY_PATH/VITE_SSL_CERT_PATH nisu podešeni.
+    https:
+      process.env.VITE_SSL_KEY_PATH && process.env.VITE_SSL_CERT_PATH
+        ? {
+            key: fs.readFileSync(process.env.VITE_SSL_KEY_PATH),
+            cert: fs.readFileSync(process.env.VITE_SSL_CERT_PATH),
+          }
+        : undefined,
     host: ip,
     port: port,
   },
