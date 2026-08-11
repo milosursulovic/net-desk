@@ -387,47 +387,59 @@ async function resolveIpEntryId(agent, body) {
   return ipEntryId;
 }
 
+// Svaki od koraka ispod piše u SVOJU tabelu, ključano samo preko ipEntryId
+// (već razrešenog) - niko od njih ne čita rezultat drugog, pa su bezbedni za
+// paralelno izvršavanje umesto sekvencijalnog. Ranije su svi bili await-ovani
+// jedan za drugim - sabrano, jedan pun inventory sync je znao da traje 8+
+// sekundi (svaki korak par stotina ms), što je uz veći broj agenata koji
+// sinhrono rade sync počelo da isceđuje deljeni DB connection pool (uživo
+// otkriveno pri širenju na drugu lokaciju - vidi DB_CONNECTION_LIMIT u
+// config/env.js). Promise.all svodi ukupno trajanje na otprilike trajanje
+// najsporijeg pojedinačnog koraka umesto njihovog zbira.
 export async function syncAgentInventory(agent, body) {
   const ipEntryId = await resolveIpEntryId(agent, body);
 
-  const metadata = await patchMetadataForIpEntry(ipEntryId, body);
+  const metadataPromise = patchMetadataForIpEntry(ipEntryId, body);
+  const otherTasks = [];
 
   if (Array.isArray(body.software)) {
-    await syncComputerSoftware(ipEntryId, body.software);
+    otherTasks.push(syncComputerSoftware(ipEntryId, body.software));
   }
   if (Array.isArray(body.drivers)) {
-    await syncComputerDrivers(ipEntryId, body.drivers);
+    otherTasks.push(syncComputerDrivers(ipEntryId, body.drivers));
   }
   if (Array.isArray(body.services)) {
-    await syncComputerServices(ipEntryId, body.services);
+    otherTasks.push(syncComputerServices(ipEntryId, body.services));
   }
   if (Array.isArray(body.updates)) {
-    await syncComputerUpdates(ipEntryId, body.updates);
+    otherTasks.push(syncComputerUpdates(ipEntryId, body.updates));
   }
   if (Array.isArray(body.printers)) {
-    await syncComputerPrinters(ipEntryId, body.printers);
+    otherTasks.push(syncComputerPrinters(ipEntryId, body.printers));
   }
   if (Array.isArray(body.availableUpdates)) {
-    await syncComputerAvailableUpdates(ipEntryId, body.availableUpdates);
+    otherTasks.push(syncComputerAvailableUpdates(ipEntryId, body.availableUpdates));
   }
   if (Array.isArray(body.eventLogs)) {
-    await ingestEventLogs(ipEntryId, body.eventLogs);
+    otherTasks.push(ingestEventLogs(ipEntryId, body.eventLogs));
   }
   if (Array.isArray(body.dnsQueries)) {
-    await ingestDnsQueries(ipEntryId, body.dnsQueries);
+    otherTasks.push(ingestDnsQueries(ipEntryId, body.dnsQueries));
   }
   if (Array.isArray(body.processDetections)) {
-    await ingestProcessDetections(ipEntryId, body.processDetections);
+    otherTasks.push(ingestProcessDetections(ipEntryId, body.processDetections));
   }
 
   const serviceFiles = extractServiceFiles(body);
   if (serviceFiles !== undefined) {
-    const { mismatch, details } = await checkServiceFilesMismatchService(
-      agent.agentVersion,
-      serviceFiles,
+    otherTasks.push(
+      checkServiceFilesMismatchService(agent.agentVersion, serviceFiles).then(
+        ({ mismatch, details }) => updateAgentServiceFilesMismatch(agent.id, mismatch, details),
+      ),
     );
-    await updateAgentServiceFilesMismatch(agent.id, mismatch, details);
   }
+
+  const [metadata] = await Promise.all([metadataPromise, ...otherTasks]);
 
   return { ok: true, ipEntryId, metadata };
 }
