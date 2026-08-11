@@ -138,6 +138,7 @@ function buildAgentsWhereClause({
   windowsUpdateInactive,
   agentOfflineIpOnline,
   serviceFilesMismatch,
+  processKillExempt,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -221,6 +222,9 @@ function buildAgentsWhereClause({
   }
   if (serviceFilesMismatch) {
     whereParts.push("agents.service_files_mismatch = 1");
+  }
+  if (processKillExempt) {
+    whereParts.push("agents.process_kill_exempt = 1");
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";

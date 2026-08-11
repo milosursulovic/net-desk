@@ -150,6 +150,7 @@ export async function listAgentsService({
   windowsUpdateInactive,
   agentOfflineIpOnline,
   serviceFilesMismatch,
+  processKillExempt,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -171,6 +172,7 @@ export async function listAgentsService({
     windowsUpdateInactive,
     agentOfflineIpOnline,
     serviceFilesMismatch,
+    processKillExempt,
     limit,
     offset,
   });

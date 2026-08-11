@@ -129,6 +129,15 @@
             />
             Neusklađeni fajlovi agenta
           </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Agent i dalje detektuje/loguje procese sa watchlist-e, ali ih nikad ne ubija čak i kad je globalno uključeno">
+            <input
+              type="checkbox"
+              :checked="processKillExempt === 'true'"
+              @change="processKillExempt = processKillExempt === 'true' ? '' : 'true'"
+            />
+            Izuzet od ubijanja procesa
+          </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -422,6 +431,7 @@ const {
   windowsUpdateInactive,
   agentOfflineIpOnline,
   serviceFilesMismatch,
+  processKillExempt,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -454,6 +464,7 @@ const {
     windowsUpdateInactive: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     agentOfflineIpOnline: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     serviceFilesMismatch: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    processKillExempt: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
     'search',
@@ -473,6 +484,7 @@ const {
     'windowsUpdateInactive',
     'agentOfflineIpOnline',
     'serviceFilesMismatch',
+    'processKillExempt',
   ],
   useReplace: true,
 })
@@ -498,6 +510,7 @@ watch(
     windowsUpdateInactive,
     agentOfflineIpOnline,
     serviceFilesMismatch,
+    processKillExempt,
     site,
   ],
   fetchData,
@@ -544,6 +557,7 @@ const activeDetailedFilterCount = computed(() => {
   if (windowsUpdateInactive.value) n++
   if (agentOfflineIpOnline.value) n++
   if (serviceFilesMismatch.value) n++
+  if (processKillExempt.value) n++
   return n
 })
 
@@ -579,6 +593,7 @@ function clearDetailedFilters() {
   windowsUpdateInactive.value = ''
   agentOfflineIpOnline.value = ''
   serviceFilesMismatch.value = ''
+  processKillExempt.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -602,6 +617,7 @@ function buildFilterParams() {
   if (windowsUpdateInactive.value) params.set('windowsUpdateInactive', windowsUpdateInactive.value)
   if (agentOfflineIpOnline.value) params.set('agentOfflineIpOnline', agentOfflineIpOnline.value)
   if (serviceFilesMismatch.value) params.set('serviceFilesMismatch', serviceFilesMismatch.value)
+  if (processKillExempt.value) params.set('processKillExempt', processKillExempt.value)
   return params
 }
 

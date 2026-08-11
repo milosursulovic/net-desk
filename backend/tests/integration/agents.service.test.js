@@ -606,6 +606,31 @@ describe("agents.service (integration, real DB)", () => {
       expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
     });
 
+    it("filters by processKillExempt", async () => {
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const before = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", processKillExempt: true,
+      });
+      expect(before.items.map((a) => a.id)).not.toContain(agentId);
+
+      await setAgentProcessKillExemptService(agentId, true);
+      const exempt = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", processKillExempt: true,
+      });
+      expect(exempt.items.map((a) => a.id)).toContain(agentId);
+
+      await setAgentProcessKillExemptService(agentId, false);
+      const resolved = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", processKillExempt: true,
+      });
+      expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
     it("filters by enrolledFrom/enrolledTo date range", async () => {
       const hostname = testHostname();
       const enrolled = await enrollAgent({ hostname });
