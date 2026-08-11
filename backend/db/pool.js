@@ -1,5 +1,5 @@
 import mysql from "mysql2/promise";
-import { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME } from "../config/env.js";
+import { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, DB_CONNECTION_LIMIT } from "../config/env.js";
 import { recordQuery } from "../utils/dbQueryMetrics.js";
 
 export const pool = mysql.createPool({
@@ -9,7 +9,7 @@ export const pool = mysql.createPool({
   password: DB_PASS,
   database: DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: DB_CONNECTION_LIMIT,
   queueLimit: 0,
   // mysql2's `charset` option actually takes a COLLATION name, not a
   // charset - "utf8mb4_general_ci" here affects string sort/comparison

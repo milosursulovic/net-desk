@@ -15,6 +15,12 @@ export const DB_PORT = Number(process.env.DB_PORT ?? 3306);
 export const DB_USER = requireEnv("DB_USER");
 export const DB_PASS = requireEnv("DB_PASS");
 export const DB_NAME = requireEnv("DB_NAME");
+// Podignuto sa istorijskih 10 - uz veći broj agenata (više paralelnih
+// inventory sync/heartbeat zahteva), 10 deljenih konekcija je postajalo
+// usko grlo (zahtevi čekaju red za konekciju) i pored toga što je sama
+// MariaDB imala ogroman neiskorišćen kapacitet (max_connections podrazumevano
+// 151, CPU proces daleko ispod 100%). Vidi backend/db/pool.js.
+export const DB_CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT ?? 30);
 
 export const JWT_SECRET = requireEnv("JWT_SECRET");
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
