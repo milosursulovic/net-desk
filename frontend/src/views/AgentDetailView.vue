@@ -58,7 +58,7 @@
               v-model.trim="deploymentGroupInput"
               @change="saveDeploymentGroup"
               list="deployment-group-options"
-              class="app-input w-auto text-sm py-1"
+              class="app-input min-w-0 flex-1 text-sm py-1"
               placeholder="npr. Server Sala"
             />
             <datalist id="deployment-group-options">
