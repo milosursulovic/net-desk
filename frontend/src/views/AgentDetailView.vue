@@ -44,9 +44,18 @@
           <div><span class="font-medium">Enroll:</span> {{ fmtDate(agent.enrolledAt) }}</div>
           <div>
             <span class="font-medium">Povezan računar:</span>
-            <RouterLink v-if="agent.ipEntryId" :to="`/ip/${agent.ipEntryId}/meta`" class="text-blue-600 hover:underline">
-              Otvori
-            </RouterLink>
+            <template v-if="agent.ipEntryId">
+              <RouterLink :to="`/ip/${agent.ipEntryId}/meta`" class="text-blue-600 hover:underline">
+                Otvori
+              </RouterLink>
+              <RouterLink
+                v-if="agent.computerIp && agent.site"
+                :to="{ path: '/', query: { search: agent.computerIp, site: agent.site } }"
+                class="ml-2 text-blue-600 hover:underline"
+              >
+                Na početnoj
+              </RouterLink>
+            </template>
             <span v-else>—</span>
           </div>
         </div>

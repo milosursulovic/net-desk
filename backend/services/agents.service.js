@@ -17,6 +17,7 @@ import {
   upsertAgentMonitoring,
   findAgentMonitoring,
   findAgentWindowsUpdateStatus,
+  findAgentIpEntry,
   updateAgentDeploymentGroup,
   updateAgentProcessKillExempt,
   updateAgentServiceFilesMismatch,
@@ -229,11 +230,14 @@ export async function getAgentService(id) {
   }
   const monitoring = await findAgentMonitoring(id);
   const windowsUpdateStatus = await findAgentWindowsUpdateStatus(agent.ipEntryId);
+  const ipEntry = await findAgentIpEntry(agent.ipEntryId);
   return {
     ...agent,
     connectivityStatus: computeConnectivityStatus(agent.lastHeartbeatAt),
     monitoring,
     windowsUpdateStatus,
+    computerIp: ipEntry?.ip ?? null,
+    site: ipEntry?.site ?? null,
   };
 }
 

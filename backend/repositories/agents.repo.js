@@ -470,6 +470,18 @@ export async function findAgentWindowsUpdateStatus(ipEntryId) {
   return rows?.[0]?.windowsUpdateStatus ?? null;
 }
 
+// ip/site sa povezanog ip_entries reda - za "Otvori na početnoj" link na
+// AgentDetailView.vue (pretraga po IP-u zahteva i tačan site query param,
+// vidi useCurrentSite.js - site živi isključivo u URL-u).
+export async function findAgentIpEntry(ipEntryId) {
+  if (!ipEntryId) return null;
+  const [rows] = await pool.execute(
+    `SELECT ip, site FROM ip_entries WHERE id = ? LIMIT 1`,
+    [ipEntryId],
+  );
+  return rows?.[0] || null;
+}
+
 export async function findAgentMonitoring(agentId) {
   const [rows] = await pool.execute(
     `

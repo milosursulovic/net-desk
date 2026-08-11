@@ -14,6 +14,13 @@
         <AppButton v-if="meta && isAdmin" variant="danger" @click="clearMetadata">
           Očisti metapodatke
         </AppButton>
+        <AppButton
+          v-if="entry"
+          variant="secondary"
+          :to="{ path: '/', query: { search: entry.ip, site: entry.site } }"
+        >
+          Na početnoj
+        </AppButton>
         <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
       </div>
     </div>
