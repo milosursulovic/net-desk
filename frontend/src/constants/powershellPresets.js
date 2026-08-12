@@ -1052,4 +1052,86 @@ export const POWERSHELL_PRESETS = [
       '    exit 1\n' +
       '}',
   },
+  {
+    id: 'install-npcap',
+    label: 'Instaliraj Npcap (potrebno za DNS log capture od v1.5.6)',
+    // Agent verzija 1.5.6+ prati DNS upite preko Npcap paketnog snimanja
+    // (zamena za raniju ETW Microsoft-Windows-DNS-Client verziju, koja je
+    // uživo pokazala da je slepa za sirove UDP:53 upite mimo OS resolvera -
+    // tačno obrazac koji koristi malware C2/DNS tunneling). Bez Npcap-a na
+    // mašini, DnsQueryCollector.TryStart() samo tiho vrati false i DNS
+    // logging ostaje isključen tog rada agenta (ne obara ostatak agenta).
+    //
+    // Idempotentno - traži postojeću instalaciju preko Uninstall registry
+    // ključeva (isti obrazac kao 'uninstall-program'/'check-trusted-root-cert'
+    // presetovi), ne preko imena servisa (rizičnije nagađati tačan naziv).
+    //
+    // Instalacione opcije namerno:
+    //   /winpcap_mode=yes  - wpcap.dll/packet.dll idu u System32 (default
+    //                        DLL search path) umesto System32\Npcap\
+    //                        podfoldera - agent-ov P/Invoke ih tako nalazi
+    //                        bez dodatnog SetDllDirectory oslanjanja.
+    //   /dot11_support=yes - sirov 802.11 (wireless) capture + monitor mode
+    //                        podrška na drajver nivou (agent je trenutno NE
+    //                        koristi - promisc=0 uvek, hvata samo saobraćaj
+    //                        OVE mašine - ali opcija ostaje uključena za
+    //                        buduću upotrebu/druge alate bez ponovne
+    //                        reinstalacije).
+    //   /npf_startup=yes   - drajver kreće automatski pri boot-u (agent kao
+    //                        servis mora da može da otvori capture odmah,
+    //                        bez čekanja na prvi ručni pcap poziv).
+    //   /admin_only=yes    - podrazumevana, bezbednija vrednost (agent radi
+    //                        kao LocalSystem, ionako administrator).
+    script:
+      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/npcap.exe"\n' +
+      '$pkgUrlModern = "https://10.230.62.81:3000/uploads/downloads/npcap.exe"\n' +
+      '# --------------------------------------------------------\n' +
+      '\n' +
+      '$ErrorActionPreference = "Stop"\n' +
+      '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
+      '\n' +
+      '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
+      '$isWin7 = $osVersion -like "6.1*"\n' +
+      '$pkgUrl = if ($isWin7) { $pkgUrlWin7 } else { $pkgUrlModern }\n' +
+      '\n' +
+      'try {\n' +
+      '    $existing = Get-ItemProperty -Path @(\n' +
+      '        "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*",\n' +
+      '        "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"\n' +
+      '    ) -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*Npcap*" }\n' +
+      '\n' +
+      '    if ($existing) {\n' +
+      '        "Npcap je vec instaliran (verzija: $($existing[0].DisplayVersion)) - preskacem instalaciju."\n' +
+      '        exit 0\n' +
+      '    }\n' +
+      '\n' +
+      '    $installerPath = Join-Path $env:TEMP "npcap-installer.exe"\n' +
+      '    $wc = New-Object System.Net.WebClient\n' +
+      '    $wc.DownloadFile($pkgUrl, $installerPath)\n' +
+      '\n' +
+      '    $installArgs = "/S /winpcap_mode=yes /dot11_support=yes /npf_startup=yes /admin_only=yes"\n' +
+      '    $proc = Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait -PassThru\n' +
+      '    Remove-Item $installerPath -Force -ErrorAction SilentlyContinue\n' +
+      '\n' +
+      '    if ($proc.ExitCode -ne 0) {\n' +
+      '        throw "Npcap installer je vratio exit kod $($proc.ExitCode)"\n' +
+      '    }\n' +
+      '\n' +
+      '    Start-Sleep -Seconds 2\n' +
+      '    $installed = Get-ItemProperty -Path @(\n' +
+      '        "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*",\n' +
+      '        "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*"\n' +
+      '    ) -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*Npcap*" }\n' +
+      '    if (-not $installed) {\n' +
+      '        throw "Npcap ne postoji u Uninstall registry unosima posle instalacije - proveri rucno."\n' +
+      '    }\n' +
+      '\n' +
+      '    "Npcap instaliran (verzija: $($installed[0].DisplayVersion), paket: $pkgUrl)."\n' +
+      '}\n' +
+      'catch {\n' +
+      '    Write-Output "GRESKA: $($_.Exception.Message)"\n' +
+      '    exit 1\n' +
+      '}',
+  },
 ]

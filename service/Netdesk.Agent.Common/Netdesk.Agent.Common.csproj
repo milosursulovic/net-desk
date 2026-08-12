@@ -9,15 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!--
-      Pinned to 2.0.77 deliberately - it's the LAST version that still ships
-      a net45 lib target (verified live: 3.x+ only ships netstandard2.0/
-      net462+, neither of which net452 can consume; net461 is the actual
-      floor for netstandard2.0 consumers). Used for DnsLogs.DnsQueryCollector
-      (live ETW session on Microsoft-Windows-DNS-Client). Do not bump this
-      package without re-checking its lib/ folder for a net4x target first.
-    -->
-    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="2.0.77" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!--
       System.Net.WebSockets.ClientWebSocket throws PlatformNotSupportedException

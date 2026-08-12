@@ -34,14 +34,6 @@ Netdesk.Agent.Service.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
 websocket-sharp.dll
-Microsoft.Diagnostics.Tracing.TraceEvent.dll
-Microsoft.Diagnostics.FastSerialization.dll
-Dia2Lib.dll
-OSExtensions.dll
-TraceReloggerLib.dll
-System.Runtime.CompilerServices.Unsafe.dll
-amd64\ (ceo podfolder - KernelTraceControl.dll, msdia140.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
-x86\ (ceo podfolder - isti fajlovi + KernelTraceControl.Win61.dll)
 ```
 
 **Iz `Netdesk.Agent.Manager\bin\Release\net452\`:**
@@ -52,37 +44,21 @@ Netdesk.Agent.Manager.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
 websocket-sharp.dll
-Microsoft.Diagnostics.Tracing.TraceEvent.dll
-Microsoft.Diagnostics.FastSerialization.dll
-Dia2Lib.dll
-OSExtensions.dll
-TraceReloggerLib.dll
-System.Runtime.CompilerServices.Unsafe.dll
-amd64\ (isti podfolder kao gore)
-x86\ (isti podfolder kao gore)
 ```
 
 (`websocket-sharp.dll` je dodat zbog VNC bridge-a - videti README.md,
-sekcija "Udaljena kontrola ekrana", za razlog. Preostalih 6 DLL-ova su
-tranzitivne zavisnosti `Microsoft.Diagnostics.Tracing.TraceEvent` paketa
-(DNS query logging - `DnsLogs.DnsQueryCollector`, ETW sesija na
-Microsoft-Windows-DNS-Client provajderu). Svi se kopiraju u OBA foldera
-kao tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ih
-Manager stvarno ne koristi u radu - isti obrazac kao websocket-sharp.dll.
-`amd64\`/`x86\` podfolderi sadrže TraceEvent-ove native helper DLL-ove -
-managed sklopovi (TraceEvent.dll, Netdesk.Agent.*.dll/.exe) su MSIL/AnyCPU
-(potvrđeno uživo preko reflection-a, nema PlatformTarget/Prefer32Bit
-ograničenja), pa proces radi ispravno na oba - ali native helperi su
-arh-specifični, i proces ih traži u podfolderu koji odgovara njegovoj
-stvarnoj bitnosti. `x86\` ima i dodatan `KernelTraceControl.Win61.dll`
-(Windows 6.1 = Windows 7 varijanta) - relevantno baš zbog Windows 7 cilja
-ovog projekta. Nije uživo potvrđeno da li ih ova konkretna upotreba -
-real-time sesija na manifest provajderu, bez kernel provajdera ili .etl
-merge-a - uopšte zahteva u praksi (DnsQueryCollector.TryStart() je u
-try/catch - ako ipak nedostaju, DNS logging se samo tiho isključi na toj
-mašini, ostatak agenta radi normalno), ali oba podfoldera su uključena
-preventivno jer je cena zanemarljiva u odnosu na rizik. `arm64\` je
-namerno izostavljen - nijedan realan cilj u floti nije ARM.)
+sekcija "Udaljena kontrola ekrana", za razlog. Kopira se u OBA foldera kao
+tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ga
+Manager stvarno ne koristi u radu.
+
+Od verzije 1.5.6, `Microsoft.Diagnostics.Tracing.TraceEvent` paket (i
+njegovih 6 tranzitivnih DLL-ova + `amd64\`/`x86\`/`arm64\` native helper
+podfolderi) je UKLONJEN - DNS query logging više ne koristi ETW, prešao je
+na Npcap paketno snimanje preko direktnog P/Invoke-a (`PcapInterop.cs`),
+koji nema NIKAKVU NuGet/DLL zavisnost - samo zahteva da je Npcap instaliran
+na TARGET mašini (vidi README.md "DNS query logging" sekciju i
+`install-npcap` preset). Raspored fajlova je zato sada znatno prostiji nego
+ranije.)
 
 `.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
 simboli / šablon).
@@ -230,3 +206,14 @@ na pilot mašini. Preporučen redosled: instaliraj oba servisa → pošalji
 u `manager.log`/`agent.log` i admin UI-ju (agent ode offline pa se vrati
 online) → testiraj pravi update end-to-end → tek onda širi rollout
 (`deployment_group='pilot'` u bazi postoji tačno za ovaj korak).
+
+**Za 1.5.6 (Npcap DNS logging)**: potpuno nov, uživo neproveren capture put
+(vidi README.md "DNS query logging" sekciju). Redosled na pilot mašini:
+pošalji `install-npcap` preset job → potvrdi da instalacija uspe (job
+izveštaj) → pošalji `force_reinstall_agent`/normalan update na 1.5.6 →
+generiši malo DNS saobraćaja na toj mašini (npr. otvori par sajtova) →
+proveri `/dns-logs` u frontend-u da se domeni pojavljuju za tog agenta. Ako
+Npcap NIJE instaliran pre nego što agent pređe na 1.5.6, DNS logging se
+samo tiho isključi (ne obara ostatak agenta) - redosled instalacije
+(Npcap → update agenta) je preporuka radi izbegavanja praznine u
+pokrivenosti, ne tvrd zahtev.
