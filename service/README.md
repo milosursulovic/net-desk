@@ -413,38 +413,45 @@ access log).
 ## DNS query logging
 
 `NetdeskAgent.Common.DnsLogs.DnsQueryCollector` prati DNS upite ove mašine
-preko **Npcap paketnog snimanja** (direktan P/Invoke nad `wpcap.dll`, vidi
-`PcapInterop.cs` - NE preko SharpPcap/PacketDotNet NuGet paketa, nijedna
-njihova verzija ne isporučuje net4x lib target, samo `netstandard2.0`, što
-net452 ne može da konzumira). Od verzije 1.5.6 - ranije (1.5.5 i pre) je
-koristio ugrađeni Windows ETW `Microsoft-Windows-DNS-Client` provajder, ali
-se uživo pokazalo da to nije dovoljno: ETW vidi SAMO upite koji prođu kroz
-Windows-ov OS resolver API - aplikacija (ili malware) koja sama otvori UDP
-socket i pošalje sirov upit na port 53 (tačan obrazac za C2 beaconing/DNS
-tunneling, baš ono što ovaj feature treba da uhvati) je ETW-u potpuno
-nevidljiva. Paketno snimanje vidi svaki paket na žici, nezavisno od API-ja.
+preko **WinDivert paketnog snimanja** (direktan P/Invoke nad `WinDivert.dll`,
+vidi `WinDivertInterop.cs`). Ovo je DRUGA zamena za raniju ETW
+`Microsoft-Windows-DNS-Client` verziju:
 
-Zahteva **Npcap instaliran na mašini** (vidi `install-npcap` PowerShell
-preset, `frontend/src/constants/powershellPresets.js`) - ako nije, ili ako
-je verzija agenta starija od 1.5.6, `TryStart()` tiho vrati `false` i DNS
-logging ostaje isključen tog rada agenta (ne obara ostatak agenta, isti
-ugovor kao stara ETW verzija). Instalacija se namerno radi SA
-`/winpcap_mode=yes` (wpcap.dll ide u System32, default DLL search path -
-agent-ov P/Invoke ga tako nalazi bez dodatnog oslanjanja na
-`SetDllDirectory` fallback) i `/dot11_support=yes` (sirov 802.11/monitor
-mode podrška na drajver nivou - agent je trenutno NE koristi, samo ostaje
-dostupna za buduću upotrebu bez ponovne reinstalacije).
+1. **1.5.5 i pre**: ETW `Microsoft-Windows-DNS-Client` provajder. Uživo se
+   pokazalo nedovoljnim - ETW vidi SAMO upite kroz Windows OS resolver API,
+   aplikacija (ili malware) koja sama otvori UDP socket i pošalje sirov upit
+   na port 53 (tačan obrazac za C2 beaconing/DNS tunneling) je nevidljiva.
+2. **1.5.6**: pokušaj sa Npcap paketnim snimanjem. Ispalo je da Npcap-ov
+   tihi (`/S`) instalacioni mod postoji SAMO uz plaćeno "Npcap OEM" izdanje -
+   besplatna verzija se, uprkos `/S`, uživo ponašala kao da čeka interaktivnu
+   potvrdu (Session 0, gde servis radi, nema kome da je prikaže), pa je
+   `install-npcap` job na pravoj mašini pukao na 10-minutni JobExecutor
+   timeout. Preset i pokušaj su u potpunosti uklonjeni.
+3. **1.5.7 (trenutno)**: **WinDivert**. Nema ekvivalentan problem - drajver
+   (`WinDivert64.sys`) se automatski i TIHO instalira pri prvom
+   `WinDivertOpen()` pozivu, bez ikakvog posebnog instalacionog koraka/
+   preseta. Dovoljno je da `WinDivert.dll`/`WinDivert64.sys` (verzija 2.2.2,
+   x64) samo SEDE pored `.exe`-a (vidi `Netdesk.Agent.Service.csproj`, `<None>`
+   stavke sa `<Link>` - fajlovi fizički žive u `Netdesk.Agent.Service\WinDivert\`,
+   kopiraju se ravno u output koren). **Ograničenje**: WinDivert zvanično
+   podržava samo Windows 10/11/Server, NE Windows 7 - namerno prihvaćeno
+   (Windows 7 mašine u floti ostaju bez DNS packet-capture vidljivosti za
+   ovaj feature, `TryStart()` samo tiho vrati `false`, ostatak agenta radi
+   normalno).
 
-Hvata SAMO odlazne UDP upite ove mašine (`promisc=0`, BPF filter
-`"ip and udp dst port 53"`) - namerno ne i DNS odgovore (dupliralo bi
-brojanje istog upita) i namerno ne ceo mrežni segment (forenzika PO
-računaru, ne mrežni IDS/monitor mode capture drugih uređaja). TCP DNS
-(port 53 preko TCP - retko u praksi, obično samo veliki/zone-transfer
-odgovori) je van obima v1 - zahtevao bi TCP stream reassembly.
+Hvata SAMO odlazne UDP upite ove mašine (WinDivert filter
+`"outbound and udp and udp.DstPort == 53"`, `WINDIVERT_FLAG_SNIFF` mod -
+kopija paketa, bez ikakve mogućnosti/obaveze da se pravi saobraćaj
+modifikuje ili blokira) - namerno ne i DNS odgovore (dupliralo bi brojanje
+istog upita) i namerno ne ceo mrežni segment (forenzika PO računaru, ne
+mrežni IDS). IPv6 i TCP DNS (port 53 preko TCP - retko u praksi, obično
+samo veliki/zone-transfer odgovori) su van obima v1.
 
 Pokreće se JEDNOM pri startu servisa (ne po tick-u kao ostali kolektori) -
-capture niti (jedna po mrežnom uređaju) moraju da rade kontinuirano da ne
-propuste upite između sync ciklusa. `AgentWorker` periodično
+capture nit mora da radi kontinuirano da ne propusti upite između sync
+ciklusa (jedan `WinDivertOpen()` handle pokriva CEO mrežni saobraćaj
+mašine, za razliku od Npcap-a gde je trebalo enumerisati i otvoriti capture
+po mrežnom uređaju posebno). `AgentWorker` periodično
 (`DnsLogIntervalSeconds`, podrazumevano 300s) uzima nakupljeno stanje
 (agregirano po domenu - broj upita, prvi/poslednji put viđen, ne jedan red
 po pojedinačnom upitu) i šalje preko istog `/api/agents/inventory` kanala
@@ -457,14 +464,19 @@ exfiltracija, phishing domeni). Backend čuva agregat po (računar, domen) u
 domenu) u frontend-u. Namerno BEZ aktivnog alerting-a protiv blocklist-e u
 ovoj iteraciji - samo skladištenje + pretraga za naknadnu forenziku.
 
+**Licenca**: WinDivert je dual-licensed LGPLv3/GPLv2 - koristi se ovde kao
+nepromenjena, redistribuirana binarna zavisnost (LGPLv3 uslov), license
+tekst prati binarne fajlove (`WinDivert\LICENSE-WinDivert.txt`, kopira se
+u output uz DLL/SYS).
+
 **Nije uživo provereno** (isti razlog kao i za ostatak agenta - nema
-Windows/admin/mrežnog okruženja u sandboxu): da Npcap capture stvarno hvata
-upite u praksi na realnoj mašini, da `/winpcap_mode=yes` instalacija zaista
-stavlja `wpcap.dll` na mesto koje P/Invoke očekuje, i da DNS paket parsing
-(ručno pisan, bez PacketDotNet-a - Ethernet/VLAN/IPv4/UDP/DNS offset-i u
-`DnsQueryCollector.TryExtractQueryName`) tačno radi na realnom saobraćaju.
-Kod kompajlira čisto (`dotnet build`) i granice-proverava svaki paket
-(kopira u upravljan niz pre parsiranja, try/catch po paketu) - ali prva
-stvarna provera mora biti ručna, na test/pilot mašini (instaliraj Npcap
-preko preseta, pošalji 1.5.6 na jednog agenta, proveri `/dns-logs` da se
-pojavljuju domeni), pre šireg rollout-a.
+Windows/admin/mrežnog okruženja u sandboxu): da WinDivert capture stvarno
+hvata upite u praksi na realnoj mašini, i da DNS paket parsing (ručno
+pisan - IPv4/UDP/DNS offset-i u `DnsQueryCollector.TryExtractQueryName`,
+pojednostavljen u odnosu na Npcap verziju jer WinDivert isporučuje paket
+već od IP nivoa, bez Ethernet/VLAN zaglavlja) tačno radi na realnom
+saobraćaju. Kod kompajlira čisto (`dotnet build`), `WinDivert.dll`/
+`WinDivert64.sys` su potvrđeno prisutni u build output-u pored `.exe`-a
+(provereno uživo posle clean rebuild-a) - ali prva stvarna provera mora
+biti ručna, na test/pilot mašini (pošalji 1.5.7 na jednog Windows 10/11
+agenta, proveri `/dns-logs` da se pojavljuju domeni), pre šireg rollout-a.

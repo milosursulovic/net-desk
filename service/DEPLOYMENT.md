@@ -34,6 +34,9 @@ Netdesk.Agent.Service.exe.config
 Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
 websocket-sharp.dll
+WinDivert.dll
+WinDivert64.sys
+LICENSE-WinDivert.txt
 ```
 
 **Iz `Netdesk.Agent.Manager\bin\Release\net452\`:**
@@ -51,14 +54,20 @@ sekcija "Udaljena kontrola ekrana", za razlog. Kopira se u OBA foldera kao
 tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ga
 Manager stvarno ne koristi u radu.
 
-Od verzije 1.5.6, `Microsoft.Diagnostics.Tracing.TraceEvent` paket (i
-njegovih 6 tranzitivnih DLL-ova + `amd64\`/`x86\`/`arm64\` native helper
-podfolderi) je UKLONJEN - DNS query logging više ne koristi ETW, prešao je
-na Npcap paketno snimanje preko direktnog P/Invoke-a (`PcapInterop.cs`),
-koji nema NIKAKVU NuGet/DLL zavisnost - samo zahteva da je Npcap instaliran
-na TARGET mašini (vidi README.md "DNS query logging" sekciju i
-`install-npcap` preset). Raspored fajlova je zato sada znatno prostiji nego
-ranije.)
+`WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` su SAMO u Service
+folderu (Manager ne radi DNS logging) - od verzije 1.5.7, DNS query logging
+koristi WinDivert paketno snimanje (vidi README.md "DNS query logging"
+sekciju za punu istoriju ETW→Npcap→WinDivert migracije). Za razliku od
+Npcap-a, WinDivert NE traži poseban instalacioni korak/preset - drajver se
+sam, tiho instalira pri prvom pozivu iz agenta, dovoljno je da ova dva
+fajla samo stoje pored `.exe`-a (već podešeno u `.csproj`-u da se kopiraju
+automatski pri build-u). VAŽNO OGRANIČENJE: WinDivert radi samo na
+Windows 10/11/Server - na Windows 7 mašinama DNS logging ostaje isključen
+(TryStart() tiho vrati false), ostatak agenta radi normalno.
+
+`Microsoft.Diagnostics.Tracing.TraceEvent` paket (ETW-bazirani DNS logging
+do verzije 1.5.5, i njegovih 6 tranzitivnih DLL-ova +
+`amd64\`/`x86\`/`arm64\` native helper podfoldera) je potpuno UKLONJEN.)
 
 `.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
 simboli / šablon).
@@ -207,13 +216,16 @@ u `manager.log`/`agent.log` i admin UI-ju (agent ode offline pa se vrati
 online) → testiraj pravi update end-to-end → tek onda širi rollout
 (`deployment_group='pilot'` u bazi postoji tačno za ovaj korak).
 
-**Za 1.5.6 (Npcap DNS logging)**: potpuno nov, uživo neproveren capture put
-(vidi README.md "DNS query logging" sekciju). Redosled na pilot mašini:
-pošalji `install-npcap` preset job → potvrdi da instalacija uspe (job
-izveštaj) → pošalji `force_reinstall_agent`/normalan update na 1.5.6 →
-generiši malo DNS saobraćaja na toj mašini (npr. otvori par sajtova) →
-proveri `/dns-logs` u frontend-u da se domeni pojavljuju za tog agenta. Ako
-Npcap NIJE instaliran pre nego što agent pređe na 1.5.6, DNS logging se
-samo tiho isključi (ne obara ostatak agenta) - redosled instalacije
-(Npcap → update agenta) je preporuka radi izbegavanja praznine u
-pokrivenosti, ne tvrd zahtev.
+**Za 1.5.7 (WinDivert DNS logging)**: potpuno nov, uživo neproveren capture
+put (vidi README.md "DNS query logging" sekciju za punu istoriju
+ETW→Npcap→WinDivert migracije - Npcap pokušaj u 1.5.6 je odbačen jer je
+tihi instalacioni mod dostupan samo uz plaćeno "Npcap OEM" izdanje).
+NEMA posebnog instalacionog koraka/preseta ovog puta - `WinDivert.dll`/
+`WinDivert64.sys` putuju UNUTAR release paketa (deo Service foldera),
+drajver se sam instalira pri prvom pozivu. Redosled na pilot mašini:
+pošalji `force_reinstall_agent`/normalan update na 1.5.7 (**Windows 10/11
+mašina - WinDivert ne podržava Windows 7**) → generiši malo DNS saobraćaja
+na toj mašini (npr. otvori par sajtova) → proveri `/dns-logs` u frontend-u
+da se domeni pojavljuju za tog agenta → proveri `agent.log` za
+"WinDivert DNS capture pokrenut" liniju (potvrda da `TryStart()` nije tiho
+otkazao).

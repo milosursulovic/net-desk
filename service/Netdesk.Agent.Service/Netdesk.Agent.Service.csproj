@@ -22,6 +22,25 @@
     <None Include="config.example.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!--
+      WinDivert 2.2.2, x64 samo (Win7/32-bit namerno nepodržani za ovaj
+      feature - vidi DnsLogs/WinDivertInterop.cs). WinDivert traži da ova
+      dva fajla sede u "application's home directory" (isti folder kao
+      .exe) - <Link> ih zato ravno mapira u output koren, ne u WinDivert\
+      podfolder gde fizički žive u repo-u.
+    -->
+    <None Include="WinDivert\WinDivert.dll">
+      <Link>WinDivert.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="WinDivert\WinDivert64.sys">
+      <Link>WinDivert64.sys</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="WinDivert\LICENSE-WinDivert.txt">
+      <Link>LICENSE-WinDivert.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
