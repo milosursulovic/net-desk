@@ -1,0 +1,1 @@
+ALTER TABLE ip_entries ADD COLUMN os_architecture VARCHAR(20) DEFAULT NULL;
