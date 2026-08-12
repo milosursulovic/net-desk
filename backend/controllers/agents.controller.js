@@ -25,6 +25,7 @@ import { sendTablePdf } from "../utils/pdfTable.js";
 
 const STATUS_FILTERS = new Set(["active", "revoked"]);
 const CONNECTIVITY_FILTERS = new Set(["online", "stale", "offline", "unknown"]);
+const ARCH_GROUP_FILTERS = new Set(["x86", "x64"]);
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateFilter(value) {
@@ -94,6 +95,7 @@ function parseAgentListFilters(query) {
     agentOfflineIpOnline: query.agentOfflineIpOnline === "true",
     serviceFilesMismatch: query.serviceFilesMismatch === "true",
     processKillExempt: query.processKillExempt === "true",
+    archGroup: ARCH_GROUP_FILTERS.has(query.archGroup) ? query.archGroup : undefined,
   };
 }
 

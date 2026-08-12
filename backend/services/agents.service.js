@@ -22,6 +22,7 @@ import {
   updateAgentProcessKillExempt,
   updateAgentServiceFilesMismatch,
 } from "../repositories/agents.repo.js";
+import { setAgentArchGroup } from "../repositories/agentGroups.repo.js";
 import { isFeatureEnabled } from "./appSettings.service.js";
 import { checkServiceFilesMismatchService } from "./agentReleases.service.js";
 import {
@@ -152,6 +153,7 @@ export async function listAgentsService({
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  archGroup,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -174,6 +176,7 @@ export async function listAgentsService({
     agentOfflineIpOnline,
     serviceFilesMismatch,
     processKillExempt,
+    archGroup,
     limit,
     offset,
   });
@@ -303,6 +306,18 @@ function extractOsArchitecture(body) {
   const os = body?.OS ?? body?.os;
   if (!os) return undefined;
   return emptyToNull(os.Architecture ?? os.architecture);
+}
+
+// Mapira WMI-jev "64-bit"/"32-bit" (već sakupljeno na svakom punom
+// inventory sync-u preko os_architecture - vidi extractOsArchitecture iznad)
+// na x64/x86 agent_groups tag - postojeći podatak, ne novo polje sa agent
+// strane.
+function mapOsArchitectureToGroup(architecture) {
+  if (!architecture) return undefined;
+  const normalized = String(architecture).toLowerCase();
+  if (normalized.includes("64")) return "x64";
+  if (normalized.includes("32")) return "x86";
+  return undefined;
 }
 
 // hasIzvolteFolder je nullable na C# strani (vidi InventoryModels.cs) - kad
@@ -457,6 +472,11 @@ export async function syncAgentInventory(agent, body) {
         ({ mismatch, details }) => updateAgentServiceFilesMismatch(agent.id, mismatch, details),
       ),
     );
+  }
+
+  const archGroup = mapOsArchitectureToGroup(extractOsArchitecture(body));
+  if (archGroup) {
+    otherTasks.push(setAgentArchGroup(agent.id, archGroup));
   }
 
   const [metadata] = await Promise.all([metadataPromise, ...otherTasks]);

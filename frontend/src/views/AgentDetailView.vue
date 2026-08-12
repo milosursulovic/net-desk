@@ -77,6 +77,11 @@
           <span v-else class="text-sm text-slate-600">{{ agent.deploymentGroup || 'rest' }}</span>
         </div>
 
+        <div v-if="agent.extraGroups" class="flex items-center gap-2 pt-2 border-t">
+          <label class="text-sm font-medium">Dodatne grupe</label>
+          <span class="text-sm text-slate-600">{{ agent.extraGroups }}</span>
+        </div>
+
         <div class="flex items-center gap-2 pt-2 border-t">
           <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <input type="checkbox" v-model="processKillExemptInput" @change="saveProcessKillExempt" class="rounded" />

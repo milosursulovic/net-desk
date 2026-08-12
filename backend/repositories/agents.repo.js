@@ -62,7 +62,9 @@ export async function findAgentById(id) {
       last_heartbeat_at AS lastHeartbeatAt,
       enrolled_at AS enrolledAt,
       created_at AS createdAt,
-      updated_at AS updatedAt
+      updated_at AS updatedAt,
+      (SELECT GROUP_CONCAT(group_name ORDER BY group_name SEPARATOR ', ')
+       FROM agent_groups WHERE agent_id = agents.id) AS extraGroups
     FROM agents
     WHERE id = ?
     LIMIT 1
@@ -139,6 +141,7 @@ function buildAgentsWhereClause({
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  archGroup,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -226,6 +229,12 @@ function buildAgentsWhereClause({
   if (processKillExempt) {
     whereParts.push("agents.process_kill_exempt = 1");
   }
+  if (archGroup) {
+    whereParts.push(
+      "EXISTS (SELECT 1 FROM agent_groups ag WHERE ag.agent_id = agents.id AND ag.group_name = ?)",
+    );
+    params.push(archGroup);
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
@@ -274,7 +283,9 @@ export async function listAgents(filters) {
       ie.is_online AS ipIsOnline,
       am.antivirus_status AS antivirusStatus,
       am.firewall_status AS firewallStatus,
-      cm.wu_service_status AS windowsUpdateStatus
+      cm.wu_service_status AS windowsUpdateStatus,
+      (SELECT GROUP_CONCAT(group_name ORDER BY group_name SEPARATOR ', ')
+       FROM agent_groups WHERE agent_id = agents.id) AS extraGroups
     FROM agents
     ${joins}
     ${whereSql}

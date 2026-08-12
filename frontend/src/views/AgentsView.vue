@@ -67,6 +67,12 @@
             <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
           </select>
 
+          <select v-model="archGroup" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po arhitekturi">
+            <option value="">Sve arhitekture</option>
+            <option value="x86">x86</option>
+            <option value="x64">x64</option>
+          </select>
+
           <select v-model="version" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po verziji agenta">
             <option value="">Sve verzije</option>
             <option v-for="v in versionOptions" :key="v" :value="v">{{ v }}</option>
@@ -313,6 +319,10 @@
               <span class="font-medium">Verzija agenta:</span>
               <span>{{ a.agentVersion || '—' }}</span>
             </div>
+            <div v-if="a.extraGroups" class="flex items-center gap-2">
+              <span class="font-medium">Dodatne grupe:</span>
+              <span>{{ a.extraGroups }}</span>
+            </div>
             <div class="flex items-center gap-2">
               <span class="font-medium">Poslednji heartbeat:</span>
               <span>{{ fmtRelative(a.lastHeartbeatAt) }}</span>
@@ -433,6 +443,7 @@ const {
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  archGroup,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -466,6 +477,7 @@ const {
     agentOfflineIpOnline: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     serviceFilesMismatch: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     processKillExempt: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    archGroup: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'x86', 'x64'] },
   },
   resetPageOn: [
     'search',
@@ -486,6 +498,7 @@ const {
     'agentOfflineIpOnline',
     'serviceFilesMismatch',
     'processKillExempt',
+    'archGroup',
   ],
   useReplace: true,
 })
@@ -512,6 +525,7 @@ watch(
     agentOfflineIpOnline,
     serviceFilesMismatch,
     processKillExempt,
+    archGroup,
     site,
   ],
   fetchData,
@@ -559,6 +573,7 @@ const activeDetailedFilterCount = computed(() => {
   if (agentOfflineIpOnline.value) n++
   if (serviceFilesMismatch.value) n++
   if (processKillExempt.value) n++
+  if (archGroup.value) n++
   return n
 })
 
@@ -595,6 +610,7 @@ function clearDetailedFilters() {
   agentOfflineIpOnline.value = ''
   serviceFilesMismatch.value = ''
   processKillExempt.value = ''
+  archGroup.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -619,6 +635,7 @@ function buildFilterParams() {
   if (agentOfflineIpOnline.value) params.set('agentOfflineIpOnline', agentOfflineIpOnline.value)
   if (serviceFilesMismatch.value) params.set('serviceFilesMismatch', serviceFilesMismatch.value)
   if (processKillExempt.value) params.set('processKillExempt', processKillExempt.value)
+  if (archGroup.value) params.set('archGroup', archGroup.value)
   return params
 }
 
