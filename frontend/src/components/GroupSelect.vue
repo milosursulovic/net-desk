@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 
@@ -15,6 +15,16 @@ const props = defineProps({
   allowEmpty: { type: Boolean, default: true },
 })
 const emit = defineEmits(['update:modelValue', 'group-added', 'error'])
+
+// Trenutna vrednost može da postoji na podatku a da NIJE (više) u
+// groups_list (npr. legacy slobodan tekst iz vremena pre ove liste, ili
+// grupa obrisana posle - servis odbija brisanje grupe koja je u upotrebi,
+// ali ne i preimenovanje/ručnu izmenu direktno u bazi) - unija sprečava da
+// <select> tiho izgubi/promeni prikazanu vrednost.
+const allOptions = computed(() => {
+  if (!props.modelValue || props.options.includes(props.modelValue)) return props.options
+  return [...props.options, props.modelValue].sort((a, b) => a.localeCompare(b))
+})
 
 const adding = ref(false)
 const newGroupName = ref('')
@@ -52,7 +62,7 @@ async function addGroup() {
         class="app-input w-full"
       >
         <option v-if="allowEmpty" value="">— Nije određeno —</option>
-        <option v-for="g in options" :key="g" :value="g">{{ g }}</option>
+        <option v-for="g in allOptions" :key="g" :value="g">{{ g }}</option>
       </select>
       <button
         v-if="isAdmin"

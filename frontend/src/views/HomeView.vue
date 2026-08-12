@@ -11,6 +11,8 @@
         <AppButton variant="secondary" to="/computers-for-repack">
           📦 Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
         </AppButton>
+
+        <AppButton variant="secondary" to="/groups">Grupe</AppButton>
       </div>
     </div>
 

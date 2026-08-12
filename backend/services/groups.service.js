@@ -1,8 +1,33 @@
-import { listGroups, insertGroup } from "../repositories/groups.repo.js";
-import { conflict } from "../utils/httpError.js";
+import {
+  listGroups,
+  insertGroup,
+  listGroupsWithUsage,
+  deleteGroupByName,
+} from "../repositories/groups.repo.js";
+import { conflict, notFound } from "../utils/httpError.js";
 
 export async function listGroupsService() {
   return await listGroups();
+}
+
+export async function listGroupsWithUsageService() {
+  return await listGroupsWithUsage();
+}
+
+export async function deleteGroupService(name) {
+  const all = await listGroupsWithUsage();
+  const usage = all.find((g) => g.name === name);
+  if (!usage) {
+    throw notFound("Grupa nije pronađena");
+  }
+  const usedCount = usage.departmentCount + usage.deploymentCount;
+  if (usedCount > 0) {
+    throw conflict(
+      `Grupa "${name}" se koristi na ${usedCount} mesta (odeljenje/deployment) - ne može se obrisati dok je u upotrebi.`,
+    );
+  }
+
+  await deleteGroupByName(name);
 }
 
 export async function createGroupService(name) {

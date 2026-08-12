@@ -6,6 +6,7 @@
         <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
         <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
         <AppButton variant="secondary" to="/agent-batches">Batch komande</AppButton>
+        <AppButton variant="secondary" to="/groups">Grupe</AppButton>
         <AppButton v-if="isAdmin" variant="secondary" to="/downloads-folder">Deljeni fajlovi</AppButton>
       </div>
     </div>

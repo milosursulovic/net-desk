@@ -34,6 +34,7 @@ const ConfigView = () => import('@/views/ConfigView.vue')
 const ServerHealthView = () => import('@/views/ServerHealthView.vue')
 const DnsLogsView = () => import('@/views/DnsLogsView.vue')
 const ProcessDetectionsView = () => import('@/views/ProcessDetectionsView.vue')
+const GroupsView = () => import('@/views/GroupsView.vue')
 const VncSessionView = () => import('@/views/VncSessionView.vue')
 
 const router = createRouter({
@@ -126,6 +127,16 @@ const router = createRouter({
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
           },
           component: ComputersForRepackView,
+        },
+        {
+          path: 'groups',
+          name: 'groups',
+          meta: {
+            title: 'Grupe - NetDesk',
+            breadcrumb: 'Grupe',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: GroupsView,
         },
         {
           path: 'metadata',
