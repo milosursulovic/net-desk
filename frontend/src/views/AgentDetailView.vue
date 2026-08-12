@@ -63,16 +63,16 @@
         <div class="flex items-center gap-2 pt-2 border-t">
           <label class="text-sm font-medium">Deployment grupa</label>
           <template v-if="isAdmin">
-            <input
-              v-model.trim="deploymentGroupInput"
-              @change="saveDeploymentGroup"
-              list="deployment-group-options"
-              class="app-input min-w-0 flex-1 text-sm py-1"
-              placeholder="npr. Server Sala"
+            <GroupSelect
+              :model-value="deploymentGroupInput"
+              :options="deploymentGroupOptions"
+              :is-admin="isAdmin"
+              :allow-empty="false"
+              class="min-w-0 flex-1"
+              @update:model-value="onDeploymentGroupChange"
+              @group-added="deploymentGroupOptions.push($event)"
+              @error="(msg) => showToast(msg, { prefix: '❌ ', duration: 3000 })"
             />
-            <datalist id="deployment-group-options">
-              <option v-for="g in deploymentGroupOptions" :key="g" :value="g" />
-            </datalist>
           </template>
           <span v-else class="text-sm text-slate-600">{{ agent.deploymentGroup || 'rest' }}</span>
         </div>
@@ -302,6 +302,7 @@ import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import GroupSelect from '@/components/GroupSelect.vue'
 import VncViewer from '@/components/VncViewer.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
@@ -314,16 +315,16 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
 
-// Deployment grupa je slobodan tekst - predlozi (klasične vrednosti +
-// odeljenja + grupe već u upotrebi) dolaze sa /agents/filter-options.
+// Deployment grupa se sad bira iz iste predefinisane, server-side liste kao
+// odeljenje na IP unosima (backend/routes/groups.routes.js), umesto slobodnog
+// teksta sa predlozima.
 const deploymentGroupOptions = ref([])
 
 async function fetchDeploymentGroupOptions() {
   try {
-    const res = await fetchWithAuth('/api/protected/agents/filter-options')
+    const res = await fetchWithAuth('/api/protected/groups')
     if (!res.ok) throw new Error('HTTP ' + res.status)
-    const data = await res.json()
-    deploymentGroupOptions.value = data.deploymentGroups || []
+    deploymentGroupOptions.value = await res.json()
   } catch (err) {
     console.error('Neuspešno dohvatanje predloga deployment grupa', err)
   }
@@ -421,6 +422,11 @@ async function loadAgent() {
   } finally {
     loading.value = false
   }
+}
+
+function onDeploymentGroupChange(value) {
+  deploymentGroupInput.value = value
+  saveDeploymentGroup()
 }
 
 async function saveDeploymentGroup() {

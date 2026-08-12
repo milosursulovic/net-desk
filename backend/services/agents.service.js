@@ -327,6 +327,19 @@ function extractServiceFiles(body) {
     .filter((f) => f.path && Number.isFinite(f.size));
 }
 
+// Pretpostavlja lokaciju po IP opsegu SAMO za potpuno nov unos (prvi put
+// vidimo tu IP adresu) - ne dira site na već postojećem unosu, jer ga je
+// admin mogao ručno ispraviti (npr. laptop koji je fizički prenet, ali još
+// javlja sa stare IP adrese). Bolnica 10.230.62.0/23 i dom_zdravlja
+// 10.160.64.0/21 oba u potpunosti upadaju pod svoj prvi-dva-oktet prefiks,
+// pa je prost prefiks dovoljan bez pune CIDR matematike.
+function inferSiteFromIp(ip) {
+  if (typeof ip !== "string") return null;
+  if (ip.startsWith("10.160.")) return "dom_zdravlja";
+  if (ip.startsWith("10.230.")) return "bolnica";
+  return null;
+}
+
 async function resolveIpEntryId(agent, body) {
   if (agent.ipEntryId) {
     // Once an agent is linked to an ip_entry, every sync unconditionally
@@ -384,6 +397,7 @@ async function resolveIpEntryId(agent, body) {
       osArchitecture: extractOsArchitecture(body) ?? null,
       hasIzvolteFolder: extractHasIzvolteFolder(body) ?? false,
       department: emptyToNull(body.department),
+      site: inferSiteFromIp(body.ip),
       description: null,
       entryType: "computer",
     });

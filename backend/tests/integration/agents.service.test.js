@@ -246,6 +246,42 @@ describe("agents.service (integration, real DB)", () => {
     },
   );
 
+  it("infers site by IP range only for a brand-new ip_entries row, never overwrites an existing one", async () => {
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    // Dev baza sada ima i pravu (produkcijsku) kopiju podataka - ne sme se
+    // slučajno pogoditi IP koji već pripada nekom stvarnom unosu, zato
+    // provera slobodne adrese pre nego što se odabere.
+    const { findIpEntryIdByIp } = await import("../../repositories/ipEntries.repo.js");
+    let domZdravljaIp;
+    for (let host = 250; host >= 1; host--) {
+      const candidate = `10.160.64.${host}`;
+      if (!(await findIpEntryIdByIp(candidate))) {
+        domZdravljaIp = candidate;
+        break;
+      }
+    }
+    expect(domZdravljaIp).toBeTruthy();
+
+    const firstSync = await syncAgentInventory(found, { ip: domZdravljaIp, hostname });
+    ipEntryId = firstSync.ipEntryId;
+
+    const entry = await getIpEntryByIdService(ipEntryId);
+    expect(entry.site).toBe("dom_zdravlja");
+
+    // Admin ručno ispravlja site (npr. mašina fizički prebačena) - sledeći
+    // sync sa ISTE IP adrese ne sme da ga vrati na pretpostavljenu vrednost.
+    await pool.execute("UPDATE ip_entries SET site = 'bolnica' WHERE id = ?", [ipEntryId]);
+    const reloaded = await findAgentById(agentId);
+    await syncAgentInventory(reloaded, { ip: domZdravljaIp, hostname });
+    const afterResync = await getIpEntryByIdService(ipEntryId);
+    expect(afterResync.site).toBe("bolnica");
+  });
+
   it("a minimal event-log-only sync does not wipe previously-synced metadata (merge, not overwrite)", async () => {
     const ip = testIp();
     const hostname = testHostname();

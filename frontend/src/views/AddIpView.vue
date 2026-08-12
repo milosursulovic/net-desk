@@ -36,6 +36,17 @@
         </select>
       </div>
 
+      <div>
+        <label for="department" class="block text-sm font-medium text-slate-700 mb-1">Odeljenje</label>
+        <GroupSelect
+          v-model="form.department"
+          :options="groupOptions"
+          :is-admin="isAdmin"
+          @group-added="groupOptions.push($event)"
+          @error="(msg) => (error = msg)"
+        />
+      </div>
+
       <div v-for="field in optionalFields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
           {{ field.label }}
@@ -84,13 +95,18 @@ import {
 import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
 import { SITE_OPTIONS } from '@/constants/sites.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
+import { useCurrentUser } from '@/composables/useCurrentUser.js'
+import GroupSelect from '@/components/GroupSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
 const currentSite = useCurrentSite()
+const { isAdmin } = useCurrentUser()
 const error = ref('')
 const form = ref(createIpEntryForm({ site: currentSite.value }))
-const optionalFields = IP_OPTIONAL_FIELDS
+// 'department' se renderuje posebno iznad (GroupSelect), ne u generičkoj petlji.
+const optionalFields = IP_OPTIONAL_FIELDS.filter((f) => f.name !== 'department')
+const groupOptions = ref([])
 
 const ipError = computed(() => validateIpv4(form.value.ip))
 
@@ -124,7 +140,18 @@ const handleSubmit = async () => {
 
 const goBack = () => router.push('/')
 
+async function fetchGroupOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/groups')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    groupOptions.value = await res.json()
+  } catch (err) {
+    console.error('Neuspešno dohvatanje grupa', err)
+  }
+}
+
 onMounted(() => {
   if (route.query.ip) form.value.ip = String(route.query.ip)
+  fetchGroupOptions()
 })
 </script>
