@@ -132,28 +132,26 @@ export const POWERSHELL_PRESETS = [
     // na kraju - isti obrazac kao ostali listing preseti ovde (npr.
     // installed-printers iznad), radi konzistentnog, čitljivog job output-a.
     script:
-      '$ddrMape = @{\n' +
-      '    0  = "Nepoznato"\n' +
-      '    20 = "DDR"\n' +
-      '    21 = "DDR2"\n' +
-      '    24 = "DDR3"\n' +
-      '    26 = "DDR4"\n' +
-      '    27 = "DDR5"\n' +
-      '    34 = "DDR5"\n' +
-      '}\n' +
-      '\n' +
       '$ramModuli = Get-CimInstance -ClassName Win32_PhysicalMemory\n' +
       '\n' +
       '$rezultati = foreach ($modul in $ramModuli) {\n' +
       '    $velicinaGB = [math]::Round($modul.Capacity / 1GB, 0)\n' +
       '\n' +
-      '    $kodTipa = $modul.SMBIOSMemoryType\n' +
-      '    if ($kodTipa -eq 0 -or $kodTipa -eq $null) {\n' +
-      '        $kodTipa = $modul.MemoryType\n' +
-      '    }\n' +
+      '    # [int] cast pretvara $null (SMBIOSMemoryType nedostupan na starijim\n' +
+      '    # sistemima) u 0, isto kao izricito poredjenje sa 0 - pa jedan\n' +
+      '    # -eq 0 uslov pokriva i "nedostupno" i "zaista 0".\n' +
+      '    $kodTipa = [int]$modul.SMBIOSMemoryType\n' +
+      '    if ($kodTipa -eq 0) { $kodTipa = [int]$modul.MemoryType }\n' +
       '\n' +
-      '    $ddrTip = $ddrMape[$kodTipa]\n' +
-      '    if ($ddrTip -eq $null) { $ddrTip = "Nepoznato ($kodTipa)" }\n' +
+      '    $ddrTip = switch ($kodTipa) {\n' +
+      '        20 { "DDR" }\n' +
+      '        21 { "DDR2" }\n' +
+      '        24 { "DDR3" }\n' +
+      '        26 { "DDR4" }\n' +
+      '        27 { "DDR5" }\n' +
+      '        34 { "DDR5" }\n' +
+      '        Default { "Nepoznato ($kodTipa)" }\n' +
+      '    }\n' +
       '\n' +
       '    [PSCustomObject]@{\n' +
       '        "Slot/Pozicija" = $modul.DeviceLocator\n' +
