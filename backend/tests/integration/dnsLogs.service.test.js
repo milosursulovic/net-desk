@@ -3,6 +3,7 @@ import { createService as createIpEntryService } from "../../services/ipAddresse
 import {
   ingestDnsQueries,
   listDnsQueriesService,
+  listFlaggedDomainsService,
   addFlaggedDomainService,
   removeFlaggedDomainService,
 } from "../../services/dnsLogs.service.js";
@@ -121,6 +122,44 @@ describe("dnsLogs.service (integration, real DB)", () => {
 
       const out = await removeFlaggedDomainService(created.id);
       expect(out.affected).toBe(1);
+    });
+
+    // Regresioni test za uzivo otkriveno kočenje DNS Logs strane -
+    // flagged_domains ima ~88k redova otkad se dnevno sinhronizuje sa
+    // spoljnim izvorima, listFlaggedDomainsService MORA da paginira, ne da
+    // vrati sve odjednom (frontend bi renderovao 88k <tr> elemenata).
+    // Samostalan (ne oslanja se na ambijentalne podatke) - dodaje SVOJA dva
+    // domena da bi total/totalPages bili proverljivi bez obzira na stanje
+    // ostatka tabele.
+    it("listFlaggedDomainsService paginates instead of returning every row", async () => {
+      const domainA = `vitest-blacklisted-a-${Date.now()}.example.com`;
+      const domainB = `vitest-blacklisted-b-${Date.now()}.example.com`;
+      await addFlaggedDomainService({ domain: domainA }, null);
+      await addFlaggedDomainService({ domain: domainB }, null);
+
+      try {
+        const out = await listFlaggedDomainsService({
+          search: "vitest-blacklisted-",
+          page: 1,
+          limit: 1,
+        });
+        expect(out.items.length).toBe(1);
+        expect(out.limit).toBe(1);
+        expect(out.total).toBe(2);
+        expect(out.totalPages).toBe(2);
+      } finally {
+        await deleteFlaggedDomainByName(domainA);
+        await deleteFlaggedDomainByName(domainB);
+      }
+    });
+
+    it("listFlaggedDomainsService still supports search", async () => {
+      const domain = "vitest-blacklisted.example.com";
+      await addFlaggedDomainService({ domain }, null);
+
+      const out = await listFlaggedDomainsService({ search: "vitest-blacklisted", page: 1, limit: 50 });
+      expect(out.items.map((i) => i.domain)).toContain(domain);
+      expect(out.total).toBe(1);
     });
 
     it("listDnsQueriesService marks exact AND subdomain matches as isBlacklisted, but not unrelated domains", async () => {

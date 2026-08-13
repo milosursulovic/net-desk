@@ -128,7 +128,7 @@
             Domeni koji, ako ih bilo koji računar poseti, izazivaju upozorenje (uključujući poddomene).
           </p>
         </div>
-        <span class="rounded-full bg-red-600 text-white text-xs px-2 py-0.5">{{ blacklist.length }}</span>
+        <span class="rounded-full bg-red-600 text-white text-xs px-2 py-0.5">{{ blacklistTotal }}</span>
       </div>
 
       <form v-if="isAdmin" @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-slate-100">
@@ -144,6 +144,28 @@
           {{ savingBlacklist ? 'Dodajem…' : 'Dodaj na crnu listu' }}
         </AppButton>
       </form>
+
+      <div class="flex flex-wrap items-center gap-2 p-4 border-b border-slate-100">
+        <input
+          v-model="blacklistSearchInput"
+          @input="onBlacklistSearchInput"
+          type="text"
+          placeholder="Pretraga po domenu..."
+          class="app-input flex-1 min-w-40 text-sm"
+          aria-label="Pretraga crne liste domena"
+        />
+        <button @click="prevBlacklistPage" :disabled="blacklistPage === 1"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
+          ⬅️
+        </button>
+        <span class="text-sm text-slate-600 whitespace-nowrap">
+          Strana {{ blacklistTotalPages === 0 ? '0' : blacklistPage }} / {{ blacklistTotalPages }}
+        </span>
+        <button @click="nextBlacklistPage" :disabled="blacklistPage >= blacklistTotalPages"
+          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
+          ➡️
+        </button>
+      </div>
 
       <div class="overflow-x-auto">
         <table v-if="blacklist.length" class="w-full text-sm border-collapse">
@@ -168,7 +190,7 @@
             </tr>
           </tbody>
         </table>
-        <p v-else class="text-sm text-slate-500 p-4">Crna lista je prazna.</p>
+        <p v-else class="text-sm text-slate-500 p-4">Nema domena za zadatu pretragu.</p>
       </div>
     </div>
   </div>
@@ -268,18 +290,58 @@ onBeforeUnmount(() => {
 })
 
 const blacklist = ref([])
+const blacklistTotal = ref(0)
+const blacklistPage = ref(1)
+const blacklistLimit = ref(50)
+const blacklistTotalPages = ref(0)
+const blacklistSearch = ref('')
+const blacklistSearchInput = ref('')
 const newBlacklistDomain = ref('')
 const newBlacklistReason = ref('')
 const savingBlacklist = ref(false)
 
+// flagged_domains ima ~88k redova (dnevna sinhronizacija sa spoljnim
+// izvorima, domainBlacklistSync.service.js) - paginirano, ne sve odjednom
+// (renderovanje 88k <tr> elemenata je i bilo uzrok kočenja ove strane).
 async function fetchBlacklist() {
   try {
-    const res = await fetchWithAuth('/api/protected/dns-logs/blacklist')
+    const params = new URLSearchParams({
+      page: blacklistPage.value,
+      limit: blacklistLimit.value,
+      search: blacklistSearch.value,
+    })
+    const res = await fetchWithAuth(`/api/protected/dns-logs/blacklist?${params.toString()}`)
     if (!res.ok) throw new Error('HTTP ' + res.status)
     const data = await res.json()
     blacklist.value = data.items || []
+    blacklistTotal.value = data.total ?? 0
+    blacklistTotalPages.value = data.totalPages ?? 0
+    if (data.page) blacklistPage.value = data.page
   } catch (e) {
     console.error('Neuspešno dohvatanje crne liste domena', e)
+  }
+}
+
+let blacklistSearchT = null
+const onBlacklistSearchInput = () => {
+  clearTimeout(blacklistSearchT)
+  blacklistSearchT = setTimeout(() => {
+    blacklistSearch.value = blacklistSearchInput.value
+    blacklistPage.value = 1
+    fetchBlacklist()
+  }, 300)
+}
+
+function prevBlacklistPage() {
+  if (blacklistPage.value > 1) {
+    blacklistPage.value -= 1
+    fetchBlacklist()
+  }
+}
+function nextBlacklistPage() {
+  if (blacklistPage.value < blacklistTotalPages.value) {
+    blacklistPage.value += 1
+    fetchBlacklist()
   }
 }
 
@@ -315,6 +377,11 @@ async function removeFromBlacklist(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/dns-logs/blacklist/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    // Ako je ovo bio poslednji unos na trenutnoj strani (a nije prva), vrati
+    // se na prethodnu - inače bi ostala prazna strana posle brisanja.
+    if (blacklist.value.length === 1 && blacklistPage.value > 1) {
+      blacklistPage.value -= 1
+    }
     await Promise.all([fetchBlacklist(), fetchData()])
     showToast('Uklonjeno sa crne liste')
   } catch (err) {

@@ -8,6 +8,7 @@ import {
 import { SITES } from "../dtos/ipAddresses.dto.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { badRequest } from "../utils/httpError.js";
+import { toInt, clamp } from "../utils/numbers.js";
 
 function siteFilter(value) {
   return SITES.includes(value) ? value : undefined;
@@ -23,8 +24,10 @@ export async function listDnsQueriesController(req, res) {
 
 export async function listFlaggedDomainsController(req, res) {
   const search = String(req.query.search || "").trim();
-  const items = await listFlaggedDomainsService(search);
-  res.json({ items });
+  const page = clamp(toInt(req.query.page, 1), 1, 1_000_000);
+  const limit = clamp(toInt(req.query.limit, 50), 1, 200);
+  const out = await listFlaggedDomainsService({ search, page, limit });
+  res.json(out);
 }
 
 export async function createFlaggedDomainController(req, res) {

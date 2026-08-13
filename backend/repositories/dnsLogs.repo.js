@@ -130,8 +130,20 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
 // kao flagged_software/flagged_services.
 // =========================
 
-export async function listFlaggedDomains(search) {
+// Paginirano - flagged_domains ima ~88k redova otkad se dnevno sinhronizuje
+// sa spoljnim izvorima (domainBlacklistSync.service.js), vraćanje SVIH
+// odjednom je bilo renderovalo 88k <tr> elemenata na DNS Logs strani i
+// kočilo je (otkriveno uživo).
+export async function listFlaggedDomains({ search, page, limit }) {
   const { where, params } = buildLikeSearch(["domain"], search);
+  const whereSql = where ? `WHERE ${where}` : "";
+  const offset = (page - 1) * limit;
+
+  const [[{ total }]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM flagged_domains ${whereSql}`,
+    params,
+  );
+
   const [rows] = await pool.execute(
     `
     SELECT
@@ -141,12 +153,13 @@ export async function listFlaggedDomains(search) {
       created_by_user_id AS createdByUserId,
       created_at AS createdAt
     FROM flagged_domains
-    ${where ? `WHERE ${where}` : ""}
+    ${whereSql}
     ORDER BY domain
+    LIMIT ? OFFSET ?
     `,
-    params,
+    [...params, limit, offset],
   );
-  return rows;
+  return { items: rows, total: Number(total) || 0 };
 }
 
 export async function findFlaggedDomainMatch(domain) {

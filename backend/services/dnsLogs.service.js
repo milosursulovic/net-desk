@@ -83,8 +83,10 @@ export async function listDnsQueriesService(query) {
 // (software/services).
 // =========================
 
-export async function listFlaggedDomainsService(search) {
-  return await listFlaggedDomains(search);
+export async function listFlaggedDomainsService({ search, page, limit }) {
+  const { items, total } = await listFlaggedDomains({ search, page, limit });
+  const { page: safePage, totalPages } = paginate({ page, limit, total });
+  return { items, page: safePage, limit, total, totalPages };
 }
 
 export async function addFlaggedDomainService({ domain, reason }, userId) {
