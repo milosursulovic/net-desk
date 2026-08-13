@@ -87,6 +87,7 @@ function parseAgentListFilters(query) {
     // više nisu ograničene na fiksnu 4-vrednosnu listu.
     deploymentGroup: String(query.deploymentGroup || "").trim() || undefined,
     os: String(query.os || "").trim() || undefined,
+    osArchitecture: String(query.osArchitecture || "").trim() || undefined,
     version: String(query.version || "").trim() || undefined,
     versionNot: String(query.versionNot || "").trim() || undefined,
     department: String(query.department || "").trim() || undefined,

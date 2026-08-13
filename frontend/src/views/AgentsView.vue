@@ -67,6 +67,11 @@
             <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
           </select>
 
+          <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter arhitekture procesora">
+            <option value="">Sve arhitekture</option>
+            <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
+          </select>
+
           <select v-model="version" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po verziji agenta">
             <option value="">Sve verzije</option>
             <option v-for="v in versionOptions" :key="v" :value="v">{{ v }}</option>
@@ -453,6 +458,7 @@ const {
   connectivityStatus,
   deploymentGroup,
   os,
+  osArchitecture,
   version,
   versionMode,
   department,
@@ -486,6 +492,7 @@ const {
     // bi bilo koja vrednost van stare liste od 4 bila tiho resetovana).
     deploymentGroup: { type: 'string', default: '', omitIfEmpty: true },
     os: { type: 'string', default: '', omitIfEmpty: true },
+    osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
     version: { type: 'string', default: '', omitIfEmpty: true },
     versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
     department: { type: 'string', default: '', omitIfEmpty: true },
@@ -506,6 +513,7 @@ const {
     'connectivityStatus',
     'deploymentGroup',
     'os',
+    'osArchitecture',
     'version',
     'versionMode',
     'department',
@@ -532,6 +540,7 @@ watch(
     connectivityStatus,
     deploymentGroup,
     os,
+    osArchitecture,
     version,
     versionMode,
     department,
@@ -551,10 +560,12 @@ watch(
 )
 
 watch(site, () => {
-  // os/version/department dropdown vrednosti su vezane za PRETHODNU
-  // lokaciju - ako ostanu postavljene posle promene lokacije, filtriraju
-  // na vrednost koja verovatno ne postoji na novoj (prazna lista rezultata).
+  // os/version/department/osArchitecture dropdown vrednosti su vezane za
+  // PRETHODNU lokaciju - ako ostanu postavljene posle promene lokacije,
+  // filtriraju na vrednost koja verovatno ne postoji na novoj (prazna lista
+  // rezultata).
   os.value = ''
+  osArchitecture.value = ''
   version.value = ''
   versionMode.value = 'eq'
   department.value = ''
@@ -567,6 +578,7 @@ const totalPages = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
 const osOptions = ref([])
+const osArchitectureOptions = ref([])
 const versionOptions = ref([])
 const departmentOptions = ref([])
 const deploymentGroupOptions = ref([])
@@ -580,6 +592,7 @@ const activeDetailedFilterCount = computed(() => {
   if (connectivityStatus.value) n++
   if (deploymentGroup.value) n++
   if (os.value) n++
+  if (osArchitecture.value) n++
   if (version.value) n++
   if (department.value) n++
   if (enrolledFrom.value) n++
@@ -603,6 +616,7 @@ async function fetchFilterOptions() {
     if (!res.ok) throw new Error()
     const data = await res.json()
     osOptions.value = data.os || []
+    osArchitectureOptions.value = data.osArchitecture || []
     versionOptions.value = data.version || []
     departmentOptions.value = data.department || []
     deploymentGroupOptions.value = data.deploymentGroups || []
@@ -615,6 +629,7 @@ function clearDetailedFilters() {
   connectivityStatus.value = ''
   deploymentGroup.value = ''
   os.value = ''
+  osArchitecture.value = ''
   version.value = ''
   versionMode.value = 'eq'
   department.value = ''
@@ -638,6 +653,7 @@ function buildFilterParams() {
   if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
   if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
   if (os.value) params.set('os', os.value)
+  if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
   if (version.value) {
     params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
   }

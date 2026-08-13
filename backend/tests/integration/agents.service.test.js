@@ -515,6 +515,32 @@ describe("agents.service (integration, real DB)", () => {
       expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
     });
 
+    it("filters by osArchitecture (ip_entries.os_architecture, populated via inventory sync - same field Home uses)", async () => {
+      const ip = testIp();
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      const synced = await syncAgentInventory(found, {
+        ip,
+        hostname,
+        OS: { Caption: "Microsoft Windows 10 Pro", Architecture: "64-bit" },
+      });
+      ipEntryId = synced.ipEntryId;
+
+      const matched = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", osArchitecture: "64-bit",
+      });
+      expect(matched.items.map((a) => a.id)).toContain(agentId);
+
+      const notMatched = await listAgentsService({
+        page: 1, limit: 50, search: hostname, status: "all", osArchitecture: "32-bit",
+      });
+      expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
+    });
+
     it("filters by antivirusInactive (agent_monitoring.antivirus_status != 'enabled', including no data yet)", async () => {
       const hostname = testHostname();
       const enrolled = await enrollAgent({ hostname });
@@ -838,6 +864,25 @@ describe("agents.service (integration, real DB)", () => {
     expect(out.deploymentGroups).toEqual(expect.arrayContaining(["test", "it", "pilot", "rest"]));
     expect(out.deploymentGroups).toContain(customGroup);
     expect(out.deploymentGroups).not.toContain(uniqueDept);
+  });
+
+  it("agentFilterOptionsService suggests osArchitecture values in use by agents", async () => {
+    const ip = testIp();
+    const hostname = testHostname();
+    const enrolled = await enrollAgent({ hostname });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const found = await findAgentByUid(enrolled.agentId);
+    agentId = found.id;
+
+    const synced = await syncAgentInventory(found, {
+      ip,
+      hostname,
+      OS: { Caption: "Microsoft Windows 10 Pro", Architecture: "64-bit" },
+    });
+    ipEntryId = synced.ipEntryId;
+
+    const out = await agentFilterOptionsService();
+    expect(out.osArchitecture).toContain("64-bit");
   });
 
   it("addAgentDeploymentGroupService/removeAgentDeploymentGroupService manage an agent's multiple deployment groups", async () => {

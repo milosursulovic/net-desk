@@ -123,6 +123,7 @@ function buildAgentsWhereClause({
   connectivityStatus,
   deploymentGroup,
   os,
+  osArchitecture,
   version,
   versionNot,
   department,
@@ -163,6 +164,13 @@ function buildAgentsWhereClause({
   if (os) {
     whereParts.push("agents.os_caption = ?");
     params.push(os);
+  }
+  if (osArchitecture) {
+    // Živi na ip_entries (isti izvor/kolona kao Home-ova arhitektura), ne
+    // agents - popunjava se preko istog inventory sync-a (os.Architecture,
+    // vidi extractOsArchitecture u agents.service.js).
+    whereParts.push("ie.os_architecture = ?");
+    params.push(osArchitecture);
   }
   if (version) {
     whereParts.push("agents.agent_version = ?");
@@ -319,6 +327,23 @@ export async function listDistinctAgentOs(site) {
     params,
   );
   return rows.map((r) => r.os_caption);
+}
+
+// os_architecture živi na ip_entries (isti izvor kao Home-ova arhitektura),
+// ne na agents - JOIN je zato uvek potreban (ne samo kad je site zadat, za
+// razliku od listDistinctAgentOs iznad).
+export async function listDistinctAgentOsArchitectures(site) {
+  const whereParts = ["ie.os_architecture IS NOT NULL", "ie.os_architecture != ''"];
+  const params = [];
+  if (site) {
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT ie.os_architecture FROM agents ${AGENTS_IP_ENTRY_JOIN} WHERE ${whereParts.join(" AND ")} ORDER BY ie.os_architecture`,
+    params,
+  );
+  return rows.map((r) => r.os_architecture);
 }
 
 export async function listDistinctAgentDeploymentGroups(site) {

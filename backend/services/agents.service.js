@@ -10,6 +10,7 @@ import {
   listAgents,
   listAgentIds,
   listDistinctAgentOs,
+  listDistinctAgentOsArchitectures,
   listDistinctAgentVersions,
   listDistinctAgentDeploymentGroups,
   revokeAgentById,
@@ -142,6 +143,7 @@ export async function listAgentsService({
   connectivityStatus,
   deploymentGroup,
   os,
+  osArchitecture,
   version,
   versionNot,
   department,
@@ -164,6 +166,7 @@ export async function listAgentsService({
     connectivityStatus,
     deploymentGroup,
     os,
+    osArchitecture,
     version,
     versionNot,
     department,
@@ -200,6 +203,7 @@ export async function listAgentIdsService(filters) {
 
 export async function agentFilterOptionsService(site) {
   const os = await listDistinctAgentOs(site);
+  const osArchitecture = await listDistinctAgentOsArchitectures(site);
   const version = await listDistinctAgentVersions(site);
   const department = await listDistinctDepartments(site);
 
@@ -216,7 +220,7 @@ export async function agentFilterOptionsService(site) {
     (a, b) => a.localeCompare(b),
   );
 
-  return { os, version, department, deploymentGroups };
+  return { os, osArchitecture, version, department, deploymentGroups };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search, site }) {
