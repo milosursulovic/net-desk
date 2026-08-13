@@ -96,7 +96,17 @@ function computeMetricAnomaly(
     baseline.reduce((sum, v) => sum + (v - baselineMean) ** 2, 0) / baseline.length;
   const baselineStdDev = Math.sqrt(variance);
 
-  if (baselineStdDev === 0) return null; // no variation in baseline - z-score would be meaningless (div by 0)
+  // baselineStdDev === 0 alone isn't enough once the baseline has enough
+  // points: summing many near-identical DECIMAL(5,2) values as floats isn't
+  // exact (25.8 has no exact binary representation), so naive reduce()
+  // accumulates rounding error - observed live for an agent whose disk %
+  // was genuinely unchanged for 90 days: baselineMean came out as
+  // 25.800000000000008, baselineStdDev as 7.1e-15 (not exactly 0), and
+  // dividing a real 0.1-point difference by that "noise" stddev produced a
+  // reported 14073748835531.5σ. 1e-6 sits comfortably above that
+  // float-rounding floor and comfortably below the smallest real difference
+  // these DECIMAL(5,2) metrics can represent (0.01).
+  if (baselineStdDev < 1e-6) return null;
 
   const currentValue = Number(latest[metricKey]);
   const zScore = (currentValue - baselineMean) / baselineStdDev;
