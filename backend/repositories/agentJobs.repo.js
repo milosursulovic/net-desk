@@ -83,6 +83,29 @@ export async function insertJobBatch({ id, commandType, createdByUserId }) {
   return id;
 }
 
+// Koristi downloadReleaseService (agentReleases.service.js) da dozvoli
+// preuzimanje release-a koji NE cilja agentovu trenutnu deployment grupu,
+// ako postoji skorašnji EKSPLICITAN force_reinstall_agent job baš za tog
+// agenta i baš taj release - admin je svesno zaobišao normalno grupno
+// ciljanje (npr. instalacija starije verzije preko Agent Detail strane),
+// to ne sme da bude blokirano istom proverom koja štiti normalan
+// auto-update tok (agent da ne "pogodi" tuđi releaseId).
+export async function findRecentForceReinstallJob(agentId, releaseId, withinMinutes = 60) {
+  const [rows] = await pool.execute(
+    `
+    SELECT id FROM agent_jobs
+    WHERE agent_id = ?
+      AND command_type = 'force_reinstall_agent'
+      AND JSON_EXTRACT(payload, '$.releaseId') = ?
+      AND created_at >= NOW() - INTERVAL ? MINUTE
+    ORDER BY created_at DESC
+    LIMIT 1
+    `,
+    [agentId, releaseId, withinMinutes],
+  );
+  return rows?.[0] || null;
+}
+
 export async function findJobBatchById(id) {
   const [rows] = await pool.execute(
     `

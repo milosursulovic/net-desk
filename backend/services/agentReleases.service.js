@@ -15,6 +15,7 @@ import {
   findReleaseFiles,
   findReleaseIdByVersion,
 } from "../repositories/agentReleases.repo.js";
+import { findRecentForceReinstallJob } from "../repositories/agentJobs.repo.js";
 import {
   insertUpdateLog,
   listUpdateLogForAgent,
@@ -210,7 +211,17 @@ export async function downloadReleaseService(releaseId, agent) {
   const release = await findReleaseById(releaseId);
   const groups = agent.deploymentGroups?.length ? agent.deploymentGroups : ["rest"];
   const targeted = release ? await isReleaseTargetingAnyGroup(releaseId, groups) : false;
-  if (!release || !release.isActive || !targeted) {
+  // Ako release ne cilja agentovu grupu (normalan slučaj za auto-update),
+  // ipak dozvoli preuzimanje kad postoji skorašnji, eksplicitan
+  // force_reinstall_agent job baš za ovog agenta i baš ovaj release - admin
+  // je svesno zaobišao grupno ciljanje (npr. "Instaliraj određenu verziju"
+  // na Agent Detail strani), ne sme se blokirati istom zaštitom koja
+  // sprečava agenta da sam "pogodi" releaseId van svoje grupe.
+  const forcedJob =
+    !targeted && release && agent?.id
+      ? await findRecentForceReinstallJob(agent.id, releaseId)
+      : null;
+  if (!release || !release.isActive || (!targeted && !forcedJob)) {
     throw notFound("Verzija nije pronađena");
   }
 

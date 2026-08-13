@@ -8,6 +8,10 @@ import {
   downloadReleaseService,
   updateReleaseGroupsService,
 } from "../../services/agentReleases.service.js";
+import { createJobService } from "../../services/agentJobs.service.js";
+import { enrollAgent } from "../../services/agents.service.js";
+import { findAgentByUid } from "../../repositories/agents.repo.js";
+import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
 
 let groupCounter = 0;
@@ -186,6 +190,55 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     const ok = await downloadReleaseService(release.id, { deploymentGroups: [groupA] });
     expect(ok.fileName).toBe(release.fileName);
   });
+
+  it(
+    "downloadReleaseService bypasses group targeting when there's a recent explicit " +
+      "force_reinstall_agent job for this exact agent+release (admin override, e.g. " +
+      "installing an older version from the Agent Detail page)",
+    async () => {
+      const groupA = uniqueGroup();
+      const release = await uploadReleaseService(
+        { buffer: Buffer.from("v1"), originalName: "a.zip", version: "7.0.0", deploymentGroups: [groupA] },
+        null,
+      );
+      createdReleases.push(release);
+
+      const enrolled = await enrollAgent({ hostname: testHostname() });
+      const agent = await findAgentByUid(enrolled.agentId);
+
+      try {
+        // Agent has no deployment groups (not in groupA) - normal download is refused.
+        await expect(
+          downloadReleaseService(release.id, { id: agent.id, deploymentGroups: [] }),
+        ).rejects.toMatchObject({ status: 404 });
+
+        // An explicit force_reinstall_agent job for this exact agent+release exists now.
+        await createJobService(
+          agent.id,
+          {
+            commandType: "force_reinstall_agent",
+            payload: { releaseId: release.id, version: release.version, sha256: release.sha256 },
+          },
+          null,
+        );
+
+        const ok = await downloadReleaseService(release.id, { id: agent.id, deploymentGroups: [] });
+        expect(ok.fileName).toBe(release.fileName);
+
+        // A force_reinstall_agent job for a DIFFERENT release must not authorize this one.
+        const otherRelease = await uploadReleaseService(
+          { buffer: Buffer.from("v2"), originalName: "b.zip", version: "7.0.1", deploymentGroups: [groupA] },
+          null,
+        );
+        createdReleases.push(otherRelease);
+        await expect(
+          downloadReleaseService(otherRelease.id, { id: agent.id, deploymentGroups: [] }),
+        ).rejects.toMatchObject({ status: 404 });
+      } finally {
+        await deleteTestAgent(agent.id);
+      }
+    },
+  );
 
   it("updateReleaseGroupsService widens rollout - a group added after upload becomes eligible without re-uploading", async () => {
     const groupA = uniqueGroup();
