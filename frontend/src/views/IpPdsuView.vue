@@ -5,6 +5,13 @@
         Inventar — {{ entry?.computer_name || entry?.ip || 'Nepoznato' }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
+        <RouterLink
+          v-if="entry?.ip && entry?.site"
+          :to="{ path: '/', query: { search: entry.ip, site: entry.site } }"
+          class="text-sm text-blue-600 hover:underline"
+        >
+          Na početnoj
+        </RouterLink>
         <AppButton
           v-if="hasAnyPdsuData"
           variant="secondary"
@@ -359,7 +366,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { downloadFromResponse } from '@/utils/download.js'

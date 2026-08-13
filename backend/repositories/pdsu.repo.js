@@ -45,7 +45,8 @@ export async function computerFindById(id) {
       last_status_change,
       created_at,
       updated_at,
-      description
+      description,
+      site
     FROM ip_entries
     WHERE id = ?
     `,
