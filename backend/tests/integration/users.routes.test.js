@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { createApp } from "../../app.js";
-import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
+import { adminToken, rootAdminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { testUsername, deleteTestUser } from "../helpers/testDb.js";
 
 const app = createApp();
@@ -15,7 +15,7 @@ describe("users routes (integration, real DB)", () => {
   });
 
   it("admin can list, create, update role, and delete a user", async () => {
-    const token = adminToken();
+    const token = rootAdminToken();
     const username = testUsername();
 
     const createRes = await request(app)
@@ -48,7 +48,7 @@ describe("users routes (integration, real DB)", () => {
   });
 
   it("rejects a duplicate username with 409", async () => {
-    const token = adminToken();
+    const token = rootAdminToken();
     const username = testUsername();
 
     const first = await request(app)
@@ -65,10 +65,10 @@ describe("users routes (integration, real DB)", () => {
   });
 
   it("refuses to demote the last admin", async () => {
-    // vitest-admin (userId 1 from adminToken()) is the only admin as far as
+    // "admin" (userId 1 from rootAdminToken()) is the only admin as far as
     // this token is concerned - the real DB may have more, so this test
     // creates its own isolated pair instead of relying on global admin count.
-    const token = adminToken();
+    const token = rootAdminToken();
     const soleAdminUsername = testUsername();
 
     const created = await request(app)
@@ -98,7 +98,7 @@ describe("users routes (integration, real DB)", () => {
   });
 
   it("refuses to delete your own account", async () => {
-    const token = adminToken();
+    const token = rootAdminToken();
     const res = await request(app)
       .delete("/api/protected/users/1")
       .set("Authorization", `Bearer ${token}`);
@@ -123,8 +123,18 @@ describe("users routes (integration, real DB)", () => {
   it("rejects an unknown role value with 400", async () => {
     const res = await request(app)
       .post("/api/protected/users")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ username: testUsername(), password: "correct-horse-1", role: "superuser" });
     expect(res.status).toBe(400);
+  });
+
+  // Regression: users/activity-log/app-settings are restricted to the
+  // literal "admin" account, not just the "admin" role - an admin-role
+  // token under any other username must be rejected too.
+  it("rejects an admin-role token whose username isn't literally 'admin' with 403", async () => {
+    const res = await request(app)
+      .get("/api/protected/users")
+      .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(403);
   });
 });

@@ -275,19 +275,19 @@ const router = createRouter({
         {
           path: 'users',
           name: 'users',
-          meta: { title: 'Korisnici - NetDesk', breadcrumb: 'Korisnici', requiresAdmin: true },
+          meta: { title: 'Korisnici - NetDesk', breadcrumb: 'Korisnici', requiresRootAdmin: true },
           component: UsersView,
         },
         {
           path: 'logs',
           name: 'logs',
-          meta: { title: 'Logovi - NetDesk', breadcrumb: 'Logovi', requiresAdmin: true },
+          meta: { title: 'Logovi - NetDesk', breadcrumb: 'Logovi', requiresRootAdmin: true },
           component: LogsView,
         },
         {
           path: 'config',
           name: 'config',
-          meta: { title: 'Konfiguracija - NetDesk', breadcrumb: 'Konfiguracija', requiresAdmin: true },
+          meta: { title: 'Konfiguracija - NetDesk', breadcrumb: 'Konfiguracija', requiresRootAdmin: true },
           component: ConfigView,
         },
         {
@@ -356,6 +356,14 @@ router.beforeEach((to, from, next) => {
       return next(`/login?returnTo=${returnTo}`)
     }
     if (to.meta.requiresAdmin && decodeJwt(token)?.role !== 'admin') {
+      return next('/')
+    }
+    // Iznad requiresAdmin - samo nalog sa korisničkim imenom "admin" (ne bilo
+    // koji admin-role nalog), isti razlog kao backend-ov requireRootAdmin.
+    if (
+      to.meta.requiresRootAdmin &&
+      (decodeJwt(token)?.role !== 'admin' || decodeJwt(token)?.username !== 'admin')
+    ) {
       return next('/')
     }
     if (to.meta.requiresOperator && !['admin', 'operator'].includes(decodeJwt(token)?.role)) {

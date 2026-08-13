@@ -11,6 +11,17 @@ export const requireRole =
     next();
   };
 
+// Iznad same "admin" uloge - za module koje treba da vidi/koristi SAMO
+// nalog sa korisničkim imenom "admin" (Korisnici/Logovi/Konfiguracija),
+// ne bilo koji nalog sa ulogom "admin" - ta uloga može biti dodeljena više
+// naloga (vidi users.routes.js), ovo je namerno uže od toga.
+export const requireRootAdmin = (req, res, next) => {
+  if (req.user?.role !== "admin" || req.user?.username !== "admin") {
+    return next(forbidden("Nemate dozvolu za ovu akciju"));
+  }
+  next();
+};
+
 // Default policy for most of /api/protected: reading (GET) is open to any
 // authenticated role, everything that changes state needs at least
 // "operator" - "viewer" is read-only everywhere unless a route explicitly

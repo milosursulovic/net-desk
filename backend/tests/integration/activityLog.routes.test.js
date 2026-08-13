@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { createApp } from "../../app.js";
 import { JWT_SECRET } from "../../config/env.js";
-import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
+import { rootAdminToken, adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { createUser } from "../../repositories/users.repo.js";
 import { testIp, deleteTestIpEntry, testUsername, deleteTestUser } from "../helpers/testDb.js";
 
@@ -46,10 +46,19 @@ describe("activity-log routes (integration, real DB)", () => {
     }
   });
 
-  it("admin can list activity log entries with the expected pagination shape", async () => {
+  // Regression: restricted to the literal "admin" account, not just the
+  // "admin" role.
+  it("rejects an admin-role token whose username isn't literally 'admin' with 403", async () => {
     const res = await request(app)
       .get("/api/protected/activity-log")
       .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("admin can list activity log entries with the expected pagination shape", async () => {
+    const res = await request(app)
+      .get("/api/protected/activity-log")
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("items");
     expect(res.body).toHaveProperty("total");
@@ -72,7 +81,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const logRes = await request(app)
       .get("/api/protected/activity-log?limit=200")
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
     expect(logRes.status).toBe(200);
 
     const match = logRes.body.items.find(
@@ -95,7 +104,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const logRes = await request(app)
       .get(`/api/protected/activity-log?username=${username}&limit=200`)
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
 
     // Exact match, not startsWith - "GET .../ip-addresses/47" (a single-
     // record view, logged on purpose) would also start with this prefix.
@@ -112,7 +121,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const createRes = await request(app)
       .post("/api/protected/ip-addresses")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ ip, computerName: "AUDIT-TEST-PC", site: "bolnica", entryType: "computer" });
     entryId = createRes.body.id;
 
@@ -123,7 +132,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const logRes = await request(app)
       .get("/api/protected/activity-log?limit=200")
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
 
     const match = logRes.body.items.find(
       (e) => e.action === `GET /api/protected/ip-addresses/${entryId}` && e.username === username,
@@ -138,13 +147,13 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const res = await request(app)
       .patch(`/api/protected/users/${id}/role`)
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ role: "operator" });
     expect(res.status).toBe(200);
 
     const logRes = await request(app)
       .get("/api/protected/activity-log?limit=200")
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
 
     const match = logRes.body.items.find(
       (e) => e.action === `PATCH /api/protected/users/${id}/role`,
@@ -165,7 +174,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const logRes = await request(app)
       .get(`/api/protected/activity-log?username=${username}&limit=200`)
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
 
     const match = logRes.body.items.find(
       (e) => e.action === "POST /api/auth/change-password",
@@ -189,7 +198,7 @@ describe("activity-log routes (integration, real DB)", () => {
 
     const res = await request(app)
       .get(`/api/protected/activity-log?username=${username}`)
-      .set("Authorization", `Bearer ${adminToken()}`);
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
     expect(res.status).toBe(200);
     expect(res.body.items.length).toBeGreaterThan(0);
     for (const item of res.body.items) {

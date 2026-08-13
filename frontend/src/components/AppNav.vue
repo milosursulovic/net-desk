@@ -13,10 +13,10 @@ const baseLinks = [
   { to: '/reports', label: 'Izveštaji' },
 ]
 
-const { isAdmin, isOperatorOrAdmin } = useCurrentUser()
+const { isOperatorOrAdmin, isRootAdmin } = useCurrentUser()
 const links = computed(() => {
   const extra = []
-  if (isAdmin.value) {
+  if (isRootAdmin.value) {
     extra.push(
       { to: '/users', label: 'Korisnici' },
       { to: '/logs', label: 'Logovi' },

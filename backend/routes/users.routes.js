@@ -1,6 +1,6 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { requireRole } from "../middlewares/requireRole.middleware.js";
+import { requireRootAdmin } from "../middlewares/requireRole.middleware.js";
 import {
   listUsersController,
   createUserController,
@@ -10,10 +10,10 @@ import {
 
 const router = express.Router();
 
-// Admin-only for everything, including reading the list - who has what role
-// is itself sensitive, unlike most other /api/protected modules where GET
-// is open to any authenticated role.
-router.use(requireRole("admin"));
+// Samo nalog "admin" (ne bilo koji admin-role nalog) za sve, uključujući
+// čitanje liste - ko ima koju ulogu je samo po sebi osetljivo, unlike most
+// other /api/protected modules where GET is open to any authenticated role.
+router.use(requireRootAdmin);
 
 router.get("/", asyncHandler(listUsersController));
 router.post("/", asyncHandler(createUserController));

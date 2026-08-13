@@ -25,7 +25,14 @@ export function useCurrentUser() {
   load()
   const isAdmin = computed(() => currentUser.value?.role === 'admin')
   const isOperatorOrAdmin = computed(() => ['admin', 'operator'].includes(currentUser.value?.role))
-  return { currentUser, isAdmin, isOperatorOrAdmin }
+  // Iznad same "admin" uloge - za module koje treba da vidi/koristi SAMO
+  // nalog sa korisničkim imenom "admin", ne bilo koji admin nalog (isti
+  // razlog kao requireRootAdmin na backend-u: uloga "admin" može biti
+  // dodeljena više naloga).
+  const isRootAdmin = computed(
+    () => currentUser.value?.role === 'admin' && currentUser.value?.username === 'admin',
+  )
+  return { currentUser, isAdmin, isOperatorOrAdmin, isRootAdmin }
 }
 
 // `currentUser`/`loadPromise` are module-level so every component shares one

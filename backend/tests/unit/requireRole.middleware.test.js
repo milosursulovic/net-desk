@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { requireRole, writeRequiresOperator } from "../../middlewares/requireRole.middleware.js";
+import { requireRole, requireRootAdmin, writeRequiresOperator } from "../../middlewares/requireRole.middleware.js";
 
-function mockReq({ role, method = "GET" } = {}) {
-  return { user: role ? { role } : undefined, method };
+function mockReq({ role, username, method = "GET" } = {}) {
+  return { user: role ? { role, username } : undefined, method };
 }
 
 describe("requireRole", () => {
@@ -24,6 +24,35 @@ describe("requireRole", () => {
   it("rejects when req.user is missing entirely (no role to check)", () => {
     const next = vi.fn();
     requireRole("admin")(mockReq({ role: undefined }), {}, next);
+    const err = next.mock.calls[0][0];
+    expect(err.status).toBe(403);
+  });
+});
+
+describe("requireRootAdmin", () => {
+  it("calls next() with no args for the 'admin' account with the 'admin' role", () => {
+    const next = vi.fn();
+    requireRootAdmin(mockReq({ role: "admin", username: "admin" }), {}, next);
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it("rejects an admin-role account whose username isn't literally 'admin'", () => {
+    const next = vi.fn();
+    requireRootAdmin(mockReq({ role: "admin", username: "milos" }), {}, next);
+    const err = next.mock.calls[0][0];
+    expect(err.status).toBe(403);
+  });
+
+  it("rejects a non-admin role even if the username happens to be 'admin'", () => {
+    const next = vi.fn();
+    requireRootAdmin(mockReq({ role: "operator", username: "admin" }), {}, next);
+    const err = next.mock.calls[0][0];
+    expect(err.status).toBe(403);
+  });
+
+  it("rejects when req.user is missing entirely", () => {
+    const next = vi.fn();
+    requireRootAdmin(mockReq({ role: undefined }), {}, next);
     const err = next.mock.calls[0][0];
     expect(err.status).toBe(403);
   });

@@ -15,6 +15,18 @@ export function adminToken() {
   );
 }
 
+// requireRootAdmin (users/activity-log/app-settings routes) checks the
+// literal username "admin", not just the "admin" role - adminToken() above
+// deliberately uses a different username so it stays a valid negative case
+// for that middleware.
+export function rootAdminToken() {
+  return jwt.sign(
+    { userId: 1, username: "admin", role: "admin" },
+    JWT_SECRET,
+    { expiresIn: "1h", algorithm: "HS256" },
+  );
+}
+
 export function operatorToken() {
   return jwt.sign(
     { userId: 2, username: "vitest-operator", role: "operator" },

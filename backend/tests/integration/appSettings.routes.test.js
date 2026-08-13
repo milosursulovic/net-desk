@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { createApp } from "../../app.js";
-import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
+import { rootAdminToken, adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { pool } from "../../db/pool.js";
 
 const app = createApp();
@@ -32,10 +32,19 @@ describe("app settings routes (integration, real DB)", () => {
     }
   });
 
-  it("admin gets the registered settings, each defaulting per its own registry entry", async () => {
+  // Regression: restricted to the literal "admin" account, not just the
+  // "admin" role.
+  it("rejects an admin-role token whose username isn't literally 'admin' with 403", async () => {
     const res = await request(app)
       .get("/api/protected/settings")
       .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("admin gets the registered settings, each defaulting per its own registry entry", async () => {
+    const res = await request(app)
+      .get("/api/protected/settings")
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
       expect.objectContaining({ key: "vnc_enabled", value: false }),
@@ -46,14 +55,14 @@ describe("app settings routes (integration, real DB)", () => {
   it("admin can toggle a registered setting on and off", async () => {
     const onRes = await request(app)
       .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ key: "vnc_enabled", value: true });
     expect(onRes.status).toBe(200);
     expect(onRes.body.find((s) => s.key === "vnc_enabled").value).toBe(true);
 
     const offRes = await request(app)
       .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ key: "vnc_enabled", value: false });
     expect(offRes.status).toBe(200);
     expect(offRes.body.find((s) => s.key === "vnc_enabled").value).toBe(false);
@@ -62,7 +71,7 @@ describe("app settings routes (integration, real DB)", () => {
   it("rejects an unregistered key with 400", async () => {
     const res = await request(app)
       .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ key: "not_a_real_setting", value: true });
     expect(res.status).toBe(400);
   });
@@ -70,7 +79,7 @@ describe("app settings routes (integration, real DB)", () => {
   it("rejects a non-boolean value with 400", async () => {
     const res = await request(app)
       .patch("/api/protected/settings")
-      .set("Authorization", `Bearer ${adminToken()}`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ key: "vnc_enabled", value: "yes" });
     expect(res.status).toBe(400);
   });
