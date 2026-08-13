@@ -157,7 +157,7 @@ describe("agents.service (integration, real DB)", () => {
     expect(out.connectivityStatus).toBe("online");
   });
 
-  it("getAgentService reports windowsUpdateStatus/computerIp/site from linked ip_entry, null when unlinked", async () => {
+  it("getAgentService reports windowsUpdateStatus/computerIp/site/department/description from linked ip_entry, null when unlinked", async () => {
     const hostname = testHostname();
     const enrolled = await enrollAgent({ hostname });
     const { findAgentByUid } = await import("../../repositories/agents.repo.js");
@@ -168,6 +168,8 @@ describe("agents.service (integration, real DB)", () => {
     expect(unlinked.windowsUpdateStatus).toBeNull();
     expect(unlinked.computerIp).toBeNull();
     expect(unlinked.site).toBeNull();
+    expect(unlinked.department).toBeNull();
+    expect(unlinked.description).toBeNull();
 
     const ip = testIp();
     const entry = await createIpEntryService({
@@ -175,6 +177,8 @@ describe("agents.service (integration, real DB)", () => {
       site: "bolnica",
       entryType: "computer",
       computerName: hostname,
+      department: "Kardiologija",
+      description: "Radna stanica u ambulanti",
     });
     ipEntryId = entry.id;
     await linkAgentToIpEntry(agentId, ipEntryId);
@@ -184,6 +188,8 @@ describe("agents.service (integration, real DB)", () => {
     expect(linked.windowsUpdateStatus).toBe("Stopped");
     expect(linked.computerIp).toBe(ip);
     expect(linked.site).toBe("bolnica");
+    expect(linked.department).toBe("Kardiologija");
+    expect(linked.description).toBe("Radna stanica u ambulanti");
   });
 
   it("revokeAgentService flips status to revoked", async () => {

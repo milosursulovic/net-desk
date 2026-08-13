@@ -1,9 +1,14 @@
 <template>
   <div class="glass-container w-full max-w-4xl mx-auto space-y-4">
     <div class="flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold text-slate-800 truncate">
-        {{ agent?.hostname || agent?.agentUid || 'Agent' }}
-      </h1>
+      <div class="min-w-0 flex items-baseline gap-2 flex-wrap">
+        <h1 class="text-2xl font-bold text-slate-800 truncate">
+          {{ agent?.hostname || agent?.agentUid || 'Agent' }}
+        </h1>
+        <span v-if="agent?.department" class="text-sm font-medium text-slate-500">
+          — {{ agent.department }}
+        </span>
+      </div>
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
@@ -58,6 +63,11 @@
             </template>
             <span v-else>—</span>
           </div>
+        </div>
+
+        <div v-if="agent.description" class="rounded-lg bg-slate-50 px-3 py-2">
+          <div class="text-xs text-slate-500 mb-1">Opis</div>
+          <p class="text-sm text-slate-800 whitespace-pre-wrap break-words">{{ agent.description }}</p>
         </div>
 
         <div class="flex flex-col gap-2 pt-2 border-t">

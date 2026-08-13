@@ -247,6 +247,8 @@ export async function getAgentService(id) {
     windowsUpdateStatus,
     computerIp: ipEntry?.ip ?? null,
     site: ipEntry?.site ?? null,
+    department: ipEntry?.department ?? null,
+    description: ipEntry?.description ?? null,
     // Zamenjuje findAgentById-jev GROUP_CONCAT string (isto polje ime, samo
     // display-only na listi) pravim nizom - detalj strana radi add/remove
     // pojedinačnih grupa preko njega.

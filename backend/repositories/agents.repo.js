@@ -505,11 +505,14 @@ export async function findAgentWindowsUpdateStatus(ipEntryId) {
 
 // ip/site sa povezanog ip_entries reda - za "Otvori na početnoj" link na
 // AgentDetailView.vue (pretraga po IP-u zahteva i tačan site query param,
-// vidi useCurrentSite.js - site živi isključivo u URL-u).
+// vidi useCurrentSite.js - site živi isključivo u URL-u). department/description
+// su ovde iz istog razloga kao site/ip - žive na ip_entries, ne na agents
+// (isti izvor kao "Odeljenje" filter na AgentsView.vue), prikazuju se na
+// AgentDetailView.vue pored naziva agenta / kao opis.
 export async function findAgentIpEntry(ipEntryId) {
   if (!ipEntryId) return null;
   const [rows] = await pool.execute(
-    `SELECT ip, site FROM ip_entries WHERE id = ? LIMIT 1`,
+    `SELECT ip, site, department, description FROM ip_entries WHERE id = ? LIMIT 1`,
     [ipEntryId],
   );
   return rows?.[0] || null;
