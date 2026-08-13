@@ -17,6 +17,7 @@ import {
   exportXlsxRowsService,
   setPendingRepackService,
   wakeService,
+  freeIpAddressesService,
 } from "../services/ipAddresses.service.js";
 import { getUptimeHistory } from "../services/ipStatusHistory.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -43,6 +44,14 @@ export async function duplicatesController(req, res) {
     status: parsed.data.status,
     site: parsed.data.site,
   });
+  res.json(out);
+}
+
+export async function freeIpAddressesController(req, res) {
+  const site = siteFilter(req.query.site);
+  if (!site) throw badRequest("Nevažeća ili nedostajuća lokacija");
+
+  const out = await freeIpAddressesService(site);
   res.json(out);
 }
 

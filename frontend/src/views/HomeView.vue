@@ -12,6 +12,8 @@
           📦 Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
         </AppButton>
 
+        <AppButton variant="secondary" to="/free-ip-addresses">Slobodne IP adrese</AppButton>
+
         <AppButton variant="secondary" to="/groups">Grupe</AppButton>
       </div>
     </div>

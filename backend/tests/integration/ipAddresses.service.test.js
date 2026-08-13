@@ -10,6 +10,7 @@ import {
   duplicatesService,
   setPendingRepackService,
   exportXlsxRowsService,
+  freeIpAddressesService,
 } from "../../services/ipAddresses.service.js";
 import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
 import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
@@ -275,6 +276,30 @@ describe("ipAddresses.service (integration, real DB)", () => {
     const dzOut = await duplicatesService({ search: "", status: "all", site: "dom_zdravlja" });
     const dzGroup = dzOut.groups.find((g) => g.name.toLowerCase() === uniqueName.toLowerCase());
     expect(dzGroup).toBeUndefined();
+  });
+
+  describe("freeIpAddressesService", () => {
+    it("excludes an occupied address, and never includes the network/broadcast boundary addresses", async () => {
+      // Realan opseg bolnice (10.230.62.0/23) - adresa blizu kraja opsega,
+      // van dometa testIp()-a (203.0.113.x), pa mora ručno da se koristi
+      // stvarna adresa iz opsega da bi test bio smislen.
+      const testAddress = "10.230.63.253";
+      const entry = await createService({ ip: testAddress, site: "bolnica", entryType: "computer" });
+      ipEntryId = entry.id;
+
+      const out = await freeIpAddressesService("bolnica");
+      expect(out.site).toBe("bolnica");
+      // /23 = 512 adresa - mrežna i broadcast = 510 upotrebljivih.
+      expect(out.total).toBe(510);
+      expect(out.freeIps).not.toContain(testAddress);
+      expect(out.freeIps).not.toContain("10.230.62.0");
+      expect(out.freeIps).not.toContain("10.230.63.255");
+      expect(out.freeIps.length).toBe(out.total - out.occupiedCount);
+    });
+
+    it("rejects an unknown site", async () => {
+      await expect(freeIpAddressesService("nonexistent")).rejects.toMatchObject({ status: 400 });
+    });
   });
 
   describe("agentId (home page -> agent link)", () => {

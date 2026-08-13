@@ -10,6 +10,7 @@ const LoginView = () => import('@/views/LoginView.vue')
 const SelectSiteView = () => import('@/views/SelectSiteView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 const AddIpView = () => import('@/views/AddIpView.vue')
+const FreeIpAddressesView = () => import('@/views/FreeIpAddressesView.vue')
 const EditIpView = () => import('@/views/EditIpView.vue')
 const MetadataView = () => import('@/views/MetadataView.vue')
 const PrintersView = () => import('@/views/PrintersView.vue')
@@ -61,6 +62,16 @@ const router = createRouter({
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
           },
           component: AddIpView,
+        },
+        {
+          path: 'free-ip-addresses',
+          name: 'free-ip-addresses',
+          meta: {
+            title: 'Slobodne IP adrese - NetDesk',
+            breadcrumb: 'Slobodne IP adrese',
+            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+          },
+          component: FreeIpAddressesView,
         },
         {
           path: 'edit/:id',

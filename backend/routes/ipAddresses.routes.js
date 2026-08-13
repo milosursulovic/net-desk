@@ -14,6 +14,7 @@ import {
   uptimeHistoryController,
   setPendingRepackController,
   wakeController,
+  freeIpAddressesController,
 } from "../controllers/ipAddresses.controller.js";
 import metadataForIpRoutes from "./ipAddressesMetadata.routes.js";
 
@@ -23,6 +24,9 @@ router.get("/scan-ports", asyncHandler(scanPortsController));
 router.get("/duplicates", asyncHandler(duplicatesController));
 router.get("/export-xlsx", asyncHandler(exportXlsxController));
 router.get("/filter-options", asyncHandler(filterOptionsController));
+// Mora biti registrovano PRE "/:id" ispod - isti razlog kao ostale rute
+// iznad, "/:id" bi inače "free" protumačio kao id.
+router.get("/free", asyncHandler(freeIpAddressesController));
 
 router.get("/", asyncHandler(listController));
 router.get("/:id", asyncHandler(getByIdController));

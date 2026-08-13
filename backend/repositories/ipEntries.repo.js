@@ -473,6 +473,17 @@ export async function countIpEntriesCreatedSince(since, site) {
   return Number(cnt) || 0;
 }
 
+// Za "slobodne IP adrese" (ipAddresses.service.js's freeIpAddressesService)
+// - samo numerički opseg, ništa drugo, pozivalac gradi Set od ovoga da
+// filtrira generisanu listu svih adresa u opsegu.
+export async function listIpNumericsInRange(minNumeric, maxNumeric) {
+  const [rows] = await pool.execute(
+    `SELECT ip_numeric AS ipNumeric FROM ip_entries WHERE ip_numeric BETWEEN ? AND ?`,
+    [minNumeric, maxNumeric],
+  );
+  return rows.map((r) => r.ipNumeric);
+}
+
 export async function listComputersWithoutAgent({ search, page, limit, site }) {
   const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
     prefixColumns: ["ip"],

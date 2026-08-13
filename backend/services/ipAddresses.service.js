@@ -1,7 +1,7 @@
 import net from "net";
 import tls from "tls";
 import { isPrivateIPv4 } from "../utils/ip.js";
-import { ipToNumeric } from "../utils/ip.js";
+import { ipToNumeric, numericToIp } from "../utils/ip.js";
 import { emptyToNull } from "../utils/strings.js";
 import { badRequest, notFound } from "../utils/httpError.js";
 import {
@@ -16,13 +16,20 @@ import {
   listDistinctDepartments,
   listDistinctOs,
   listDistinctOsArchitectures,
+  listIpNumericsInRange,
 } from "../repositories/ipEntries.repo.js";
 import { RDP_APP_PATTERNS } from "../dtos/ipAddresses.dto.js";
 import { findMacsForIpEntry } from "../repositories/metadata.repo.js";
 import { sendMagicPacket } from "../utils/wakeOnLan.js";
 
-// Broadcast adresa lokalnog segmenta svake lokacije - magic paket se ne
-// rutira preko podmreža, mora ići direktno na broadcast ciljne mreže.
+// Mrežna i broadcast adresa lokalnog segmenta svake lokacije - i za WOL
+// (magic paket ide direktno na broadcast ciljne mreže, ne rutira se) i za
+// "slobodne IP adrese" ispod (opseg = mrežna+1 do broadcast-1, te dve
+// adrese same nisu upotrebljive za hostove).
+const SITE_NETWORK_ADDRESS = {
+  bolnica: "10.230.62.0", // 10.230.62.0/23
+  dom_zdravlja: "10.160.64.0", // 10.160.64.0/21
+};
 const SITE_BROADCAST_ADDRESS = {
   bolnica: "10.230.63.255",
   dom_zdravlja: "10.160.71.255",
@@ -244,6 +251,36 @@ export async function filterOptionsService(site) {
   // pa bi distinct nad tom kolonom vratio kombinacije, ne pojedinačne alate.
   const rdpApps = RDP_APP_PATTERNS.map((p) => p.label);
   return { departments, os, osArchitectures, rdpApps };
+}
+
+// Opseg = mrežna adresa + 1 do broadcast adresa - 1 (te dve granične adrese
+// same nisu upotrebljive za hostove). Malo dovoljno (bolnica /23 = 510
+// upotrebljivih, dom_zdravlja /21 = 2046) da se generiše i vrati ceo
+// spisak slobodnih odjednom - bez potrebe za server-side paginacijom kao
+// kod flagged_domains (koja ima ~88k redova, sasvim druga razmera).
+export async function freeIpAddressesService(site) {
+  const networkAddress = SITE_NETWORK_ADDRESS[site];
+  const broadcastAddress = SITE_BROADCAST_ADDRESS[site];
+  if (!networkAddress || !broadcastAddress) {
+    throw badRequest("Nepoznata lokacija");
+  }
+
+  const startNumeric = ipToNumeric(networkAddress) + 1;
+  const endNumeric = ipToNumeric(broadcastAddress) - 1;
+
+  const occupied = new Set(await listIpNumericsInRange(startNumeric, endNumeric));
+
+  const freeIps = [];
+  for (let n = startNumeric; n <= endNumeric; n++) {
+    if (!occupied.has(n)) freeIps.push(numericToIp(n));
+  }
+
+  return {
+    site,
+    total: endNumeric - startNumeric + 1,
+    occupiedCount: occupied.size,
+    freeIps,
+  };
 }
 
 export async function getByIdService(id) {

@@ -10,6 +10,10 @@ export function isValidIPv4(ip) {
   );
 }
 
+export function numericToIp(n) {
+  return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
+}
+
 export function ipToNumeric(ip) {
   if (!isValidIPv4(ip)) throw new Error(`Invalid IPv4: ${ip}`);
   // The trailing >>> 0 matters, not decoration: JS bitwise ops work on
