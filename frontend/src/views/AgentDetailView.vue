@@ -309,6 +309,31 @@
           </div>
         </template>
       </div>
+
+      <!-- DNS -->
+      <div v-else-if="tab === 'dns'" class="space-y-2">
+        <div v-if="!agent.ipEntryId" class="text-slate-500 text-sm">
+          Računar još nije povezan (nema inventory sync-a).
+        </div>
+        <template v-else>
+          <div v-if="dnsLogsLoading" class="text-slate-600 text-sm">Učitavanje…</div>
+          <div v-else-if="!dnsLogs.length" class="text-slate-500 text-sm">Nema DNS upita.</div>
+          <div v-for="d in dnsLogs" :key="d.id"
+            class="rounded-lg border bg-white p-3 text-sm"
+            :class="d.isBlacklisted ? 'border-red-200 bg-red-50' : ''">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-medium font-mono">
+                {{ d.domain }}
+                <span v-if="d.isBlacklisted" class="ml-1 text-red-600" title="Domen je na crnoj listi">🚫</span>
+              </div>
+              <span class="text-xs text-slate-500 tabular-nums shrink-0">{{ d.queryCount }}×</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">
+              Prvi put viđen: {{ fmtDate(d.firstSeen) }} · Poslednji put viđen: {{ fmtDate(d.lastSeen) }}
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <ToastNotification :message="toast" />
@@ -366,8 +391,8 @@ async function fetchDeploymentGroupOptions() {
   }
 }
 
-const TAB_NAMES = ['screen', 'jobs', 'updates', 'events']
-const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log' }
+const TAB_NAMES = ['screen', 'jobs', 'updates', 'events', 'dns']
+const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log', dns: 'DNS' }
 
 const { tab } = usePaginatedRoute({
   fields: { tab: { type: 'string', default: 'jobs', oneOf: TAB_NAMES } },
@@ -410,6 +435,10 @@ async function fetchReleaseOptions() {
 const eventLogs = ref([])
 const eventLogsLoading = ref(false)
 const eventLogsLoaded = ref(false)
+
+const dnsLogs = ref([])
+const dnsLogsLoading = ref(false)
+const dnsLogsLoaded = ref(false)
 
 const jobForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
 const creatingJob = ref(false)
@@ -717,6 +746,28 @@ async function loadEventLogs() {
   }
 }
 
+async function loadDnsLogs() {
+  if (!agent.value?.ipEntryId) return
+  dnsLogsLoading.value = true
+  try {
+    const params = new URLSearchParams({
+      ipEntryId: agent.value.ipEntryId,
+      limit: 50,
+      sortBy: 'lastSeen',
+      sortOrder: 'desc',
+    })
+    const res = await fetchWithAuth(`/api/protected/dns-logs?${params.toString()}`)
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju DNS logova'))
+    const data = await res.json()
+    dnsLogs.value = data.items || []
+    dnsLogsLoaded.value = true
+  } catch (err) {
+    console.error(err)
+  } finally {
+    dnsLogsLoading.value = false
+  }
+}
+
 function selectTab(name) {
   tab.value = name
   if (name === 'jobs') {
@@ -736,6 +787,7 @@ function selectTab(name) {
     stopJobsPolling()
     if (name === 'updates' && !updateLogLoaded.value) loadUpdateLog()
     else if (name === 'events' && !eventLogsLoaded.value) loadEventLogs()
+    else if (name === 'dns' && !dnsLogsLoaded.value) loadDnsLogs()
   }
 }
 

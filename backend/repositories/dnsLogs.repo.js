@@ -64,7 +64,7 @@ export async function upsertDnsQueriesBulk(rows) {
   );
 }
 
-export async function listDnsQueries({ search, site, page, limit, sortBy, sortOrder }) {
+export async function listDnsQueries({ search, site, ipEntryId, page, limit, sortBy, sortOrder }) {
   const whereParts = [];
   const params = [];
 
@@ -79,6 +79,14 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
   if (site) {
     whereParts.push("ie.site = ?");
     params.push(site);
+  }
+  if (ipEntryId) {
+    // Za "DNS" tab na Agent Detail strani - istorija upita SAMO za tog
+    // agentovog računara, isti obrazac kao PDSU event log tab (fetchuje po
+    // ipEntryId, ne po agentId - DNS podaci su u bazi vezani za ip_entries,
+    // ne za agents).
+    whereParts.push("cdq.ip_entry_id = ?");
+    params.push(ipEntryId);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";

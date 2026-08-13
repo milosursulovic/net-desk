@@ -57,6 +57,8 @@ export async function listDnsQueriesService(query) {
   const limit = Math.min(200, Math.max(1, Number(query.limit) || 50));
   const search = String(query.search || "").trim();
   const site = query.site;
+  const ipEntryIdNum = Number(query.ipEntryId);
+  const ipEntryId = Number.isInteger(ipEntryIdNum) && ipEntryIdNum > 0 ? ipEntryIdNum : undefined;
 
   const sortBy = SORT_FIELDS[query.sortBy] || SORT_FIELDS.lastSeen;
   const sortOrder = query.sortOrder === "asc" ? "ASC" : "DESC";
@@ -64,6 +66,7 @@ export async function listDnsQueriesService(query) {
   const { items, total } = await listDnsQueries({
     search,
     site,
+    ipEntryId,
     page,
     limit,
     sortBy,

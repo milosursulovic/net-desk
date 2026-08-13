@@ -90,6 +90,31 @@ describe("dnsLogs.service (integration, real DB)", () => {
     expect(notMatched.items).toHaveLength(0);
   });
 
+  it("listDnsQueriesService filters by ipEntryId - for the Agent Detail DNS tab, scoped to just that computer", async () => {
+    const domainA = `vitest-dns-ipentry-a-${Date.now()}.example.com`;
+    const domainB = `vitest-dns-ipentry-b-${Date.now()}.example.com`;
+
+    const entryA = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+    ipEntryId = entryA.id;
+    const entryB = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+
+    try {
+      await ingestDnsQueries(entryA.id, [
+        { domain: domainA, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+      ]);
+      await ingestDnsQueries(entryB.id, [
+        { domain: domainB, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+      ]);
+
+      const out = await listDnsQueriesService({ ipEntryId: entryA.id, page: 1, limit: 50 });
+      const domains = out.items.map((i) => i.domain);
+      expect(domains).toContain(domainA);
+      expect(domains).not.toContain(domainB);
+    } finally {
+      await deleteTestIpEntry(entryB.id);
+    }
+  });
+
   it("ingestDnsQueries skips entries with an empty/missing domain", async () => {
     const entry = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
     ipEntryId = entry.id;
