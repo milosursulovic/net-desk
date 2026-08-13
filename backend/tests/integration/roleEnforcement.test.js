@@ -180,6 +180,14 @@ describe("role enforcement across modules (integration, real DB)", () => {
         .set("Authorization", `Bearer ${operatorToken()}`);
       expect(res.status).toBe(403);
     });
+
+    it("operator is blocked (403) from batch-assigning a deployment group", async () => {
+      const res = await request(app)
+        .post("/api/protected/agents/deployment-groups/batch")
+        .set("Authorization", `Bearer ${operatorToken()}`)
+        .send({ agentIds: [999999999], groupName: "rest" });
+      expect(res.status).toBe(403);
+    });
   });
 
   describe("operator-readable, admin-only-write modules (dns-logs, process-detections)", () => {

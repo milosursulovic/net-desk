@@ -252,6 +252,38 @@
       </div>
     </div>
 
+    <!-- Masovna dodela deployment grupe - admin-only, isto kao pojedinačna
+         dodela na Agent Detail strani. -->
+    <div v-if="selectedIds.size && isAdmin" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+      <div class="font-medium text-emerald-900">
+        Dodeli deployment grupu na {{ selectedIds.size }} izabranih agenata
+      </div>
+      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-red-700">
+        Podržava najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju pre slanja.
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
+        <div class="flex-1 min-w-0">
+          <label class="text-sm text-slate-600">Deployment grupa</label>
+          <GroupSelect
+            v-model="massDeploymentGroup"
+            :options="deploymentGroupOptions"
+            :is-admin="isAdmin"
+            :allow-empty="true"
+            create-endpoint="/api/protected/deployment-groups"
+            @group-added="(name) => { if (!deploymentGroupOptions.includes(name)) deploymentGroupOptions.push(name) }"
+            @error="(msg) => showToast(msg, { prefix: '❌ ', duration: 3000 })"
+          />
+        </div>
+        <AppButton
+          variant="success"
+          :disabled="assigningDeploymentGroup || !massDeploymentGroup || selectedIds.size > MAX_BATCH_AGENTS"
+          @click="assignDeploymentGroupToSelected"
+        >
+          {{ assigningDeploymentGroup ? 'Dodeljujem…' : `Dodeli na ${selectedIds.size} agenata` }}
+        </AppButton>
+      </div>
+    </div>
+
     <div class="min-h-50">
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white shadow-sm p-4">
@@ -399,6 +431,7 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
+import GroupSelect from '@/components/GroupSelect.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
@@ -811,6 +844,47 @@ async function sendBatchJob() {
     showToast(e?.message || 'Greška pri slanju batch komande', { prefix: '❌ ', duration: 3000 })
   } finally {
     sendingBatch.value = false
+  }
+}
+
+const massDeploymentGroup = ref('')
+const assigningDeploymentGroup = ref(false)
+
+async function assignDeploymentGroupToSelected() {
+  const groupName = massDeploymentGroup.value
+  if (!groupName) return
+
+  const ok = await askConfirm(
+    `Dodeliti deployment grupu "${groupName}" na ${selectedIds.value.size} agenata?`,
+    { title: 'Masovna dodela deployment grupe' },
+  )
+  if (!ok) return
+
+  assigningDeploymentGroup.value = true
+  try {
+    const res = await fetchWithAuth('/api/protected/agents/deployment-groups/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentIds: [...selectedIds.value],
+        groupName,
+      }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodeli deployment grupe'))
+    const data = await res.json()
+
+    const parts = [`Dodeljeno na ${data.updated.length} agenata`]
+    if (data.skipped.length) parts.push(`preskočeno ${data.skipped.length}`)
+    showToast(parts.join(', '))
+
+    massDeploymentGroup.value = ''
+    clearSelection()
+    fetchData()
+  } catch (e) {
+    console.error(e)
+    showToast(e?.message || 'Greška pri dodeli deployment grupe', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    assigningDeploymentGroup.value = false
   }
 }
 

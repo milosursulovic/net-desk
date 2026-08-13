@@ -271,6 +271,27 @@ export async function removeAgentDeploymentGroupService(id, groupName) {
   return await getAgentService(id);
 }
 
+// Masovna dodela - ista "created/skipped" forma kao createBatchJobService
+// (agentJobs.service.js), sekvencijalno iz istog razloga (DB pool
+// ograničenje, batch može ciljati do 500 agenata odjednom).
+export async function addAgentsDeploymentGroupService(agentIds, groupName) {
+  const uniqueIds = [...new Set(agentIds)];
+  const updated = [];
+  const skipped = [];
+
+  for (const agentId of uniqueIds) {
+    const agent = await findAgentById(agentId);
+    if (!agent) {
+      skipped.push({ agentId, reason: "Agent nije pronađen" });
+      continue;
+    }
+    await addAgentDeploymentGroup(agentId, groupName);
+    updated.push({ agentId, hostname: agent.hostname });
+  }
+
+  return { updated, skipped };
+}
+
 // "Whitelist" - agent i dalje detektuje/loguje procese sa watchlist-e na ovom
 // računaru (vidljivost/audit trag se ne gubi), ali ih NIKAD ne ubija čak i
 // kad je AgentSettings.KillWatchedProcesses globalno uključen (npr. IT admin

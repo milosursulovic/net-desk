@@ -4,7 +4,10 @@ import {
   InventorySyncSchema,
   ProcessKillExemptSchema,
 } from "../dtos/agents.dto.js";
-import { AgentDeploymentGroupSchema } from "../dtos/deploymentGroups.dto.js";
+import {
+  AgentDeploymentGroupSchema,
+  BatchAgentDeploymentGroupSchema,
+} from "../dtos/deploymentGroups.dto.js";
 import {
   enrollAgent,
   heartbeat,
@@ -19,6 +22,7 @@ import {
   setAgentProcessKillExemptService,
   addAgentDeploymentGroupService,
   removeAgentDeploymentGroupService,
+  addAgentsDeploymentGroupService,
 } from "../services/agents.service.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
@@ -191,4 +195,12 @@ export async function removeAgentDeploymentGroupController(req, res) {
 
   const agent = await removeAgentDeploymentGroupService(id, groupName);
   res.json(agent);
+}
+
+export async function addAgentsDeploymentGroupController(req, res) {
+  const parsed = BatchAgentDeploymentGroupSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const out = await addAgentsDeploymentGroupService(parsed.data.agentIds, parsed.data.groupName);
+  res.json(out);
 }

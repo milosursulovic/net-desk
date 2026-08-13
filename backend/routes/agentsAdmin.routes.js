@@ -13,6 +13,7 @@ import {
   setProcessKillExemptController,
   addAgentDeploymentGroupController,
   removeAgentDeploymentGroupController,
+  addAgentsDeploymentGroupController,
 } from "../controllers/agents.controller.js";
 import {
   createJobController,
@@ -60,6 +61,10 @@ router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 // greška ovde pogađa update rollout za tu mašinu.
 router.post("/:id/deployment-groups", requireRole("admin"), asyncHandler(addAgentDeploymentGroupController));
 router.delete("/:id/deployment-groups/:groupName", requireRole("admin"), asyncHandler(removeAgentDeploymentGroupController));
+// "deployment-groups/batch" (2 segmenta, drugi je "batch") i "/:id/deployment-groups"
+// (drugi segment "deployment-groups") se nikad ne poklapaju - isti obrazac
+// kao jobs/batch iznad, registracioni redosled nije bitan.
+router.post("/deployment-groups/batch", requireRole("admin"), asyncHandler(addAgentsDeploymentGroupController));
 router.patch("/:id/process-kill-exempt", asyncHandler(setProcessKillExemptController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 

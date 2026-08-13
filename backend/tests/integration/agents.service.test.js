@@ -10,6 +10,7 @@ import {
   setAgentProcessKillExemptService,
   addAgentDeploymentGroupService,
   removeAgentDeploymentGroupService,
+  addAgentsDeploymentGroupService,
   agentFilterOptionsService,
 } from "../../services/agents.service.js";
 import {
@@ -860,5 +861,28 @@ describe("agents.service (integration, real DB)", () => {
     await expect(
       removeAgentDeploymentGroupService(999999999, "whatever"),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("addAgentsDeploymentGroupService assigns a group to multiple agents at once, skipping unknown ids", async () => {
+    const agentA = await enrollAgent({ hostname: testHostname() });
+    const agentB = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const idA = (await findAgentByUid(agentA.agentId)).id;
+    const idB = (await findAgentByUid(agentB.agentId)).id;
+
+    try {
+      const out = await addAgentsDeploymentGroupService([idA, idB, 999999999], "pilot");
+
+      expect(out.updated.map((u) => u.agentId).sort()).toEqual([idA, idB].sort());
+      expect(out.skipped).toEqual([{ agentId: 999999999, reason: "Agent nije pronađen" }]);
+
+      const agentAAfter = await getAgentService(idA);
+      const agentBAfter = await getAgentService(idB);
+      expect(agentAAfter.deploymentGroups).toEqual(["pilot"]);
+      expect(agentBAfter.deploymentGroups).toEqual(["pilot"]);
+    } finally {
+      await deleteTestAgent(idA);
+      await deleteTestAgent(idB);
+    }
   });
 });
