@@ -11,8 +11,8 @@
         </p>
       </div>
       <div class="flex gap-2 shrink-0">
-        <AppButton v-if="counts.pending" variant="danger" :disabled="cancelling" @click="cancelBatch">
-          {{ cancelling ? 'Otkazujem…' : `✖️ Otkaži (${counts.pending})` }}
+        <AppButton v-if="cancellableCount" variant="danger" :disabled="cancelling" @click="cancelBatch">
+          {{ cancelling ? 'Otkazujem…' : `✖️ Otkaži (${cancellableCount})` }}
         </AppButton>
         <AppButton v-if="items.length" variant="secondary" @click="repeatWithNewCommand">
           🔁 Ponovi sa novom komandom
@@ -92,6 +92,14 @@
               <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(item.status)">
                 {{ item.status }}
               </span>
+              <button
+                v-if="item.status === 'pending' || item.status === 'sent'"
+                :disabled="cancellingItemId === item.id"
+                @click="cancelSingleJob(item)"
+                class="text-red-600 hover:underline text-xs whitespace-nowrap"
+              >
+                {{ cancellingItemId === item.id ? 'Otkazujem…' : 'Otkaži' }}
+              </button>
             </div>
           </div>
           <div class="text-xs text-slate-500 mt-1">
@@ -99,8 +107,16 @@
             <span v-if="item.completedAt"> · Završeno: {{ fmtDate(item.completedAt) }}</span>
             <span v-if="item.exitCode !== null"> · Exit code: {{ item.exitCode }}</span>
           </div>
-          <div v-if="item.output" class="mt-1 text-xs bg-slate-50 rounded p-2 whitespace-pre-wrap break-all">{{ item.output }}</div>
-          <div v-if="item.errorOutput" class="mt-1 text-xs bg-red-50 text-red-700 rounded p-2 whitespace-pre-wrap break-all">{{ item.errorOutput }}</div>
+          <div v-if="item.output" class="relative mt-1">
+            <button @click="copyToClipboard(item.output, 'Izlaz kopiran!')"
+              class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz">📋</button>
+            <div class="text-xs bg-slate-50 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.output }}</div>
+          </div>
+          <div v-if="item.errorOutput" class="relative mt-1">
+            <button @click="copyToClipboard(item.errorOutput, 'Izlaz greške kopiran!')"
+              class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz greške">📋</button>
+            <div class="text-xs bg-red-50 text-red-700 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.errorOutput }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -134,7 +150,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const route = useRoute()
 const router = useRouter()
-const { toast, showToast } = useToast()
+const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 // Vodi na Agenti stranicu, koja učitava ciljane agente ovog batch-a preko
@@ -150,6 +166,7 @@ const loading = ref(false)
 const error = ref('')
 const polling = ref(false)
 const cancelling = ref(false)
+const cancellingItemId = ref(null)
 
 let pollTimer = null
 
@@ -160,6 +177,13 @@ const counts = computed(() => {
   }
   return out
 })
+
+// Sve što nije Završeno ili Neuspešno - agent nema kanal za prekid usred
+// izvršavanja, pa se već poslata ("sent") komanda i dalje može fizički
+// izvršiti na mašini, ali otkazivanje ovde markira nameru korisnika i
+// sprečava da kasniji rezultat prepiše status (backend odbija rezultat za
+// komandu koja više nije "sent" - vidi cancelJob u agentJobs.repo.js).
+const cancellableCount = computed(() => counts.value.pending + counts.value.sent)
 
 const statusFilter = ref('')
 const connectivityFilter = ref('')
@@ -180,11 +204,11 @@ function jobStatusClass(status) {
   return 'bg-slate-50 text-slate-600 border-slate-200'
 }
 
-// Otkazuje samo stavke koje su još "na čekanju" - već poslate komande se ne
-// mogu prekinuti (agent nema kanal za prekid usred izvršavanja).
+// Otkazuje sve stavke koje nisu Završeno/Neuspešno (pending + sent) - vidi
+// komentar uz cancellableCount.
 async function cancelBatch() {
   const ok = await askConfirm(
-    `Otkazati ${counts.value.pending} komandi na čekanju? Već poslate komande (${counts.value.sent}) se ne mogu prekinuti i nastaviće da se izvršavaju.`,
+    `Otkazati ${cancellableCount.value} komandi koje nisu završene? Već poslate komande (${counts.value.sent}) agent možda i dalje izvrši (nema kanal za prekid usred izvršavanja), ali status će biti markiran kao otkazan.`,
     { title: 'Otkazivanje batch komande' },
   )
   if (!ok) return
@@ -196,13 +220,34 @@ async function cancelBatch() {
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri otkazivanju batch-a'))
     const data = await res.json()
-    showToast(data.cancelled ? `Otkazano ${data.cancelled} komandi` : 'Nema više komandi na čekanju')
+    showToast(data.cancelled ? `Otkazano ${data.cancelled} komandi` : 'Nema više komandi za otkazivanje')
     await loadStatus()
   } catch (err) {
     console.error('Greška pri otkazivanju batch-a:', err)
     showToast(err?.message || 'Greška pri otkazivanju batch-a', { prefix: '❌ ', duration: 3000 })
   } finally {
     cancelling.value = false
+  }
+}
+
+async function cancelSingleJob(item) {
+  const ok = await askConfirm(
+    `Otkazati ovu komandu na agentu "${item.hostname || item.agentUid}"?`,
+    { title: 'Otkazivanje komande' },
+  )
+  if (!ok) return
+
+  cancellingItemId.value = item.id
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/jobs/${item.id}/cancel`, { method: 'POST' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otkazivanju komande'))
+    showToast('Komanda otkazana')
+    await loadStatus()
+  } catch (err) {
+    console.error('Greška pri otkazivanju komande:', err)
+    showToast(err?.message || 'Greška pri otkazivanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    cancellingItemId.value = null
   }
 }
 

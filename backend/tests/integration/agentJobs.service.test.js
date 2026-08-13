@@ -8,6 +8,7 @@ import {
   getBatchStatusService,
   listJobBatchesService,
   cancelBatchService,
+  cancelJobService,
 } from "../../services/agentJobs.service.js";
 import { pool } from "../../db/pool.js";
 import { insertAgent, revokeAgentById } from "../../repositories/agents.repo.js";
@@ -132,6 +133,42 @@ describe("agentJobs.service (integration, real DB)", () => {
     await expect(
       createJobService(999999999, { commandType: "delete_temp_files" }, null),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  describe("cancelJobService", () => {
+    it("cancels a still-pending job", async () => {
+      const job = await createJobService(agentId, { commandType: "delete_temp_files" }, null);
+
+      const cancelled = await cancelJobService(job.id);
+      expect(cancelled.status).toBe("cancelled");
+      expect(cancelled.errorOutput).toBe("Otkazano od strane korisnika");
+    });
+
+    it("cancels an already-sent job too (agent may still run it, but the DB reflects the cancel)", async () => {
+      const job = await createJobService(agentId, { commandType: "delete_temp_files" }, null);
+      await pollJobsService(agentId);
+
+      const cancelled = await cancelJobService(job.id);
+      expect(cancelled.status).toBe("cancelled");
+
+      // A late result from the agent for a cancelled job must be rejected,
+      // not silently overwrite the cancelled status.
+      await expect(
+        submitJobResultService(agentId, job.id, { success: true, exitCode: 0 }),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+
+    it("rejects cancelling an already-completed job (409)", async () => {
+      const job = await createJobService(agentId, { commandType: "delete_temp_files" }, null);
+      await pollJobsService(agentId);
+      await submitJobResultService(agentId, job.id, { success: true, exitCode: 0 });
+
+      await expect(cancelJobService(job.id)).rejects.toMatchObject({ status: 409 });
+    });
+
+    it("throws 404 for an unknown jobId", async () => {
+      await expect(cancelJobService(999999999)).rejects.toMatchObject({ status: 404 });
+    });
   });
 
   describe("createBatchJobService", () => {
@@ -328,7 +365,7 @@ describe("agentJobs.service (integration, real DB)", () => {
       }
     });
 
-    it("cancelBatchService cancels only still-pending items, leaves already-sent ones untouched", async () => {
+    it("cancelBatchService cancels both pending AND already-sent items, leaves completed ones untouched", async () => {
       const otherAgentId = await insertAgent({
         agentUid: crypto.randomUUID(),
         apiKeyHash: "test-hash-batch-cancel",
@@ -338,34 +375,51 @@ describe("agentJobs.service (integration, real DB)", () => {
         osBuild: null,
         agentVersion: null,
       });
+      const thirdAgentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash-batch-cancel-2",
+        hostname: testHostname("_batch_cancel_2"),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion: null,
+      });
 
       try {
         const out = await createBatchJobService(
-          [agentId, otherAgentId],
+          [agentId, otherAgentId, thirdAgentId],
           { commandType: "delete_temp_files", payload: null },
           null,
         );
         batchIds.push(out.batchId);
 
-        // agentId poll-uje i pokupi svoj posao (postaje "sent", ne sme da se
-        // otkaže) - otherAgentId nikad ne poll-uje (ostaje "pending").
+        // agentId poll-uje i pokupi svoj posao (postaje "sent" - i dalje
+        // otkazivo, agent samo nema kanal za stvarni prekid izvršavanja).
+        // thirdAgentId poll-uje i ODMAH javlja rezultat (postaje "completed"
+        // - otkazivanje ga NE sme dirati). otherAgentId nikad ne poll-uje
+        // (ostaje "pending").
         await pollJobsService(agentId);
+        const thirdJobs = await pollJobsService(thirdAgentId);
+        await submitJobResultService(thirdAgentId, thirdJobs[0].id, { success: true, exitCode: 0 });
 
         const result = await cancelBatchService(out.batchId);
-        expect(result.cancelled).toBe(1);
+        expect(result.cancelled).toBe(2);
 
         const status = await getBatchStatusService(out.batchId);
         const sentItem = status.items.find((i) => i.agentId === agentId);
-        const cancelledItem = status.items.find((i) => i.agentId === otherAgentId);
-        expect(sentItem.status).toBe("sent");
-        expect(cancelledItem.status).toBe("cancelled");
-        expect(cancelledItem.errorOutput).toBe("Otkazano od strane korisnika");
+        const pendingItem = status.items.find((i) => i.agentId === otherAgentId);
+        const completedItem = status.items.find((i) => i.agentId === thirdAgentId);
+        expect(sentItem.status).toBe("cancelled");
+        expect(sentItem.errorOutput).toBe("Otkazano od strane korisnika");
+        expect(pendingItem.status).toBe("cancelled");
+        expect(completedItem.status).toBe("completed");
 
         // Ponovno otkazivanje ne nalazi ništa novo za otkazivanje.
         const again = await cancelBatchService(out.batchId);
         expect(again.cancelled).toBe(0);
       } finally {
         await deleteTestAgent(otherAgentId);
+        await deleteTestAgent(thirdAgentId);
       }
     });
 

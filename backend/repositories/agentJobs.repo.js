@@ -243,17 +243,36 @@ export async function findPendingJobsForAgent(agentId) {
   return rows.map(mapRow);
 }
 
-// Otkazuje samo komande koje agent JOŠ NIJE pokupio (status='pending') -
-// već poslate ('sent') komande se ne mogu prekinuti (agent nema kanal za
-// prekid u toku izvršavanja, samo poll za nove poslove), pa ostaju kako jesu.
-export async function cancelPendingJobsInBatch(batchId) {
+// Otkazuje sve komande koje JOŠ NISU u završnom stanju ('pending' ili
+// 'sent') - ne samo 'pending'. Agent i dalje nema kanal za prekid usred
+// izvršavanja, pa se već poslata ('sent') komanda može fizički izvršiti na
+// mašini i posle ovoga; otkazivanje ovde markira nameru korisnika i
+// sprečava da kasniji rezultat prepiše status - kad agent pokuša da pošalje
+// rezultat, submitJobResultService ga odbija (completeJob-ov WHERE
+// status='sent' više ne pogađa), pa status ostaje 'cancelled'.
+export async function cancelActiveJobsInBatch(batchId) {
   const [result] = await pool.execute(
     `
     UPDATE agent_jobs
     SET status = 'cancelled', completed_at = NOW(), error_output = 'Otkazano od strane korisnika'
-    WHERE batch_id = ? AND status = 'pending'
+    WHERE batch_id = ? AND status IN ('pending', 'sent')
     `,
     [batchId],
+  );
+  return result.affectedRows;
+}
+
+// Isto pravilo kao cancelActiveJobsInBatch, ali za pojedinačnu komandu (van
+// batch konteksta ili jednu stavku iz batch-a) - Agent Detail "Komande" tab
+// i pojedinačne stavke na Batch Job Detail strani.
+export async function cancelJob(jobId) {
+  const [result] = await pool.execute(
+    `
+    UPDATE agent_jobs
+    SET status = 'cancelled', completed_at = NOW(), error_output = 'Otkazano od strane korisnika'
+    WHERE id = ? AND status IN ('pending', 'sent')
+    `,
+    [jobId],
   );
   return result.affectedRows;
 }

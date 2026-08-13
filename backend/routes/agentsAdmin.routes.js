@@ -23,6 +23,7 @@ import {
   getBatchStatusController,
   listJobBatchesController,
   cancelBatchController,
+  cancelJobController,
 } from "../controllers/agentJobs.controller.js";
 import { listUpdateLogController } from "../controllers/agentReleases.controller.js";
 import {
@@ -55,6 +56,11 @@ router.post("/jobs/batch", asyncHandler(createBatchJobController));
 router.get("/jobs/batch/:batchId", asyncHandler(getBatchStatusController));
 router.post("/jobs/batch/:batchId/cancel", asyncHandler(cancelBatchController));
 router.get("/jobs/batches", asyncHandler(listJobBatchesController));
+// "/jobs/:jobId/cancel" (3 segmenta: jobs, :jobId, cancel) se nikad ne
+// poklapa sa "/jobs/batch/:batchId" (3 segmenta: jobs, batch, :batchId) - ni
+// jedan pravi jobId niti "batch" ne mogu istovremeno da budu i doslovno
+// "batch" i doslovno "cancel", registracioni redosled nije bitan.
+router.post("/jobs/:jobId/cancel", asyncHandler(cancelJobController));
 
 // Admin-only - deployment grupe određuju koji release/verzija agent dobija
 // (agent sad može imati više njih - pogađa ako ima BILO KOJU od ciljanih),

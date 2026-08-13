@@ -11,7 +11,8 @@ import {
   findJobBatchById,
   listJobsForBatch,
   listJobBatches,
-  cancelPendingJobsInBatch,
+  cancelActiveJobsInBatch,
+  cancelJob,
 } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
 import { computeConnectivityStatus } from "./agents.service.js";
@@ -86,17 +87,29 @@ export async function getBatchStatusService(batchId) {
   return { batch, items };
 }
 
-// Otkazuje samo "na čekanju" stavke - već poslate ne mogu da se prekinu
-// (vidi komentar uz cancelPendingJobsInBatch). Ne baca grešku kad nema šta
-// da se otkaže (npr. sve je pokupljeno između učitavanja strane i klika) -
-// frontend samo prikaže cancelled=0 umesto toast greške.
+// Otkazuje sve stavke koje još nisu u završnom stanju (vidi komentar uz
+// cancelActiveJobsInBatch). Ne baca grešku kad nema šta da se otkaže (npr.
+// sve je već završeno između učitavanja strane i klika) - frontend samo
+// prikaže cancelled=0 umesto toast greške.
 export async function cancelBatchService(batchId) {
   const batch = await findJobBatchById(batchId);
   if (!batch) {
     throw notFound("Batch nije pronađen");
   }
-  const cancelled = await cancelPendingJobsInBatch(batchId);
+  const cancelled = await cancelActiveJobsInBatch(batchId);
   return { cancelled };
+}
+
+export async function cancelJobService(jobId) {
+  const job = await findJobById(jobId);
+  if (!job) {
+    throw notFound("Zadatak nije pronađen");
+  }
+  const affected = await cancelJob(jobId);
+  if (!affected) {
+    throw conflict("Zadatak je već završen i ne može se otkazati");
+  }
+  return await findJobById(jobId);
 }
 
 export async function listJobBatchesService({ page, limit, onlyUnfinished }) {

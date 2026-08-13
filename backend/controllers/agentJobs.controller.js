@@ -14,6 +14,7 @@ import {
   getBatchStatusService,
   listJobBatchesService,
   cancelBatchService,
+  cancelJobService,
 } from "../services/agentJobs.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
@@ -65,6 +66,13 @@ export async function listJobBatchesController(req, res) {
 
   const out = await listJobBatchesService({ page, limit, onlyUnfinished });
   res.json(out);
+}
+
+export async function cancelJobController(req, res) {
+  const jobId = parseIdParam(req, "jobId", "ID zadatka");
+
+  const job = await cancelJobService(jobId);
+  res.json(job);
 }
 
 export async function listJobsController(req, res) {

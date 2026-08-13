@@ -239,9 +239,19 @@
           <div v-for="j in jobs" :key="j.id" class="rounded-lg border bg-white p-3 text-sm">
             <div class="flex items-start justify-between gap-3">
               <div class="font-medium">{{ COMMAND_LABELS[j.commandType] || j.commandType }}</div>
-              <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(j.status)">
-                {{ j.status }}
-              </span>
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  v-if="j.status === 'pending' || j.status === 'sent'"
+                  :disabled="cancellingJobId === j.id"
+                  @click="cancelJob(j)"
+                  class="text-red-600 hover:underline text-xs whitespace-nowrap"
+                >
+                  {{ cancellingJobId === j.id ? 'Otkazujem…' : 'Otkaži' }}
+                </button>
+                <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(j.status)">
+                  {{ j.status }}
+                </span>
+              </div>
             </div>
             <div class="text-xs text-slate-500 mt-1">
               Kreirano: {{ fmtDate(j.createdAt) }}
@@ -249,8 +259,16 @@
               <span v-if="j.exitCode !== null"> · Exit code: {{ j.exitCode }}</span>
               <span v-if="j.durationMs !== null"> · {{ j.durationMs }}ms</span>
             </div>
-            <div v-if="j.output" class="mt-1 text-xs bg-slate-50 rounded p-2 whitespace-pre-wrap break-all">{{ j.output }}</div>
-            <div v-if="j.errorOutput" class="mt-1 text-xs bg-red-50 text-red-700 rounded p-2 whitespace-pre-wrap break-all">{{ j.errorOutput }}</div>
+            <div v-if="j.output" class="relative mt-1">
+              <button @click="copyToClipboard(j.output, 'Izlaz kopiran!')"
+                class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz">📋</button>
+              <div class="text-xs bg-slate-50 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ j.output }}</div>
+            </div>
+            <div v-if="j.errorOutput" class="relative mt-1">
+              <button @click="copyToClipboard(j.errorOutput, 'Izlaz greške kopiran!')"
+                class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz greške">📋</button>
+              <div class="text-xs bg-red-50 text-red-700 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ j.errorOutput }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -415,6 +433,7 @@ const jobs = ref([])
 const jobsLoading = ref(false)
 const jobsLoaded = ref(false)
 const jobsPolling = ref(false)
+const cancellingJobId = ref(null)
 const fixingPresetId = ref('')
 
 const updateLog = ref([])
@@ -609,6 +628,29 @@ async function loadJobs(isBackgroundPoll = false) {
     console.error(err)
   } finally {
     if (!isBackgroundPoll) jobsLoading.value = false
+  }
+}
+
+// Otkazuje pojedinačnu komandu koja još nije Završena/Neuspešna (pending
+// ili sent) - isti backend endpoint kao "Otkaži" na Batch Job Detail strani.
+async function cancelJob(job) {
+  const ok = await askConfirm(
+    `Otkazati komandu "${COMMAND_LABELS[job.commandType] || job.commandType}"?`,
+    { title: 'Otkazivanje komande' },
+  )
+  if (!ok) return
+
+  cancellingJobId.value = job.id
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/jobs/${job.id}/cancel`, { method: 'POST' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otkazivanju komande'))
+    showToast('Komanda otkazana')
+    await loadJobs()
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri otkazivanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    cancellingJobId.value = null
   }
 }
 
