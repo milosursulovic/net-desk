@@ -22,12 +22,6 @@ import {
   updateAgentServiceFilesMismatch,
 } from "../repositories/agents.repo.js";
 import {
-  setAgentArchGroup,
-  listAgentGroups,
-  addAgentGroup,
-  removeAgentGroup,
-} from "../repositories/agentGroups.repo.js";
-import {
   listDeploymentGroups,
   listAgentDeploymentGroups,
   addAgentDeploymentGroup,
@@ -162,7 +156,6 @@ export async function listAgentsService({
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
-  archGroup,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -185,7 +178,6 @@ export async function listAgentsService({
     agentOfflineIpOnline,
     serviceFilesMismatch,
     processKillExempt,
-    archGroup,
     limit,
     offset,
   });
@@ -243,7 +235,6 @@ export async function getAgentService(id) {
   const monitoring = await findAgentMonitoring(id);
   const windowsUpdateStatus = await findAgentWindowsUpdateStatus(agent.ipEntryId);
   const ipEntry = await findAgentIpEntry(agent.ipEntryId);
-  const groups = await listAgentGroups(id);
   const deploymentGroups = await listAgentDeploymentGroups(id);
   return {
     ...agent,
@@ -252,7 +243,6 @@ export async function getAgentService(id) {
     windowsUpdateStatus,
     computerIp: ipEntry?.ip ?? null,
     site: ipEntry?.site ?? null,
-    groups,
     // Zamenjuje findAgentById-jev GROUP_CONCAT string (isto polje ime, samo
     // display-only na listi) pravim nizom - detalj strana radi add/remove
     // pojedinačnih grupa preko njega.
@@ -262,8 +252,7 @@ export async function getAgentService(id) {
 
 // Deployment grupe direktno pokreću auto-update targeting (checkForUpdateService
 // u agentReleases.service.js gleda presek agent-ovih grupa i release-ovih
-// ciljanih grupa) - admin-only u ruti, veći blast radius od generičkih
-// agent_groups tagova (arhitektura/proizvoljni), koji NE utiču na update.
+// ciljanih grupa) - zato je add/remove admin-only u ruti.
 export async function addAgentDeploymentGroupService(id, groupName) {
   const agent = await findAgentById(id);
   if (!agent) {
@@ -292,28 +281,6 @@ export async function setAgentProcessKillExemptService(id, exempt) {
     throw notFound("Agent nije pronađen");
   }
   return await findAgentById(id);
-}
-
-// Ručno dodavanje/uklanjanje proizvoljne dodatne grupe - poredano uz
-// deployment grupe (agent_deployment_groups) i automatski popunjenu
-// arhitekturu (setAgentArchGroup), preko iste opšte agent_groups tabele.
-// NE utiče na update targeting (za razliku od deployment grupa).
-export async function addAgentGroupService(id, groupName) {
-  const agent = await findAgentById(id);
-  if (!agent) {
-    throw notFound("Agent nije pronađen");
-  }
-  await addAgentGroup(id, groupName);
-  return await getAgentService(id);
-}
-
-export async function removeAgentGroupService(id, groupName) {
-  const agent = await findAgentById(id);
-  if (!agent) {
-    throw notFound("Agent nije pronađen");
-  }
-  await removeAgentGroup(id, groupName);
-  return await getAgentService(id);
 }
 
 export async function revokeAgentService(id) {
@@ -358,18 +325,6 @@ function extractOsArchitecture(body) {
   const os = body?.OS ?? body?.os;
   if (!os) return undefined;
   return emptyToNull(os.Architecture ?? os.architecture);
-}
-
-// Mapira WMI-jev "64-bit"/"32-bit" (već sakupljeno na svakom punom
-// inventory sync-u preko os_architecture - vidi extractOsArchitecture iznad)
-// na x64/x86 agent_groups tag - postojeći podatak, ne novo polje sa agent
-// strane.
-function mapOsArchitectureToGroup(architecture) {
-  if (!architecture) return undefined;
-  const normalized = String(architecture).toLowerCase();
-  if (normalized.includes("64")) return "x64";
-  if (normalized.includes("32")) return "x86";
-  return undefined;
 }
 
 // hasIzvolteFolder je nullable na C# strani (vidi InventoryModels.cs) - kad
@@ -524,11 +479,6 @@ export async function syncAgentInventory(agent, body) {
         ({ mismatch, details }) => updateAgentServiceFilesMismatch(agent.id, mismatch, details),
       ),
     );
-  }
-
-  const archGroup = mapOsArchitectureToGroup(extractOsArchitecture(body));
-  if (archGroup) {
-    otherTasks.push(setAgentArchGroup(agent.id, archGroup));
   }
 
   const [metadata] = await Promise.all([metadataPromise, ...otherTasks]);

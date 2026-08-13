@@ -8,8 +8,6 @@ import {
   listAgentsService,
   listAgentIdsService,
   setAgentProcessKillExemptService,
-  addAgentGroupService,
-  removeAgentGroupService,
   addAgentDeploymentGroupService,
   removeAgentDeploymentGroupService,
   agentFilterOptionsService,
@@ -143,33 +141,6 @@ describe("agents.service (integration, real DB)", () => {
 
     await expect(
       setAgentProcessKillExemptService(999999999, true),
-    ).rejects.toMatchObject({ status: 404 });
-  });
-
-  it("addAgentGroupService/removeAgentGroupService manage arbitrary extra groups, independent of the auto-populated arch tag", async () => {
-    const enrolled = await enrollAgent({ hostname: testHostname() });
-    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
-    const byUid = await findAgentByUid(enrolled.agentId);
-    agentId = byUid.id;
-
-    const afterAdd = await addAgentGroupService(agentId, "pilot-batch");
-    expect(afterAdd.groups).toEqual(["pilot-batch"]);
-
-    // Duplikat je no-op (INSERT IGNORE) - ostaje jedan unos.
-    const afterDuplicateAdd = await addAgentGroupService(agentId, "pilot-batch");
-    expect(afterDuplicateAdd.groups).toEqual(["pilot-batch"]);
-
-    const afterSecondAdd = await addAgentGroupService(agentId, "night-shift");
-    expect(afterSecondAdd.groups).toEqual(["night-shift", "pilot-batch"]);
-
-    const afterRemove = await removeAgentGroupService(agentId, "pilot-batch");
-    expect(afterRemove.groups).toEqual(["night-shift"]);
-
-    await expect(
-      addAgentGroupService(999999999, "whatever"),
-    ).rejects.toMatchObject({ status: 404 });
-    await expect(
-      removeAgentGroupService(999999999, "whatever"),
     ).rejects.toMatchObject({ status: 404 });
   });
 
@@ -701,53 +672,6 @@ describe("agents.service (integration, real DB)", () => {
       });
       expect(resolved.items.map((a) => a.id)).not.toContain(agentId);
     });
-
-    it(
-      "filters by archGroup, populated from the OS.Architecture already reported " +
-        "on inventory sync (no separate agent-side field)",
-      async () => {
-        const ip = testIp();
-        const hostname = testHostname();
-        const enrolled = await enrollAgent({ hostname });
-        const { findAgentByUid } = await import("../../repositories/agents.repo.js");
-        const found = await findAgentByUid(enrolled.agentId);
-        agentId = found.id;
-
-        const before = await listAgentsService({
-          page: 1, limit: 50, search: hostname, status: "all", archGroup: "x64",
-        });
-        expect(before.items.map((a) => a.id)).not.toContain(agentId);
-
-        const synced = await syncAgentInventory(found, {
-          ip,
-          hostname,
-          OS: { Caption: "Microsoft Windows 10 Pro", Architecture: "64-bit" },
-        });
-        ipEntryId = synced.ipEntryId;
-
-        const matched = await listAgentsService({
-          page: 1, limit: 50, search: hostname, status: "all", archGroup: "x64",
-        });
-        expect(matched.items.map((a) => a.id)).toContain(agentId);
-        const matchedAgent = matched.items.find((a) => a.id === agentId);
-        expect(matchedAgent.extraGroups).toBe("x64");
-
-        const notX86 = await listAgentsService({
-          page: 1, limit: 50, search: hostname, status: "all", archGroup: "x86",
-        });
-        expect(notX86.items.map((a) => a.id)).not.toContain(agentId);
-
-        // Sledeći sync sa drugom arhitekturom (npr. re-imaged mašina)
-        // zamenjuje stari tag umesto da ga dodaje uz novi.
-        const reloaded = await findAgentById(agentId);
-        await syncAgentInventory(reloaded, {
-          ip,
-          OS: { Caption: "Microsoft Windows 10 Pro", Architecture: "32-bit" },
-        });
-        const switched = await getAgentService(agentId);
-        expect(switched.extraGroups).toBe("x86");
-      },
-    );
 
     it("filters by enrolledFrom/enrolledTo date range", async () => {
       const hostname = testHostname();

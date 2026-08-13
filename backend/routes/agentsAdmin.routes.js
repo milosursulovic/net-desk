@@ -11,8 +11,6 @@ import {
   getAgentController,
   revokeAgentController,
   setProcessKillExemptController,
-  addAgentGroupController,
-  removeAgentGroupController,
   addAgentDeploymentGroupController,
   removeAgentDeploymentGroupController,
 } from "../controllers/agents.controller.js";
@@ -63,10 +61,6 @@ router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 router.post("/:id/deployment-groups", requireRole("admin"), asyncHandler(addAgentDeploymentGroupController));
 router.delete("/:id/deployment-groups/:groupName", requireRole("admin"), asyncHandler(removeAgentDeploymentGroupController));
 router.patch("/:id/process-kill-exempt", asyncHandler(setProcessKillExemptController));
-// Operator nivo, isto kao process-kill-exempt iznad - za razliku od
-// deployment-groups, ne utiče na update rollout.
-router.post("/:id/groups", asyncHandler(addAgentGroupController));
-router.delete("/:id/groups/:groupName", asyncHandler(removeAgentGroupController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));

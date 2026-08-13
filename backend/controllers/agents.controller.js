@@ -3,7 +3,6 @@ import {
   HeartbeatSchema,
   InventorySyncSchema,
   ProcessKillExemptSchema,
-  AgentGroupSchema,
 } from "../dtos/agents.dto.js";
 import { AgentDeploymentGroupSchema } from "../dtos/deploymentGroups.dto.js";
 import {
@@ -18,8 +17,6 @@ import {
   revokeAgentService,
   syncAgentInventory,
   setAgentProcessKillExemptService,
-  addAgentGroupService,
-  removeAgentGroupService,
   addAgentDeploymentGroupService,
   removeAgentDeploymentGroupService,
 } from "../services/agents.service.js";
@@ -31,7 +28,6 @@ import { sendTablePdf } from "../utils/pdfTable.js";
 
 const STATUS_FILTERS = new Set(["active", "revoked"]);
 const CONNECTIVITY_FILTERS = new Set(["online", "stale", "offline", "unknown"]);
-const ARCH_GROUP_FILTERS = new Set(["x86", "x64"]);
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateFilter(value) {
@@ -101,7 +97,6 @@ function parseAgentListFilters(query) {
     agentOfflineIpOnline: query.agentOfflineIpOnline === "true",
     serviceFilesMismatch: query.serviceFilesMismatch === "true",
     processKillExempt: query.processKillExempt === "true",
-    archGroup: ARCH_GROUP_FILTERS.has(query.archGroup) ? query.archGroup : undefined,
   };
 }
 
@@ -176,25 +171,6 @@ export async function setProcessKillExemptController(req, res) {
   if (!parsed.success) throw badRequest("Neispravan format podataka");
 
   const agent = await setAgentProcessKillExemptService(id, parsed.data.processKillExempt);
-  res.json(agent);
-}
-
-export async function addAgentGroupController(req, res) {
-  const id = parseIdParam(req, "id", "ID agenta");
-
-  const parsed = AgentGroupSchema.safeParse(req.body || {});
-  if (!parsed.success) throw badRequest("Neispravan format podataka");
-
-  const agent = await addAgentGroupService(id, parsed.data.groupName);
-  res.json(agent);
-}
-
-export async function removeAgentGroupController(req, res) {
-  const id = parseIdParam(req, "id", "ID agenta");
-  const groupName = decodeURIComponent(req.params.groupName || "").trim();
-  if (!groupName) throw badRequest("Neispravan naziv grupe");
-
-  const agent = await removeAgentGroupService(id, groupName);
   res.json(agent);
 }
 

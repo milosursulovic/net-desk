@@ -93,41 +93,6 @@
           />
         </div>
 
-        <div class="flex flex-col gap-2 pt-2 border-t">
-          <label class="text-sm font-medium">Dodatne grupe</label>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <span
-              v-for="g in agent.groups"
-              :key="g"
-              class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
-            >
-              {{ g }}
-              <button
-                type="button"
-                @click="removeExtraGroup(g)"
-                class="text-slate-400 hover:text-red-600"
-                aria-label="Ukloni grupu"
-              >✖️</button>
-            </span>
-            <span v-if="!agent.groups?.length" class="text-sm text-slate-400">—</span>
-          </div>
-          <div class="flex gap-2">
-            <input
-              v-model.trim="newGroupName"
-              type="text"
-              class="app-input flex-1 text-sm"
-              placeholder="Naziv nove grupe..."
-              @keydown.enter.prevent="addExtraGroup"
-            />
-            <button
-              type="button"
-              :disabled="addingGroup"
-              @click="addExtraGroup"
-              class="px-3 py-1.5 border rounded-lg text-sm hover:bg-slate-50"
-            >Dodaj</button>
-          </div>
-        </div>
-
         <div class="flex items-center gap-2 pt-2 border-t">
           <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <input type="checkbox" v-model="processKillExemptInput" @change="saveProcessKillExempt" class="rounded" />
@@ -393,8 +358,6 @@ const agent = ref(null)
 const loading = ref(false)
 const loadError = ref('')
 const processKillExemptInput = ref(false)
-const newGroupName = ref('')
-const addingGroup = ref(false)
 
 const jobs = ref([])
 const jobsLoading = ref(false)
@@ -520,41 +483,6 @@ async function saveProcessKillExempt() {
     console.error(err)
     processKillExemptInput.value = !value
     showToast('Greška pri čuvanju whitelist-e', { prefix: '❌ ', duration: 3000 })
-  }
-}
-
-async function addExtraGroup() {
-  const name = newGroupName.value.trim()
-  if (!name) return
-  addingGroup.value = true
-  try {
-    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/groups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ groupName: name }),
-    })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju grupe'))
-    agent.value = await res.json()
-    newGroupName.value = ''
-  } catch (err) {
-    console.error(err)
-    showToast(err.message || 'Greška pri dodavanju grupe', { prefix: '❌ ', duration: 3000 })
-  } finally {
-    addingGroup.value = false
-  }
-}
-
-async function removeExtraGroup(name) {
-  try {
-    const res = await fetchWithAuth(
-      `/api/protected/agents/${route.params.id}/groups/${encodeURIComponent(name)}`,
-      { method: 'DELETE' },
-    )
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju grupe'))
-    agent.value = await res.json()
-  } catch (err) {
-    console.error(err)
-    showToast(err.message || 'Greška pri uklanjanju grupe', { prefix: '❌ ', duration: 3000 })
   }
 }
 
