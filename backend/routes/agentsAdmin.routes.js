@@ -11,6 +11,10 @@ import {
   getAgentController,
   revokeAgentController,
   setProcessKillExemptController,
+  addAgentGroupController,
+  removeAgentGroupController,
+  addAgentDeploymentGroupController,
+  removeAgentDeploymentGroupController,
 } from "../controllers/agents.controller.js";
 import {
   createJobController,
@@ -21,10 +25,7 @@ import {
   listJobBatchesController,
   cancelBatchController,
 } from "../controllers/agentJobs.controller.js";
-import {
-  setDeploymentGroupController,
-  listUpdateLogController,
-} from "../controllers/agentReleases.controller.js";
+import { listUpdateLogController } from "../controllers/agentReleases.controller.js";
 import {
   startVncSessionController,
   endVncSessionController,
@@ -56,10 +57,16 @@ router.get("/jobs/batch/:batchId", asyncHandler(getBatchStatusController));
 router.post("/jobs/batch/:batchId/cancel", asyncHandler(cancelBatchController));
 router.get("/jobs/batches", asyncHandler(listJobBatchesController));
 
-// Admin-only - deployment grupa određuje koji release/verzija agent
-// dobija, greška ovde pogađa update rollout za tu mašinu.
-router.patch("/:id/deployment-group", requireRole("admin"), asyncHandler(setDeploymentGroupController));
+// Admin-only - deployment grupe određuju koji release/verzija agent dobija
+// (agent sad može imati više njih - pogađa ako ima BILO KOJU od ciljanih),
+// greška ovde pogađa update rollout za tu mašinu.
+router.post("/:id/deployment-groups", requireRole("admin"), asyncHandler(addAgentDeploymentGroupController));
+router.delete("/:id/deployment-groups/:groupName", requireRole("admin"), asyncHandler(removeAgentDeploymentGroupController));
 router.patch("/:id/process-kill-exempt", asyncHandler(setProcessKillExemptController));
+// Operator nivo, isto kao process-kill-exempt iznad - za razliku od
+// deployment-groups, ne utiče na update rollout.
+router.post("/:id/groups", asyncHandler(addAgentGroupController));
+router.delete("/:id/groups/:groupName", asyncHandler(removeAgentGroupController));
 router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));

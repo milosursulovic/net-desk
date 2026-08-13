@@ -25,6 +25,12 @@ export const ProcessKillExemptSchema = z.object({
   processKillExempt: z.boolean(),
 });
 
+// Slobodan naziv (nije vezan za groups_list, isto ograničenje kao
+// agent_groups.group_name VARCHAR(100)).
+export const AgentGroupSchema = z.object({
+  groupName: z.string().trim().min(1).max(100),
+});
+
 export const HeartbeatSchema = z.object({
   hostname: z.string().max(255).nullable().optional(),
   agentVersion: z.string().max(50).nullable().optional(),

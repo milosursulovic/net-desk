@@ -19,6 +19,7 @@ import activityLogRoutes from "./activityLog.routes.js";
 import appSettingsRoutes from "./appSettings.routes.js";
 import serverHealthRoutes from "./serverHealth.routes.js";
 import groupsRoutes from "./groups.routes.js";
+import deploymentGroupsRoutes from "./deploymentGroups.routes.js";
 import { writeRequiresOperator } from "../middlewares/requireRole.middleware.js";
 
 const router = express.Router();
@@ -54,5 +55,6 @@ router.use("/activity-log", activityLogRoutes);
 router.use("/settings", appSettingsRoutes);
 router.use("/server-health", serverHealthRoutes);
 router.use("/groups", groupsRoutes);
+router.use("/deployment-groups", deploymentGroupsRoutes);
 
 export default router;

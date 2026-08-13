@@ -20,10 +20,10 @@ export async function deleteGroupService(name) {
   if (!usage) {
     throw notFound("Grupa nije pronađena");
   }
-  const usedCount = usage.departmentCount + usage.deploymentCount;
+  const usedCount = usage.departmentCount;
   if (usedCount > 0) {
     throw conflict(
-      `Grupa "${name}" se koristi na ${usedCount} mesta (odeljenje/deployment) - ne može se obrisati dok je u upotrebi.`,
+      `Grupa "${name}" se koristi na ${usedCount} mesta (odeljenje) - ne može se obrisati dok je u upotrebi.`,
     );
   }
 

@@ -13,6 +13,10 @@ const props = defineProps({
   options: { type: Array, default: () => [] },
   isAdmin: { type: Boolean, default: false },
   allowEmpty: { type: Boolean, default: true },
+  // Deployment grupe (agenti) i odeljenja (Home) su odvojene predefinisane
+  // liste sada - podrazumevano ostaje deljena groups_list, ali detalj
+  // strana agenta prosleđuje '/api/protected/deployment-groups'.
+  createEndpoint: { type: String, default: '/api/protected/groups' },
 })
 const emit = defineEmits(['update:modelValue', 'group-added', 'error'])
 
@@ -35,7 +39,7 @@ async function addGroup() {
   if (!name) return
   adding.value = true
   try {
-    const res = await fetchWithAuth('/api/protected/groups', {
+    const res = await fetchWithAuth(props.createEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),

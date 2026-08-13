@@ -18,11 +18,21 @@ import {
   findAgentMonitoring,
   findAgentWindowsUpdateStatus,
   findAgentIpEntry,
-  updateAgentDeploymentGroup,
   updateAgentProcessKillExempt,
   updateAgentServiceFilesMismatch,
 } from "../repositories/agents.repo.js";
-import { setAgentArchGroup } from "../repositories/agentGroups.repo.js";
+import {
+  setAgentArchGroup,
+  listAgentGroups,
+  addAgentGroup,
+  removeAgentGroup,
+} from "../repositories/agentGroups.repo.js";
+import {
+  listDeploymentGroups,
+  listAgentDeploymentGroups,
+  addAgentDeploymentGroup,
+  removeAgentDeploymentGroup,
+} from "../repositories/deploymentGroups.repo.js";
 import { isFeatureEnabled } from "./appSettings.service.js";
 import { checkServiceFilesMismatchService } from "./agentReleases.service.js";
 import {
@@ -46,7 +56,6 @@ import {
 import { ingestEventLogs } from "./eventLogs.service.js";
 import { ingestDnsQueries } from "./dnsLogs.service.js";
 import { ingestProcessDetections } from "./processDetections.service.js";
-import { DEPLOYMENT_GROUPS } from "../dtos/agentReleases.dto.js";
 import { listDistinctReleaseDeploymentGroups } from "../repositories/agentReleases.repo.js";
 import { notFound } from "../utils/httpError.js";
 
@@ -202,18 +211,18 @@ export async function agentFilterOptionsService(site) {
   const version = await listDistinctAgentVersions(site);
   const department = await listDistinctDepartments(site);
 
-  // Deployment grupa je slobodan tekst (ne stroga enumeracija) - predlozi su
-  // unija klasičnih vrednosti (test/it/pilot/rest), grupa već u upotrebi na
-  // agentima/release-ima, i postojećih odeljenja (organizacija najčešće želi
-  // grupe usklađene sa svojim odeljenjima). Site-scope se primenjuje samo na
-  // agente/odeljenja - releases nisu site-vezani.
-  const [agentGroups, releaseGroups] = await Promise.all([
+  // Deployment grupe su sad ODVOJENE od odeljenja (deployment_groups_list,
+  // ne groups_list) - predlozi su unija predefinisane liste, grupa već u
+  // upotrebi na agentima, i grupa koje release-i ciljaju. Site-scope se
+  // primenjuje samo na agente - releases nisu site-vezani.
+  const [predefined, agentGroups, releaseGroups] = await Promise.all([
+    listDeploymentGroups(),
     listDistinctAgentDeploymentGroups(site),
     listDistinctReleaseDeploymentGroups(),
   ]);
-  const deploymentGroups = [
-    ...new Set([...DEPLOYMENT_GROUPS, ...agentGroups, ...releaseGroups, ...department]),
-  ].sort((a, b) => a.localeCompare(b));
+  const deploymentGroups = [...new Set([...predefined, ...agentGroups, ...releaseGroups])].sort(
+    (a, b) => a.localeCompare(b),
+  );
 
   return { os, version, department, deploymentGroups };
 }
@@ -234,6 +243,8 @@ export async function getAgentService(id) {
   const monitoring = await findAgentMonitoring(id);
   const windowsUpdateStatus = await findAgentWindowsUpdateStatus(agent.ipEntryId);
   const ipEntry = await findAgentIpEntry(agent.ipEntryId);
+  const groups = await listAgentGroups(id);
+  const deploymentGroups = await listAgentDeploymentGroups(id);
   return {
     ...agent,
     connectivityStatus: computeConnectivityStatus(agent.lastHeartbeatAt),
@@ -241,15 +252,34 @@ export async function getAgentService(id) {
     windowsUpdateStatus,
     computerIp: ipEntry?.ip ?? null,
     site: ipEntry?.site ?? null,
+    groups,
+    // Zamenjuje findAgentById-jev GROUP_CONCAT string (isto polje ime, samo
+    // display-only na listi) pravim nizom - detalj strana radi add/remove
+    // pojedinačnih grupa preko njega.
+    deploymentGroups,
   };
 }
 
-export async function setAgentDeploymentGroupService(id, deploymentGroup) {
-  const affected = await updateAgentDeploymentGroup(id, deploymentGroup);
-  if (!affected) {
+// Deployment grupe direktno pokreću auto-update targeting (checkForUpdateService
+// u agentReleases.service.js gleda presek agent-ovih grupa i release-ovih
+// ciljanih grupa) - admin-only u ruti, veći blast radius od generičkih
+// agent_groups tagova (arhitektura/proizvoljni), koji NE utiču na update.
+export async function addAgentDeploymentGroupService(id, groupName) {
+  const agent = await findAgentById(id);
+  if (!agent) {
     throw notFound("Agent nije pronađen");
   }
-  return await findAgentById(id);
+  await addAgentDeploymentGroup(id, groupName);
+  return await getAgentService(id);
+}
+
+export async function removeAgentDeploymentGroupService(id, groupName) {
+  const agent = await findAgentById(id);
+  if (!agent) {
+    throw notFound("Agent nije pronađen");
+  }
+  await removeAgentDeploymentGroup(id, groupName);
+  return await getAgentService(id);
 }
 
 // "Whitelist" - agent i dalje detektuje/loguje procese sa watchlist-e na ovom
@@ -262,6 +292,28 @@ export async function setAgentProcessKillExemptService(id, exempt) {
     throw notFound("Agent nije pronađen");
   }
   return await findAgentById(id);
+}
+
+// Ručno dodavanje/uklanjanje proizvoljne dodatne grupe - poredano uz
+// deployment grupe (agent_deployment_groups) i automatski popunjenu
+// arhitekturu (setAgentArchGroup), preko iste opšte agent_groups tabele.
+// NE utiče na update targeting (za razliku od deployment grupa).
+export async function addAgentGroupService(id, groupName) {
+  const agent = await findAgentById(id);
+  if (!agent) {
+    throw notFound("Agent nije pronađen");
+  }
+  await addAgentGroup(id, groupName);
+  return await getAgentService(id);
+}
+
+export async function removeAgentGroupService(id, groupName) {
+  const agent = await findAgentById(id);
+  if (!agent) {
+    throw notFound("Agent nije pronađen");
+  }
+  await removeAgentGroup(id, groupName);
+  return await getAgentService(id);
 }
 
 export async function revokeAgentService(id) {

@@ -30,7 +30,6 @@ export async function findAgentByUid(agentUid) {
       api_key_hash AS apiKeyHash,
       ip_entry_id AS ipEntryId,
       agent_version AS agentVersion,
-      deployment_group AS deploymentGroup,
       status
     FROM agents
     WHERE agent_uid = ?
@@ -53,7 +52,6 @@ export async function findAgentById(id) {
       os_version AS osVersion,
       os_build AS osBuild,
       agent_version AS agentVersion,
-      deployment_group AS deploymentGroup,
       process_kill_exempt AS processKillExempt,
       service_files_mismatch AS serviceFilesMismatch,
       service_files_mismatch_details AS serviceFilesMismatchDetails,
@@ -160,7 +158,9 @@ function buildAgentsWhereClause({
     params.push(connectivityStatus);
   }
   if (deploymentGroup) {
-    whereParts.push("agents.deployment_group = ?");
+    whereParts.push(
+      "EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id AND adg.group_name = ?)",
+    );
     params.push(deploymentGroup);
   }
   if (os) {
@@ -270,7 +270,8 @@ export async function listAgents(filters) {
       agents.os_version AS osVersion,
       agents.os_build AS osBuild,
       agents.agent_version AS agentVersion,
-      agents.deployment_group AS deploymentGroup,
+      (SELECT GROUP_CONCAT(group_name ORDER BY group_name SEPARATOR ', ')
+       FROM agent_deployment_groups WHERE agent_id = agents.id) AS deploymentGroups,
       agents.service_files_mismatch AS serviceFilesMismatch,
       agents.service_files_mismatch_details AS serviceFilesMismatchDetails,
       agents.status,
@@ -332,19 +333,26 @@ export async function listDistinctAgentOs(site) {
 }
 
 export async function listDistinctAgentDeploymentGroups(site) {
-  const whereParts = ["agents.deployment_group IS NOT NULL", "agents.deployment_group != ''"];
   const params = [];
+  let siteWhere = "";
   let join = "";
   if (site) {
     join = AGENTS_IP_ENTRY_JOIN;
-    whereParts.push("ie.site = ?");
+    siteWhere = "WHERE ie.site = ?";
     params.push(site);
   }
   const [rows] = await pool.execute(
-    `SELECT DISTINCT agents.deployment_group FROM agents ${join} WHERE ${whereParts.join(" AND ")} ORDER BY agents.deployment_group`,
+    `
+    SELECT DISTINCT adg.group_name
+    FROM agent_deployment_groups adg
+    JOIN agents ON agents.id = adg.agent_id
+    ${join}
+    ${siteWhere}
+    ORDER BY adg.group_name
+    `,
     params,
   );
-  return rows.map((r) => r.deployment_group);
+  return rows.map((r) => r.group_name);
 }
 
 // Prirodno sortiranje ("1.2.10" posle "1.2.9", ne pre) - CAST na svaki
@@ -530,14 +538,6 @@ export async function updateAgentVersion(agentId, version) {
     version,
     agentId,
   ]);
-}
-
-export async function updateAgentDeploymentGroup(id, deploymentGroup) {
-  const [result] = await pool.execute(
-    `UPDATE agents SET deployment_group = ? WHERE id = ?`,
-    [deploymentGroup, id],
-  );
-  return result.affectedRows;
 }
 
 // Rezultat checkServiceFilesMismatchService (agentReleases.service.js),

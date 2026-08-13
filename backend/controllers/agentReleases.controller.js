@@ -2,7 +2,6 @@ import multer from "multer";
 import {
   CreateReleaseSchema,
   UpdateReportSchema,
-  DeploymentGroupSchema,
   UpdateReleaseGroupsSchema,
 } from "../dtos/agentReleases.dto.js";
 import {
@@ -16,7 +15,6 @@ import {
   updateReleaseGroupsService,
   listReleaseFilesOnDiskService,
 } from "../services/agentReleases.service.js";
-import { setAgentDeploymentGroupService } from "../services/agents.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { badRequest } from "../utils/httpError.js";
@@ -83,16 +81,6 @@ export async function updateReleaseGroupsController(req, res) {
 
   const release = await updateReleaseGroupsService(id, parsed.data.deploymentGroups);
   res.json(release);
-}
-
-export async function setDeploymentGroupController(req, res) {
-  const id = parseIdParam(req, "id", "ID agenta");
-
-  const parsed = DeploymentGroupSchema.safeParse(req.body || {});
-  if (!parsed.success) throw badRequest("Neispravan format podataka");
-
-  const agent = await setAgentDeploymentGroupService(id, parsed.data.deploymentGroup);
-  res.json(agent);
 }
 
 export async function listUpdateLogController(req, res) {

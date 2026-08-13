@@ -7,8 +7,11 @@ import {
   revokeAgentService,
   listAgentsService,
   listAgentIdsService,
-  setAgentDeploymentGroupService,
   setAgentProcessKillExemptService,
+  addAgentGroupService,
+  removeAgentGroupService,
+  addAgentDeploymentGroupService,
+  removeAgentDeploymentGroupService,
   agentFilterOptionsService,
 } from "../../services/agents.service.js";
 import {
@@ -140,6 +143,33 @@ describe("agents.service (integration, real DB)", () => {
 
     await expect(
       setAgentProcessKillExemptService(999999999, true),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("addAgentGroupService/removeAgentGroupService manage arbitrary extra groups, independent of the auto-populated arch tag", async () => {
+    const enrolled = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const byUid = await findAgentByUid(enrolled.agentId);
+    agentId = byUid.id;
+
+    const afterAdd = await addAgentGroupService(agentId, "pilot-batch");
+    expect(afterAdd.groups).toEqual(["pilot-batch"]);
+
+    // Duplikat je no-op (INSERT IGNORE) - ostaje jedan unos.
+    const afterDuplicateAdd = await addAgentGroupService(agentId, "pilot-batch");
+    expect(afterDuplicateAdd.groups).toEqual(["pilot-batch"]);
+
+    const afterSecondAdd = await addAgentGroupService(agentId, "night-shift");
+    expect(afterSecondAdd.groups).toEqual(["night-shift", "pilot-batch"]);
+
+    const afterRemove = await removeAgentGroupService(agentId, "pilot-batch");
+    expect(afterRemove.groups).toEqual(["night-shift"]);
+
+    await expect(
+      addAgentGroupService(999999999, "whatever"),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      removeAgentGroupService(999999999, "whatever"),
     ).rejects.toMatchObject({ status: 404 });
   });
 
@@ -440,7 +470,7 @@ describe("agents.service (integration, real DB)", () => {
       const found = await findAgentByUid(enrolled.agentId);
       agentId = found.id;
 
-      await setAgentDeploymentGroupService(agentId, "pilot");
+      await addAgentDeploymentGroupService(agentId, "pilot");
 
       const pilot = await listAgentsService({
         page: 1,
@@ -472,7 +502,7 @@ describe("agents.service (integration, real DB)", () => {
       agentId = found.id;
 
       const customGroup = `VITEST_DEPT_${Date.now()}`;
-      await setAgentDeploymentGroupService(agentId, customGroup);
+      await addAgentDeploymentGroupService(agentId, customGroup);
 
       const matched = await listAgentsService({
         page: 1,
@@ -860,7 +890,7 @@ describe("agents.service (integration, real DB)", () => {
     });
   });
 
-  it("agentFilterOptionsService suggests deployment groups from classic values, agent groups in use, AND departments", async () => {
+  it("agentFilterOptionsService suggests deployment groups from the predefined list and groups in use, but NOT departments (separate lists now)", async () => {
     const hostname = testHostname();
     const enrolled = await enrollAgent({ hostname });
     const { findAgentByUid } = await import("../../repositories/agents.repo.js");
@@ -868,7 +898,7 @@ describe("agents.service (integration, real DB)", () => {
     agentId = found.id;
 
     const customGroup = `VITEST_GROUP_${Date.now()}`;
-    await setAgentDeploymentGroupService(agentId, customGroup);
+    await addAgentDeploymentGroupService(agentId, customGroup);
 
     const uniqueDept = `VITEST_DEPT_${Date.now()}`;
     const entry = await createIpEntryService({
@@ -882,6 +912,29 @@ describe("agents.service (integration, real DB)", () => {
     const out = await agentFilterOptionsService();
     expect(out.deploymentGroups).toEqual(expect.arrayContaining(["test", "it", "pilot", "rest"]));
     expect(out.deploymentGroups).toContain(customGroup);
-    expect(out.deploymentGroups).toContain(uniqueDept);
+    expect(out.deploymentGroups).not.toContain(uniqueDept);
+  });
+
+  it("addAgentDeploymentGroupService/removeAgentDeploymentGroupService manage an agent's multiple deployment groups", async () => {
+    const enrolled = await enrollAgent({ hostname: testHostname() });
+    const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+    const byUid = await findAgentByUid(enrolled.agentId);
+    agentId = byUid.id;
+
+    const afterAdd = await addAgentDeploymentGroupService(agentId, "pilot");
+    expect(afterAdd.deploymentGroups).toEqual(["pilot"]);
+
+    const afterSecondAdd = await addAgentDeploymentGroupService(agentId, "test");
+    expect(afterSecondAdd.deploymentGroups).toEqual(["pilot", "test"]);
+
+    const afterRemove = await removeAgentDeploymentGroupService(agentId, "pilot");
+    expect(afterRemove.deploymentGroups).toEqual(["test"]);
+
+    await expect(
+      addAgentDeploymentGroupService(999999999, "whatever"),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      removeAgentDeploymentGroupService(999999999, "whatever"),
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

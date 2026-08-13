@@ -60,26 +60,72 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2 pt-2 border-t">
-          <label class="text-sm font-medium">Deployment grupa</label>
-          <template v-if="isAdmin">
-            <GroupSelect
-              :model-value="deploymentGroupInput"
-              :options="deploymentGroupOptions"
-              :is-admin="isAdmin"
-              :allow-empty="false"
-              class="min-w-0 flex-1"
-              @update:model-value="onDeploymentGroupChange"
-              @group-added="deploymentGroupOptions.push($event)"
-              @error="(msg) => showToast(msg, { prefix: '❌ ', duration: 3000 })"
-            />
-          </template>
-          <span v-else class="text-sm text-slate-600">{{ agent.deploymentGroup || 'rest' }}</span>
+        <div class="flex flex-col gap-2 pt-2 border-t">
+          <label class="text-sm font-medium">Deployment grupe</label>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span
+              v-for="g in agent.deploymentGroups"
+              :key="g"
+              class="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+            >
+              {{ g }}
+              <button
+                v-if="isAdmin"
+                type="button"
+                @click="removeDeploymentGroup(g)"
+                class="text-blue-400 hover:text-red-600"
+                aria-label="Ukloni deployment grupu"
+              >✖️</button>
+            </span>
+            <span v-if="!agent.deploymentGroups?.length" class="text-sm text-slate-400">rest (podrazumevano)</span>
+          </div>
+          <GroupSelect
+            v-if="isAdmin"
+            :model-value="''"
+            :options="deploymentGroupOptions"
+            :is-admin="isAdmin"
+            :allow-empty="true"
+            create-endpoint="/api/protected/deployment-groups"
+            class="min-w-0 max-w-xs"
+            @update:model-value="addDeploymentGroup"
+            @group-added="(name) => { if (!deploymentGroupOptions.includes(name)) deploymentGroupOptions.push(name) }"
+            @error="(msg) => showToast(msg, { prefix: '❌ ', duration: 3000 })"
+          />
         </div>
 
-        <div v-if="agent.extraGroups" class="flex items-center gap-2 pt-2 border-t">
+        <div class="flex flex-col gap-2 pt-2 border-t">
           <label class="text-sm font-medium">Dodatne grupe</label>
-          <span class="text-sm text-slate-600">{{ agent.extraGroups }}</span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span
+              v-for="g in agent.groups"
+              :key="g"
+              class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
+            >
+              {{ g }}
+              <button
+                type="button"
+                @click="removeExtraGroup(g)"
+                class="text-slate-400 hover:text-red-600"
+                aria-label="Ukloni grupu"
+              >✖️</button>
+            </span>
+            <span v-if="!agent.groups?.length" class="text-sm text-slate-400">—</span>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model.trim="newGroupName"
+              type="text"
+              class="app-input flex-1 text-sm"
+              placeholder="Naziv nove grupe..."
+              @keydown.enter.prevent="addExtraGroup"
+            />
+            <button
+              type="button"
+              :disabled="addingGroup"
+              @click="addExtraGroup"
+              class="px-3 py-1.5 border rounded-lg text-sm hover:bg-slate-50"
+            >Dodaj</button>
+          </div>
         </div>
 
         <div class="flex items-center gap-2 pt-2 border-t">
@@ -320,14 +366,14 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
 
-// Deployment grupa se sad bira iz iste predefinisane, server-side liste kao
-// odeljenje na IP unosima (backend/routes/groups.routes.js), umesto slobodnog
-// teksta sa predlozima.
+// Deployment grupe se biraju iz SVOJE predefinisane liste
+// (backend/routes/deploymentGroups.routes.js) - odvojena od odeljenja
+// (groups_list, koja ostaje samo za Home).
 const deploymentGroupOptions = ref([])
 
 async function fetchDeploymentGroupOptions() {
   try {
-    const res = await fetchWithAuth('/api/protected/groups')
+    const res = await fetchWithAuth('/api/protected/deployment-groups')
     if (!res.ok) throw new Error('HTTP ' + res.status)
     deploymentGroupOptions.value = await res.json()
   } catch (err) {
@@ -346,8 +392,9 @@ const { tab } = usePaginatedRoute({
 const agent = ref(null)
 const loading = ref(false)
 const loadError = ref('')
-const deploymentGroupInput = ref('rest')
 const processKillExemptInput = ref(false)
+const newGroupName = ref('')
+const addingGroup = ref(false)
 
 const jobs = ref([])
 const jobsLoading = ref(false)
@@ -417,7 +464,6 @@ async function loadAgent() {
       return
     }
     agent.value = await res.json()
-    deploymentGroupInput.value = agent.value.deploymentGroup || 'rest'
     // Boolean(...) namerno - backend vraća mysql2-ovu sirovu TINYINT(1)
     // vrednost (0/1) za ovo polje, ne pravi JSON boolean.
     processKillExemptInput.value = Boolean(agent.value.processKillExempt)
@@ -429,24 +475,33 @@ async function loadAgent() {
   }
 }
 
-function onDeploymentGroupChange(value) {
-  deploymentGroupInput.value = value
-  saveDeploymentGroup()
-}
-
-async function saveDeploymentGroup() {
+async function addDeploymentGroup(name) {
+  if (!name) return
   try {
-    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/deployment-group`, {
-      method: 'PATCH',
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/deployment-groups`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deploymentGroup: deploymentGroupInput.value }),
+      body: JSON.stringify({ groupName: name }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju grupe'))
-    agent.value = { ...agent.value, deploymentGroup: deploymentGroupInput.value }
-    showToast('Deployment grupa sačuvana')
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju deployment grupe'))
+    agent.value = await res.json()
   } catch (err) {
     console.error(err)
-    showToast('Greška pri čuvanju grupe', { prefix: '❌ ', duration: 3000 })
+    showToast(err.message || 'Greška pri dodavanju deployment grupe', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function removeDeploymentGroup(name) {
+  try {
+    const res = await fetchWithAuth(
+      `/api/protected/agents/${route.params.id}/deployment-groups/${encodeURIComponent(name)}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju deployment grupe'))
+    agent.value = await res.json()
+  } catch (err) {
+    console.error(err)
+    showToast(err.message || 'Greška pri uklanjanju deployment grupe', { prefix: '❌ ', duration: 3000 })
   }
 }
 
@@ -465,6 +520,41 @@ async function saveProcessKillExempt() {
     console.error(err)
     processKillExemptInput.value = !value
     showToast('Greška pri čuvanju whitelist-e', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function addExtraGroup() {
+  const name = newGroupName.value.trim()
+  if (!name) return
+  addingGroup.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/groups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupName: name }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju grupe'))
+    agent.value = await res.json()
+    newGroupName.value = ''
+  } catch (err) {
+    console.error(err)
+    showToast(err.message || 'Greška pri dodavanju grupe', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    addingGroup.value = false
+  }
+}
+
+async function removeExtraGroup(name) {
+  try {
+    const res = await fetchWithAuth(
+      `/api/protected/agents/${route.params.id}/groups/${encodeURIComponent(name)}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju grupe'))
+    agent.value = await res.json()
+  } catch (err) {
+    console.error(err)
+    showToast(err.message || 'Greška pri uklanjanju grupe', { prefix: '❌ ', duration: 3000 })
   }
 }
 

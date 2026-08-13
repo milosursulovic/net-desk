@@ -3,7 +3,9 @@ import {
   HeartbeatSchema,
   InventorySyncSchema,
   ProcessKillExemptSchema,
+  AgentGroupSchema,
 } from "../dtos/agents.dto.js";
+import { AgentDeploymentGroupSchema } from "../dtos/deploymentGroups.dto.js";
 import {
   enrollAgent,
   heartbeat,
@@ -16,6 +18,10 @@ import {
   revokeAgentService,
   syncAgentInventory,
   setAgentProcessKillExemptService,
+  addAgentGroupService,
+  removeAgentGroupService,
+  addAgentDeploymentGroupService,
+  removeAgentDeploymentGroupService,
 } from "../services/agents.service.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
@@ -170,5 +176,43 @@ export async function setProcessKillExemptController(req, res) {
   if (!parsed.success) throw badRequest("Neispravan format podataka");
 
   const agent = await setAgentProcessKillExemptService(id, parsed.data.processKillExempt);
+  res.json(agent);
+}
+
+export async function addAgentGroupController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+
+  const parsed = AgentGroupSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const agent = await addAgentGroupService(id, parsed.data.groupName);
+  res.json(agent);
+}
+
+export async function removeAgentGroupController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+  const groupName = decodeURIComponent(req.params.groupName || "").trim();
+  if (!groupName) throw badRequest("Neispravan naziv grupe");
+
+  const agent = await removeAgentGroupService(id, groupName);
+  res.json(agent);
+}
+
+export async function addAgentDeploymentGroupController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+
+  const parsed = AgentDeploymentGroupSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const agent = await addAgentDeploymentGroupService(id, parsed.data.groupName);
+  res.json(agent);
+}
+
+export async function removeAgentDeploymentGroupController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+  const groupName = decodeURIComponent(req.params.groupName || "").trim();
+  if (!groupName) throw badRequest("Neispravan naziv grupe");
+
+  const agent = await removeAgentDeploymentGroupService(id, groupName);
   res.json(agent);
 }

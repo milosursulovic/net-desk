@@ -2,17 +2,17 @@
   <div class="glass-container space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Grupe</h1>
+        <h1 class="text-2xl font-bold text-slate-800">Deployment grupe</h1>
         <p class="text-sm text-slate-500 mt-1">
-          Predefinisana lista koja se koristi za "Odeljenje" na IP unosima. Deployment grupe agenata
-          su odvojena lista - videti <RouterLink to="/deployment-groups" class="text-blue-600 hover:underline">Deployment grupe</RouterLink>.
+          Predefinisana lista deployment grupa za agente - odvojena od "Odeljenje" liste na Home-u.
+          Agent može biti u više njih odjednom, i one određuju koji release/verziju agent dobija.
         </p>
       </div>
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
     <div v-if="isAdmin" class="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-2">
-      <label class="text-sm font-medium text-slate-700">Dodaj novu grupu</label>
+      <label class="text-sm font-medium text-slate-700">Dodaj novu deployment grupu</label>
       <div class="flex flex-col sm:flex-row gap-2">
         <input
           v-model.trim="newGroupName"
@@ -29,7 +29,7 @@
 
     <div v-if="loading" class="text-slate-600">Učitavanje…</div>
     <div v-else-if="!items.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
-      Nema definisanih grupa.
+      Nema definisanih deployment grupa.
     </div>
 
     <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
@@ -37,20 +37,22 @@
         <thead class="bg-slate-50 text-slate-600 text-left">
           <tr>
             <th class="px-4 py-2 font-medium">Naziv</th>
-            <th class="px-4 py-2 font-medium">Odeljenje (IP unosi)</th>
+            <th class="px-4 py-2 font-medium">Agenti</th>
+            <th class="px-4 py-2 font-medium">Release-i</th>
             <th v-if="isAdmin" class="px-4 py-2 font-medium"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-for="item in items" :key="item.name">
             <td class="px-4 py-2 font-medium">{{ item.name }}</td>
-            <td class="px-4 py-2">{{ item.departmentCount }}</td>
+            <td class="px-4 py-2">{{ item.agentCount }}</td>
+            <td class="px-4 py-2">{{ item.releaseCount }}</td>
             <td v-if="isAdmin" class="px-4 py-2 text-right whitespace-nowrap">
               <button
                 type="button"
-                :disabled="item.departmentCount > 0"
+                :disabled="item.agentCount + item.releaseCount > 0"
                 class="text-red-600 hover:underline text-xs disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed"
-                :title="item.departmentCount > 0 ? 'Grupa je u upotrebi - ne može se obrisati' : ''"
+                :title="item.agentCount + item.releaseCount > 0 ? 'Grupa je u upotrebi - ne može se obrisati' : ''"
                 @click="remove(item.name)"
               >
                 Obriši
@@ -75,7 +77,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { useToast } from '@/composables/useToast.js'
@@ -100,12 +102,12 @@ const goBack = () => router.back()
 async function fetchData() {
   loading.value = true
   try {
-    const res = await fetchWithAuth('/api/protected/groups/usage')
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju grupa'))
+    const res = await fetchWithAuth('/api/protected/deployment-groups/usage')
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju deployment grupa'))
     items.value = await res.json()
   } catch (err) {
-    console.error('Neuspešno učitavanje grupa', err)
-    showToast(err?.message || 'Greška pri učitavanju grupa', { prefix: '❌ ', duration: 3000 })
+    console.error('Neuspešno učitavanje deployment grupa', err)
+    showToast(err?.message || 'Greška pri učitavanju deployment grupa', { prefix: '❌ ', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -117,7 +119,7 @@ async function addGroup() {
 
   adding.value = true
   try {
-    const res = await fetchWithAuth('/api/protected/groups', {
+    const res = await fetchWithAuth('/api/protected/deployment-groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -125,9 +127,9 @@ async function addGroup() {
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju grupe'))
     newGroupName.value = ''
     await fetchData()
-    showToast('Grupa dodata')
+    showToast('Deployment grupa dodata')
   } catch (err) {
-    console.error('Neuspešno dodavanje grupe', err)
+    console.error('Neuspešno dodavanje deployment grupe', err)
     showToast(err?.message || 'Greška pri dodavanju grupe', { prefix: '❌ ', duration: 3000 })
   } finally {
     adding.value = false
@@ -135,18 +137,18 @@ async function addGroup() {
 }
 
 async function remove(name) {
-  const ok = await askConfirm(`Obrisati grupu "${name}"?`, { title: 'Brisanje grupe' })
+  const ok = await askConfirm(`Obrisati deployment grupu "${name}"?`, { title: 'Brisanje grupe' })
   if (!ok) return
 
   try {
-    const res = await fetchWithAuth(`/api/protected/groups/${encodeURIComponent(name)}`, {
+    const res = await fetchWithAuth(`/api/protected/deployment-groups/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju grupe'))
     await fetchData()
-    showToast('Grupa obrisana')
+    showToast('Deployment grupa obrisana')
   } catch (err) {
-    console.error('Neuspešno brisanje grupe', err)
+    console.error('Neuspešno brisanje deployment grupe', err)
     showToast(err?.message || 'Greška pri brisanju grupe', { prefix: '❌ ', duration: 3000 })
   }
 }

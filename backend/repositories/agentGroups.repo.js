@@ -1,11 +1,10 @@
 import { pool } from "../db/pool.js";
 
 // Opšta "dodatne grupe" veza (many-to-many) - agent može da bude u proizvoljno
-// mnogo dodatnih grupa POREDATNO uz svoju jednu glavnu deployment_group.
-// Trenutno jedina automatski popunjena vrednost je arhitektura (x86/x64,
-// vidi setAgentArchGroup), ali tabela je namerno opšta - ništa ne sprečava
-// da se kasnije doda ručno dodavanje proizvoljnih dodatnih grupa preko iste
-// tabele.
+// mnogo dodatnih grupa, ODVOJENO od deployment grupa (agent_deployment_groups,
+// vidi deploymentGroups.repo.js) - ove NE utiču na auto-update targeting.
+// Trenutno automatski popunjena arhitektura (x86/x64, vidi setAgentArchGroup)
+// plus ručno dodate proizvoljne grupe (addAgentGroup/removeAgentGroup ispod).
 export async function listAgentGroups(agentId) {
   const [rows] = await pool.execute(
     `SELECT group_name FROM agent_groups WHERE agent_id = ? ORDER BY group_name`,
@@ -25,5 +24,22 @@ export async function setAgentArchGroup(agentId, archGroup) {
   await pool.execute(
     `INSERT IGNORE INTO agent_groups (agent_id, group_name) VALUES (?, ?)`,
     [agentId, archGroup],
+  );
+}
+
+// Ručno dodavanje/uklanjanje proizvoljne dodatne grupe (npr. sa Agent Detail
+// strane) - slobodan naziv, nije vezano za groups_list (agent_groups je
+// namerno opštiji od te predefinisane liste).
+export async function addAgentGroup(agentId, groupName) {
+  await pool.execute(
+    `INSERT IGNORE INTO agent_groups (agent_id, group_name) VALUES (?, ?)`,
+    [agentId, groupName],
+  );
+}
+
+export async function removeAgentGroup(agentId, groupName) {
+  await pool.execute(
+    `DELETE FROM agent_groups WHERE agent_id = ? AND group_name = ?`,
+    [agentId, groupName],
   );
 }

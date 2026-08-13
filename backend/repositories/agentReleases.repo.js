@@ -93,10 +93,14 @@ export async function setReleaseGroups(releaseId, groups) {
   await insertReleaseGroups(releaseId, groups);
 }
 
-export async function isReleaseTargetingGroup(releaseId, deploymentGroup) {
+// Agent sad može imati VIŠE deployment grupa - pogađa ako je BILO KOJA od
+// njih ciljana ovim release-om (IN, ne =).
+export async function isReleaseTargetingAnyGroup(releaseId, deploymentGroups) {
+  if (!deploymentGroups?.length) return false;
+  const placeholders = deploymentGroups.map(() => "?").join(",");
   const [rows] = await pool.execute(
-    `SELECT 1 FROM agent_release_groups WHERE release_id = ? AND deployment_group = ? LIMIT 1`,
-    [releaseId, deploymentGroup],
+    `SELECT 1 FROM agent_release_groups WHERE release_id = ? AND deployment_group IN (${placeholders}) LIMIT 1`,
+    [releaseId, ...deploymentGroups],
   );
   return rows.length > 0;
 }
@@ -131,7 +135,12 @@ export async function findReleaseById(id) {
   return release;
 }
 
-export async function findActiveReleasesForGroup(deploymentGroup) {
+// Agent sad može imati VIŠE deployment grupa - vraća release-e koje ciljaju
+// BILO KOJU od njih (IN, ne =). DISTINCT jer isti release može biti pogođen
+// preko više od jedne od agent-ovih grupa.
+export async function findActiveReleasesForGroups(deploymentGroups) {
+  if (!deploymentGroups?.length) return [];
+  const placeholders = deploymentGroups.map(() => "?").join(",");
   const [rows] = await pool.execute(
     `
     SELECT DISTINCT
@@ -148,10 +157,10 @@ export async function findActiveReleasesForGroup(deploymentGroup) {
       r.created_at AS createdAt
     FROM agent_releases r
     JOIN agent_release_groups g ON g.release_id = r.id
-    WHERE g.deployment_group = ? AND r.is_active = 1
+    WHERE g.deployment_group IN (${placeholders}) AND r.is_active = 1
     ORDER BY r.created_at DESC
     `,
-    [deploymentGroup],
+    deploymentGroups,
   );
   return rows;
 }

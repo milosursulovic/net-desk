@@ -166,11 +166,18 @@ describe("role enforcement across modules (integration, real DB)", () => {
       expect(res.status).toBe(403);
     });
 
-    it("operator is blocked (403) from changing an agent's deployment group", async () => {
+    it("operator is blocked (403) from adding an agent's deployment group", async () => {
       const res = await request(app)
-        .patch("/api/protected/agents/999999999/deployment-group")
+        .post("/api/protected/agents/999999999/deployment-groups")
         .set("Authorization", `Bearer ${operatorToken()}`)
-        .send({ deploymentGroup: "rest" });
+        .send({ groupName: "rest" });
+      expect(res.status).toBe(403);
+    });
+
+    it("operator is blocked (403) from removing an agent's deployment group", async () => {
+      const res = await request(app)
+        .delete("/api/protected/agents/999999999/deployment-groups/rest")
+        .set("Authorization", `Bearer ${operatorToken()}`);
       expect(res.status).toBe(403);
     });
   });

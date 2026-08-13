@@ -1,12 +1,8 @@
 import { z } from "zod";
 
-// Više NIJE stroga validaciona lista - deployment grupe su sada slobodan
-// tekst (usklađeno sa stvarnim odeljenjima organizacije, ne generičkim
-// nazivima). Ova konstanta ostaje samo kao "klasične" osnovne predloge u
-// UI-ju (agentFilterOptionsService ih dodaje u listu predloga pored
-// odeljenja koja već postoje).
-export const DEPLOYMENT_GROUPS = ["test", "it", "pilot", "rest"];
-
+// Klasične osnovne vrednosti sada žive u deployment_groups_list (seed-ovane
+// u migraciji 0006_deployment_groups_multi.sql), ne kao konstanta ovde -
+// deployment grupe su odvojena lista od odeljenja (groups_list).
 const DeploymentGroupValue = z.string().trim().min(1).max(150);
 
 // 100 (ne 20) - čisto sanity ceiling, ne poslovno pravilo. Organizacija ima
@@ -28,10 +24,6 @@ export const UpdateReportSchema = z.object({
   toVersion: z.string().max(50).nullable().optional(),
   success: z.boolean(),
   reason: z.string().nullable().optional(),
-});
-
-export const DeploymentGroupSchema = z.object({
-  deploymentGroup: DeploymentGroupValue,
 });
 
 // Za "širenje" rollout-a - menja SET ciljanih grupa na već otpremljenom

@@ -6,9 +6,9 @@ import {
   insertRelease,
   insertReleaseGroups,
   setReleaseGroups,
-  isReleaseTargetingGroup,
+  isReleaseTargetingAnyGroup,
   findReleaseById,
-  findActiveReleasesForGroup,
+  findActiveReleasesForGroups,
   listReleases,
   setReleaseActive,
   insertReleaseFiles,
@@ -125,12 +125,15 @@ export async function setReleaseActiveService(id, isActive) {
   return await findReleaseById(id);
 }
 
-// "rest" is the implicit default deployment group for agents that were never
-// assigned one. The same `agent.deploymentGroup || "rest"` fallback is
-// duplicated below in downloadReleaseService - both must match or an agent
-// could see an update as available but then be refused the download.
+// "rest" is the implicit default deployment group for agents with none
+// assigned. The same `agent.deploymentGroups?.length ? ... : ["rest"]`
+// fallback is duplicated below in downloadReleaseService - both must match
+// or an agent could see an update as available but then be refused the
+// download. Agent can have MULTIPLE deployment groups now - matches if ANY
+// of them is targeted by the release.
 export async function checkForUpdateService(agent) {
-  const candidates = await findActiveReleasesForGroup(agent.deploymentGroup || "rest");
+  const groups = agent.deploymentGroups?.length ? agent.deploymentGroups : ["rest"];
+  const candidates = await findActiveReleasesForGroups(groups);
   if (!candidates.length) return { updateAvailable: false };
 
   let best = candidates[0];
@@ -205,9 +208,8 @@ export async function checkServiceFilesMismatchService(agentVersion, reportedFil
 
 export async function downloadReleaseService(releaseId, agent) {
   const release = await findReleaseById(releaseId);
-  const targeted = release
-    ? await isReleaseTargetingGroup(releaseId, agent.deploymentGroup || "rest")
-    : false;
+  const groups = agent.deploymentGroups?.length ? agent.deploymentGroups : ["rest"];
+  const targeted = release ? await isReleaseTargetingAnyGroup(releaseId, groups) : false;
   if (!release || !release.isActive || !targeted) {
     throw notFound("Verzija nije pronađena");
   }

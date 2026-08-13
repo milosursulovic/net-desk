@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { AGENT_ENROLL_TOKEN } from "../config/env.js";
 import { hashApiKey } from "../utils/apiKey.js";
 import { findAgentByUid } from "../repositories/agents.repo.js";
+import { listAgentDeploymentGroups } from "../repositories/deploymentGroups.repo.js";
 import { unauthorized, forbidden } from "../utils/httpError.js";
 
 function parseBearer(req) {
@@ -53,7 +54,7 @@ export async function authenticateAgent(req, _res, next) {
     agentUid: agent.agentUid,
     ipEntryId: agent.ipEntryId,
     agentVersion: agent.agentVersion,
-    deploymentGroup: agent.deploymentGroup,
+    deploymentGroups: await listAgentDeploymentGroups(agent.id),
   };
   next();
 }

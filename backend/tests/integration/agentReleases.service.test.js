@@ -76,7 +76,7 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     );
     createdReleases.push(release);
 
-    const out = await checkForUpdateService({ deploymentGroup: group, agentVersion: "1.0.0" });
+    const out = await checkForUpdateService({ deploymentGroups: [group], agentVersion: "1.0.0" });
     expect(out.updateAvailable).toBe(false);
   });
 
@@ -98,7 +98,7 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     );
     createdReleases.push(r3);
 
-    const out = await checkForUpdateService({ deploymentGroup: group, agentVersion: "0.9.0" });
+    const out = await checkForUpdateService({ deploymentGroups: [group], agentVersion: "0.9.0" });
     expect(out.updateAvailable).toBe(true);
     expect(out.version).toBe("1.2.0");
   });
@@ -112,7 +112,7 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     );
     createdReleases.push(release);
 
-    const out = await checkForUpdateService({ deploymentGroup: groupB, agentVersion: "1.0.0" });
+    const out = await checkForUpdateService({ deploymentGroups: [groupB], agentVersion: "1.0.0" });
     expect(out.updateAvailable).toBe(false);
   });
 
@@ -126,15 +126,16 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
 
     await setReleaseActiveService(release.id, false);
 
-    const out = await checkForUpdateService({ deploymentGroup: group, agentVersion: "1.0.0" });
+    const out = await checkForUpdateService({ deploymentGroups: [group], agentVersion: "1.0.0" });
     expect(out.updateAvailable).toBe(false);
   });
 
-  it("defaults an agent with no deploymentGroup to 'rest'", async () => {
-    // agents.deployment_group defaults to 'rest' in the schema -
-    // checkForUpdateService must fall back the same way when the agent
-    // object's deploymentGroup is unset, or 'rest'-group releases would
-    // never reach agents that haven't had a group explicitly assigned.
+  it("defaults an agent with no deploymentGroups to 'rest'", async () => {
+    // agent_deployment_groups defaults every agent to a 'rest' row on
+    // enrollment path (see agents.service.js) - checkForUpdateService must
+    // fall back the same way when the agent object's deploymentGroups is
+    // empty/unset, or 'rest'-group releases would never reach agents that
+    // haven't had a group explicitly assigned.
     // Uses an implausibly high version so this passes regardless of
     // whatever real 'rest'-group releases already exist in this DB.
     const release = await uploadReleaseService(
@@ -143,9 +144,28 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     );
     createdReleases.push(release);
 
-    const out = await checkForUpdateService({ deploymentGroup: undefined, agentVersion: "1.0.0" });
+    const out = await checkForUpdateService({ deploymentGroups: undefined, agentVersion: "1.0.0" });
     expect(out.updateAvailable).toBe(true);
     expect(out.version).toBe("999.0.0");
+  });
+
+  it("checkForUpdateService matches if the agent has ANY of its multiple groups targeted", async () => {
+    const groupA = uniqueGroup();
+    const groupB = uniqueGroup();
+    const release = await uploadReleaseService(
+      { buffer: Buffer.from("v1"), originalName: "a.zip", version: "6.0.0", deploymentGroups: [groupB] },
+      null,
+    );
+    createdReleases.push(release);
+
+    // Agent belongs to groupA AND groupB - groupA alone wouldn't match, but
+    // the union with groupB does.
+    const out = await checkForUpdateService({
+      deploymentGroups: [groupA, groupB],
+      agentVersion: "1.0.0",
+    });
+    expect(out.updateAvailable).toBe(true);
+    expect(out.version).toBe("6.0.0");
   });
 
   it("downloadReleaseService rejects an agent whose group isn't among the release's target groups", async () => {
@@ -158,12 +178,12 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     createdReleases.push(release);
 
     await expect(
-      downloadReleaseService(release.id, { deploymentGroup: groupB }),
+      downloadReleaseService(release.id, { deploymentGroups: [groupB] }),
     ).rejects.toMatchObject({ status: 404 });
 
     // Sanity check: the SAME release is downloadable by an agent whose
     // group IS among the target groups.
-    const ok = await downloadReleaseService(release.id, { deploymentGroup: groupA });
+    const ok = await downloadReleaseService(release.id, { deploymentGroups: [groupA] });
     expect(ok.fileName).toBe(release.fileName);
   });
 
@@ -177,14 +197,14 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     createdReleases.push(release);
 
     // Before widening, groupB doesn't see the update.
-    const before = await checkForUpdateService({ deploymentGroup: groupB, agentVersion: "1.0.0" });
+    const before = await checkForUpdateService({ deploymentGroups: [groupB], agentVersion: "1.0.0" });
     expect(before.updateAvailable).toBe(false);
 
     const widened = await updateReleaseGroupsService(release.id, [groupA, groupB]);
     expect(widened.deploymentGroups.sort()).toEqual([groupA, groupB].sort());
 
     // After widening, groupB now sees the SAME release (no re-upload happened).
-    const after = await checkForUpdateService({ deploymentGroup: groupB, agentVersion: "1.0.0" });
+    const after = await checkForUpdateService({ deploymentGroups: [groupB], agentVersion: "1.0.0" });
     expect(after.updateAvailable).toBe(true);
     expect(after.version).toBe("4.0.0");
   });
@@ -200,10 +220,10 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
 
     await updateReleaseGroupsService(release.id, [groupA]);
 
-    const stillTargeted = await checkForUpdateService({ deploymentGroup: groupA, agentVersion: "1.0.0" });
+    const stillTargeted = await checkForUpdateService({ deploymentGroups: [groupA], agentVersion: "1.0.0" });
     expect(stillTargeted.updateAvailable).toBe(true);
 
-    const noLongerTargeted = await checkForUpdateService({ deploymentGroup: groupB, agentVersion: "1.0.0" });
+    const noLongerTargeted = await checkForUpdateService({ deploymentGroups: [groupB], agentVersion: "1.0.0" });
     expect(noLongerTargeted.updateAvailable).toBe(false);
   });
 
