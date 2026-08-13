@@ -42,6 +42,17 @@
 
         <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
 
+        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            :checked="blacklistedOnly === 'true'"
+            @change="blacklistedOnly = blacklistedOnly === 'true' ? '' : 'true'"
+          />
+          Samo domeni sa crne liste
+        </label>
+
+        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
         <label class="text-sm text-slate-600" for="pp">Po strani</label>
         <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
           <option :value="20">20</option>
@@ -215,7 +226,7 @@ const { getSignal, abort } = useAbortableFetch()
 const { showToast } = useToast()
 const { isAdmin } = useCurrentUser()
 
-const { page, limit, search, sortBy, sortOrder, nextPage, prevPage, applyServerPagination } =
+const { page, limit, search, sortBy, sortOrder, blacklistedOnly, nextPage, prevPage, applyServerPagination } =
   usePaginatedRoute({
     fields: {
       page: { type: 'int', default: 1 },
@@ -223,12 +234,13 @@ const { page, limit, search, sortBy, sortOrder, nextPage, prevPage, applyServerP
       search: { type: 'string', default: '', omitIfEmpty: true },
       sortBy: { type: 'string', default: 'lastSeen' },
       sortOrder: { type: 'string', default: 'desc' },
+      blacklistedOnly: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     },
-    resetPageOn: ['search', 'sortBy', 'sortOrder'],
+    resetPageOn: ['search', 'sortBy', 'sortOrder', 'blacklistedOnly'],
     useReplace: true,
   })
 
-watch([page, limit, search, sortBy, sortOrder, site], fetchData)
+watch([page, limit, search, sortBy, sortOrder, blacklistedOnly, site], fetchData)
 
 const items = ref([])
 const total = ref(0)
@@ -249,6 +261,7 @@ async function fetchData() {
       sortOrder: sortOrder.value,
       site: site.value,
     })
+    if (blacklistedOnly.value) params.set('blacklistedOnly', blacklistedOnly.value)
 
     const res = await fetchWithAuth(`/api/protected/dns-logs?${params.toString()}`, {
       signal: getSignal(),

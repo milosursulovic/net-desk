@@ -59,6 +59,7 @@ export async function listDnsQueriesService(query) {
   const site = query.site;
   const ipEntryIdNum = Number(query.ipEntryId);
   const ipEntryId = Number.isInteger(ipEntryIdNum) && ipEntryIdNum > 0 ? ipEntryIdNum : undefined;
+  const blacklistedOnly = query.blacklistedOnly === true || query.blacklistedOnly === "true";
 
   const sortBy = SORT_FIELDS[query.sortBy] || SORT_FIELDS.lastSeen;
   const sortOrder = query.sortOrder === "asc" ? "ASC" : "DESC";
@@ -67,6 +68,7 @@ export async function listDnsQueriesService(query) {
     search,
     site,
     ipEntryId,
+    blacklistedOnly,
     page,
     limit,
     sortBy,

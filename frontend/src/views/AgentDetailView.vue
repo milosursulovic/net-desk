@@ -316,8 +316,15 @@
           Računar još nije povezan (nema inventory sync-a).
         </div>
         <template v-else>
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input type="checkbox" v-model="dnsBlacklistedOnly" @change="loadDnsLogs" />
+            Samo domeni sa crne liste
+          </label>
+
           <div v-if="dnsLogsLoading" class="text-slate-600 text-sm">Učitavanje…</div>
-          <div v-else-if="!dnsLogs.length" class="text-slate-500 text-sm">Nema DNS upita.</div>
+          <div v-else-if="!dnsLogs.length" class="text-slate-500 text-sm">
+            {{ dnsBlacklistedOnly ? 'Nema DNS upita ka domenima sa crne liste.' : 'Nema DNS upita.' }}
+          </div>
           <div v-for="d in dnsLogs" :key="d.id"
             class="rounded-lg border bg-white p-3 text-sm"
             :class="d.isBlacklisted ? 'border-red-200 bg-red-50' : ''">
@@ -439,6 +446,7 @@ const eventLogsLoaded = ref(false)
 const dnsLogs = ref([])
 const dnsLogsLoading = ref(false)
 const dnsLogsLoaded = ref(false)
+const dnsBlacklistedOnly = ref(false)
 
 const jobForm = ref({ commandType: 'collect_inventory', serviceName: '', script: '' })
 const creatingJob = ref(false)
@@ -756,6 +764,7 @@ async function loadDnsLogs() {
       sortBy: 'lastSeen',
       sortOrder: 'desc',
     })
+    if (dnsBlacklistedOnly.value) params.set('blacklistedOnly', 'true')
     const res = await fetchWithAuth(`/api/protected/dns-logs?${params.toString()}`)
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju DNS logova'))
     const data = await res.json()

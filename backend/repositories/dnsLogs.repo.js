@@ -64,7 +64,7 @@ export async function upsertDnsQueriesBulk(rows) {
   );
 }
 
-export async function listDnsQueries({ search, site, ipEntryId, page, limit, sortBy, sortOrder }) {
+export async function listDnsQueries({ search, site, ipEntryId, blacklistedOnly, page, limit, sortBy, sortOrder }) {
   const whereParts = [];
   const params = [];
 
@@ -87,6 +87,12 @@ export async function listDnsQueries({ search, site, ipEntryId, page, limit, sor
     // ne za agents).
     whereParts.push("cdq.ip_entry_id = ?");
     params.push(ipEntryId);
+  }
+  if (blacklistedOnly) {
+    // Isti FLAGGED_DOMAIN_MATCH_SQL izraz kao isBlacklisted kolona ispod -
+    // jedno mesto za definiciju "poklapanja", ne duplirana logika koja bi
+    // mogla da se razmimoiđe.
+    whereParts.push(`EXISTS (SELECT 1 FROM flagged_domains fd WHERE ${FLAGGED_DOMAIN_MATCH_SQL})`);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";

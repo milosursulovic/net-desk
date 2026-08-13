@@ -210,5 +210,35 @@ describe("dnsLogs.service (integration, real DB)", () => {
       expect(byDomain[subdomain].isBlacklisted).toBe(true);
       expect(byDomain[unrelated].isBlacklisted).toBe(false);
     });
+
+    it("listDnsQueriesService's blacklistedOnly filter returns only blacklisted rows (exact + subdomain), excluding unrelated ones", async () => {
+      const blacklisted = "vitest-blacklisted.example.com";
+      await addFlaggedDomainService({ domain: blacklisted }, null);
+
+      const entry = await createIpEntryService({ ip: testIp(), site: "bolnica", entryType: "computer" });
+      ipEntryId = entry.id;
+
+      const subdomain = `sub.${blacklisted}`;
+      const unrelated = `not-${blacklisted}`;
+
+      await ingestDnsQueries(ipEntryId, [
+        { domain: blacklisted, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+        { domain: subdomain, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+        { domain: unrelated, firstSeen: new Date(), lastSeen: new Date(), count: 1 },
+      ]);
+
+      const out = await listDnsQueriesService({
+        search: blacklisted,
+        blacklistedOnly: true,
+        page: 1,
+        limit: 50,
+      });
+      const domains = out.items.map((i) => i.domain);
+
+      expect(domains).toContain(blacklisted);
+      expect(domains).toContain(subdomain);
+      expect(domains).not.toContain(unrelated);
+      expect(out.items.every((i) => i.isBlacklisted)).toBe(true);
+    });
   });
 });
