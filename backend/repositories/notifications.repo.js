@@ -1,5 +1,6 @@
 import { pool } from "../db/pool.js";
 import { CONNECTIVITY_STATUS_SQL } from "./agents.repo.js";
+import { FLAGGED_DOMAIN_MATCH_SQL } from "./dnsLogs.repo.js";
 
 export async function countOfflineEntries(site) {
   const [[{ cnt }]] = await pool.execute(
@@ -158,7 +159,7 @@ export async function countBlacklistedDomainHits(hours = 24, site) {
     SELECT COUNT(DISTINCT cdq.ip_entry_id) AS cnt
     FROM computer_dns_queries cdq
     JOIN flagged_domains fd
-      ON cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+      ON ${FLAGGED_DOMAIN_MATCH_SQL}
     ${site ? "JOIN ip_entries ie ON ie.id = cdq.ip_entry_id" : ""}
     WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
       ${site ? "AND ie.site = ?" : ""}
@@ -184,7 +185,7 @@ export async function listBlacklistedDomainHits(hours = 24, site) {
       ie.department
     FROM computer_dns_queries cdq
     JOIN flagged_domains fd
-      ON cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+      ON ${FLAGGED_DOMAIN_MATCH_SQL}
     JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
     WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
       ${site ? "AND ie.site = ?" : ""}

@@ -1,6 +1,31 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
+// Poklapa cdq.domain sa fd.domain kad je isti ILI kad je cdq.domain
+// poddomen fd.domain-a (npr. cdq="a.example.com" poklapa fd="example.com").
+// Namerno IN sa SUBSTRING_INDEX umesto "cdq.domain = fd.domain OR
+// cdq.domain LIKE CONCAT('%.', fd.domain)" - taj LIKE ima wildcard na
+// POČETKU, pa MySQL/MariaDB ne može da iskoristi indeks na flagged_domains
+// (mora da uporedi SVAKI red flagged_domains sa SVAKIM redom
+// computer_dns_queries - O(N×M)). Ovo je otkriveno uživo posle punjenja
+// flagged_domains na ~88k redova (crna lista domena, domainBlacklistSync.
+// service.js) - stari upit je porastao na >30s, isti upit sa ovom izmenom
+// pada na ~20ms na istim podacima. SUBSTRING_INDEX(x, '.', -N) uzima
+// poslednjih N delova domena razdvojenih tačkom - IN lista pokriva do 6
+// nivoa poddomena (realni domeni retko imaju više), svaka provera je sad
+// EQUALITY, pa je iskoristiv postojeći uq_flagged_domain indeks na
+// flagged_domains.domain kroz index-nested-loop join/EXISTS.
+export const FLAGGED_DOMAIN_MATCH_SQL = `
+  fd.domain IN (
+    cdq.domain,
+    SUBSTRING_INDEX(cdq.domain, '.', -2),
+    SUBSTRING_INDEX(cdq.domain, '.', -3),
+    SUBSTRING_INDEX(cdq.domain, '.', -4),
+    SUBSTRING_INDEX(cdq.domain, '.', -5),
+    SUBSTRING_INDEX(cdq.domain, '.', -6)
+  )
+`;
+
 // Za razliku od insertEventLogsBulk (INSERT IGNORE - event logovi su
 // append-only distinktni redovi), DNS upiti se agregiraju PO (ip_entry_id,
 // domain) - broj distinktnih domena po računaru je ograničen (hiljade
@@ -84,7 +109,7 @@ export async function listDnsQueries({ search, site, page, limit, sortBy, sortOr
       ie.site,
       EXISTS (
         SELECT 1 FROM flagged_domains fd
-        WHERE cdq.domain = fd.domain OR cdq.domain LIKE CONCAT('%.', fd.domain)
+        WHERE ${FLAGGED_DOMAIN_MATCH_SQL}
       ) AS isBlacklisted
     FROM computer_dns_queries cdq
     JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
@@ -146,4 +171,27 @@ export async function insertFlaggedDomain({ domain, reason, createdByUserId }) {
 export async function deleteFlaggedDomain(id) {
   const [result] = await pool.execute(`DELETE FROM flagged_domains WHERE id = ?`, [id]);
   return result.affectedRows;
+}
+
+// Masovno seed-ovanje iz spoljnih izvora (domainBlacklistSync.service.js) -
+// INSERT IGNORE (isti uq_flagged_domain kao pojedinačan insertFlaggedDomain
+// iznad) znači da se ručno dodati/već postojeći domeni nikad ne prepisuju
+// niti brišu, samo se dodaju novi. Deljeno u manje batch-eve (ne jedan
+// insert od desetina hiljada redova) da se izbegne max_allowed_packet rizik.
+const BULK_INSERT_CHUNK_SIZE = 1000;
+
+export async function bulkInsertFlaggedDomains(rows) {
+  if (!rows.length) return 0;
+
+  let affected = 0;
+  for (let i = 0; i < rows.length; i += BULK_INSERT_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + BULK_INSERT_CHUNK_SIZE);
+    const values = chunk.map((r) => [r.domain, r.reason ?? null]);
+    const [result] = await pool.query(
+      `INSERT IGNORE INTO flagged_domains (domain, reason) VALUES ?`,
+      [values],
+    );
+    affected += result.affectedRows;
+  }
+  return affected;
 }
