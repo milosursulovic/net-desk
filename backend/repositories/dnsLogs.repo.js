@@ -3,26 +3,29 @@ import { buildLikeSearch } from "../utils/sqlSearch.js";
 
 // Poklapa cdq.domain sa fd.domain kad je isti ILI kad je cdq.domain
 // poddomen fd.domain-a (npr. cdq="a.example.com" poklapa fd="example.com").
-// Namerno IN sa SUBSTRING_INDEX umesto "cdq.domain = fd.domain OR
-// cdq.domain LIKE CONCAT('%.', fd.domain)" - taj LIKE ima wildcard na
-// POČETKU, pa MySQL/MariaDB ne može da iskoristi indeks na flagged_domains
-// (mora da uporedi SVAKI red flagged_domains sa SVAKIM redom
-// computer_dns_queries - O(N×M)). Ovo je otkriveno uživo posle punjenja
-// flagged_domains na ~88k redova (crna lista domena, domainBlacklistSync.
-// service.js) - stari upit je porastao na >30s, isti upit sa ovom izmenom
-// pada na ~20ms na istim podacima. SUBSTRING_INDEX(x, '.', -N) uzima
-// poslednjih N delova domena razdvojenih tačkom - IN lista pokriva do 6
-// nivoa poddomena (realni domeni retko imaju više), svaka provera je sad
-// EQUALITY, pa je iskoristiv postojeći uq_flagged_domain indeks na
-// flagged_domains.domain kroz index-nested-loop join/EXISTS.
+// Namerno 6x EXISTS sa OR umesto "EXISTS (... WHERE fd.domain IN (cdq.domain,
+// SUBSTRING_INDEX(...), ...))" (prethodni oblik) - taj IN-oblik je bio
+// dovoljno brz DOK se koristio samo u SELECT listi (računa se samo za
+// LIMIT-ovanih ~50 redova), ali kad je isti izraz iskorišćen i kao WHERE
+// filter (blacklistedOnly - vidi listDnsQueries ispod), EXPLAIN je pokazao
+// da MariaDB za IN-oblik NE radi indeksirani lookup po iteraciji, nego pun
+// scan celog uq_flagged_domain indeksa PO SVAKOM REDU computer_dns_queries
+// (DEPENDENT SUBQUERY, type=index, ne ref/unique_subquery) - uživo testirano
+// sa ~90k sintetičkih flagged_domains redova, upit nije završio ni posle
+// 120s. 6x EXISTS sa jednakošću (fd.domain = <jedan izraz>) po grani
+// omogućava MariaDB-u da svaku granu MATERIJALIZUJE JEDNOM (temp tabela sa
+// indeksom, izgrađena samo jednom za ceo upit, ne po redu) i onda radi
+// indeksiran lookup po redu - isti rezultat (proveren identičan broj
+// poklapanja), ali suštinski druga (i jedina održiva na ovoj skali)
+// vremenska složenost.
 export const FLAGGED_DOMAIN_MATCH_SQL = `
-  fd.domain IN (
-    cdq.domain,
-    SUBSTRING_INDEX(cdq.domain, '.', -2),
-    SUBSTRING_INDEX(cdq.domain, '.', -3),
-    SUBSTRING_INDEX(cdq.domain, '.', -4),
-    SUBSTRING_INDEX(cdq.domain, '.', -5),
-    SUBSTRING_INDEX(cdq.domain, '.', -6)
+  (
+    EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = cdq.domain)
+    OR EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = SUBSTRING_INDEX(cdq.domain, '.', -2))
+    OR EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = SUBSTRING_INDEX(cdq.domain, '.', -3))
+    OR EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = SUBSTRING_INDEX(cdq.domain, '.', -4))
+    OR EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = SUBSTRING_INDEX(cdq.domain, '.', -5))
+    OR EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = SUBSTRING_INDEX(cdq.domain, '.', -6))
   )
 `;
 
@@ -92,7 +95,7 @@ export async function listDnsQueries({ search, site, ipEntryId, blacklistedOnly,
     // Isti FLAGGED_DOMAIN_MATCH_SQL izraz kao isBlacklisted kolona ispod -
     // jedno mesto za definiciju "poklapanja", ne duplirana logika koja bi
     // mogla da se razmimoiđe.
-    whereParts.push(`EXISTS (SELECT 1 FROM flagged_domains fd WHERE ${FLAGGED_DOMAIN_MATCH_SQL})`);
+    whereParts.push(FLAGGED_DOMAIN_MATCH_SQL);
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
@@ -121,10 +124,7 @@ export async function listDnsQueries({ search, site, ipEntryId, blacklistedOnly,
       ie.computer_name AS computerName,
       ie.department,
       ie.site,
-      EXISTS (
-        SELECT 1 FROM flagged_domains fd
-        WHERE ${FLAGGED_DOMAIN_MATCH_SQL}
-      ) AS isBlacklisted
+      ${FLAGGED_DOMAIN_MATCH_SQL} AS isBlacklisted
     FROM computer_dns_queries cdq
     JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
     ${whereSql}
