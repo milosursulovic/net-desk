@@ -256,7 +256,27 @@
       </div>
 
       <!-- Update log -->
-      <div v-else-if="tab === 'updates'" class="space-y-2">
+      <div v-else-if="tab === 'updates'" class="space-y-3">
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+          <div class="text-sm font-medium text-amber-900">Instaliraj određenu verziju na ovaj agent</div>
+          <p class="text-xs text-amber-800">
+            Zamenjuje fajlove čak i ako je agent već na toj verziji (radi i za stariju verziju od trenutne - vraćanje unazad).
+          </p>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <select v-model="selectedReleaseId" class="app-input w-full sm:w-64 text-sm">
+              <option value="">— Izaberi verziju —</option>
+              <option v-for="r in activeReleaseOptions" :key="r.id" :value="r.id">{{ r.version }}</option>
+            </select>
+            <AppButton
+              variant="neutral"
+              :disabled="!selectedReleaseId || installingRelease"
+              @click="installSelectedRelease"
+            >
+              {{ installingRelease ? 'Šaljem…' : 'Instaliraj ovu verziju' }}
+            </AppButton>
+          </div>
+        </div>
+
         <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
         <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
         <div v-for="u in updateLog" :key="u.id" class="rounded-lg border bg-white p-3 text-sm">
@@ -368,6 +388,24 @@ const fixingPresetId = ref('')
 const updateLog = ref([])
 const updateLogLoading = ref(false)
 const updateLogLoaded = ref(false)
+
+const releaseOptions = ref([])
+// Boolean(...) namerno - backend vraća mysql2-ovu sirovu TINYINT(1)
+// vrednost (0/1) za is_active, ne pravi JS boolean.
+const activeReleaseOptions = computed(() => releaseOptions.value.filter((r) => Boolean(r.isActive)))
+const selectedReleaseId = ref('')
+const installingRelease = ref(false)
+
+async function fetchReleaseOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/agent-releases?limit=100')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    releaseOptions.value = data.items || []
+  } catch (err) {
+    console.error('Neuspešno dohvatanje verzija', err)
+  }
+}
 
 const eventLogs = ref([])
 const eventLogsLoading = ref(false)
@@ -616,6 +654,38 @@ async function createJob() {
   }
 }
 
+async function installSelectedRelease() {
+  const release = activeReleaseOptions.value.find((r) => r.id === selectedReleaseId.value)
+  if (!release) return
+
+  const ok = await askConfirm(
+    `Instalirati verziju ${release.version} na ovaj agent? Zamenjuje fajlove čak i ako je agent već na ovoj verziji.`,
+    { title: 'Instalacija verzije' },
+  )
+  if (!ok) return
+
+  installingRelease.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commandType: 'force_reinstall_agent',
+        payload: { releaseId: release.id, version: release.version, sha256: release.sha256 },
+      }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    showToast(`Komanda za instalaciju verzije ${release.version} poslata - prati status u tabu "Komande"`)
+    selectedReleaseId.value = ''
+    await loadJobs()
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    installingRelease.value = false
+  }
+}
+
 async function loadUpdateLog() {
   updateLogLoading.value = true
   try {
@@ -671,6 +741,7 @@ function selectTab(name) {
 
 onMounted(async () => {
   fetchDeploymentGroupOptions()
+  fetchReleaseOptions()
   await loadAgent()
   if (!loadError.value) selectTab(tab.value)
 })
