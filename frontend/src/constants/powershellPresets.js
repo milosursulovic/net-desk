@@ -119,6 +119,54 @@ export const POWERSHELL_PRESETS = [
     script: 'Get-Printer | Select-Object Name, DriverName, PortName, Shared | Format-Table -AutoSize | Out-String',
   },
   {
+    id: 'ram-modules',
+    label: 'Prikaži RAM module (kapacitet, tip, brzina)',
+    // Bez dijakritika u samom PS stringu/izlazu (isto ograničenje kao ostali
+    // preseti ovde) - JobExecutor.cs piše skriptu preko File.WriteAllText BEZ
+    // eksplicitnog encoding-a (BOM-less UTF-8 .NET default), a Windows
+    // PowerShell 5.1 bez BOM-a čita .ps1 po sistemskoj ANSI kodnoj strani, ne
+    // UTF-8 - dijakritici (č/ć/đ/š/ž) bi se pretvorili u đubre na izlazu.
+    //
+    // $rezultati = foreach (...) {...} (ne bareč foreach koji implicitno
+    // ispisuje u pipeline) + eksplicitan Format-Table -AutoSize | Out-String
+    // na kraju - isti obrazac kao ostali listing preseti ovde (npr.
+    // installed-printers iznad), radi konzistentnog, čitljivog job output-a.
+    script:
+      '$ddrMape = @{\n' +
+      '    0  = "Nepoznato"\n' +
+      '    20 = "DDR"\n' +
+      '    21 = "DDR2"\n' +
+      '    24 = "DDR3"\n' +
+      '    26 = "DDR4"\n' +
+      '    27 = "DDR5"\n' +
+      '    34 = "DDR5"\n' +
+      '}\n' +
+      '\n' +
+      '$ramModuli = Get-CimInstance -ClassName Win32_PhysicalMemory\n' +
+      '\n' +
+      '$rezultati = foreach ($modul in $ramModuli) {\n' +
+      '    $velicinaGB = [math]::Round($modul.Capacity / 1GB, 0)\n' +
+      '\n' +
+      '    $kodTipa = $modul.SMBIOSMemoryType\n' +
+      '    if ($kodTipa -eq 0 -or $kodTipa -eq $null) {\n' +
+      '        $kodTipa = $modul.MemoryType\n' +
+      '    }\n' +
+      '\n' +
+      '    $ddrTip = $ddrMape[$kodTipa]\n' +
+      '    if ($ddrTip -eq $null) { $ddrTip = "Nepoznato ($kodTipa)" }\n' +
+      '\n' +
+      '    [PSCustomObject]@{\n' +
+      '        "Slot/Pozicija" = $modul.DeviceLocator\n' +
+      '        "Kapacitet"     = "$velicinaGB GB"\n' +
+      '        "Tip Memorije"  = $ddrTip\n' +
+      '        "Brzina (MHz)"  = $modul.Speed\n' +
+      '        "Proizvodjac"   = $modul.Manufacturer\n' +
+      '    }\n' +
+      '}\n' +
+      '\n' +
+      '$rezultati | Format-Table -AutoSize | Out-String',
+  },
+  {
     id: 'read-agent-log-full',
     label: 'Pročitaj ceo sadržaj agent.log',
     // File.ReadAllText (ne Get-Content) namerno - agent.log piše FileLogger.cs
