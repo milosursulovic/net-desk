@@ -389,11 +389,16 @@ export async function updatePendingRepack(id, value) {
 
 // Kandidati za "preporuka za pakovanje" - računari na Windows 10/11 sa
 // poznatim hardverom (JOIN na computer_metadata prirodno isključuje računare
-// bez ijedne inventory sinhronizacije - nema CPU/RAM podataka za njih).
-// Klasifikacija slab CPU/malo RAM-a se radi u servisu (cpuTier.js + prag),
-// ovaj upit samo vraća sirove specifikacije. Isti JOIN smer
+// bez ijedne inventory sinhronizacije - nema CPU/RAM/disk podataka za njih).
+// Klasifikacija slab CPU/malo RAM-a/HDD se radi u servisu (cpuTier.js +
+// pragovi), ovaj upit samo vraća sirove specifikacije. Isti JOIN smer
 // (cm.ip_entry_id = ie.id) kao statsRamTotals/statsLowRamRows u
-// metadata.repo.js, ne preko ie.metadata_id.
+// metadata.repo.js, ne preko ie.metadata_id. hasHdd koristi isti
+// UPPER(COALESCE(media_type,'')) LIKE '%HDD%' obrazac kao statsRamTotals-ov
+// susedni statsStorageBreakdown (ssdCount/hddCount) u istom fajlu -
+// media_type je 'HDD'/'SSD'/'Unspecified'/NULL (MsftMediaTypeToString u
+// HardwareCollector.cs; NULL na Windows 7 gde MSFT_PhysicalDisk ne postoji,
+// ali to je van dometa ovde jer je OS filter već Windows 10/11).
 export async function listRepackCandidates(site) {
   const whereParts = [
     "ie.entry_type = 'computer'",
@@ -422,7 +427,11 @@ export async function listRepackCandidates(site) {
           FROM computer_metadata_ram_modules rm
           WHERE rm.metadata_id = cm.id
         )
-      ) AS ramGb
+      ) AS ramGb,
+      EXISTS (
+        SELECT 1 FROM computer_metadata_storage s
+        WHERE s.metadata_id = cm.id AND UPPER(COALESCE(s.media_type, '')) LIKE '%HDD%'
+      ) AS hasHdd
     FROM ip_entries ie
     JOIN computer_metadata cm ON cm.ip_entry_id = ie.id
     WHERE ${whereParts.join(" AND ")}

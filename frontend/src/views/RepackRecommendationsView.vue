@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold text-slate-800">Preporuke za pakovanje</h1>
         <p class="text-sm text-slate-500 mt-1">
-          Računari na Windows 10/11 sa slabim procesorom (Celeron/Pentium/Athlon i sl.) i/ili manje od 8GB RAM-a.
+          Računari na Windows 10/11 sa slabim procesorom (Celeron/Pentium/Athlon i sl.), manje od 8GB RAM-a, i/ili običnim HDD-om umesto SSD-a.
         </p>
       </div>
       <AppButton variant="secondary" to="/computers-for-repack">Nazad</AppButton>
@@ -17,6 +17,25 @@
       class="app-input w-full sm:w-96"
       aria-label="Pretraga preporuka za pakovanje"
     />
+
+    <div class="flex flex-wrap items-center gap-4">
+      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        <input type="checkbox" v-model="reasonFilters" value="weak_cpu" />
+        Slab procesor
+      </label>
+      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        <input type="checkbox" v-model="reasonFilters" value="low_ram" />
+        Malo RAM-a
+      </label>
+      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        <input type="checkbox" v-model="reasonFilters" value="has_hdd" />
+        Obični HDD
+      </label>
+      <button v-if="reasonFilters.length" type="button" @click="reasonFilters = []"
+        class="text-xs text-blue-600 hover:underline">
+        Poništi filter
+      </button>
+    </div>
 
     <p v-if="!loading" class="text-sm text-slate-500">Preporučeno: {{ filteredItems.length }}</p>
 
@@ -39,6 +58,7 @@
             <th class="py-2 px-4">OS</th>
             <th class="py-2 px-4">Procesor</th>
             <th class="py-2 px-4">RAM</th>
+            <th class="py-2 px-4">Disk</th>
             <th class="py-2 px-4">Razlog</th>
             <th class="py-2 px-4"></th>
           </tr>
@@ -51,6 +71,7 @@
             <td class="py-2 px-4">{{ e.os || '—' }}</td>
             <td class="py-2 px-4">{{ e.cpuName || '—' }}</td>
             <td class="py-2 px-4">{{ e.ramGb != null ? `${e.ramGb} GB` : '—' }}</td>
+            <td class="py-2 px-4">{{ e.hasHdd ? 'HDD' : '—' }}</td>
             <td class="py-2 px-4">
               <div class="flex flex-wrap gap-1">
                 <span v-if="e.reasons.includes('weak_cpu')"
@@ -60,6 +81,10 @@
                 <span v-if="e.reasons.includes('low_ram')"
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
                   Malo RAM-a
+                </span>
+                <span v-if="e.reasons.includes('has_hdd')"
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
+                  Obični HDD
                 </span>
               </div>
             </td>
@@ -98,13 +123,22 @@ const items = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const search = ref('')
+// Prazno = bez filtera (prikaži sve razloge) - kad je bar jedan čekiran,
+// prikazuje se UNIJA (računar sa BILO KOJIM od čekiranih razloga), ne presek.
+const reasonFilters = ref([])
 
 const filteredItems = computed(() => {
+  let list = items.value
+  if (reasonFilters.value.length) {
+    list = list.filter((e) => e.reasons.some((r) => reasonFilters.value.includes(r)))
+  }
   const q = search.value.trim().toLowerCase()
-  if (!q) return items.value
-  return items.value.filter((e) =>
-    [e.ip, e.computerName, e.department].some((v) => String(v || '').toLowerCase().includes(q)),
-  )
+  if (q) {
+    list = list.filter((e) =>
+      [e.ip, e.computerName, e.department].some((v) => String(v || '').toLowerCase().includes(q)),
+    )
+  }
+  return list
 })
 
 async function fetchData() {

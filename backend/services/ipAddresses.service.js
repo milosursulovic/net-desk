@@ -252,11 +252,11 @@ export async function setPendingRepackService(id, value) {
 const LOW_RAM_THRESHOLD_GB = 7;
 
 // "Preporuka za pakovanje" - računari na Windows 10/11 čiji hardver (slab
-// CPU po cpuTier.js i/ili malo RAM-a) ukazuje da su kandidati za
-// reimage/upgrade. Namerno se NE čuva u bazi (za razliku od ručnog
-// pending_repack flag-a) - računa se uživo na svaki zahtev, da ostane tačno
-// i posle nadogradnje hardvera/OS-a bez posebnog koraka za "osvežavanje
-// preporuke".
+// CPU po cpuTier.js, malo RAM-a, i/ili običan HDD umesto SSD-a) ukazuje da
+// su kandidati za reimage/upgrade. Namerno se NE čuva u bazi (za razliku od
+// ručnog pending_repack flag-a) - računa se uživo na svaki zahtev, da
+// ostane tačno i posle nadogradnje hardvera/OS-a bez posebnog koraka za
+// "osvežavanje preporuke".
 export async function repackRecommendationsService(site) {
   const candidates = await listRepackCandidates(site);
 
@@ -264,10 +264,12 @@ export async function repackRecommendationsService(site) {
     .map((c) => {
       const cpuTier = classifyCpuTier(c.cpuName);
       const ramGb = c.ramGb == null ? null : Number(c.ramGb);
+      const hasHdd = Boolean(c.hasHdd);
       const reasons = [];
       if (cpuTier === "weak") reasons.push("weak_cpu");
       if (ramGb != null && ramGb < LOW_RAM_THRESHOLD_GB) reasons.push("low_ram");
-      return { ...c, cpuTier, ramGb, reasons };
+      if (hasHdd) reasons.push("has_hdd");
+      return { ...c, cpuTier, ramGb, hasHdd, reasons };
     })
     .filter((c) => c.reasons.length > 0);
 }

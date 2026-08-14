@@ -351,6 +351,77 @@ describe("ipAddresses.service (integration, real DB)", () => {
       expect(match.reasons).not.toContain("weak_cpu");
     });
 
+    it("flags a Windows 11 computer with a plain HDD (no SSD) as a recommendation", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 8 },
+        Storage: [{ Model: "ST1000DM010", SizeGB: 1000, MediaType: "HDD" }],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.hasHdd).toBe(true);
+      expect(match.reasons).toContain("has_hdd");
+      expect(match.reasons).not.toContain("weak_cpu");
+      expect(match.reasons).not.toContain("low_ram");
+    });
+
+    it("does NOT flag a computer whose only drive is an SSD as has_hdd", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 8 },
+        Storage: [{ Model: "Samsung SSD 970 EVO", SizeGB: 500, MediaType: "SSD" }],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
+    });
+
+    it("still flags a computer with a mix of SSD+HDD (any HDD present is enough)", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 8 },
+        Storage: [
+          { Model: "Samsung SSD 970 EVO", SizeGB: 500, MediaType: "SSD" },
+          { Model: "ST1000DM010", SizeGB: 1000, MediaType: "HDD" },
+        ],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.hasHdd).toBe(true);
+      expect(match.reasons).toContain("has_hdd");
+    });
+
     it("does NOT flag a real ~8GB machine (usable RAM reported just under 8) as low RAM", async () => {
       const hostname = testHostname();
       const entry = await createService({
