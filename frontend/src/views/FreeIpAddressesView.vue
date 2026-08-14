@@ -14,6 +14,10 @@
       <span>Ukupno u opsegu: <strong>{{ total }}</strong></span>
       <span>Zauzeto: <strong>{{ occupiedCount }}</strong></span>
       <span>Slobodno: <strong class="text-emerald-700">{{ freeIps.length }}</strong></span>
+      <span v-if="rangedIps.size" class="flex items-center gap-1.5">
+        <span class="inline-block h-3 w-3 rounded-sm bg-emerald-50 border border-emerald-200"></span>
+        deo niza od bar 2 uzastopne adrese
+      </span>
     </div>
 
     <input
@@ -41,7 +45,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="ip in pagedIps" :key="ip" class="border-b border-slate-100 hover:bg-slate-50">
+            <tr v-for="ip in pagedIps" :key="ip" class="border-b border-slate-100 hover:bg-slate-100"
+              :class="rangedIps.has(ip) ? 'bg-emerald-50' : ''"
+              :title="rangedIps.has(ip) ? 'Deo niza od bar 2 uzastopne slobodne adrese' : ''"
+            >
               <td class="py-2 px-4 font-mono">{{ ip }}</td>
               <td class="py-2 px-4 text-right">
                 <RouterLink :to="{ path: '/add', query: { site, ip } }" class="text-blue-600 hover:underline text-xs">
@@ -95,6 +102,31 @@ const freeIps = ref([])
 const search = ref('')
 const page = ref(1)
 const limit = 100
+
+function ipToNum(ip) {
+  return ip.split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0)
+}
+
+// freeIps dolazi već sortiran uzlazno po numeričkoj vrednosti (backend ih
+// enumeriše redom kroz opseg) - dovoljno je uporediti susedne stavke u nizu,
+// bez ponovnog sortiranja. "Opseg" = bar 2 UZASTOPNE slobodne adrese (razlika
+// tačno 1) - izolovana slobodna adresa (npr. ...1, ...3, ...5, sve
+// isprekidane) se namerno NE boji, to nije opseg koji se može dodeliti u nizu.
+const rangedIps = computed(() => {
+  const marked = new Set()
+  const ips = freeIps.value
+  let runStart = 0
+  for (let i = 1; i <= ips.length; i++) {
+    const continuesRun = i < ips.length && ipToNum(ips[i]) === ipToNum(ips[i - 1]) + 1
+    if (!continuesRun) {
+      if (i - runStart >= 2) {
+        for (let j = runStart; j < i; j++) marked.add(ips[j])
+      }
+      runStart = i
+    }
+  }
+  return marked
+})
 
 const filteredIps = computed(() => {
   const q = search.value.trim()
