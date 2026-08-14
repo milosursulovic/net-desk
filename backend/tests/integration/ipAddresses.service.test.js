@@ -396,7 +396,7 @@ describe("ipAddresses.service (integration, real DB)", () => {
       expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
     });
 
-    it("still flags a computer with a mix of SSD+HDD (any HDD present is enough)", async () => {
+    it("does NOT flag a computer with a mix of SSD+HDD - OS likely runs off the SSD, so the HDD isn't the bottleneck", async () => {
       const hostname = testHostname();
       const entry = await createService({
         ip: testIp(),
@@ -416,10 +416,30 @@ describe("ipAddresses.service (integration, real DB)", () => {
       });
 
       const out = await repackRecommendationsService("bolnica");
-      const match = out.find((r) => r.id === ipEntryId);
-      expect(match).toBeTruthy();
-      expect(match.hasHdd).toBe(true);
-      expect(match.reasons).toContain("has_hdd");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
+    });
+
+    it("does NOT flag a computer with two HDDs (only the single-HDD case is unambiguous)", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 8 },
+        Storage: [
+          { Model: "ST1000DM010", SizeGB: 1000, MediaType: "HDD" },
+          { Model: "ST2000DM008", SizeGB: 2000, MediaType: "HDD" },
+        ],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
     });
 
     it("does NOT flag a real ~8GB machine (usable RAM reported just under 8) as low RAM", async () => {

@@ -393,12 +393,16 @@ export async function updatePendingRepack(id, value) {
 // Klasifikacija slab CPU/malo RAM-a/HDD se radi u servisu (cpuTier.js +
 // pragovi), ovaj upit samo vraća sirove specifikacije. Isti JOIN smer
 // (cm.ip_entry_id = ie.id) kao statsRamTotals/statsLowRamRows u
-// metadata.repo.js, ne preko ie.metadata_id. hasHdd koristi isti
-// UPPER(COALESCE(media_type,'')) LIKE '%HDD%' obrazac kao statsRamTotals-ov
-// susedni statsStorageBreakdown (ssdCount/hddCount) u istom fajlu -
-// media_type je 'HDD'/'SSD'/'Unspecified'/NULL (MsftMediaTypeToString u
-// HardwareCollector.cs; NULL na Windows 7 gde MSFT_PhysicalDisk ne postoji,
-// ali to je van dometa ovde jer je OS filter već Windows 10/11).
+// metadata.repo.js, ne preko ie.metadata_id. hasHdd je namerno STROŽE od
+// "postoji bar jedan HDD" - okida SAMO kad računar ima TAČNO JEDAN disk i taj
+// disk je HDD. Računar sa SSD+HDD (čest slučaj - SSD za OS, HDD za podatke)
+// se NE flaguje, jer OS tada verovatno radi sa SSD-a i HDD nije usko grlo;
+// dva HDD-a (bez SSD-a) se iz istog razloga (nejasan je koji disk je sistemski)
+// takođe ne flaguju - samo najjednostavniji, nedvosmislen slučaj "jedan disk,
+// taj disk je spor". media_type je 'HDD'/'SSD'/'Unspecified'/NULL
+// (MsftMediaTypeToString u HardwareCollector.cs; NULL na Windows 7 gde
+// MSFT_PhysicalDisk ne postoji, ali to je van dometa ovde jer je OS filter
+// već Windows 10/11).
 export async function listRepackCandidates(site) {
   const whereParts = [
     "ie.entry_type = 'computer'",
@@ -428,9 +432,10 @@ export async function listRepackCandidates(site) {
           WHERE rm.metadata_id = cm.id
         )
       ) AS ramGb,
-      EXISTS (
-        SELECT 1 FROM computer_metadata_storage s
-        WHERE s.metadata_id = cm.id AND UPPER(COALESCE(s.media_type, '')) LIKE '%HDD%'
+      (
+        SELECT COUNT(*) = 1 AND MAX(UPPER(COALESCE(s.media_type, ''))) = 'HDD'
+        FROM computer_metadata_storage s
+        WHERE s.metadata_id = cm.id
       ) AS hasHdd
     FROM ip_entries ie
     JOIN computer_metadata cm ON cm.ip_entry_id = ie.id
