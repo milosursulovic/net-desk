@@ -146,7 +146,9 @@ const loading = ref(false)
 const loadError = ref('')
 const search = ref('')
 // Prazno = bez filtera (prikaži sve razloge) - kad je bar jedan čekiran,
-// prikazuje se UNIJA (računar sa BILO KOJIM od čekiranih razloga), ne presek.
+// prikazuje se PRESEK (računar mora imati SVE čekirane razloge, ne bilo koji
+// od njih) - npr. čekiranje "Obični HDD" i "Malo RAM-a" pokazuje samo
+// računare koji imaju OBA, ne one koji imaju bilo koji od ta dva.
 const reasonFilters = ref([])
 // Odvojeno od "Slab procesor" reason checkbox-a iznad - taj filtrira PO ČEMU
 // je računar preporučen, ovaj filtrira PO STVARNOM tipu procesora bez obzira
@@ -157,7 +159,7 @@ const cpuTierFilter = ref('')
 const filteredItems = computed(() => {
   let list = items.value
   if (reasonFilters.value.length) {
-    list = list.filter((e) => e.reasons.some((r) => reasonFilters.value.includes(r)))
+    list = list.filter((e) => reasonFilters.value.every((r) => e.reasons.includes(r)))
   }
   if (cpuTierFilter.value) {
     list = list.filter((e) =>
