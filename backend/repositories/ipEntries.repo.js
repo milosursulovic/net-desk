@@ -402,7 +402,13 @@ export async function updatePendingRepack(id, value) {
 // taj disk je spor". media_type je 'HDD'/'SSD'/'Unspecified'/NULL
 // (MsftMediaTypeToString u HardwareCollector.cs; NULL na Windows 7 gde
 // MSFT_PhysicalDisk ne postoji, ali to je van dometa ovde jer je OS filter
-// već Windows 10/11).
+// već Windows 10/11). hasLexarSsd je namerno DRUGAČIJE strogo od hasHdd -
+// okida ako postoji BILO KOJI Lexar SSD, bez obzira na broj/vrstu ostalih
+// diskova (za razliku od "jedan disk" pravila kod HDD-a) - Lexar SSD je sam
+// po sebi red flag (poznati problemi sa pouzdanošću/otkazivanjem), isti
+// kriterijum kao postojeći statsLexarFlagRows u metadata.repo.js
+// (s.model LIKE '%lexar%' AND media_type LIKE '%SSD%'), ovde samo kao
+// dodatni razlog za preporuku umesto posebne liste.
 export async function listRepackCandidates(site) {
   const whereParts = [
     "ie.entry_type = 'computer'",
@@ -436,7 +442,13 @@ export async function listRepackCandidates(site) {
         SELECT COUNT(*) = 1 AND MAX(UPPER(COALESCE(s.media_type, ''))) = 'HDD'
         FROM computer_metadata_storage s
         WHERE s.metadata_id = cm.id
-      ) AS hasHdd
+      ) AS hasHdd,
+      EXISTS (
+        SELECT 1 FROM computer_metadata_storage s2
+        WHERE s2.metadata_id = cm.id
+          AND s2.model LIKE '%lexar%'
+          AND UPPER(COALESCE(s2.media_type, '')) LIKE '%SSD%'
+      ) AS hasLexarSsd
     FROM ip_entries ie
     JOIN computer_metadata cm ON cm.ip_entry_id = ie.id
     WHERE ${whereParts.join(" AND ")}

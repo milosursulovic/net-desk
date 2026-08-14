@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold text-slate-800">Preporuke za pakovanje</h1>
         <p class="text-sm text-slate-500 mt-1">
-          Računari na Windows 10/11 sa slabim procesorom (Celeron/Pentium/Athlon i sl.), manje od 8GB RAM-a, i/ili običnim HDD-om umesto SSD-a.
+          Računari na Windows 10/11 sa slabim procesorom (Celeron/Pentium/Athlon i sl.), manje od 8GB RAM-a, običnim HDD-om umesto SSD-a, i/ili Lexar SSD-om (poznat red flag).
         </p>
       </div>
       <AppButton variant="secondary" to="/computers-for-repack">Nazad</AppButton>
@@ -20,6 +20,18 @@
 
     <div class="flex flex-wrap items-center gap-4">
       <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        Procesor:
+        <select v-model="cpuTierFilter" class="app-input w-auto py-1 text-sm">
+          <option value="">Svi</option>
+          <option value="weak">Slab</option>
+          <option value="strong">Jak</option>
+          <option value="unknown">Nepoznat</option>
+        </select>
+      </label>
+
+      <span class="hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+
+      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
         <input type="checkbox" v-model="reasonFilters" value="weak_cpu" />
         Slab procesor
       </label>
@@ -31,7 +43,12 @@
         <input type="checkbox" v-model="reasonFilters" value="has_hdd" />
         Obični HDD
       </label>
-      <button v-if="reasonFilters.length" type="button" @click="reasonFilters = []"
+      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        <input type="checkbox" v-model="reasonFilters" value="lexar_ssd" />
+        Lexar SSD
+      </label>
+      <button v-if="reasonFilters.length || cpuTierFilter" type="button"
+        @click="reasonFilters = []; cpuTierFilter = ''"
         class="text-xs text-blue-600 hover:underline">
         Poništi filter
       </button>
@@ -71,7 +88,7 @@
             <td class="py-2 px-4">{{ e.os || '—' }}</td>
             <td class="py-2 px-4">{{ e.cpuName || '—' }}</td>
             <td class="py-2 px-4">{{ e.ramGb != null ? `${e.ramGb} GB` : '—' }}</td>
-            <td class="py-2 px-4">{{ e.hasHdd ? 'HDD' : '—' }}</td>
+            <td class="py-2 px-4">{{ diskLabel(e) }}</td>
             <td class="py-2 px-4">
               <div class="flex flex-wrap gap-1">
                 <span v-if="e.reasons.includes('weak_cpu')"
@@ -85,6 +102,11 @@
                 <span v-if="e.reasons.includes('has_hdd')"
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
                   Obični HDD
+                </span>
+                <span v-if="e.reasons.includes('lexar_ssd')"
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-red-50 text-red-700 border-red-200"
+                  title="Lexar SSD - poznat red flag (pouzdanost/otkazivanje)">
+                  Lexar SSD
                 </span>
               </div>
             </td>
@@ -126,11 +148,21 @@ const search = ref('')
 // Prazno = bez filtera (prikaži sve razloge) - kad je bar jedan čekiran,
 // prikazuje se UNIJA (računar sa BILO KOJIM od čekiranih razloga), ne presek.
 const reasonFilters = ref([])
+// Odvojeno od "Slab procesor" reason checkbox-a iznad - taj filtrira PO ČEMU
+// je računar preporučen, ovaj filtrira PO STVARNOM tipu procesora bez obzira
+// na razlog (npr. "Jak" pokazuje preporučene računare sa dobrim procesorom,
+// ali npr. lošim RAM-om/HDD-om/Lexar SSD-om).
+const cpuTierFilter = ref('')
 
 const filteredItems = computed(() => {
   let list = items.value
   if (reasonFilters.value.length) {
     list = list.filter((e) => e.reasons.some((r) => reasonFilters.value.includes(r)))
+  }
+  if (cpuTierFilter.value) {
+    list = list.filter((e) =>
+      cpuTierFilter.value === 'unknown' ? e.cpuTier == null : e.cpuTier === cpuTierFilter.value,
+    )
   }
   const q = search.value.trim().toLowerCase()
   if (q) {
@@ -140,6 +172,13 @@ const filteredItems = computed(() => {
   }
   return list
 })
+
+function diskLabel(e) {
+  const labels = []
+  if (e.hasHdd) labels.push('HDD')
+  if (e.hasLexarSsd) labels.push('Lexar SSD')
+  return labels.length ? labels.join(', ') : '—'
+}
 
 async function fetchData() {
   loading.value = true

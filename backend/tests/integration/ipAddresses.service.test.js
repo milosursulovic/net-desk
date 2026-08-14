@@ -442,6 +442,78 @@ describe("ipAddresses.service (integration, real DB)", () => {
       expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
     });
 
+    it("flags a computer with a Lexar SSD as a recommendation, regardless of other hardware being fine", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 16 },
+        Storage: [{ Model: "Lexar SSD NS100 512GB", SizeGB: 512, MediaType: "SSD" }],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.hasLexarSsd).toBe(true);
+      expect(match.reasons).toEqual(["lexar_ssd"]);
+    });
+
+    it("still flags the Lexar SSD reason even alongside a second (non-Lexar) drive", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 16 },
+        Storage: [
+          { Model: "Lexar SSD NS100 512GB", SizeGB: 512, MediaType: "SSD" },
+          { Model: "ST1000DM010", SizeGB: 1000, MediaType: "HDD" },
+        ],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.hasLexarSsd).toBe(true);
+      expect(match.reasons).toContain("lexar_ssd");
+      // Ne prijavljuje se has_hdd, jer je pravilo za HDD i dalje "tačno jedan
+      // disk" - ovde ih ima dva.
+      expect(match.reasons).not.toContain("has_hdd");
+    });
+
+    it("does NOT flag a non-Lexar SSD", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 16 },
+        Storage: [{ Model: "Samsung SSD 970 EVO", SizeGB: 500, MediaType: "SSD" }],
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
+    });
+
     it("does NOT flag a real ~8GB machine (usable RAM reported just under 8) as low RAM", async () => {
       const hostname = testHostname();
       const entry = await createService({
