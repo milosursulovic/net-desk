@@ -11,8 +11,10 @@ import {
   setPendingRepackService,
   exportXlsxRowsService,
   freeIpAddressesService,
+  repackRecommendationsService,
 } from "../../services/ipAddresses.service.js";
 import { insertAgent, revokeAgentById, linkAgentToIpEntry } from "../../repositories/agents.repo.js";
+import { upsertMetadataForIpEntry } from "../../services/metadata.service.js";
 import { deleteTestIpEntry, deleteTestAgent, testIp, testHostname } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
 
@@ -299,6 +301,92 @@ describe("ipAddresses.service (integration, real DB)", () => {
 
     it("rejects an unknown site", async () => {
       await expect(freeIpAddressesService("nonexistent")).rejects.toMatchObject({ status: 400 });
+    });
+  });
+
+  describe("repackRecommendationsService", () => {
+    it("flags a Windows 11 computer with a weak CPU (Celeron) as a recommendation", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Celeron(R) CPU G4900 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 8 },
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.cpuTier).toBe("weak");
+      expect(match.reasons).toContain("weak_cpu");
+      expect(match.reasons).not.toContain("low_ram");
+    });
+
+    it("flags a Windows 10 computer with less than 8GB RAM (below the usable-RAM threshold) as a recommendation", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 10 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 3.9 },
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      const match = out.find((r) => r.id === ipEntryId);
+      expect(match).toBeTruthy();
+      expect(match.cpuTier).toBe("strong");
+      expect(match.reasons).toContain("low_ram");
+      expect(match.reasons).not.toContain("weak_cpu");
+    });
+
+    it("does NOT flag a real ~8GB machine (usable RAM reported just under 8) as low RAM", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 11 Pro",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 7.8 },
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
+    });
+
+    it("does NOT flag a strong-CPU, well-RAM'd Windows 7 machine (wrong OS) or a weak-CPU Windows 7 machine (excluded by OS filter)", async () => {
+      const hostname = testHostname();
+      const entry = await createService({
+        ip: testIp(),
+        computerName: hostname,
+        site: "bolnica",
+        entryType: "computer",
+        os: "Microsoft Windows 7 Professional",
+      });
+      ipEntryId = entry.id;
+      await upsertMetadataForIpEntry(ipEntryId, {
+        CPU: { Name: "Intel(R) Celeron(R) CPU G4900 CPU @ 3.10GHz" },
+        System: { TotalRAM_GB: 2 },
+      });
+
+      const out = await repackRecommendationsService("bolnica");
+      expect(out.find((r) => r.id === ipEntryId)).toBeUndefined();
     });
   });
 

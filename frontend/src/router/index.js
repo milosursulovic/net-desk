@@ -21,6 +21,7 @@ const IpPdsuView = () => import('@/views/IpPdsuView.vue')
 const IpPortScanView = () => import('@/views/IpPortScanView.vue')
 const DuplicateNamesView = () => import('@/views/DuplicateNamesView.vue')
 const ComputersForRepackView = () => import('@/views/ComputersForRepackView.vue')
+const RepackRecommendationsView = () => import('@/views/RepackRecommendationsView.vue')
 const AgentsView = () => import('@/views/AgentsView.vue')
 const AgentDetailView = () => import('@/views/AgentDetailView.vue')
 const AgentReleasesView = () => import('@/views/AgentReleasesView.vue')
@@ -139,6 +140,16 @@ const router = createRouter({
             breadcrumbParent: { label: 'IP Adrese', to: '/' },
           },
           component: ComputersForRepackView,
+        },
+        {
+          path: 'repack-recommendations',
+          name: 'repack-recommendations',
+          meta: {
+            title: 'Preporuke za pakovanje - NetDesk',
+            breadcrumb: 'Preporuke za pakovanje',
+            breadcrumbParent: { label: 'Računari za pakovanje', to: '/computers-for-repack' },
+          },
+          component: RepackRecommendationsView,
         },
         {
           path: 'groups',

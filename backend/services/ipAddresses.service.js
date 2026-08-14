@@ -17,9 +17,11 @@ import {
   listDistinctOs,
   listDistinctOsArchitectures,
   listIpNumericsInRange,
+  listRepackCandidates,
 } from "../repositories/ipEntries.repo.js";
 import { RDP_APP_PATTERNS } from "../dtos/ipAddresses.dto.js";
 import { findMacsForIpEntry } from "../repositories/metadata.repo.js";
+import { classifyCpuTier } from "../utils/cpuTier.js";
 import { sendMagicPacket } from "../utils/wakeOnLan.js";
 
 // Mrežna i broadcast adresa lokalnog segmenta svake lokacije - i za WOL
@@ -238,6 +240,36 @@ export async function setPendingRepackService(id, value) {
     throw notFound("Unos nije pronađen");
   }
   return await findIpEntryById(id);
+}
+
+// WMI Win32_ComputerSystem.TotalPhysicalMemory je USABLE RAM, uvek nešto
+// ispod nominalne veličine (BIOS/firmware rezervacija) - uživo izmereno na
+// ovoj floti, "pravih" 8GB mašina se prijavljuje kao 7.4-7.9, "pravih" 4GB
+// kao 3.4-3.9, sa čistim razmakom između te dve grupe (ništa između 4 i
+// 7.4). Prag od 7 GB namerno pada u taj razmak - hvata sve "manje od 8GB"
+// mašine (4GB i niže) bez lažnog pogotka na mašine koje STVARNO imaju 8GB
+// (koje bi doslovno "< 8" pogrešno uhvatio zbog rezervacije).
+const LOW_RAM_THRESHOLD_GB = 7;
+
+// "Preporuka za pakovanje" - računari na Windows 10/11 čiji hardver (slab
+// CPU po cpuTier.js i/ili malo RAM-a) ukazuje da su kandidati za
+// reimage/upgrade. Namerno se NE čuva u bazi (za razliku od ručnog
+// pending_repack flag-a) - računa se uživo na svaki zahtev, da ostane tačno
+// i posle nadogradnje hardvera/OS-a bez posebnog koraka za "osvežavanje
+// preporuke".
+export async function repackRecommendationsService(site) {
+  const candidates = await listRepackCandidates(site);
+
+  return candidates
+    .map((c) => {
+      const cpuTier = classifyCpuTier(c.cpuName);
+      const ramGb = c.ramGb == null ? null : Number(c.ramGb);
+      const reasons = [];
+      if (cpuTier === "weak") reasons.push("weak_cpu");
+      if (ramGb != null && ramGb < LOW_RAM_THRESHOLD_GB) reasons.push("low_ram");
+      return { ...c, cpuTier, ramGb, reasons };
+    })
+    .filter((c) => c.reasons.length > 0);
 }
 
 export async function filterOptionsService(site) {

@@ -7,7 +7,10 @@
           Računari markirani za pakovanje/zamenu komponenti.
         </p>
       </div>
-      <AppButton variant="secondary" to="/">Nazad na IP adrese</AppButton>
+      <div class="flex flex-wrap items-center gap-2">
+        <AppButton variant="success" to="/repack-recommendations">Preporuke za pakovanje</AppButton>
+        <AppButton variant="secondary" to="/">Nazad na IP adrese</AppButton>
+      </div>
     </div>
 
     <div class="space-y-3">

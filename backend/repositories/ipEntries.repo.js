@@ -387,6 +387,52 @@ export async function updatePendingRepack(id, value) {
   return result.affectedRows;
 }
 
+// Kandidati za "preporuka za pakovanje" - računari na Windows 10/11 sa
+// poznatim hardverom (JOIN na computer_metadata prirodno isključuje računare
+// bez ijedne inventory sinhronizacije - nema CPU/RAM podataka za njih).
+// Klasifikacija slab CPU/malo RAM-a se radi u servisu (cpuTier.js + prag),
+// ovaj upit samo vraća sirove specifikacije. Isti JOIN smer
+// (cm.ip_entry_id = ie.id) kao statsRamTotals/statsLowRamRows u
+// metadata.repo.js, ne preko ie.metadata_id.
+export async function listRepackCandidates(site) {
+  const whereParts = [
+    "ie.entry_type = 'computer'",
+    "(ie.os LIKE '%Windows 10%' OR ie.os LIKE '%Windows 11%')",
+  ];
+  const params = [];
+  if (site) {
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      ie.id,
+      ie.ip,
+      ie.computer_name AS computerName,
+      ie.department,
+      ie.site,
+      ie.os,
+      ie.pending_repack AS pendingRepack,
+      cm.cpu_name AS cpuName,
+      COALESCE(
+        cm.system_total_ram_gb,
+        (
+          SELECT COALESCE(SUM(rm.capacity_gb), 0)
+          FROM computer_metadata_ram_modules rm
+          WHERE rm.metadata_id = cm.id
+        )
+      ) AS ramGb
+    FROM ip_entries ie
+    JOIN computer_metadata cm ON cm.ip_entry_id = ie.id
+    WHERE ${whereParts.join(" AND ")}
+    ORDER BY ie.computer_name
+    `,
+    params,
+  );
+  return rows;
+}
+
 export async function listDistinctDepartments(site) {
   const whereParts = ["department IS NOT NULL", "department != ''"];
   const params = [];

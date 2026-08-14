@@ -15,6 +15,7 @@ import {
   setPendingRepackController,
   wakeController,
   freeIpAddressesController,
+  repackRecommendationsController,
 } from "../controllers/ipAddresses.controller.js";
 import metadataForIpRoutes from "./ipAddressesMetadata.routes.js";
 
@@ -27,6 +28,7 @@ router.get("/filter-options", asyncHandler(filterOptionsController));
 // Mora biti registrovano PRE "/:id" ispod - isti razlog kao ostale rute
 // iznad, "/:id" bi inače "free" protumačio kao id.
 router.get("/free", asyncHandler(freeIpAddressesController));
+router.get("/repack-recommendations", asyncHandler(repackRecommendationsController));
 
 router.get("/", asyncHandler(listController));
 router.get("/:id", asyncHandler(getByIdController));
