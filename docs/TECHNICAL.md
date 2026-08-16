@@ -153,8 +153,11 @@ kompletnu trenutnu listu, stari redovi se brišu).
 
 ## Baza podataka
 
-Nema migration alata — šema se ručno primenjuje (raw SQL, uvek uz potvrdu
-pre izvršavanja). Grupe tabela:
+Šema se primenjuje preko `backend/migrations/*.sql` (numerisani fajlovi,
+`NNNN_opis.sql`, primenjuju se po redosledu imena) + `npm run migrate`
+(`backend/scripts/migrate.js`) — `schema_migrations` tabela pamti koji je
+fajl već primenjen, pa je ponovno pokretanje bezbedno (samo novi fajlovi se
+izvršavaju). Grupe tabela:
 
 **Ručna/PDSU evidencija:**
 `ip_entries`, `ip_status_history`, `printers`, `printer_connected_computers`,
@@ -462,9 +465,11 @@ poslednjih 90 dana `agent_monitoring_history` (disk/CPU/RAM) računa:
 
 ## Poznata ograničenja
 
-- Nema migration alata — šema se ručno primenjuje po okruženju (rizik od
-  drift-a između dev/produkcije, video se uživo bar jednom sa
-  `agent_jobs.payload` JSON tipom).
+- Bazna šema (stanje pre uvođenja `backend/migrations/`) nigde nije zapisana
+  kao SQL, samo postoji kao već-primenjeno stanje na živoj bazi — samo
+  inkrementalne izmene od migracije `0001` nadalje su u repou. Reprodukcija
+  cele šeme od nule (npr. za Docker/novi host) zahteva prvo generisanje
+  baseline dump-a sa žive baze.
 - Job queue je async/polling (agent povlači na sledećem ciklusu, ne
   odmah) — nema uživo/real-time kanala za komande.
 

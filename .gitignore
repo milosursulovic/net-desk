@@ -49,3 +49,7 @@ Thumbs.db
 
 # Tooling
 .VSCodeCounter/
+
+# Claude Code - settings.json is shared/tracked, settings.local.json is
+# per-machine personal overrides (permission tweaks etc.), never shared.
+.claude/settings.local.json

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm run build)",
+      "Bash(npm audit*)",
+      "Bash(dotnet build *)",
+      "Bash(npm run lint)"
+    ]
+  }
+}
