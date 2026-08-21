@@ -1,4 +1,7 @@
+using System;
 using System.IO;
+using System.Threading;
+using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Update
 {
@@ -12,6 +15,19 @@ namespace NetdeskAgent.Common.Update
     /// </summary>
     public static class DirectorySync
     {
+        // Otkriveno uživo na prvom stvarnom update-u koji je uključio
+        // WinDivert.dll/WinDivert64.sys (1.7.0): WinDivert se učitava kao
+        // pravi kernel drajver, i STVARNO oslobađanje .sys fajla od strane
+        // Windows-a ume da kasni koji trenutak posle toga što je
+        // ManagerWorker.StopService već potvrdio da je NetdeskAgent servis
+        // (user-mode proces koji je zvao WinDivertClose) u Stopped stanju -
+        // drajver-unload nije garantovano sinhron sa gašenjem procesa koji ga
+        // je otvorio. Kratak retry sa pauzom apsorbuje tu vremensku rupu (i,
+        // uzgred, isti problem ako neki AV/EDR privremeno drži .sys fajl
+        // otvoren radi skeniranja - isti simptom, ista mitigacija).
+        private const int MaxRetries = 8;
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(750);
+
         public static void CopyDirectoryRecursive(string sourceDir, string destDir)
         {
             Directory.CreateDirectory(destDir);
@@ -19,7 +35,7 @@ namespace NetdeskAgent.Common.Update
             foreach (var filePath in Directory.GetFiles(sourceDir))
             {
                 var destPath = Path.Combine(destDir, Path.GetFileName(filePath));
-                File.Copy(filePath, destPath, true);
+                CopyFileWithRetry(filePath, destPath);
             }
 
             foreach (var subDir in Directory.GetDirectories(sourceDir))
@@ -27,6 +43,37 @@ namespace NetdeskAgent.Common.Update
                 var destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
                 CopyDirectoryRecursive(subDir, destSubDir);
             }
+        }
+
+        private static void CopyFileWithRetry(string sourcePath, string destPath)
+        {
+            for (var attempt = 1; attempt <= MaxRetries; attempt++)
+            {
+                try
+                {
+                    File.Copy(sourcePath, destPath, true);
+                    if (attempt > 1)
+                    {
+                        FileLogger.Info(
+                            "Kopiranje '" + Path.GetFileName(sourcePath) + "' uspelo posle " + attempt + " pokušaja.");
+                    }
+                    return;
+                }
+                catch (IOException) when (attempt < MaxRetries)
+                {
+                    // Fajl je (verovatno privremeno) zaključan - drajver-unload
+                    // kašnjenje ili AV/EDR sken. Namerno se NE loguje na svaki
+                    // pokušaj (spam), samo na kraju ako je stvarno trebalo da
+                    // se čeka - vidi log iznad na uspehu, i grešku ispod ako
+                    // ni MaxRetries pokušaja nije bilo dovoljno.
+                    Thread.Sleep(RetryDelay);
+                }
+            }
+
+            // Poslednji pokušaj - propušta IOException dalje ako i dalje ne
+            // uspe posle svih retry-ja (isti ugovor kao pre ove izmene -
+            // pozivalac, InstallFilesAsync, ovo hvata i pokreće rollback).
+            File.Copy(sourcePath, destPath, true);
         }
     }
 }

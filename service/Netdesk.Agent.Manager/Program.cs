@@ -1,8 +1,6 @@
 using System;
 using System.ServiceProcess;
 using System.Threading;
-using NetdeskAgent.Common.Configuration;
-using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Manager
 {

@@ -2,6 +2,13 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!--
+      Namerno JEDINI net-target (ne prati Common/Service dual-tier) - Manager
+      je od ove izmene potpuno samostalan, nula zavisnosti od
+      Netdesk.Agent.Common, pa nema ni razloga da prati agent-ov net452/net472
+      split. Ostaje net452 čisto zbog Win7 podrške (isti razlog kao pre),
+      nezavisno od toga koji tier Service/Agent koristi na istoj mašini.
+    -->
     <TargetFramework>net452</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>Netdesk.Agent.Manager</AssemblyName>
@@ -12,10 +19,19 @@
   <ItemGroup>
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Configuration.Install" />
+    <!-- UpdateReportClient.cs - jedini mrežni poziv Manager ikad pravi. -->
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Netdesk.Agent.Common\Netdesk.Agent.Common.csproj" />
+    <!--
+      Direktna zavisnost (ne više tranzitivna preko Netdesk.Agent.Common) -
+      samo za ManagerCommand JSON (de)serijalizaciju i UpdateReportClient
+      payload. websocket-sharp NIJE ovde - to je bilo čisto tranzitivno
+      smeće preko stare Common reference (Manager nikad nije koristio VNC
+      bridge), sad ispravno odsutno.
+    -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
 </Project>

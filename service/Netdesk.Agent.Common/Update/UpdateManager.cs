@@ -118,8 +118,6 @@ namespace NetdeskAgent.Common.Update
                 ZipFile.ExtractToDirectory(packagePath, stagingDir);
 
                 var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                var backupDir = Path.Combine(
-                    Paths.DataDir, "update-backup", fromVersion + "-" + DateTime.UtcNow.Ticks);
 
                 var command = new ManagerCommand
                 {
@@ -127,7 +125,13 @@ namespace NetdeskAgent.Common.Update
                     ServiceName = "NetdeskAgent",
                     StagingDir = stagingDir,
                     InstallDir = installDir,
-                    BackupDir = backupDir,
+                    // WebRtcBridge.exe (Webrtc/SessionLauncher.cs) - ako je
+                    // WebRTC sesija aktivna tokom update-a, drži zaključane
+                    // DLL-ove iz ovog istog Service foldera (SIPSorcery,
+                    // SharpDX...) potencijalno minutima, daleko duže od
+                    // Manager-ovog kratkog retry prozora - vidi
+                    // ManagerCommand.KillProcessNames za pun kontekst.
+                    KillProcessNames = new[] { "Netdesk.Agent.WebRtcBridge" },
                     ServerBaseUrl = client.BaseUrl,
                     AgentId = state.AgentId,
                     ApiKey = state.ApiKey,

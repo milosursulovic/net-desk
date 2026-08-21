@@ -825,8 +825,13 @@ export const POWERSHELL_PRESETS = [
     // service/README.md) - "kokoška i jaje" problem, prva instalacija na
     // flotu ide baš preko ovog run_powershell_script mehanizma. Idempotentan
     // (bezbedan za ponovno slanje/buduće ručne update-ove Manager-a samog) -
-    // ako servis već postoji, prvo se zaustavi i deinstalira pre svežeg
-    // upisa fajlova. Isti obrazac preuzimanja kao deploy-trusted-root-cert
+    // ako servis već postoji, prvo se KOMPLETNO ukloni (zaustavi, deinstalira
+    // preko InstallUtil /u, PA JOŠ eksplicitno sc.exe delete kao siguran
+    // fallback - InstallUtil-ovo /u ume da ostavi servis u "marked for
+    // deletion" limbu u SCM-u dok se ne zatvori poslednji handle, umesto da
+    // odmah stvarno nestane, što bi kasniji fresh InstallUtil Install() pozvao
+    // "servis već postoji" grešku) PRE nego što se bilo šta od starih
+    // fajlova/foldera dirne. Isti obrazac preuzimanja kao deploy-trusted-root-cert
     // preset (OS-zavisan URL, TLS 1.2 forsiran, WebClient.DownloadFile) i
     // isti InstallUtil/OS-bitness/sc failure recept kao ručna Service
     // instalacija u DEPLOYMENT.md.
@@ -859,12 +864,29 @@ export const POWERSHELL_PRESETS = [
       '            Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue\n' +
       '        }\n' +
       '        & $installUtilPath /u "$installDir\\Netdesk.Agent.Manager.exe" 2>&1 | Out-Null\n' +
+      '\n' +
+      '        # Siguran fallback - garantuje da servis stvarno nestane iz SCM-a\n' +
+      '        # (ne samo da InstallUtil /u misli da je uspeo) pre nego što se\n' +
+      '        # ide dalje. Do 10 pokušaja/1s - isti "prolazan lock/lag" razlog\n' +
+      '        # kao DirectorySync retry na agent strani, samo za SCM stanje\n' +
+      '        # umesto fajl handle-a.\n' +
+      '        sc.exe delete $serviceName | Out-Null\n' +
+      '        for ($i = 0; $i -lt 10; $i++) {\n' +
+      '            if (-not (Get-Service -Name $serviceName -ErrorAction SilentlyContinue)) { break }\n' +
+      '            Start-Sleep -Seconds 1\n' +
+      '        }\n' +
+      '        if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {\n' +
+      '            throw "Stari servis \'$serviceName\' i dalje postoji u SCM-u posle sc.exe delete - prekidam da ne bih instalirao preko poluobrisanog servisa."\n' +
+      '        }\n' +
       '    }\n' +
       '\n' +
       '    $zipPath = Join-Path $env:TEMP "NetdeskAgentManager.zip"\n' +
       '    $wc = New-Object System.Net.WebClient\n' +
       '    $wc.DownloadFile($pkgUrl, $zipPath)\n' +
       '\n' +
+      '    # KOMPLETNO brisanje starih fajlova - ne oslanjamo se na Expand-Archive\n' +
+      '    # -Force da selektivno prepiše/ostavi stare fajlove koji možda više\n' +
+      '    # ne postoje u novom paketu (npr. stara zavisnost uklonjena).\n' +
       '    if (Test-Path $installDir) {\n' +
       '        Remove-Item $installDir -Recurse -Force\n' +
       '    }\n' +

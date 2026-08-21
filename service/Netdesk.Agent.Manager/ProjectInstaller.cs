@@ -5,9 +5,6 @@ using System.Configuration.Install;
 using System.Diagnostics;
 using System.Reflection;
 using System.ServiceProcess;
-using NetdeskAgent.Common.Configuration;
-using NetdeskAgent.Common.Logging;
-using NetdeskAgent.Common.Manager;
 
 namespace NetdeskAgent.Manager
 {
@@ -31,7 +28,7 @@ namespace NetdeskAgent.Manager
 
             var serviceInstaller = new ServiceInstaller
             {
-                ServiceName = ManagerCommandClient.ManagerServiceName,
+                ServiceName = ManagerServiceInfo.ServiceName,
                 DisplayName = "Netdesk Agent Manager",
                 Description = "Pomoćni servis za bezbedan restart/ažuriranje Netdesk Agent servisa.",
                 StartType = ServiceStartMode.Automatic,

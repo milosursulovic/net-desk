@@ -1,14 +1,10 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using NetdeskAgent.Common.Configuration;
-using NetdeskAgent.Common.Http;
-using NetdeskAgent.Common.Logging;
-using NetdeskAgent.Common.Manager;
-using NetdeskAgent.Common.Update;
 
 namespace NetdeskAgent.Manager
 {
@@ -172,21 +168,25 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// stop servisa → backup install dir → kopiraj staging preko install
-        /// dir-a (rekurzivno, DirectorySync - ispravlja stari Updater bug sa
-        /// amd64\/x86\ podfolderima) → start servisa. GARANCIJA: fajlovi se
-        /// NIKAD ne diraju ako stop nije uspeo - proverava se eksplicitno PRE
-        /// bilo kakvog backup/copy poziva, ne oslanja se na to da bi eventualni
-        /// exception iz ControlService slučajno proizveo isti efekat. Na
-        /// grešku POSLE uspešnog stop-a, rollback iz backup-a i ponovni
-        /// pokušaj starta pre javljanja neuspeha - isti oblik kao stari
-        /// Netdesk.Agent.Updater/Program.cs. InstallDir/StagingDir/BackupDir/
-        /// ServiceName su proizvoljne putanje/naziv - ovaj metod nije vezan
-        /// za NetdeskAgent specifično niti za bilo koju fiksnu lokaciju na
-        /// disku (npr. moglo bi da instalira sasvim drugu komponentu na
-        /// sasvim drugoj putanji, dokle god je servis koji je treba stopirati
-        /// poznat po imenu). Config.json NIJE dirnut u trenutnoj (NetdeskAgent)
-        /// upotrebi - živi van InstallDir-a (Paths.DataDir).
+        /// stop servisa → obriši InstallDir POTPUNO → kopiraj StagingDir u
+        /// InstallDir (rekurzivno, DirectorySync - ispravlja stari Updater
+        /// bug sa amd64\/x86\ podfolderima, i sad ima retry na zaključane
+        /// fajlove - videti DirectorySync komentar) → start servisa.
+        /// GARANCIJA: fajlovi se NIKAD ne diraju ako stop nije uspeo -
+        /// proverava se eksplicitno PRE bilo kakvog brisanja/kopiranja.
+        ///
+        /// NEMA backup-a/rollback-a - namerna pojednostavitev posle uživo
+        /// incidenta gde je i sam rollback (kopiranje unazad) pao na istom
+        /// razlogu kao originalni update (zaključan WinDivert64.sys),
+        /// ostavljajući mašinu u konfuznom "i update i rollback neuspešni"
+        /// stanju. Prost "obriši pa instaliraj" nema tu drugu tačku otkaza -
+        /// na grešku, InstallDir može ostati delimično popunjen/prazan,
+        /// servis ostaje zaustavljen, i to je čitljivo/predvidivo stanje za
+        /// sledeći pokušaj (novi update ili force_reinstall_agent), ne
+        /// skriveno "izgleda oporavljeno ali nije" stanje. InstallDir/
+        /// StagingDir/ServiceName su proizvoljne putanje/naziv - ovaj metod
+        /// nije vezan za NetdeskAgent specifično. Config.json NIJE dirnut u
+        /// trenutnoj (NetdeskAgent) upotrebi - živi van InstallDir-a.
         /// </summary>
         private static async Task InstallFilesAsync(ManagerCommand command)
         {
@@ -207,12 +207,8 @@ namespace NetdeskAgent.Manager
 
             try
             {
-                if (Directory.Exists(command.BackupDir))
-                {
-                    Directory.Delete(command.BackupDir, true);
-                }
-                DirectorySync.CopyDirectoryRecursive(command.InstallDir, command.BackupDir);
-
+                KillProcesses(command.KillProcessNames);
+                DirectorySync.DeleteDirectoryWithRetry(command.InstallDir);
                 DirectorySync.CopyDirectoryRecursive(command.StagingDir, command.InstallDir);
 
                 ControlService(serviceName, "start");
@@ -221,24 +217,60 @@ namespace NetdeskAgent.Manager
             catch (Exception ex)
             {
                 failureReason = ex.Message;
-                FileLogger.Error("Instalacija fajlova neuspešna, pokušavam rollback", ex);
-
-                try
-                {
-                    if (Directory.Exists(command.BackupDir))
-                    {
-                        DirectorySync.CopyDirectoryRecursive(command.BackupDir, command.InstallDir);
-                    }
-                    ControlService(serviceName, "start");
-                }
-                catch (Exception rollbackEx)
-                {
-                    failureReason += " | Rollback takođe neuspešan: " + rollbackEx.Message;
-                    FileLogger.Error("Rollback neuspešan", rollbackEx);
-                }
+                FileLogger.Error(
+                    "Instalacija fajlova neuspešna - servis OSTAJE zaustavljen, nema automatskog rollback-a", ex);
             }
 
             await ReportResultIfConfiguredAsync(command, success, failureReason).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Nasilno ubija sve procese sa datim nazivima (bez .exe) - best-effort,
+        /// jedan proces koji ne uspe da se ubije (već izašao, access denied,
+        /// itd.) ne sme da obori ostatak install koraka. Namerno se poziva PRE
+        /// brisanja/kopiranja fajlova, ne posle - ovi procesi mogu držati
+        /// zaključane baš one fajlove koje DirectorySync sledeći treba da
+        /// obriše/prepiše (vidi ManagerCommand.KillProcessNames za pun
+        /// kontekst zašto ovo uopšte postoji).
+        /// </summary>
+        private static void KillProcesses(string[] processNames)
+        {
+            if (processNames == null || processNames.Length == 0) return;
+
+            foreach (var name in processNames)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                Process[] matches;
+                try
+                {
+                    matches = Process.GetProcessesByName(name);
+                }
+                catch (Exception ex)
+                {
+                    FileLogger.Warn("GetProcessesByName('" + name + "') neuspešno: " + ex.Message);
+                    continue;
+                }
+
+                foreach (var process in matches)
+                {
+                    try
+                    {
+                        process.Kill();
+                        process.WaitForExit(5000);
+                        FileLogger.Info("Proces '" + name + "' (PID " + process.Id + ") ubijen pre update-a.");
+                    }
+                    catch (Exception ex)
+                    {
+                        FileLogger.Warn(
+                            "Ubijanje procesa '" + name + "' (PID " + process.Id + ") neuspešno: " + ex.Message);
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                }
+            }
         }
 
         private static bool TryControlService(string serviceName, string action, out string error)
@@ -274,16 +306,9 @@ namespace NetdeskAgent.Manager
 
             try
             {
-                using (var client = new NetdeskApiClient(command.ServerBaseUrl))
-                {
-                    await client.ReportUpdateAsync(command.AgentId, command.ApiKey, new UpdateReportRequest
-                    {
-                        FromVersion = command.FromVersion,
-                        ToVersion = command.ToVersion,
-                        Success = success,
-                        Reason = reason,
-                    }).ConfigureAwait(false);
-                }
+                await UpdateReportClient.ReportAsync(
+                    command.ServerBaseUrl, command.AgentId, command.ApiKey,
+                    command.FromVersion, command.ToVersion, success, reason).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

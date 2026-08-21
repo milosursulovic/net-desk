@@ -2,8 +2,6 @@ using System;
 using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
-using NetdeskAgent.Common.Logging;
-using NetdeskAgent.Common.Manager;
 
 namespace NetdeskAgent.Manager
 {
@@ -19,7 +17,7 @@ namespace NetdeskAgent.Manager
 
         public NetdeskAgentManagerService()
         {
-            ServiceName = ManagerCommandClient.ManagerServiceName;
+            ServiceName = ManagerServiceInfo.ServiceName;
             CanStop = true;
             CanPauseAndContinue = false;
             AutoLog = true;
@@ -56,7 +54,7 @@ namespace NetdeskAgent.Manager
         /// </summary>
         protected override void OnCustomCommand(int command)
         {
-            if (command == ManagerCommandClient.CustomCommandCode)
+            if (command == ManagerServiceInfo.CustomCommandCode)
             {
                 _worker?.WakeEvent.Set();
             }
