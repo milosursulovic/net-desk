@@ -25,6 +25,14 @@ namespace NetdeskAgent.Common.Update
         // je otvorio. Kratak retry sa pauzom apsorbuje tu vremensku rupu (i,
         // uzgred, isti problem ako neki AV/EDR privremeno drži .sys fajl
         // otvoren radi skeniranja - isti simptom, ista mitigacija).
+        //
+        // Hvata i IOException (ERROR_SHARING_VIOLATION) i
+        // UnauthorizedAccessException (ERROR_ACCESS_DENIED) - Windows vraća
+        // JEDNU ili DRUGU za isti uzrok (drajver-fajl još učitan) zavisno od
+        // trenutka, .NET ih baca kao dva nepovezana tipa
+        // (UnauthorizedAccessException NE nasleđuje IOException) - hvatanje
+        // samo prvog je uživo propustilo drugi ("Access to the path
+        // 'WinDivert64.sys' is denied.").
         private const int MaxRetries = 8;
         private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(750);
 
@@ -59,7 +67,7 @@ namespace NetdeskAgent.Common.Update
                     }
                     return;
                 }
-                catch (IOException) when (attempt < MaxRetries)
+                catch (Exception ex) when (IsTransientLock(ex) && attempt < MaxRetries)
                 {
                     // Fajl je (verovatno privremeno) zaključan - drajver-unload
                     // kašnjenje ili AV/EDR sken. Namerno se NE loguje na svaki
@@ -70,10 +78,13 @@ namespace NetdeskAgent.Common.Update
                 }
             }
 
-            // Poslednji pokušaj - propušta IOException dalje ako i dalje ne
-            // uspe posle svih retry-ja (isti ugovor kao pre ove izmene -
-            // pozivalac, InstallFilesAsync, ovo hvata i pokreće rollback).
+            // Poslednji pokušaj - propušta grešku dalje ako i dalje ne uspe
+            // posle svih retry-ja (isti ugovor kao pre ove izmene - pozivalac
+            // hvata ovo i javlja neuspeh).
             File.Copy(sourcePath, destPath, true);
         }
+
+        private static bool IsTransientLock(Exception ex) =>
+            ex is IOException || ex is UnauthorizedAccessException;
     }
 }
