@@ -74,11 +74,27 @@ namespace NetdeskAgent.Common.Inventory
 
             return new SoftwareItem
             {
-                DisplayName = displayName,
-                DisplayVersion = subKey.GetValue("DisplayVersion") as string,
-                Publisher = subKey.GetValue("Publisher") as string,
+                DisplayName = CleanRegistryString(displayName),
+                DisplayVersion = CleanRegistryString(subKey.GetValue("DisplayVersion") as string),
+                Publisher = CleanRegistryString(subKey.GetValue("Publisher") as string),
                 InstallDate = ParseInstallDate(subKey.GetValue("InstallDate") as string),
             };
+        }
+
+        /// <summary>
+        /// Otkriveno uživo: neki drajver instaleri (npr. BIXOLON štampački
+        /// drajver) pišu fiksne-veličine bafere u registry bez pravog null-
+        /// terminatora na kraju iskorišćenog dela - RegistryKey.GetValue skida
+        /// SAMO JEDAN trailing null karakter, pa stotine preostalih "\0" bajtova
+        /// stižu ovde kao deo "stringa". Sve posle PRVOG null bajta se odbacuje
+        /// pre slanja backend-u, koji ima uske varchar kolone ("Data too long"
+        /// je uživo srušio ceo insert, ne samo taj jedan red).
+        /// </summary>
+        private static string CleanRegistryString(string raw)
+        {
+            if (raw == null) return null;
+            var nulIndex = raw.IndexOf('\0');
+            return (nulIndex >= 0 ? raw.Substring(0, nulIndex) : raw).Trim();
         }
 
         /// <summary>

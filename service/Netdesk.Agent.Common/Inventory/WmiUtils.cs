@@ -5,10 +5,23 @@ namespace NetdeskAgent.Common.Inventory
 {
     internal static class WmiUtils
     {
+        /// <summary>
+        /// Neki WMI provajderi (npr. Win32_PnPSignedDriver/Win32_Service, koji su
+        /// u osnovi backed-ovani registry vrednostima nekih drajver instalera)
+        /// mogu vratiti string sa embedded null ('\0') bajtovima posle prave
+        /// vrednosti - viđeno uživo za registry-direktne čitanja u
+        /// SoftwareCollector-u (fiksni bafer upisan bez pravog terminatora).
+        /// Sve posle PRVOG null bajta se odbacuje pre slanja backend-u, koji ima
+        /// uske varchar kolone - "Data too long" bi inače srušio ceo insert.
+        /// </summary>
         public static string GetString(ManagementBaseObject mo, string prop)
         {
             var v = mo[prop];
-            return v == null ? null : v.ToString().Trim();
+            if (v == null) return null;
+            var s = v.ToString();
+            var nulIndex = s.IndexOf('\0');
+            if (nulIndex >= 0) s = s.Substring(0, nulIndex);
+            return s.Trim();
         }
 
         public static int? GetInt(ManagementBaseObject mo, string prop)

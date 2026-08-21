@@ -1,5 +1,6 @@
 import { notFound } from "../utils/httpError.js";
 import { parseDateMaybe } from "../utils/dates.js";
+import { sanitizeText } from "../utils/strings.js";
 
 import {
   computerFindById,
@@ -90,11 +91,18 @@ export async function syncComputerSoftware(ipEntryId, software) {
   const rows = software.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    display_name: item.displayName ?? null,
+    // sanitizeText: neki drajver instaleri (npr. BIXOLON) pišu fiksne-
+    // veličine bafere u registry bez pravog null-terminatora - agent to
+    // šalje kao stotine "\0" bajtova posle prave vrednosti, što je uživo
+    // srušilo insert protiv varchar(100)/varchar(255) kolona (video se
+    // "Data too long" na display_version). Dužine ovde prate stvarnu širinu
+    // kolone (backend/repositories/pdsu.repo.js's computerSoftwareInsert →
+    // computer_software šema).
+    display_name: sanitizeText(item.displayName, 255),
 
-    display_version: item.displayVersion ?? null,
+    display_version: sanitizeText(item.displayVersion, 100),
 
-    publisher: item.publisher ?? null,
+    publisher: sanitizeText(item.publisher, 255),
 
     install_date: parseDateMaybe(item.installDate),
   }));
@@ -125,15 +133,18 @@ export async function syncComputerDrivers(ipEntryId, drivers) {
   const rows = drivers.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    device_name: item.deviceName ?? null,
+    // sanitizeText - vidi komentar u syncComputerSoftware, isti problem
+    // (drajver registry vrednosti sa null-bajt paddingom) pogađa i ova
+    // polja, dužine prate computer_drivers šemu.
+    device_name: sanitizeText(item.deviceName, 255),
 
-    driver_version: item.driverVersion ?? null,
+    driver_version: sanitizeText(item.driverVersion, 100),
 
     driver_date: parseDateMaybe(item.driverDate),
 
-    manufacturer: item.manufacturer ?? null,
+    manufacturer: sanitizeText(item.manufacturer, 255),
 
-    driver_provider_name: item.driverProviderName ?? null,
+    driver_provider_name: sanitizeText(item.driverProviderName, 255),
   }));
 
   await computerDriversInsert(rows);
@@ -162,17 +173,19 @@ export async function syncComputerServices(ipEntryId, services) {
   const rows = services.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    name: item.name ?? null,
+    // sanitizeText - vidi komentar u syncComputerSoftware. path_name je TEXT
+    // (nema praktičan limit), ali i dalje vredi skinuti null-bajt smeće.
+    name: sanitizeText(item.name, 150),
 
-    display_name: item.displayName ?? null,
+    display_name: sanitizeText(item.displayName, 255),
 
-    state: item.state ?? null,
+    state: sanitizeText(item.state, 50),
 
-    start_mode: item.startMode ?? null,
+    start_mode: sanitizeText(item.startMode, 50),
 
-    start_name: item.startName ?? null,
+    start_name: sanitizeText(item.startName, 255),
 
-    path_name: item.pathName ?? null,
+    path_name: sanitizeText(item.pathName),
   }));
 
   await computerServicesInsert(rows);
@@ -256,13 +269,14 @@ export async function syncComputerUpdates(ipEntryId, updates) {
   const rows = updates.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    description: item.description ?? null,
+    // sanitizeText - vidi komentar u syncComputerSoftware.
+    description: sanitizeText(item.description, 100),
 
-    hotfix_id: item.hotFixID ?? null,
+    hotfix_id: sanitizeText(item.hotFixID, 50),
 
     installed_on: parseDateMaybe(item.installedOn),
 
-    installed_by: item.installedBy ?? null,
+    installed_by: sanitizeText(item.installedBy, 255),
   }));
 
   await computerUpdatesInsert(rows);
@@ -306,13 +320,14 @@ export async function syncComputerPrinters(ipEntryId, printers) {
   const rows = printers.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    name: item.name ?? null,
+    // sanitizeText - vidi komentar u syncComputerSoftware.
+    name: sanitizeText(item.name, 255),
 
-    driver_name: item.driverName ?? null,
+    driver_name: sanitizeText(item.driverName, 255),
 
-    port_name: item.portName ?? null,
+    port_name: sanitizeText(item.portName, 255),
 
-    status: item.status ?? null,
+    status: sanitizeText(item.status, 50),
 
     is_default: item.isDefault ? 1 : 0,
   }));
@@ -342,11 +357,12 @@ export async function syncComputerAvailableUpdates(ipEntryId, availableUpdates) 
   const rows = availableUpdates.map((item) => ({
     ip_entry_id: ipEntryId,
 
-    kb_id: item.kbId ?? null,
+    // sanitizeText - vidi komentar u syncComputerSoftware.
+    kb_id: sanitizeText(item.kbId, 50),
 
-    title: item.title ?? null,
+    title: sanitizeText(item.title, 500),
 
-    severity: item.severity ?? null,
+    severity: sanitizeText(item.severity, 50),
   }));
 
   await computerAvailableUpdatesInsert(rows);

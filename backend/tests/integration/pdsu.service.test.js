@@ -55,6 +55,32 @@ describe("pdsu.service (integration, real DB)", () => {
     },
   );
 
+  it(
+    "syncComputerSoftware sanitizes a null-byte-padded field instead of crashing the whole " +
+      "insert (regression: a real BIXOLON printer driver's registry DisplayVersion arrived " +
+      "as '5.1.12.6055' followed by ~500 null bytes, 'Data too long for column display_version' " +
+      "500'd the entire sync live)",
+    async () => {
+      const padded = "\0".repeat(500);
+      await syncComputerSoftware(ipEntryId, [
+        { displayName: "BIXOLON SLP-DX420 Windows Driver V5.1.12" + padded, displayVersion: "5.1.12.6055" + padded, publisher: "BIXOLON" + padded },
+        { displayName: "Git", displayVersion: "2.55.0", publisher: "Git" },
+      ]);
+
+      const rows = await getComputerSoftware(ipEntryId);
+      expect(rows).toHaveLength(2);
+
+      const bixolon = rows.find((r) => r.display_name.startsWith("BIXOLON"));
+      expect(bixolon.display_name).toBe("BIXOLON SLP-DX420 Windows Driver V5.1.12");
+      expect(bixolon.display_version).toBe("5.1.12.6055");
+      expect(bixolon.publisher).toBe("BIXOLON");
+
+      // A clean, unrelated row in the same batch is untouched.
+      const git = rows.find((r) => r.display_name === "Git");
+      expect(git.display_version).toBe("2.55.0");
+    },
+  );
+
   it("syncComputerDrivers stores null for an unparseable driverDate", async () => {
     await syncComputerDrivers(ipEntryId, [
       { deviceName: "WAN Miniport", driverVersion: "10.0", driverDate: "garbage" },
