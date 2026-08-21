@@ -9,6 +9,7 @@ const SELECT_FIELDS = `
   sha256,
   signature,
   release_notes AS releaseNotes,
+  target_runtime AS targetRuntime,
   is_active AS isActive,
   created_by_user_id AS createdByUserId,
   created_at AS createdAt
@@ -24,15 +25,26 @@ export async function insertRelease({
   sha256,
   signature,
   releaseNotes,
+  targetRuntime,
   createdByUserId,
 }) {
   const [result] = await pool.execute(
     `
     INSERT INTO agent_releases
-      (version, file_name, file_path, file_size, sha256, signature, release_notes, is_active, created_by_user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+      (version, file_name, file_path, file_size, sha256, signature, release_notes, target_runtime, is_active, created_by_user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     `,
-    [version, fileName, filePath, fileSize, sha256, signature ?? null, releaseNotes, createdByUserId],
+    [
+      version,
+      fileName,
+      filePath,
+      fileSize,
+      sha256,
+      signature ?? null,
+      releaseNotes,
+      targetRuntime || "net452",
+      createdByUserId,
+    ],
   );
   return result.insertId;
 }
@@ -67,12 +79,22 @@ export async function findReleaseFiles(releaseId) {
   return rows;
 }
 
-// Više release-ova može deliti isti version string (npr. ponovni upload) -
-// uzima se najskorije otpremljeni, isti obrazac kao "best" u checkForUpdateService.
-export async function findReleaseIdByVersion(version) {
+// Više release-ova može deliti isti version string (npr. ponovni upload, ili
+// od 0009 dva tier-a - net452/net472 - sa istim brojem verzije) - uzima se
+// najskorije otpremljeni sa TRAŽENIM target_runtime-om, isti obrazac kao
+// "best" u checkForUpdateService. targetRuntime je opcion (undefined) samo
+// zbog starih poziva pre nego što je tier koncept postojao - u praksi ga
+// pozivalac uvek treba da prosledi kad zna agent-ov remote_control_tier.
+export async function findReleaseIdByVersion(version, targetRuntime) {
+  const params = [version];
+  let where = "version = ?";
+  if (targetRuntime) {
+    where += " AND target_runtime = ?";
+    params.push(targetRuntime);
+  }
   const [rows] = await pool.execute(
-    `SELECT id FROM agent_releases WHERE version = ? ORDER BY created_at DESC LIMIT 1`,
-    [version],
+    `SELECT id FROM agent_releases WHERE ${where} ORDER BY created_at DESC LIMIT 1`,
+    params,
   );
   return rows?.[0]?.id ?? null;
 }
@@ -137,10 +159,18 @@ export async function findReleaseById(id) {
 
 // Agent sad može imati VIŠE deployment grupa - vraća release-e koje ciljaju
 // BILO KOJU od njih (IN, ne =). DISTINCT jer isti release može biti pogođen
-// preko više od jedne od agent-ovih grupa.
-export async function findActiveReleasesForGroups(deploymentGroups) {
+// preko više od jedne od agent-ovih grupa. targetRuntime je opciono filtrira
+// i na tier (net452/net472) - bez njega, agent bi mogao da dobije ponuđen
+// build za tier koji ne odgovara njegovom stvarnom (rfb_only vs webrtc_capable).
+export async function findActiveReleasesForGroups(deploymentGroups, targetRuntime) {
   if (!deploymentGroups?.length) return [];
   const placeholders = deploymentGroups.map(() => "?").join(",");
+  const params = [...deploymentGroups];
+  let runtimeFilter = "";
+  if (targetRuntime) {
+    runtimeFilter = "AND r.target_runtime = ?";
+    params.push(targetRuntime);
+  }
   const [rows] = await pool.execute(
     `
     SELECT DISTINCT
@@ -152,15 +182,16 @@ export async function findActiveReleasesForGroups(deploymentGroups) {
       r.sha256,
       r.signature,
       r.release_notes AS releaseNotes,
+      r.target_runtime AS targetRuntime,
       r.is_active AS isActive,
       r.created_by_user_id AS createdByUserId,
       r.created_at AS createdAt
     FROM agent_releases r
     JOIN agent_release_groups g ON g.release_id = r.id
-    WHERE g.deployment_group IN (${placeholders}) AND r.is_active = 1
+    WHERE g.deployment_group IN (${placeholders}) AND r.is_active = 1 ${runtimeFilter}
     ORDER BY r.created_at DESC
     `,
-    deploymentGroups,
+    params,
   );
   return rows;
 }

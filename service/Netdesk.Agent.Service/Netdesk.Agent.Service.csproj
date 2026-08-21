@@ -2,11 +2,25 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net452</TargetFramework>
+    <!-- Vidi napomenu u Netdesk.Agent.Common.csproj - isti dual-tier razlog. -->
+    <TargetFrameworks>net452;net472</TargetFrameworks>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>Netdesk.Agent.Service</AssemblyName>
     <RootNamespace>NetdeskAgent.Service</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <!--
+    Eksplicitan sopstveni simbol umesto oslanjanja na SDK auto-definisane
+    per-TFM konstante (nepouzdano proveriti bez prave build mašine - uživo
+    testirano u ovoj sesiji preko -getProperty:DefineConstants, koje NIJE
+    pokazalo očekivan NET472/NET452 simbol za ove starije monikere na
+    lokalnoj SDK verziji). AgentWorker.cs koristi #if NETDESK_WEBRTC_CAPABLE
+    da bi stvarni start_webrtc_bridge kod postojao SAMO u net472 build-u -
+    isti razlog kao Compile Remove za Webrtc/ folder u Common.csproj.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <DefineConstants>$(DefineConstants);NETDESK_WEBRTC_CAPABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

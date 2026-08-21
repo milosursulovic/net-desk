@@ -13,6 +13,17 @@ export const APP_SETTINGS = [
     default: "false",
   },
   {
+    key: "vnc_webrtc_enabled",
+    label: "WebRTC prikaz ekrana (BETA, pilot)",
+    description:
+      "Za agente koji prijave webrtc_capable tier (win10/win11/winsrv, net472 build) - pokušava WebRTC put " +
+      "(capture+enkodiranje na samom agentu, bez UltraVNC-a) umesto RFB releja, sa automatskim padom nazad na RFB " +
+      "ako WebRTC ne uspe. Podrazumevano isključeno - kill switch za Fazu 2 pilot rollout, ne dirati dok se ne " +
+      "potvrdi na pilot deployment grupi.",
+    type: "boolean",
+    default: "false",
+  },
+  {
     key: "process_monitor_enabled",
     label: "Ubijanje sumnjivih procesa",
     description:

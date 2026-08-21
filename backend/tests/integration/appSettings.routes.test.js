@@ -48,6 +48,7 @@ describe("app settings routes (integration, real DB)", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
       expect.objectContaining({ key: "vnc_enabled", value: false }),
+      expect.objectContaining({ key: "vnc_webrtc_enabled", value: false }),
       expect.objectContaining({ key: "process_monitor_enabled", value: true }),
     ]);
   });

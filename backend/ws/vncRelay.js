@@ -129,16 +129,24 @@ export function attachVncRelay(server) {
     // Nagle's algorithm is on by default for a net/tls.Socket - it batches
     // small writes for up to ~40ms hoping to coalesce them, which is
     // exactly wrong for a relay carrying individual RFB messages (mouse
-    // moves, small incremental screen updates). This is the only upgrade
-    // handler on this server, so it's safe to apply to every socket that
-    // reaches here.
+    // moves, small incremental screen updates). NOTE: as of the WebRTC
+    // dual-path work, ws/webrtcSignaling.js ALSO listens on this same
+    // server's "upgrade" event (Node fires every registered listener, not
+    // just one) - setNoDelay here is harmless for signaling's small JSON
+    // messages too, so applying it unconditionally is still fine.
     socket.setNoDelay(true);
 
     let url;
     try {
       url = new URL(req.url, "https://placeholder.invalid");
     } catch {
-      socket.destroy();
+      // Ne uništavamo socket ovde bezuslovno - webrtcSignaling.js-ov
+      // handler na istom "upgrade" event-u dobija priliku da obradi svoju
+      // putanju (oba handlera se pozivaju za SVAKI upgrade, ne samo prvi
+      // koji se poklopi). Neprepoznata/nevalidna putanja jednostavno ostaje
+      // nerukovana ako je nijedan handler ne prepozna - klijent dobija
+      // timeout umesto eksplicitnog RST-a, prihvatljiv kompromis da bi dva
+      // nezavisna WS handlera mogla bezbedno da dele isti HTTPS server.
       return;
     }
 
@@ -197,6 +205,9 @@ export function attachVncRelay(server) {
       return;
     }
 
-    socket.destroy();
+    // Namerno NEMA socket.destroy() ovde - vidi napomenu kod URL parse
+    // catch-a iznad, ovaj handler ne sme da uništi socket za putanje koje
+    // pripadaju webrtcSignaling.js-u (ili bilo kom budućem trećem handleru
+    // na istom serveru).
   });
 }

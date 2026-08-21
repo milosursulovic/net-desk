@@ -50,6 +50,12 @@ Thumbs.db
 # Tooling
 .VSCodeCounter/
 
+# graphify - regenerable knowledge-graph artifacts (large, binary-ish, no
+# review value in git history); GRAPH_REPORT.md is the one human-readable
+# output worth tracking, kept out of this ignore.
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+
 # Claude Code - settings.json is shared/tracked, settings.local.json is
 # per-machine personal overrides (permission tweaks etc.), never shared.
 .claude/settings.local.json

@@ -54,6 +54,7 @@ export async function authenticateAgent(req, _res, next) {
     agentUid: agent.agentUid,
     ipEntryId: agent.ipEntryId,
     agentVersion: agent.agentVersion,
+    remoteControlTier: agent.remoteControlTier,
     deploymentGroups: await listAgentDeploymentGroups(agent.id),
   };
   next();

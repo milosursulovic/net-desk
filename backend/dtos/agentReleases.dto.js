@@ -17,6 +17,11 @@ export const CreateReleaseSchema = z.object({
   // ne jednu skalarnu vrednost kao ranije.
   deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
   releaseNotes: z.string().nullable().optional(),
+  // Koji .NET Framework/csproj target je ovaj paket - net452 (RFB-only,
+  // Win7-kompatibilno) ili net472 (RFB+WebRTC, vidi plan dual-path VNC-a).
+  // Default net452 čuva postojeći single-tier upload tok bez izmena na
+  // frontend-u dok se Faza 2 ne uradi.
+  targetRuntime: z.enum(["net452", "net472"]).default("net452"),
 });
 
 export const UpdateReportSchema = z.object({

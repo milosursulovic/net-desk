@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      net472-ONLY, bez izbora - ovaj projekat postoji zato što WebRTC
+      (SIPSorcery/DXGI/libvpx, vidi Netdesk.Agent.Common/Webrtc/) ne radi na
+      net452 (Windows 7). Nikad se ne pokreće na win7-grupisanim agentima
+      (backend targeting preko agents.remote_control_tier - vidi migraciju
+      0009 i agentReleases.service.js). Odvojen .exe (ne deo
+      Netdesk.Agent.Service-a) jer mora da se pokrene UNUTAR interaktivne
+      korisničke sesije preko CreateProcessAsUser (SessionLauncher.cs) -
+      Netdesk.Agent.Service sam radi u Session 0 (LocalSystem), gde
+      DXGI capture i SendInput nemaju šta da dodirnu.
+    -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Netdesk.Agent.WebRtcBridge</AssemblyName>
+    <RootNamespace>NetdeskAgent.WebRtcBridge</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Netdesk.Agent.Common\Netdesk.Agent.Common.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,12 +1,18 @@
 import { z } from "zod";
 import { isValidIPv4 } from "../utils/ip.js";
 
+// rfb_only/webrtc_capable je compile-time cinjenica o samom agent build-u
+// (koja verzija .NET Framework-a/koji csproj target je build-ovan), ne
+// runtime probe - agent je jedini koji zna sta je ustvari u njemu.
+export const RemoteControlTierSchema = z.enum(["rfb_only", "webrtc_capable"]);
+
 export const EnrollSchema = z.object({
   hostname: z.string().max(255).nullable().optional(),
   osCaption: z.string().max(255).nullable().optional(),
   osVersion: z.string().max(100).nullable().optional(),
   osBuild: z.string().max(50).nullable().optional(),
   agentVersion: z.string().max(50).nullable().optional(),
+  remoteControlTier: RemoteControlTierSchema.nullable().optional(),
 });
 
 export const MonitoringSchema = z.object({
@@ -30,6 +36,7 @@ export const HeartbeatSchema = z.object({
   agentVersion: z.string().max(50).nullable().optional(),
   uptimeSeconds: z.coerce.number().int().min(0).nullable().optional(),
   monitoring: MonitoringSchema.nullable().optional(),
+  remoteControlTier: RemoteControlTierSchema.nullable().optional(),
 });
 
 // OS/System/Motherboard/BIOS/CPU/RAMModules/Storage/GPUs/NICs su namerno

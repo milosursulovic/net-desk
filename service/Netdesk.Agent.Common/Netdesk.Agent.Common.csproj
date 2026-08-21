@@ -1,12 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net452</TargetFramework>
+    <!--
+      net452 ostaje jedini build ponuđen Windows 7 flotom (RFB/UltraVNC-only
+      most, vidi Vnc/VncBridge.cs) - net472 je DODATNI, drugi tier, ne
+      zamena, za win10/win11/winsrv gde WebRTC (Webrtc/, dolazi u Fazi 2)
+      postaje moguć. Nijedna podržana WebRTC biblioteka ne radi na net452
+      (SIPSorcery zahteva net462+, .NET Standard 2.0 sam po sebi ima pod
+      net461) - zato dva tier-a umesto bump-a cele flote, vidi plan.
+    -->
+    <TargetFrameworks>net452;net472</TargetFrameworks>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>Netdesk.Agent.Common</AssemblyName>
     <RootNamespace>NetdeskAgent.Common</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
+
+  <!--
+    unsafe pokazivači (fixed) samo u Webrtc/WebRtcSession.cs, koji ionako
+    postoji SAMO u net472 (isključen iz net452 - vidi Compile Remove ispod) -
+    ne menja net452 build-ove kompajlerske zastavice.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Webrtc/ (capture, libvpx wrapper, SIPSorcery session - Faza 2) postoji
+      SAMO u net472 output-u. Isključeno ovde umesto #if scattered kroz kod -
+      isti "OS-tiered capability koja fail-uje closed ispod određene verzije"
+      obrazac kao WinDivertInterop.cs (Win10/11/Server-only, Win7 isključen).
+      Folder još ne postoji (Faza 2) - ovo pravilo je bezopasno dok se ne
+      popuni, samo priprema build sistem unapred (Faza 1 cilj: dokazati da
+      multi-targeting radi PRE nego što ima šta da se isključi).
+    -->
+    <Compile Remove="Webrtc/**/*.cs" Condition="'$(TargetFramework)' == 'net452'" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -21,6 +51,27 @@
       raw sockets, no WinHTTP dependency), explicitly supports ".NET 3.5 or later".
     -->
     <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
+    <!--
+      SIPSorcery - managed ICE/DTLS/SRTP/SCTP WebRTC stack, net472+ ONLY.
+      Istraženo uživo pre nego što je bilo šta drugo od Faze 2 pisano:
+      trenutni SIPSorcery zahteva net462 minimum (.NET Standard 2.0-ov
+      sopstveni pod je net461), a poslednja verzija koja je radila na net452
+      (3.0.2) je godinama zaostala i NuGet-flagovana sa high-severity
+      ranjivošću - zato dva build tier-a (vidi TargetFrameworks iznad)
+      umesto pokušaja da se ovo nekako ugura u net452.
+    -->
+    <PackageReference Include="SIPSorcery" Version="10.0.16" Condition="'$(TargetFramework)' == 'net472'" />
+    <!--
+      SharpDX.Direct3D11/.DXGI (2.6.3, poslednja objavljena verzija - projekat
+      je arhivan 2019, ali paketi i dalje ciljaju net45+ za razliku od
+      naslednika Vortice.Windows koji je net8.0-only, uživo provereno u ovoj
+      sesiji: Vortice restore-uje "tiho" i za net472 ali tipovi se NE
+      razrešavaju na kompajliranju - stvarna nekompatibilnost, ne
+      hipotetička). SharpDX nema aktivan upstream, ali DXGI/D3D11 COM API
+      koji obavija se ne menja - prihvatljivo za ovaj sloj.
+    -->
+    <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" Condition="'$(TargetFramework)' == 'net472'" />
+    <PackageReference Include="SharpDX.DXGI" Version="4.2.0" Condition="'$(TargetFramework)' == 'net472'" />
   </ItemGroup>
 
   <ItemGroup>

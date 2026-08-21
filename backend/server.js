@@ -9,6 +9,7 @@ import { startDailyReportScheduler } from "./utils/dailyReportScheduler.js";
 import { startServerHealthSnapshotLoop } from "./utils/serverHealthScheduler.js";
 import { startDomainBlacklistSyncLoop } from "./utils/domainBlacklistScheduler.js";
 import { attachVncRelay } from "./ws/vncRelay.js";
+import { attachWebrtcSignaling } from "./ws/webrtcSignaling.js";
 
 const connectMySql = async () => {
   try {
@@ -31,6 +32,7 @@ export const startServer = async () => {
   const sslOptions = getSslOptions();
   const server = https.createServer(sslOptions, app);
   attachVncRelay(server);
+  attachWebrtcSignaling(server);
 
   const ok = await connectMySql();
   if (!ok) process.exit(1);

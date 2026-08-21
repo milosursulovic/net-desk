@@ -17,14 +17,24 @@ export async function insertAgent({
   osVersion,
   osBuild,
   agentVersion,
+  remoteControlTier,
 }) {
   const [result] = await pool.execute(
     `
     INSERT INTO agents
-      (agent_uid, api_key_hash, hostname, os_caption, os_version, os_build, agent_version, status, enrolled_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      (agent_uid, api_key_hash, hostname, os_caption, os_version, os_build, agent_version, remote_control_tier, status, enrolled_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
     `,
-    [agentUid, apiKeyHash, hostname, osCaption, osVersion, osBuild, agentVersion],
+    [
+      agentUid,
+      apiKeyHash,
+      hostname,
+      osCaption,
+      osVersion,
+      osBuild,
+      agentVersion,
+      remoteControlTier || "rfb_only",
+    ],
   );
   return result.insertId;
 }
@@ -38,6 +48,7 @@ export async function findAgentByUid(agentUid) {
       api_key_hash AS apiKeyHash,
       ip_entry_id AS ipEntryId,
       agent_version AS agentVersion,
+      remote_control_tier AS remoteControlTier,
       status
     FROM agents
     WHERE agent_uid = ?
@@ -60,6 +71,7 @@ export async function findAgentById(id) {
       os_version AS osVersion,
       os_build AS osBuild,
       agent_version AS agentVersion,
+      remote_control_tier AS remoteControlTier,
       process_kill_exempt AS processKillExempt,
       service_files_mismatch AS serviceFilesMismatch,
       service_files_mismatch_details AS serviceFilesMismatchDetails,
@@ -78,7 +90,10 @@ export async function findAgentById(id) {
   return rows?.[0] || null;
 }
 
-export async function updateHeartbeat(id, { hostname, agentVersion, lastIp }) {
+export async function updateHeartbeat(
+  id,
+  { hostname, agentVersion, remoteControlTier, lastIp },
+) {
   const sets = ["last_heartbeat_at = NOW()", "last_ip = ?"];
   const params = [lastIp];
 
@@ -89,6 +104,10 @@ export async function updateHeartbeat(id, { hostname, agentVersion, lastIp }) {
   if (agentVersion !== undefined) {
     sets.push("agent_version = ?");
     params.push(agentVersion);
+  }
+  if (remoteControlTier !== undefined && remoteControlTier !== null) {
+    sets.push("remote_control_tier = ?");
+    params.push(remoteControlTier);
   }
 
   params.push(id);
@@ -298,6 +317,7 @@ export async function listAgents(filters) {
       agents.os_version AS osVersion,
       agents.os_build AS osBuild,
       agents.agent_version AS agentVersion,
+      agents.remote_control_tier AS remoteControlTier,
       (SELECT GROUP_CONCAT(group_name ORDER BY group_name SEPARATOR ', ')
        FROM agent_deployment_groups WHERE agent_id = agents.id) AS deploymentGroups,
       agents.service_files_mismatch AS serviceFilesMismatch,

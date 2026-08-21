@@ -17,6 +17,10 @@ using NetdeskAgent.Common.ProcessMonitor;
 using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
+#if NETDESK_WEBRTC_CAPABLE
+using System.IO;
+using NetdeskAgent.Common.Webrtc;
+#endif
 
 namespace NetdeskAgent.Service
 {
@@ -468,6 +472,45 @@ namespace NetdeskAgent.Service
                 return;
             }
 
+            if (job.CommandType == "start_webrtc_bridge")
+            {
+#if NETDESK_WEBRTC_CAPABLE
+                // Isti fire-and-forget oblik kao start_vnc_bridge iznad -
+                // uspeh se prijavljuje čim je SessionLauncher POKUŠAO da
+                // pokrene bridge proces, ne kad WebRTC sesija stvarno uspe
+                // (sam WebRtcBridge.exe javlja "failed" na signaling kanalu
+                // preko WebRtcSession.OnConnectionFailed ako kasnije ne
+                // uspe - vidi Program.cs u Netdesk.Agent.WebRtcBridge).
+                var sessionId = ExtractSessionId(job.Payload);
+                var launched = RunWebRtcBridge(sessionId, settings, state);
+
+                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+                {
+                    Success = launched,
+                    ExitCode = launched ? 0 : 1,
+                    Output = launched ? "WebRTC most pokrenut." : null,
+                    ErrorOutput = launched ? null : "Nema aktivne interaktivne sesije za WebRTC most (SessionLauncher).",
+                    DurationMs = 0,
+                }).ConfigureAwait(false);
+#else
+                // net452 build (Win7) - WebRTC nikad nije opcija ovde (vidi
+                // Netdesk.Agent.Common.csproj napomenu: nijedna podržana
+                // WebRTC biblioteka ne radi na net452). Ovaj job ne bi
+                // trebalo ni da stigne net452 agentu (backend targeting
+                // preko agents.remote_control_tier), ali ako ipak stigne
+                // (npr. zastarela targeting odluka), čisto prijavi
+                // "nepodržano" - nikad unhandled exception.
+                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
+                {
+                    Success = false,
+                    ExitCode = 1,
+                    ErrorOutput = "WebRTC most nije podržan na ovom agent build-u.",
+                    DurationMs = 0,
+                }).ConfigureAwait(false);
+#endif
+                return;
+            }
+
             JobExecutor.ExecutionResult result;
 
             if (job.CommandType == "collect_inventory" || job.CommandType == "refresh_software_list")
@@ -511,6 +554,40 @@ namespace NetdeskAgent.Service
                 FileLogger.Error("VNC sesija #" + sessionId + " - neočekivana greška u mostu", ex);
             }
         }
+
+#if NETDESK_WEBRTC_CAPABLE
+        // SessionLauncher (Netdesk.Agent.Common/Webrtc/) pokreće poseban
+        // WebRtcBridge.exe UNUTAR interaktivne korisničke sesije preko
+        // CreateProcessAsUser - vidi opsežnu napomenu tamo o Session 0
+        // izolaciji (ni DXGI capture ni SendInput ne rade iz ovog LocalSystem
+        // servisa direktno). Vraća false (bez izuzetka) ako trenutno nema
+        // prijavljenog korisnika (WTSQueryUserToken padne na zaključanoj/
+        // odjavljenoj konzoli) - očekivano stanje na mašini bez ikoga
+        // prijavljenog, ne greška koju treba logovati kao fatalnu.
+        //
+        // POZNAT NEDOSTATAK (ne rešeno u ovoj promeni): putanja do
+        // WebRtcBridge.exe pretpostavlja da je kopiran u isti "Service\"
+        // instalacioni folder kao ovaj .exe - DEPLOYMENT.md/paketovanje
+        // treba ažurirati da to stvarno uključi u net472 release zip pre
+        // prvog stvarnog rollout-a, ovo NIJE još urađeno.
+        private static bool RunWebRtcBridge(long sessionId, AgentSettings settings, AgentState state)
+        {
+            var bridgeExePath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "Netdesk.Agent.WebRtcBridge.exe");
+            var arguments = string.Join(" ",
+                settings.ServerBaseUrl, sessionId.ToString(), state.AgentId, state.ApiKey);
+
+            var pid = SessionLauncher.LaunchInActiveSession(bridgeExePath, arguments);
+            if (pid == 0)
+            {
+                FileLogger.Error(
+                    "WebRTC sesija #" + sessionId + " - nema aktivne interaktivne sesije za pokretanje mosta", null);
+                return false;
+            }
+            FileLogger.Info("WebRTC most #" + sessionId + " pokrenut, PID " + pid);
+            return true;
+        }
+#endif
 
         private static async Task ReportJobResultAsync(
             NetdeskApiClient client, AgentState state, long jobId, JobExecutor.ExecutionResult result)
