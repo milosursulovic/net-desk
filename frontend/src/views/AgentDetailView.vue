@@ -39,6 +39,9 @@
           <button v-if="agent.status === 'active' && isAdmin" @click="confirmRevoke" class="ml-auto text-red-600 hover:underline text-sm">
             Povuci pristup
           </button>
+          <button v-if="agent.status === 'revoked' && isAdmin" @click="confirmDelete" class="ml-auto text-red-600 hover:underline text-sm">
+            Obriši agenta
+          </button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
@@ -603,6 +606,23 @@ async function confirmRevoke() {
   } catch (err) {
     console.error(err)
     showToast('Greška pri povlačenju agenta', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+async function confirmDelete() {
+  const ok = await askConfirm(
+    `Trajno obrisati agenta "${agent.value?.hostname || agent.value?.agentUid}"? Ova radnja se ne može poništiti - briše i istoriju komandi, monitoring i deployment grupe ovog agenta.`,
+    { title: 'Brisanje agenta' },
+  )
+  if (!ok) return
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju agenta'))
+    showToast('Agent obrisan')
+    router.push('/agents')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri brisanju agenta', { prefix: '❌ ', duration: 3000 })
   }
 }
 

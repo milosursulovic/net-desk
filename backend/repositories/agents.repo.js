@@ -155,15 +155,18 @@ function buildAgentsWhereClause({
     whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) = ?`);
     params.push(connectivityStatus);
   }
-  if (deploymentGroup) {
+  // deploymentGroup/os/version/versionNot/department su multiselect na
+  // frontend-u - "bar jedan izabran" = pogađa BILO KOJU od izabranih
+  // vrednosti (IN/EXISTS-IN), ne AND/presek.
+  if (deploymentGroup?.length) {
     whereParts.push(
-      "EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id AND adg.group_name = ?)",
+      `EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id AND adg.group_name IN (${deploymentGroup.map(() => "?").join(",")}))`,
     );
-    params.push(deploymentGroup);
+    params.push(...deploymentGroup);
   }
-  if (os) {
-    whereParts.push("agents.os_caption = ?");
-    params.push(os);
+  if (os?.length) {
+    whereParts.push(`agents.os_caption IN (${os.map(() => "?").join(",")})`);
+    params.push(...os);
   }
   if (osArchitecture) {
     // Živi na ip_entries (isti izvor/kolona kao Home-ova arhitektura), ne
@@ -172,20 +175,22 @@ function buildAgentsWhereClause({
     whereParts.push("ie.os_architecture = ?");
     params.push(osArchitecture);
   }
-  if (version) {
-    whereParts.push("agents.agent_version = ?");
-    params.push(version);
+  if (version?.length) {
+    whereParts.push(`agents.agent_version IN (${version.map(() => "?").join(",")})`);
+    params.push(...version);
   }
-  if (versionNot) {
+  if (versionNot?.length) {
     // Agenti bez izveštene verzije (NULL) su isto "nisu na ovoj verziji" -
     // korisno za pronalaženje agenata koji nikad nisu uspešno prijavili
     // update, ne samo onih zaglavljenih na starijoj verziji.
-    whereParts.push("(agents.agent_version IS NULL OR agents.agent_version != ?)");
-    params.push(versionNot);
+    whereParts.push(
+      `(agents.agent_version IS NULL OR agents.agent_version NOT IN (${versionNot.map(() => "?").join(",")}))`,
+    );
+    params.push(...versionNot);
   }
-  if (department) {
-    whereParts.push("ie.department = ?");
-    params.push(department);
+  if (department?.length) {
+    whereParts.push(`ie.department IN (${department.map(() => "?").join(",")})`);
+    params.push(...department);
   }
   if (site) {
     whereParts.push("ie.site = ?");
@@ -453,6 +458,16 @@ export async function revokeAgentById(id) {
     `UPDATE agents SET status = 'revoked' WHERE id = ?`,
     [id],
   );
+  return result.affectedRows;
+}
+
+// agent_jobs/agent_monitoring/agent_monitoring_history/agent_update_log/
+// agent_deployment_groups/vnc_sessions svi imaju FK na agents.id sa ON
+// DELETE CASCADE - jedan DELETE ovde čisti sve to bez ručnog koda. Namerno
+// NE dira ip_entries (agents.ip_entry_id je jedini smer FK-a - obrisan
+// agent ne sme da povuče sa sobom i sam računar/IP unos).
+export async function deleteAgentById(id) {
+  const [result] = await pool.execute(`DELETE FROM agents WHERE id = ?`, [id]);
   return result.affectedRows;
 }
 

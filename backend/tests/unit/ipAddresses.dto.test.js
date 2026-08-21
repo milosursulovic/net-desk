@@ -54,10 +54,25 @@ describe("ListSchema", () => {
     );
   });
 
-  it("accepts optional department and os filters as free strings", () => {
-    const out = ListSchema.parse({ department: "Apoteka", os: "Windows 10" });
-    expect(out.department).toBe("Apoteka");
-    expect(out.os).toBe("Windows 10");
+  it(
+    "normalizes department/os/rdpApp filters to an array regardless of whether the query " +
+      "string sent one value (plain string) or several (repeated param, arrives as an array)",
+    () => {
+      const single = ListSchema.parse({ department: "Apoteka", os: "Windows 10" });
+      expect(single.department).toEqual(["Apoteka"]);
+      expect(single.os).toEqual(["Windows 10"]);
+
+      const multi = ListSchema.parse({ department: ["Apoteka", "Lab"], rdpApp: ["AnyDesk", "TeamViewer"] });
+      expect(multi.department).toEqual(["Apoteka", "Lab"]);
+      expect(multi.rdpApp).toEqual(["AnyDesk", "TeamViewer"]);
+    },
+  );
+
+  it("defaults department/os/rdpApp to an empty array when omitted", () => {
+    const out = ListSchema.parse({});
+    expect(out.department).toEqual([]);
+    expect(out.os).toEqual([]);
+    expect(out.rdpApp).toEqual([]);
   });
 
   it("caps limit at 1000", () => {

@@ -47,6 +47,18 @@ export const UpsertIpSchema = z.object({
   entryType: EntryTypeEnum.nullable().optional(),
 });
 
+// department/os/rdpApp filteri su sad multiselect na frontend-u -
+// URLSearchParams.append-ovan isti ključ više puta stiže Express-u kao niz
+// (qs-style parsing), ali TAČNO JEDNA vrednost stiže kao goli string, ne
+// niz od jednog elementa - z.union prihvata oba oblika, transform ih uvek
+// normalizuje u niz (prazan kad filter uopšte nije poslat) da repo/servis
+// sloj nikad ne mora da grana na "je li ovo string ili niz".
+const multiValueFilter = () =>
+  z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v]));
+
 export const ListSchema = z.object({
   search: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
@@ -61,10 +73,10 @@ export const ListSchema = z.object({
     .enum(["all", "computer", "device", "unknown"])
     .optional()
     .default("all"),
-  department: z.string().optional(),
-  os: z.string().optional(),
+  department: multiValueFilter(),
+  os: multiValueFilter(),
   osArchitecture: z.string().optional(),
-  rdpApp: z.string().optional(),
+  rdpApp: multiValueFilter(),
   site: z.enum(SITES).optional(),
   // Isti obrazac kao pendingRepack ispod - query string uvek stiže kao
   // string, pa se eksplicitno poredi sa "istinitim" vrednostima umesto

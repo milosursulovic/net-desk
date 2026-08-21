@@ -14,6 +14,7 @@ import {
   listDistinctAgentVersions,
   listDistinctAgentDeploymentGroups,
   revokeAgentById,
+  deleteAgentById,
   linkAgentToIpEntry,
   upsertAgentMonitoring,
   findAgentMonitoring,
@@ -52,7 +53,7 @@ import { ingestEventLogs } from "./eventLogs.service.js";
 import { ingestDnsQueries } from "./dnsLogs.service.js";
 import { ingestProcessDetections } from "./processDetections.service.js";
 import { listDistinctReleaseDeploymentGroups } from "../repositories/agentReleases.repo.js";
-import { notFound } from "../utils/httpError.js";
+import { notFound, badRequest } from "../utils/httpError.js";
 
 export async function enrollAgent(dto) {
   const agentUid = crypto.randomUUID();
@@ -316,6 +317,23 @@ export async function revokeAgentService(id) {
     throw notFound("Agent nije pronađen");
   }
   return await findAgentById(id);
+}
+
+// Zahteva da agent VEĆ bude 'revoked' - brisanje aktivnog agenta bi ostavilo
+// mašinu koja i dalje ima važeći api_key_hash i pokušava heartbeat/poll
+// protiv obrisanog agent_id-a (agentAuth.middleware.js radi lookup po id-u,
+// ne po agent_uid-u - nestao red znači 401 na svaki sledeći poziv sa te
+// mašine, umesto čistog "povučen" odgovora). Revoke prvo je namerni korak.
+export async function deleteAgentService(id) {
+  const agent = await findAgentById(id);
+  if (!agent) {
+    throw notFound("Agent nije pronađen");
+  }
+  if (agent.status !== "revoked") {
+    throw badRequest("Agent mora prvo biti povučen pre brisanja");
+  }
+  await deleteAgentById(id);
+  return { success: true };
 }
 
 // Isti obrazac poklapanja za UltraVNC kao listComputersWithoutUltravnc() u

@@ -57,27 +57,33 @@
             <option value="unknown">Nepoznato</option>
           </select>
 
-          <select v-model="deploymentGroup" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po deployment grupi">
-            <option value="">Sve deployment grupe</option>
-            <option v-for="g in deploymentGroupOptions" :key="g" :value="g">{{ g }}</option>
-          </select>
+          <MultiSelect
+            v-model="deploymentGroup"
+            :options="deploymentGroupOptions"
+            placeholder="Sve deployment grupe"
+            class="w-auto max-w-48 min-w-0"
+          />
 
-          <select v-model="os" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po operativnom sistemu">
-            <option value="">Svi OS</option>
-            <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
-          </select>
+          <MultiSelect
+            v-model="os"
+            :options="osOptions"
+            placeholder="Svi OS"
+            class="w-auto max-w-40 min-w-0"
+          />
 
           <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter arhitekture procesora">
             <option value="">Sve arhitekture</option>
             <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
           </select>
 
-          <select v-model="version" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po verziji agenta">
-            <option value="">Sve verzije</option>
-            <option v-for="v in versionOptions" :key="v" :value="v">{{ v }}</option>
-          </select>
+          <MultiSelect
+            v-model="version"
+            :options="versionOptions"
+            placeholder="Sve verzije"
+            class="w-auto max-w-40 min-w-0"
+          />
 
-          <label v-if="version" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label v-if="version.length" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
             <input
               type="checkbox"
               :checked="versionMode === 'neq'"
@@ -86,10 +92,12 @@
             Isključi (prikaži zaostale)
           </label>
 
-          <select v-model="department" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po odeljenju">
-            <option value="">Sva odeljenja</option>
-            <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
-          </select>
+          <MultiSelect
+            v-model="department"
+            :options="departmentOptions"
+            placeholder="Sva odeljenja"
+            class="w-auto max-w-40 min-w-0"
+          />
 
           <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
             <input
@@ -437,6 +445,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import GroupSelect from '@/components/GroupSelect.vue'
+import MultiSelect from '@/components/MultiSelect.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
@@ -490,12 +499,12 @@ const {
     // Slobodan tekst (isto tretiranje kao os/version/department ispod) -
     // grupe više nisu ograničene na fiksnu listu, pa nema oneOf ovde (inače
     // bi bilo koja vrednost van stare liste od 4 bila tiho resetovana).
-    deploymentGroup: { type: 'string', default: '', omitIfEmpty: true },
-    os: { type: 'string', default: '', omitIfEmpty: true },
+    deploymentGroup: { type: 'array', default: [] },
+    os: { type: 'array', default: [] },
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
-    version: { type: 'string', default: '', omitIfEmpty: true },
+    version: { type: 'array', default: [] },
     versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
-    department: { type: 'string', default: '', omitIfEmpty: true },
+    department: { type: 'array', default: [] },
     enrolledFrom: { type: 'string', default: '', omitIfEmpty: true },
     enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
     heartbeatFrom: { type: 'string', default: '', omitIfEmpty: true },
@@ -564,11 +573,11 @@ watch(site, () => {
   // PRETHODNU lokaciju - ako ostanu postavljene posle promene lokacije,
   // filtriraju na vrednost koja verovatno ne postoji na novoj (prazna lista
   // rezultata).
-  os.value = ''
+  os.value = []
   osArchitecture.value = ''
-  version.value = ''
+  version.value = []
   versionMode.value = 'eq'
-  department.value = ''
+  department.value = []
   fetchFilterOptions()
 })
 
@@ -590,11 +599,11 @@ const detailedFiltersOpen = ref(false)
 const activeDetailedFilterCount = computed(() => {
   let n = 0
   if (connectivityStatus.value) n++
-  if (deploymentGroup.value) n++
-  if (os.value) n++
+  if (deploymentGroup.value.length) n++
+  if (os.value.length) n++
   if (osArchitecture.value) n++
-  if (version.value) n++
-  if (department.value) n++
+  if (version.value.length) n++
+  if (department.value.length) n++
   if (enrolledFrom.value) n++
   if (enrolledTo.value) n++
   if (heartbeatFrom.value) n++
@@ -627,12 +636,12 @@ async function fetchFilterOptions() {
 
 function clearDetailedFilters() {
   connectivityStatus.value = ''
-  deploymentGroup.value = ''
-  os.value = ''
+  deploymentGroup.value = []
+  os.value = []
   osArchitecture.value = ''
-  version.value = ''
+  version.value = []
   versionMode.value = 'eq'
-  department.value = ''
+  department.value = []
   enrolledFrom.value = ''
   enrolledTo.value = ''
   heartbeatFrom.value = ''
@@ -651,13 +660,14 @@ function clearDetailedFilters() {
 function buildFilterParams() {
   const params = new URLSearchParams({ search: search.value, status: status.value, site: site.value })
   if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
-  if (deploymentGroup.value) params.set('deploymentGroup', deploymentGroup.value)
-  if (os.value) params.set('os', os.value)
+  deploymentGroup.value.forEach((v) => params.append('deploymentGroup', v))
+  os.value.forEach((v) => params.append('os', v))
   if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
-  if (version.value) {
-    params.set(versionMode.value === 'neq' ? 'versionNot' : 'version', version.value)
+  if (version.value.length) {
+    const key = versionMode.value === 'neq' ? 'versionNot' : 'version'
+    version.value.forEach((v) => params.append(key, v))
   }
-  if (department.value) params.set('department', department.value)
+  department.value.forEach((v) => params.append('department', v))
   if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
   if (enrolledTo.value) params.set('enrolledTo', enrolledTo.value)
   if (heartbeatFrom.value) params.set('heartbeatFrom', heartbeatFrom.value)

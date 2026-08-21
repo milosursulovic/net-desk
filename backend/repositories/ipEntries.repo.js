@@ -196,14 +196,18 @@ export async function listIpEntries({
     whereBaseParts.push("entry_type IS NULL");
   }
 
-  if (department) {
-    whereBaseParts.push("department = ?");
-    baseParams.push(department);
+  // department/os/rdpApp su sad multiselect na frontend-u - dto sloj
+  // (ipAddresses.dto.js's multiValueFilter()) uvek normalizuje u niz
+  // (prazan kad filter nije poslat), pa je "bar jedan izabran" = "IN
+  // pogađa BILO KOJU od izabranih vrednosti", ne AND/presek.
+  if (department?.length) {
+    whereBaseParts.push(`department IN (${department.map(() => "?").join(",")})`);
+    baseParams.push(...department);
   }
 
-  if (os) {
-    whereBaseParts.push("os = ?");
-    baseParams.push(os);
+  if (os?.length) {
+    whereBaseParts.push(`os IN (${os.map(() => "?").join(",")})`);
+    baseParams.push(...os);
   }
 
   if (osArchitecture) {
@@ -211,14 +215,15 @@ export async function listIpEntries({
     baseParams.push(osArchitecture);
   }
 
-  if (rdpApp) {
+  if (rdpApp?.length) {
     // rdp_app čuva SPOJEN string labela (npr. "AnyDesk, TeamViewer" - jedan
     // računar može imati do sve četiri) - contains-match po pojedinačnoj
-    // labeli, ne exact-equals. Vrednosti dolaze sa fiksnog dropdown-a
-    // (RDP_APP_PATTERNS), ne slobodan tekst, pa nema potrebe za escape-ovanjem
-    // LIKE wildcard karaktera.
-    whereBaseParts.push("rdp_app LIKE ?");
-    baseParams.push(`%${rdpApp}%`);
+    // labeli, ne exact-equals, pa se svaka izabrana vrednost svojim LIKE-om
+    // ORuje (ne može se IN-ovati direktno). Vrednosti dolaze sa fiksnog
+    // dropdown-a (RDP_APP_PATTERNS), ne slobodan tekst, pa nema potrebe za
+    // escape-ovanjem LIKE wildcard karaktera.
+    whereBaseParts.push(`(${rdpApp.map(() => "rdp_app LIKE ?").join(" OR ")})`);
+    baseParams.push(...rdpApp.map((v) => `%${v}%`));
   }
 
   if (site) {

@@ -18,6 +18,7 @@ import {
   listAllComputersWithoutAgentService,
   getAgentService,
   revokeAgentService,
+  deleteAgentService,
   syncAgentInventory,
   setAgentProcessKillExemptService,
   addAgentDeploymentGroupService,
@@ -76,6 +77,17 @@ export async function inventoryController(req, res) {
 
 // Deljeno između listAgentsController (paginirano) i listAgentIdsController
 // ("selektuj sve po filteru") - isti query-param oblik, jedno mesto za izmenu.
+// department/os/version/deploymentGroup su multiselect na frontend-u -
+// URLSearchParams.append-ovan isti ključ više puta stiže Express-u kao niz
+// (qs-style parsing), tačno jedna vrednost kao goli string - uvek se
+// normalizuje u niz (prazan kad filter nije poslat) da repo sloj nikad ne
+// mora da grana na "je li ovo string ili niz".
+function toFilterArray(raw) {
+  if (raw == null) return [];
+  const arr = Array.isArray(raw) ? raw : [raw];
+  return arr.map((v) => String(v || "").trim()).filter(Boolean);
+}
+
 function parseAgentListFilters(query) {
   return {
     search: String(query.search || "").trim(),
@@ -85,12 +97,12 @@ function parseAgentListFilters(query) {
       : undefined,
     // Slobodan tekst (isti tretman kao os/version/department ispod) - grupe
     // više nisu ograničene na fiksnu 4-vrednosnu listu.
-    deploymentGroup: String(query.deploymentGroup || "").trim() || undefined,
-    os: String(query.os || "").trim() || undefined,
+    deploymentGroup: toFilterArray(query.deploymentGroup),
+    os: toFilterArray(query.os),
     osArchitecture: String(query.osArchitecture || "").trim() || undefined,
-    version: String(query.version || "").trim() || undefined,
-    versionNot: String(query.versionNot || "").trim() || undefined,
-    department: String(query.department || "").trim() || undefined,
+    version: toFilterArray(query.version),
+    versionNot: toFilterArray(query.versionNot),
+    department: toFilterArray(query.department),
     site: siteFilter(query.site),
     enrolledFrom: dateFilter(query.enrolledFrom),
     enrolledTo: dateFilter(query.enrolledTo),
@@ -167,6 +179,12 @@ export async function revokeAgentController(req, res) {
   const id = parseIdParam(req, "id", "ID agenta");
   const agent = await revokeAgentService(id);
   res.json(agent);
+}
+
+export async function deleteAgentController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+  await deleteAgentService(id);
+  res.status(204).end();
 }
 
 export async function setProcessKillExemptController(req, res) {

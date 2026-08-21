@@ -5,6 +5,7 @@ import {
   syncAgentInventory,
   getAgentService,
   revokeAgentService,
+  deleteAgentService,
   listAgentsService,
   listAgentIdsService,
   setAgentProcessKillExemptService,
@@ -203,6 +204,34 @@ describe("agents.service (integration, real DB)", () => {
 
     await expect(revokeAgentService(999999999)).rejects.toMatchObject({
       status: 404,
+    });
+  });
+
+  describe("deleteAgentService", () => {
+    it("deletes a revoked agent", async () => {
+      const enrolled = await enrollAgent({ hostname: testHostname() });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      await revokeAgentService(agentId);
+      const out = await deleteAgentService(agentId);
+      expect(out.success).toBe(true);
+
+      await expect(getAgentService(agentId)).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("refuses to delete a still-active agent (400)", async () => {
+      const enrolled = await enrollAgent({ hostname: testHostname() });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      const found = await findAgentByUid(enrolled.agentId);
+      agentId = found.id;
+
+      await expect(deleteAgentService(agentId)).rejects.toMatchObject({ status: 400 });
+    });
+
+    it("throws 404 for an unknown agent id", async () => {
+      await expect(deleteAgentService(999999999)).rejects.toMatchObject({ status: 404 });
     });
   });
 
@@ -455,7 +484,7 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        deploymentGroup: "pilot",
+        deploymentGroup: ["pilot"],
       });
       expect(pilot.items.map((a) => a.id)).toContain(agentId);
 
@@ -464,7 +493,7 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        deploymentGroup: "test",
+        deploymentGroup: ["test"],
       });
       expect(test.items.map((a) => a.id)).not.toContain(agentId);
     });
@@ -487,9 +516,74 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        deploymentGroup: customGroup,
+        deploymentGroup: [customGroup],
       });
       expect(matched.items.map((a) => a.id)).toContain(agentId);
+    });
+
+    it("filters by MULTIPLE selected deploymentGroup values (union/OR, not intersection)", async () => {
+      // Sintetička imena grupa (ne stvarna "pilot"/"test") namerno - bez
+      // search filtera koji bi suzio na jednog agenta (pa bi test morao da
+      // menja šta zapravo proverava), realne grupe u ovoj dev bazi bi mogle
+      // da nadmaše limit:50 pre nego što stignu novokreirani test agenti.
+      const groupA = `VITEST_GRP_A_${Date.now()}`;
+      const groupB = `VITEST_GRP_B_${Date.now()}`;
+
+      const hostnameA = testHostname();
+      const enrolledA = await enrollAgent({ hostname: hostnameA });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      agentId = (await findAgentByUid(enrolledA.agentId)).id;
+      await addAgentDeploymentGroupService(agentId, groupA);
+
+      const hostnameB = testHostname();
+      const enrolledB = await enrollAgent({ hostname: hostnameB });
+      const otherAgentId = (await findAgentByUid(enrolledB.agentId)).id;
+
+      try {
+        await addAgentDeploymentGroupService(otherAgentId, groupB);
+
+        const out = await listAgentsService({
+          page: 1,
+          limit: 50,
+          search: "",
+          status: "all",
+          deploymentGroup: [groupA, groupB],
+        });
+
+        const ids = out.items.map((a) => a.id);
+        expect(ids).toContain(agentId);
+        expect(ids).toContain(otherAgentId);
+      } finally {
+        await deleteTestAgent(otherAgentId);
+      }
+    });
+
+    it("filters by MULTIPLE selected version values (IN), and versionNot excludes any of them (NOT IN, NULL counts as excluded)", async () => {
+      const verA = `9.9.${Date.now()}`;
+      const verB = `9.8.${Date.now()}`;
+
+      const hostname = testHostname();
+      const enrolled = await enrollAgent({ hostname, agentVersion: verA });
+      const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+      agentId = (await findAgentByUid(enrolled.agentId)).id;
+
+      const inList = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        version: [verA, verB],
+      });
+      expect(inList.items.map((a) => a.id)).toContain(agentId);
+
+      const excluded = await listAgentsService({
+        page: 1,
+        limit: 50,
+        search: hostname,
+        status: "all",
+        versionNot: [verA, verB],
+      });
+      expect(excluded.items.map((a) => a.id)).not.toContain(agentId);
     });
 
     it("filters by os (exact match on osCaption)", async () => {
@@ -507,7 +601,7 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        os: "VITEST_TEST_OS_Marker",
+        os: ["VITEST_TEST_OS_Marker"],
       });
       expect(matched.items.map((a) => a.id)).toContain(agentId);
 
@@ -516,7 +610,7 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        os: "Some Other OS",
+        os: ["Some Other OS"],
       });
       expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
     });
@@ -747,14 +841,14 @@ describe("agents.service (integration, real DB)", () => {
       const matched = await listAgentIdsService({
         search: hostname,
         status: "all",
-        os: "VITEST_TEST_OS_SelectAll",
+        os: ["VITEST_TEST_OS_SelectAll"],
       });
       expect(matched.ids).toEqual([agentId]);
 
       const notMatched = await listAgentIdsService({
         search: hostname,
         status: "all",
-        os: "Some Other OS",
+        os: ["Some Other OS"],
       });
       expect(notMatched.ids).toEqual([]);
     });
@@ -781,7 +875,7 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        department: "VITEST_TEST_DEPT",
+        department: ["VITEST_TEST_DEPT"],
       });
       expect(matched.items.map((a) => a.id)).toContain(agentId);
       expect(matched.items.find((a) => a.id === agentId).department).toBe("VITEST_TEST_DEPT");
@@ -791,14 +885,14 @@ describe("agents.service (integration, real DB)", () => {
         limit: 50,
         search: hostname,
         status: "all",
-        department: "Some Other Department",
+        department: ["Some Other Department"],
       });
       expect(notMatched.items.map((a) => a.id)).not.toContain(agentId);
 
       const ids = await listAgentIdsService({
         search: hostname,
         status: "all",
-        department: "VITEST_TEST_DEPT",
+        department: ["VITEST_TEST_DEPT"],
       });
       expect(ids.ids).toEqual([agentId]);
     });

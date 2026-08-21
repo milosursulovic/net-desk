@@ -129,6 +129,75 @@ describe('usePaginatedRoute', () => {
     expect(replaceSpy).not.toHaveBeenCalled()
   })
 
+  describe("type: 'array' (multiselect filters)", () => {
+    it('initializes as an array from repeated query params (2+ values)', async () => {
+      const { result } = await setupWithRoute(
+        { department: { type: 'array', default: [] } },
+        { initialPath: '/?department=A&department=B' },
+      )
+      expect(result.department.value).toEqual(['A', 'B'])
+    })
+
+    it('initializes as a single-element array when the URL has exactly one value (Vue Router quirk)', async () => {
+      const { result } = await setupWithRoute(
+        { department: { type: 'array', default: [] } },
+        { initialPath: '/?department=A' },
+      )
+      expect(result.department.value).toEqual(['A'])
+    })
+
+    it('defaults to an empty array when the param is absent', async () => {
+      const { result } = await setupWithRoute({ department: { type: 'array', default: [] } })
+      expect(result.department.value).toEqual([])
+    })
+
+    it('pushes multiple values as repeated query params, and omits the key entirely when cleared', async () => {
+      const { result, router } = await setupWithRoute({ department: { type: 'array', default: [] } })
+      result.department.value = ['A', 'B']
+      await flushPromises()
+      expect(router.currentRoute.value.query.department).toEqual(['A', 'B'])
+
+      result.department.value = []
+      await flushPromises()
+      expect(router.currentRoute.value.query.department).toBeUndefined()
+    })
+
+    it('resetPageOn fires when an array field actually changes', async () => {
+      const { result } = await setupWithRoute(
+        {
+          page: { type: 'int', default: 1 },
+          department: { type: 'array', default: [] },
+        },
+        { initialPath: '/?page=5', resetPageOn: ['department'] },
+      )
+      expect(result.page.value).toBe(5)
+      result.department.value = ['A']
+      await nextTick()
+      expect(result.page.value).toBe(1)
+    })
+
+    it('regression: an unrelated field changing (e.g. page) does not spuriously re-trigger resetPageOn for an untouched array field', async () => {
+      // route.query hands back a fresh array instance on every navigation -
+      // if the route->refs watcher used reference/String() equality instead
+      // of content equality, reassigning department.value on every
+      // navigation would falsely look like "department changed" and reset
+      // the page back to 1 on every single page-forward click.
+      const { result } = await setupWithRoute(
+        {
+          page: { type: 'int', default: 1 },
+          department: { type: 'array', default: [] },
+        },
+        { initialPath: '/?page=1&department=A&department=B', resetPageOn: ['department'] },
+      )
+      expect(result.department.value).toEqual(['A', 'B'])
+
+      result.page.value = 2
+      await flushPromises()
+      expect(result.page.value).toBe(2)
+      expect(result.department.value).toEqual(['A', 'B'])
+    })
+  })
+
   describe('nextPage / prevPage', () => {
     it('nextPage advances while below totalPages, and stops at the last page', async () => {
       const { result } = await setupWithRoute({ page: { type: 'int', default: 1 } })

@@ -10,6 +10,7 @@ import {
   exportComputersWithoutAgentPdfController,
   getAgentController,
   revokeAgentController,
+  deleteAgentController,
   setProcessKillExemptController,
   addAgentDeploymentGroupController,
   removeAgentDeploymentGroupController,
@@ -46,6 +47,10 @@ router.get("/:id", asyncHandler(getAgentController));
 // Admin-only - povlačenje pristupa je nepovratno bez ponovnog enroll-a na
 // mašini, veći blast radius od rutinskih operator akcija.
 router.post("/:id/revoke", requireRole("admin"), asyncHandler(revokeAgentController));
+// Admin-only, i servis (deleteAgentService) sam zahteva da agent VEĆ bude
+// 'revoked' - trajno briše red (CASCADE briše jobs/monitoring/deployment
+// grupe), veći blast radius nego revoke.
+router.delete("/:id", requireRole("admin"), asyncHandler(deleteAgentController));
 
 router.get("/:id/jobs", asyncHandler(listJobsController));
 router.post("/:id/jobs", asyncHandler(createJobController));

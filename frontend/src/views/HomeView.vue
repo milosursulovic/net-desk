@@ -58,25 +58,34 @@
           <option value="unknown">Nepoznato</option>
         </select>
 
-        <select v-model="department" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter odeljenja'">
-          <option value="">Sva odeljenja</option>
-          <option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option>
-        </select>
+        <MultiSelect
+          v-model="department"
+          :options="departmentOptions"
+          placeholder="Sva odeljenja"
+          class="w-auto max-w-40 min-w-0"
+          title="Filter odeljenja"
+        />
 
-        <select v-model="os" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter operativnog sistema'">
-          <option value="">Svi OS</option>
-          <option v-for="o in osOptions" :key="o" :value="o">{{ o }}</option>
-        </select>
+        <MultiSelect
+          v-model="os"
+          :options="osOptions"
+          placeholder="Svi OS"
+          class="w-auto max-w-40 min-w-0"
+          title="Filter operativnog sistema"
+        />
 
         <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter arhitekture OS-a'">
           <option value="">Sve arhitekture</option>
           <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
         </select>
 
-        <select v-model="rdpApp" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter RDP/remote-access alata'">
-          <option value="">Svi RDP alati</option>
-          <option v-for="r in rdpAppOptions" :key="r" :value="r">{{ r }}</option>
-        </select>
+        <MultiSelect
+          v-model="rdpApp"
+          :options="rdpAppOptions"
+          placeholder="Svi RDP alati"
+          class="w-auto max-w-40 min-w-0"
+          title="Filter RDP/remote-access alata"
+        />
 
         <label class="inline-flex items-center gap-1.5 text-sm text-slate-600 shrink-0" title="Folder C:\Izvolte pronađen na računaru">
           <input
@@ -359,6 +368,7 @@ import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppButton from '@/components/AppButton.vue'
+import MultiSelect from '@/components/MultiSelect.vue'
 
 const router = useRouter()
 const site = useCurrentSite()
@@ -394,10 +404,10 @@ const {
       default: 'computer',
       oneOf: ['all', 'computer', 'device', 'unknown'],
     },
-    department: { type: 'string', default: '', omitIfEmpty: true },
-    os: { type: 'string', default: '', omitIfEmpty: true },
+    department: { type: 'array', default: [] },
+    os: { type: 'array', default: [] },
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
-    rdpApp: { type: 'string', default: '', omitIfEmpty: true },
+    rdpApp: { type: 'array', default: [] },
     hasIzvolteFolder: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
@@ -468,10 +478,10 @@ const activeFilterCount = computed(() => {
   let n = 0
   if (status.value !== 'all') n++
   if (entryType.value !== 'computer') n++
-  if (department.value) n++
-  if (os.value) n++
+  if (department.value.length) n++
+  if (os.value.length) n++
   if (osArchitecture.value) n++
-  if (rdpApp.value) n++
+  if (rdpApp.value.length) n++
   if (hasIzvolteFolder.value) n++
   return n
 })
@@ -504,10 +514,10 @@ async function fetchData() {
     entryType: entryType.value,
     site: site.value,
   })
-  if (department.value) params.set('department', department.value)
-  if (os.value) params.set('os', os.value)
+  department.value.forEach((v) => params.append('department', v))
+  os.value.forEach((v) => params.append('os', v))
   if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
-  if (rdpApp.value) params.set('rdpApp', rdpApp.value)
+  rdpApp.value.forEach((v) => params.append('rdpApp', v))
   if (hasIzvolteFolder.value) params.set('hasIzvolteFolder', hasIzvolteFolder.value)
 
   try {
@@ -617,8 +627,8 @@ watch(site, () => {
   // department/os su dropdown vrednosti preuzete iz PRETHODNE lokacije -
   // ostavljanje stare vrednosti posle promene lokacije bi filtriralo na
   // vrednost koja verovatno ne postoji na novoj lokaciji (prazna lista).
-  department.value = ''
-  os.value = ''
+  department.value = []
+  os.value = []
   fetchDuplicateNames()
   fetchFilterOptions()
 })

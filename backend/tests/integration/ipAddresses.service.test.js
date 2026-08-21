@@ -117,12 +117,74 @@ describe("ipAddresses.service (integration, real DB)", () => {
       sortOrder: "asc",
       status: "all",
       entryType: "all",
-      department: uniqueDept,
+      department: [uniqueDept],
     });
 
     const ids = out.entries.map((e) => e.id);
     expect(ids).toContain(a.id);
     expect(ids).not.toContain(b.id);
+  });
+
+  it("listService filters by MULTIPLE selected departments (union/OR, not intersection)", async () => {
+    const deptA = `VITEST_DEPT_A_${Date.now()}`;
+    const deptB = `VITEST_DEPT_B_${Date.now()}`;
+    const a = await createService({ ip: testIp(), department: deptA, entryType: "computer" });
+    ipEntryId = a.id;
+    const b = await createService({ ip: testIp(), department: deptB, entryType: "computer" });
+    ipEntryId2 = b.id;
+    const c = await createService({ ip: testIp(), department: "unrelated-dept", entryType: "computer" });
+
+    try {
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        department: [deptA, deptB],
+      });
+
+      const ids = out.entries.map((e) => e.id);
+      expect(ids).toContain(a.id);
+      expect(ids).toContain(b.id);
+      expect(ids).not.toContain(c.id);
+    } finally {
+      await deleteTestIpEntry(c.id);
+    }
+  });
+
+  it("listService filters by MULTIPLE selected rdpApp values (per-value substring match, ORed)", async () => {
+    // Sintetičke vrednosti (ne stvarni "AnyDesk"/"TeamViewer") namerno - ova
+    // dev baza je ogledalo produkcije, gde desetine stvarnih računara ima
+    // pravi AnyDesk instaliran, pa bi test sa realnim imenom alata morao da
+    // nagađa dovoljno veliki limit da nadmaši sve to stvarno poklapanje.
+    const toolA = `VITEST_RDP_A_${Date.now()}`;
+    const toolB = `VITEST_RDP_B_${Date.now()}`;
+    const a = await createService({ ip: testIp(), rdpApp: toolA, entryType: "computer" });
+    ipEntryId = a.id;
+    const b = await createService({ ip: testIp(), rdpApp: `${toolA}, ${toolB}`, entryType: "computer" });
+    ipEntryId2 = b.id;
+    const c = await createService({ ip: testIp(), rdpApp: "VITEST_RDP_UNRELATED", entryType: "computer" });
+
+    try {
+      const out = await listService({
+        page: 1,
+        limit: 50,
+        sortBy: "ip",
+        sortOrder: "asc",
+        status: "all",
+        entryType: "all",
+        rdpApp: [toolA, toolB],
+      });
+
+      const ids = out.entries.map((e) => e.id);
+      expect(ids).toContain(a.id);
+      expect(ids).toContain(b.id);
+      expect(ids).not.toContain(c.id);
+    } finally {
+      await deleteTestIpEntry(c.id);
+    }
   });
 
   it(
@@ -201,7 +263,7 @@ describe("ipAddresses.service (integration, real DB)", () => {
       sortOrder: "asc",
       status: "all",
       entryType: "all",
-      os: uniqueOs,
+      os: [uniqueOs],
     });
 
     expect(out.entries.map((e) => e.id)).toContain(a.id);
@@ -243,7 +305,7 @@ describe("ipAddresses.service (integration, real DB)", () => {
       sortOrder: "asc",
       status: "all",
       entryType: "all",
-      department: uniqueDept,
+      department: [uniqueDept],
       site: "bolnica",
     });
 

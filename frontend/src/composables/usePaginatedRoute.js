@@ -2,6 +2,13 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 function parseField(raw, config) {
+  if (config.type === 'array') {
+    // Vue Router gives back undefined (0 values), a string (exactly 1), or
+    // an array (2+) for a repeated query key - always normalize to an array
+    // so callers never have to branch on how many were selected.
+    if (raw == null) return config.default ?? []
+    return Array.isArray(raw) ? raw : [raw]
+  }
   if (config.type === 'int') {
     // `|| config.default` also fires for a legitimate parsed 0 (0 is
     // falsy), not just NaN/missing - fine for page/limit fields (never
@@ -17,6 +24,12 @@ function parseField(raw, config) {
 }
 
 function serializeField(val, config) {
+  if (config.type === 'array') {
+    // undefined (not []) so buildQuery/Vue Router omit the key entirely
+    // when empty, instead of leaving a stray "?key=" in the URL.
+    const arr = Array.isArray(val) ? val : []
+    return arr.length ? arr : undefined
+  }
   if (config.type === 'int') {
     return String(val ?? config.default)
   }
@@ -25,9 +38,26 @@ function serializeField(val, config) {
   return String(s)
 }
 
+// Array fields need content comparison, not reference/String() comparison -
+// route.query hands back a fresh array instance on every navigation (even
+// when this particular field's values didn't change), and plain `!==`/
+// String() comparison would treat that as "changed" every time.
+function fieldsEqual(a, b, config) {
+  if (config.type === 'array') {
+    const arrA = Array.isArray(a) ? a : []
+    const arrB = Array.isArray(b) ? b : []
+    return arrA.length === arrB.length && arrA.every((v, i) => v === arrB[i])
+  }
+  return String(a) === String(b)
+}
+
 function queryValue(routeQuery, key, config) {
   const queryKey = config.queryKey || key
   const raw = routeQuery[queryKey]
+  if (config.type === 'array') {
+    if (raw == null) return []
+    return Array.isArray(raw) ? raw : [raw]
+  }
   if (config.omitIfEmpty) {
     return raw ?? ''
   }
@@ -63,8 +93,8 @@ export function usePaginatedRoute({ fields, resetPageOn = [], useReplace = false
     for (const [key, config] of Object.entries(fields)) {
       const queryKey = config.queryKey || key
       const current = queryValue(route.query, key, config)
-      const next = serializeField(refs[key].value, config) ?? ''
-      if (String(current) !== String(next)) return false
+      const next = serializeField(refs[key].value, config) ?? (config.type === 'array' ? [] : '')
+      if (!fieldsEqual(current, next, config)) return false
     }
     return true
   }
@@ -93,7 +123,7 @@ export function usePaginatedRoute({ fields, resetPageOn = [], useReplace = false
       for (const [key, config] of Object.entries(fields)) {
         const queryKey = config.queryKey || key
         const parsed = parseField(q[queryKey], config)
-        if (refs[key].value !== parsed) refs[key].value = parsed
+        if (!fieldsEqual(refs[key].value, parsed, config)) refs[key].value = parsed
       }
     },
     // immediate: true so refs pick up filters/page already present in the
