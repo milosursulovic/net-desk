@@ -159,6 +159,8 @@ export async function listAgentsService({
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  deploymentGroupOsOverlap,
+  noDeploymentGroup,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -182,6 +184,8 @@ export async function listAgentsService({
     agentOfflineIpOnline,
     serviceFilesMismatch,
     processKillExempt,
+    deploymentGroupOsOverlap,
+    noDeploymentGroup,
     limit,
     offset,
   });

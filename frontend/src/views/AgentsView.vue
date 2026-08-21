@@ -152,6 +152,24 @@
             />
             Izuzet od ubijanja procesa
           </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Agent je istovremeno u dve ili više OS deployment grupa (win7/win10/win11/winsrv) - obično greška u unosu">
+            <input
+              type="checkbox"
+              :checked="deploymentGroupOsOverlap === 'true'"
+              @change="deploymentGroupOsOverlap = deploymentGroupOsOverlap === 'true' ? '' : 'true'"
+            />
+            Preklapanje OS grupa (win7/win10/win11/winsrv)
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="noDeploymentGroup === 'true'"
+              @change="noDeploymentGroup = noDeploymentGroup === 'true' ? '' : 'true'"
+            />
+            Bez ijedne deployment grupe
+          </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
@@ -481,6 +499,8 @@ const {
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  deploymentGroupOsOverlap,
+  noDeploymentGroup,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -515,6 +535,8 @@ const {
     agentOfflineIpOnline: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     serviceFilesMismatch: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
     processKillExempt: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    deploymentGroupOsOverlap: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    noDeploymentGroup: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
     'search',
@@ -536,6 +558,8 @@ const {
     'agentOfflineIpOnline',
     'serviceFilesMismatch',
     'processKillExempt',
+    'deploymentGroupOsOverlap',
+    'noDeploymentGroup',
   ],
   useReplace: true,
 })
@@ -563,6 +587,8 @@ watch(
     agentOfflineIpOnline,
     serviceFilesMismatch,
     processKillExempt,
+    deploymentGroupOsOverlap,
+    noDeploymentGroup,
     site,
   ],
   fetchData,
@@ -614,6 +640,8 @@ const activeDetailedFilterCount = computed(() => {
   if (agentOfflineIpOnline.value) n++
   if (serviceFilesMismatch.value) n++
   if (processKillExempt.value) n++
+  if (deploymentGroupOsOverlap.value) n++
+  if (noDeploymentGroup.value) n++
   return n
 })
 
@@ -652,6 +680,8 @@ function clearDetailedFilters() {
   agentOfflineIpOnline.value = ''
   serviceFilesMismatch.value = ''
   processKillExempt.value = ''
+  deploymentGroupOsOverlap.value = ''
+  noDeploymentGroup.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -678,6 +708,8 @@ function buildFilterParams() {
   if (agentOfflineIpOnline.value) params.set('agentOfflineIpOnline', agentOfflineIpOnline.value)
   if (serviceFilesMismatch.value) params.set('serviceFilesMismatch', serviceFilesMismatch.value)
   if (processKillExempt.value) params.set('processKillExempt', processKillExempt.value)
+  if (deploymentGroupOsOverlap.value) params.set('deploymentGroupOsOverlap', deploymentGroupOsOverlap.value)
+  if (noDeploymentGroup.value) params.set('noDeploymentGroup', noDeploymentGroup.value)
   return params
 }
 

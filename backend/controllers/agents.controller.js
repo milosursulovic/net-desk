@@ -114,6 +114,8 @@ function parseAgentListFilters(query) {
     agentOfflineIpOnline: query.agentOfflineIpOnline === "true",
     serviceFilesMismatch: query.serviceFilesMismatch === "true",
     processKillExempt: query.processKillExempt === "true",
+    deploymentGroupOsOverlap: query.deploymentGroupOsOverlap === "true",
+    noDeploymentGroup: query.noDeploymentGroup === "true",
   };
 }
 

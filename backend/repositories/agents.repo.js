@@ -1,6 +1,14 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
+// Deployment grupe koje označavaju OS kanal za auto-update targeting (vidi
+// migraciju 0006_deployment_groups_multi.sql) - mašina ima tačno JEDAN OS,
+// pa dodavanje agenta u dve od ovih grupa istovremeno je uvek greška u unosu
+// (npr. slučajno i win10 i win11), ne legitimna kombinacija kao npr.
+// odeljenje+"svi"+arhitektura. Hardkodovano namerno - nema kolone/koncepta
+// "kategorija" na deployment_groups_list, ovo su prosto poznata imena.
+export const OS_DEPLOYMENT_GROUPS = ["win7", "win10", "win11", "winsrv"];
+
 export async function insertAgent({
   agentUid,
   apiKeyHash,
@@ -138,6 +146,8 @@ function buildAgentsWhereClause({
   agentOfflineIpOnline,
   serviceFilesMismatch,
   processKillExempt,
+  deploymentGroupOsOverlap,
+  noDeploymentGroup,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -238,6 +248,20 @@ function buildAgentsWhereClause({
   }
   if (processKillExempt) {
     whereParts.push("agents.process_kill_exempt = 1");
+  }
+  // Agent u 2+ OS-grupe istovremeno (win7+win10 npr.) - skoro sigurno
+  // greška u unosu, vidi OS_DEPLOYMENT_GROUPS iznad.
+  if (deploymentGroupOsOverlap) {
+    whereParts.push(
+      `(SELECT COUNT(DISTINCT adg.group_name) FROM agent_deployment_groups adg
+        WHERE adg.agent_id = agents.id AND adg.group_name IN (${OS_DEPLOYMENT_GROUPS.map(() => "?").join(",")})) > 1`,
+    );
+    params.push(...OS_DEPLOYMENT_GROUPS);
+  }
+  if (noDeploymentGroup) {
+    whereParts.push(
+      "NOT EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id)",
+    );
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
