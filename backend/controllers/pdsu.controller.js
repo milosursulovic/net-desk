@@ -21,6 +21,9 @@ import {
   getComputerAvailableUpdates,
   syncComputerAvailableUpdates,
   clearComputerPdsu,
+  addFlaggedExceptionService,
+  removeFlaggedExceptionService,
+  listFlaggedExceptionsService,
 } from "../services/pdsu.service.js";
 
 // =========================
@@ -279,6 +282,44 @@ export async function syncPrintersController(req, res) {
     success: true,
     message: "Printer inventar sinhronizovan.",
   });
+}
+
+// =========================
+// Izuzeci od crne liste (po računaru)
+// =========================
+
+const FLAG_KINDS = ["software", "services", "drivers"];
+
+function parseKindParam(req) {
+  const kind = req.params.kind;
+  if (!FLAG_KINDS.includes(kind)) {
+    throw badRequest("Nepoznat tip (software/services/drivers)");
+  }
+  return kind;
+}
+
+export async function listFlaggedExceptionsController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+  const out = await listFlaggedExceptionsService(id);
+  res.json(out);
+}
+
+export async function addFlaggedExceptionController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+  const kind = parseKindParam(req);
+  const flaggedId = parseIdParam(req, "flaggedId", "ID stavke na crnoj listi");
+
+  const out = await addFlaggedExceptionService(id, kind, flaggedId, req.user?.userId ?? null);
+  res.json(out);
+}
+
+export async function removeFlaggedExceptionController(req, res) {
+  const id = parseIdParam(req, "id", "ID racunara");
+  const kind = parseKindParam(req);
+  const flaggedId = parseIdParam(req, "flaggedId", "ID stavke na crnoj listi");
+
+  const out = await removeFlaggedExceptionService(id, kind, flaggedId);
+  res.json(out);
 }
 
 // =========================

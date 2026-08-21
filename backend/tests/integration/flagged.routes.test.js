@@ -233,4 +233,81 @@ describe("flagged software/services routes (integration, real DB)", () => {
       }
     },
   );
+
+  it(
+    "an exception on one computer excludes just that computer's agent from GET /flagged/software/:id/agents, " +
+      "and POST/DELETE /pdsu/:id/flagged-exceptions/:kind/:flaggedId wire the exception end to end",
+    async () => {
+      const entry = await createService({ ip: testIp(), entryType: "computer", site: "bolnica" });
+      let agentId;
+      try {
+        const enrolled = await enrollAgent({ hostname: testHostname() });
+        const byUid = await findAgentByUid(enrolled.agentId);
+        agentId = byUid.id;
+        await linkAgentToIpEntry(agentId, entry.id);
+
+        await syncComputerSoftware(entry.id, [
+          { displayName: "VITEST_TEAMVIEWER 15", displayVersion: "15.0", publisher: "TeamViewer GmbH" },
+        ]);
+
+        const flagRes = await request(app)
+          .post("/api/protected/flagged/software")
+          .set("Authorization", `Bearer ${operatorToken()}`)
+          .send({ displayName: "VITEST_TEAMVIEWER" });
+        expect(flagRes.status).toBe(201);
+        const flaggedId = flagRes.body.id;
+
+        const beforeRes = await request(app)
+          .get(`/api/protected/flagged/software/${flaggedId}/agents`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(beforeRes.body.agentIds).toContain(agentId);
+
+        const addExceptionRes = await request(app)
+          .post(`/api/protected/pdsu/${entry.id}/flagged-exceptions/software/${flaggedId}`)
+          .set("Authorization", `Bearer ${operatorToken()}`);
+        expect(addExceptionRes.status).toBe(200);
+
+        const afterRes = await request(app)
+          .get(`/api/protected/flagged/software/${flaggedId}/agents`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(afterRes.body.agentIds).not.toContain(agentId);
+
+        const listExceptionsRes = await request(app)
+          .get(`/api/protected/pdsu/${entry.id}/flagged-exceptions`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(listExceptionsRes.status).toBe(200);
+        expect(listExceptionsRes.body.software.map((s) => s.id)).toContain(flaggedId);
+
+        const removeExceptionRes = await request(app)
+          .delete(`/api/protected/pdsu/${entry.id}/flagged-exceptions/software/${flaggedId}`)
+          .set("Authorization", `Bearer ${operatorToken()}`);
+        expect(removeExceptionRes.status).toBe(200);
+
+        const restoredRes = await request(app)
+          .get(`/api/protected/flagged/software/${flaggedId}/agents`)
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(restoredRes.body.agentIds).toContain(agentId);
+      } finally {
+        await deleteTestAgent(agentId);
+        await deleteTestIpEntry(entry.id);
+      }
+    },
+  );
+
+  it("POST/DELETE /pdsu/:id/flagged-exceptions/:kind rejects an unknown kind with 400", async () => {
+    const entry = await createService({ ip: testIp(), entryType: "computer" });
+    try {
+      const postRes = await request(app)
+        .post(`/api/protected/pdsu/${entry.id}/flagged-exceptions/bogus/1`)
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(postRes.status).toBe(400);
+
+      const delRes = await request(app)
+        .delete(`/api/protected/pdsu/${entry.id}/flagged-exceptions/bogus/1`)
+        .set("Authorization", `Bearer ${operatorToken()}`);
+      expect(delRes.status).toBe(400);
+    } finally {
+      await deleteTestIpEntry(entry.id);
+    }
+  });
 });

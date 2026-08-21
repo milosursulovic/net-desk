@@ -13,6 +13,13 @@
           Na početnoj
         </RouterLink>
         <AppButton
+          v-if="exceptionsTotal"
+          variant="secondary"
+          @click="exceptionsOpen = !exceptionsOpen"
+        >
+          Izuzeci ({{ exceptionsTotal }})
+        </AppButton>
+        <AppButton
           v-if="hasAnyPdsuData"
           variant="secondary"
           :disabled="exportingPdf"
@@ -35,6 +42,47 @@
     <div v-else-if="entryError" class="text-red-600">{{ entryError }}</div>
 
     <div v-else class="space-y-4">
+      <div v-if="exceptionsOpen && exceptionsTotal" class="rounded-lg border border-blue-200 bg-blue-50/40 p-3 space-y-2">
+        <div class="text-sm font-medium text-slate-800">
+          Izuzeci od crne liste za ovaj računar
+        </div>
+        <p class="text-xs text-slate-500">
+          Ove stavke su globalno na crnoj listi, ali su namerno označene kao "nije neželjeno" na ovom računaru.
+        </p>
+        <div class="space-y-1">
+          <div
+            v-for="item in exceptions.software"
+            :key="`software-${item.id}`"
+            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+          >
+            <span>Softver: {{ item.displayName }}</span>
+            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('software', item.id)">
+              Ukloni izuzetak
+            </button>
+          </div>
+          <div
+            v-for="item in exceptions.services"
+            :key="`services-${item.id}`"
+            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+          >
+            <span>Servis: {{ item.displayName || item.name }}</span>
+            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('services', item.id)">
+              Ukloni izuzetak
+            </button>
+          </div>
+          <div
+            v-for="item in exceptions.drivers"
+            :key="`drivers-${item.id}`"
+            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+          >
+            <span>Drajver: {{ item.deviceName }}</span>
+            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('drivers', item.id)">
+              Ukloni izuzetak
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="flex flex-nowrap gap-2 overflow-x-auto border-b pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
           type="button"
@@ -136,6 +184,14 @@
         </button>
       </div>
 
+      <label
+        v-if="tab === 'software' || tab === 'drivers' || tab === 'services'"
+        class="inline-flex items-center gap-1.5 text-sm text-slate-600"
+      >
+        <input type="checkbox" :checked="onlyFlagged === 'true'" @change="onlyFlagged = onlyFlagged === 'true' ? '' : 'true'" />
+        Samo neželjeni
+      </label>
+
       <div v-if="search" class="text-xs text-slate-500">
         Pronađeno:
         <template v-if="tab === 'software'">
@@ -189,6 +245,14 @@
                 >
                   ⚠ Neželjen
                 </span>
+                <button
+                  v-if="item.is_flagged"
+                  type="button"
+                  @click="addException('software', item.matchedFlaggedId)"
+                  class="text-xs text-blue-600 hover:underline"
+                >
+                  Nije neželjen na ovom računaru
+                </button>
               </div>
 
               <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.display_version || '—' }}</div>
@@ -222,6 +286,14 @@
                 >
                   ⚠ Neželjen
                 </span>
+                <button
+                  v-if="item.is_flagged"
+                  type="button"
+                  @click="addException('drivers', item.matchedFlaggedId)"
+                  class="text-xs text-blue-600 hover:underline"
+                >
+                  Nije neželjen na ovom računaru
+                </button>
               </div>
 
               <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.driver_version || '—' }}</div>
@@ -261,6 +333,14 @@
                     >
                       ⚠ Neželjen
                     </span>
+                    <button
+                      v-if="item.is_flagged"
+                      type="button"
+                      @click="addException('services', item.matchedFlaggedId)"
+                      class="text-xs text-blue-600 hover:underline"
+                    >
+                      Nije neželjen na ovom računaru
+                    </button>
                   </div>
 
                   <div class="text-xs text-slate-500">{{ item.name || '—' }}</div>
@@ -402,10 +482,11 @@ const loaded = ref({ software: false, drivers: false, services: false, updates: 
 const tabLoading = ref({ software: false, drivers: false, services: false, updates: false, printers: false })
 const tabError = ref({ software: '', drivers: '', services: '', updates: '', printers: '' })
 
-const { search, tab } = usePaginatedRoute({
+const { search, tab, onlyFlagged } = usePaginatedRoute({
   fields: {
     search: { type: 'string', default: '', omitIfEmpty: true },
     tab: { type: 'string', default: 'software', oneOf: TAB_NAMES },
+    onlyFlagged: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   useReplace: true,
 })
@@ -460,6 +541,64 @@ async function clearPdsu() {
   }
 }
 
+// "Nije neželjen na ovom računaru" - dodaje izuzetak za TAČNO pravilo koje
+// trenutno pogađa (item.matchedFlaggedId), ne briše globalni flag. Lokalno
+// ažurira dati red umesto ponovnog fetch-a cele liste - ako neko DRUGO
+// pravilo i dalje pogađa isti red, backend bi ionako vratio is_flagged=true
+// opet (vidi pdsu.service.js's mapFlaggableRow), pa je ipak najjednostavnije
+// i najtačnije samo ponovo učitati taj tab.
+async function addException(kind, flaggedId) {
+  if (!flaggedId) return
+  try {
+    const res = await fetchWithAuth(
+      `/api/protected/pdsu/${route.params.id}/flagged-exceptions/${kind}/${flaggedId}`,
+      { method: 'POST' },
+    )
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju izuzetka'))
+    showToast('Izuzetak dodat - neće se prikazivati kao neželjeno na ovom računaru')
+    loaded.value[kind] = false
+    await loadTabData(kind)
+    await loadExceptions()
+  } catch (err) {
+    console.error('Greška pri dodavanju izuzetka:', err)
+    showToast(err?.message || 'Greška pri dodavanju izuzetka', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+const exceptions = ref({ software: [], services: [], drivers: [] })
+const exceptionsOpen = ref(false)
+
+async function loadExceptions() {
+  try {
+    const res = await fetchWithAuth(`/api/protected/pdsu/${route.params.id}/flagged-exceptions`)
+    if (!res.ok) throw new Error()
+    exceptions.value = await res.json()
+  } catch (err) {
+    console.error('Greška pri učitavanju izuzetaka:', err)
+  }
+}
+
+async function removeException(kind, flaggedId) {
+  try {
+    const res = await fetchWithAuth(
+      `/api/protected/pdsu/${route.params.id}/flagged-exceptions/${kind}/${flaggedId}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju izuzetka'))
+    showToast('Izuzetak uklonjen')
+    await loadExceptions()
+    loaded.value[kind] = false
+    if (tab.value === kind) await loadTabData(kind)
+  } catch (err) {
+    console.error('Greška pri uklanjanju izuzetka:', err)
+    showToast(err?.message || 'Greška pri uklanjanju izuzetka', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+const exceptionsTotal = computed(
+  () => exceptions.value.software.length + exceptions.value.services.length + exceptions.value.drivers.length,
+)
+
 async function loadTabData(name) {
   if (loaded.value[name]) return
 
@@ -498,9 +637,10 @@ function selectTab(name) {
 }
 
 const filteredSoftware = computed(() => {
+  let list = onlyFlagged.value ? software.value.filter((item) => item.is_flagged) : software.value
   const q = search.value.trim().toLowerCase()
-  if (!q) return software.value
-  return software.value.filter((item) =>
+  if (!q) return list
+  return list.filter((item) =>
     [item.display_name, item.display_version, item.publisher, item.install_date].some((value) =>
       String(value ?? '').toLowerCase().includes(q)
     )
@@ -508,9 +648,10 @@ const filteredSoftware = computed(() => {
 })
 
 const filteredDrivers = computed(() => {
+  let list = onlyFlagged.value ? drivers.value.filter((item) => item.is_flagged) : drivers.value
   const q = search.value.trim().toLowerCase()
-  if (!q) return drivers.value
-  return drivers.value.filter((item) =>
+  if (!q) return list
+  return list.filter((item) =>
     [item.device_name, item.driver_version, item.driver_date, item.manufacturer, item.driver_provider_name].some(
       (value) => String(value ?? '').toLowerCase().includes(q)
     )
@@ -518,9 +659,10 @@ const filteredDrivers = computed(() => {
 })
 
 const filteredServices = computed(() => {
+  let list = onlyFlagged.value ? services.value.filter((item) => item.is_flagged) : services.value
   const q = search.value.trim().toLowerCase()
-  if (!q) return services.value
-  return services.value.filter((item) =>
+  if (!q) return list
+  return list.filter((item) =>
     [item.name, item.display_name, item.state, item.start_mode, item.start_name, item.path_name].some(
       (value) => String(value ?? '').toLowerCase().includes(q)
     )
@@ -569,6 +711,7 @@ onMounted(async () => {
   await loadEntry()
   if (!entryError.value) {
     TAB_NAMES.forEach(loadTabData)
+    loadExceptions()
   }
 })
 </script>

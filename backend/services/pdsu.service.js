@@ -24,6 +24,28 @@ import {
   computerAvailableUpdatesDelete,
   computerAvailableUpdatesInsert,
 } from "../repositories/pdsu.repo.js";
+import {
+  addFlaggedSoftwareException,
+  removeFlaggedSoftwareException,
+  listFlaggedSoftwareExceptionsForIpEntry,
+  addFlaggedServiceException,
+  removeFlaggedServiceException,
+  listFlaggedServiceExceptionsForIpEntry,
+  addFlaggedDriverException,
+  removeFlaggedDriverException,
+  listFlaggedDriverExceptionsForIpEntry,
+} from "../repositories/flagged.repo.js";
+import { badRequest } from "../utils/httpError.js";
+
+// matched_flagged_id (sirov MIN(id) iz upita, null kad ništa ne poklapa) se
+// mapira u is_flagged (boolean, isti ugovor kao pre uvođenja izuzetaka -
+// IpPdsuView.vue već čita item.is_flagged) + matchedFlaggedId (camelCase,
+// novo - frontend ga šalje nazad da doda izuzetak za TAČNO to pravilo koje
+// trenutno pogađa, ne za "nešto, ko zna šta").
+function mapFlaggableRow(row) {
+  const { matched_flagged_id, ...rest } = row;
+  return { ...rest, is_flagged: matched_flagged_id != null, matchedFlaggedId: matched_flagged_id };
+}
 
 // =========================
 // Computers
@@ -52,7 +74,8 @@ export async function getComputer(id) {
 // =========================
 
 export async function getComputerSoftware(id) {
-  return await computerSoftwareList(id);
+  const rows = await computerSoftwareList(id);
+  return rows.map(mapFlaggableRow);
 }
 
 export async function syncComputerSoftware(ipEntryId, software) {
@@ -86,7 +109,8 @@ export async function syncComputerSoftware(ipEntryId, software) {
 // =========================
 
 export async function getComputerDrivers(id) {
-  return await computerDriversList(id);
+  const rows = await computerDriversList(id);
+  return rows.map(mapFlaggableRow);
 }
 
 export async function syncComputerDrivers(ipEntryId, drivers) {
@@ -122,7 +146,8 @@ export async function syncComputerDrivers(ipEntryId, drivers) {
 // =========================
 
 export async function getComputerServices(id) {
-  return await computerServicesList(id);
+  const rows = await computerServicesList(id);
+  return rows.map(mapFlaggableRow);
 }
 
 export async function syncComputerServices(ipEntryId, services) {
@@ -153,6 +178,62 @@ export async function syncComputerServices(ipEntryId, services) {
   await computerServicesInsert(rows);
 
   return true;
+}
+
+// =========================
+// Izuzeci od crne liste (po računaru) - "ovo NIJE neželjeno na OVOM
+// računaru", ne dira globalni flag za sve ostale. FLAG_EXCEPTION_ADDERS/
+// _REMOVERS/_LISTERS su mape po "kind" (software/services/drivers) - jedno
+// mesto koje bira pravu repo funkciju umesto tri skoro-identične service
+// funkcije po tipu.
+// =========================
+
+const FLAG_KINDS = ["software", "services", "drivers"];
+
+const EXCEPTION_ADDERS = {
+  software: addFlaggedSoftwareException,
+  services: addFlaggedServiceException,
+  drivers: addFlaggedDriverException,
+};
+const EXCEPTION_REMOVERS = {
+  software: removeFlaggedSoftwareException,
+  services: removeFlaggedServiceException,
+  drivers: removeFlaggedDriverException,
+};
+const EXCEPTION_LISTERS = {
+  software: listFlaggedSoftwareExceptionsForIpEntry,
+  services: listFlaggedServiceExceptionsForIpEntry,
+  drivers: listFlaggedDriverExceptionsForIpEntry,
+};
+
+export async function addFlaggedExceptionService(ipEntryId, kind, flaggedId, createdByUserId) {
+  await getComputer(ipEntryId);
+  if (!FLAG_KINDS.includes(kind)) {
+    throw badRequest("Nepoznat tip (software/services/drivers)");
+  }
+  await EXCEPTION_ADDERS[kind](flaggedId, ipEntryId, createdByUserId);
+  return { success: true };
+}
+
+export async function removeFlaggedExceptionService(ipEntryId, kind, flaggedId) {
+  if (!FLAG_KINDS.includes(kind)) {
+    throw badRequest("Nepoznat tip (software/services/drivers)");
+  }
+  const affected = await EXCEPTION_REMOVERS[kind](flaggedId, ipEntryId);
+  if (!affected) {
+    throw notFound("Izuzetak nije pronađen");
+  }
+  return { success: true };
+}
+
+export async function listFlaggedExceptionsService(ipEntryId) {
+  await getComputer(ipEntryId);
+  const [software, services, drivers] = await Promise.all([
+    EXCEPTION_LISTERS.software(ipEntryId),
+    EXCEPTION_LISTERS.services(ipEntryId),
+    EXCEPTION_LISTERS.drivers(ipEntryId),
+  ]);
+  return { software, services, drivers };
 }
 
 // =========================

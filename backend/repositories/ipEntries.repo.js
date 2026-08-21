@@ -283,20 +283,37 @@ export async function listIpEntries({
       description,
       pending_repack AS pendingRepack,
       agents.id AS agentId,
+      -- NOT EXISTS(...exceptions...) po SVAKOM poklopljenom (cs,fs) paru -
+      -- izuzetak je specifičan za JEDNO flagged_* pravilo na JEDNOM računaru,
+      -- ne "isključi ceo brojač" - ako drugo pravilo i dalje pogađa isti
+      -- softver, i dalje se broji. Isti princip kao pdsu.repo.js's
+      -- matched_flagged_id i flagged.repo.js's findAgentIdsForFlagged*.
       (SELECT COUNT(*) FROM computer_software cs
        JOIN flagged_software fs
          ON LOWER(cs.display_name) LIKE CONCAT('%', LOWER(fs.display_name), '%')
         AND (fs.publisher IS NULL OR LOWER(cs.publisher) = LOWER(fs.publisher))
-       WHERE cs.ip_entry_id = ip_entries.id) AS flaggedSoftwareCount,
+       WHERE cs.ip_entry_id = ip_entries.id
+         AND NOT EXISTS (
+           SELECT 1 FROM flagged_software_exceptions fse
+           WHERE fse.flagged_software_id = fs.id AND fse.ip_entry_id = ip_entries.id
+         )) AS flaggedSoftwareCount,
       (SELECT COUNT(*) FROM computer_services csv
        JOIN flagged_services fsv
          ON LOWER(csv.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
-       WHERE csv.ip_entry_id = ip_entries.id) AS flaggedServiceCount,
+       WHERE csv.ip_entry_id = ip_entries.id
+         AND NOT EXISTS (
+           SELECT 1 FROM flagged_services_exceptions fsve
+           WHERE fsve.flagged_service_id = fsv.id AND fsve.ip_entry_id = ip_entries.id
+         )) AS flaggedServiceCount,
       (SELECT COUNT(*) FROM computer_drivers cd
        JOIN flagged_drivers fd
          ON LOWER(cd.device_name) LIKE CONCAT('%', LOWER(fd.device_name), '%')
         AND (fd.driver_provider_name IS NULL OR LOWER(cd.driver_provider_name) = LOWER(fd.driver_provider_name))
-       WHERE cd.ip_entry_id = ip_entries.id) AS flaggedDriverCount,
+       WHERE cd.ip_entry_id = ip_entries.id
+         AND NOT EXISTS (
+           SELECT 1 FROM flagged_drivers_exceptions fde
+           WHERE fde.flagged_driver_id = fd.id AND fde.ip_entry_id = ip_entries.id
+         )) AS flaggedDriverCount,
       -- Isti obrazac poklapanja kao listComputersWithoutUltravnc() u
       -- pdsuAnalytics.repo.js (uvnc_service je stvarni naziv koji registruje
       -- Deploy-NetdeskVnc.ps1, ultravnc/winvnc su dodatni obrasci za

@@ -22,6 +22,9 @@ import {
   syncAvailableUpdatesController,
   getEventLogsController,
   exportComputerPdsuPdfController,
+  listFlaggedExceptionsController,
+  addFlaggedExceptionController,
+  removeFlaggedExceptionController,
 } from "../controllers/pdsu.controller.js";
 
 const router = express.Router();
@@ -74,5 +77,11 @@ router.post(
 
 // Event Log
 router.get("/:id/event-logs", asyncHandler(getEventLogsController));
+
+// Izuzeci od crne liste (po računaru) - "ovo NIJE neželjeno na OVOM
+// računaru", ne dira globalni flag za sve ostale (vidi flagged.routes.js).
+router.get("/:id/flagged-exceptions", asyncHandler(listFlaggedExceptionsController));
+router.post("/:id/flagged-exceptions/:kind/:flaggedId", asyncHandler(addFlaggedExceptionController));
+router.delete("/:id/flagged-exceptions/:kind/:flaggedId", asyncHandler(removeFlaggedExceptionController));
 
 export default router;

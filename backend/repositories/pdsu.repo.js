@@ -70,11 +70,15 @@ export async function computerSoftwareList(ipEntryId) {
       cs.publisher,
       cs.install_date,
       cs.inventory_date,
-      EXISTS(
-        SELECT 1 FROM flagged_software fs
+      (
+        SELECT MIN(fs.id) FROM flagged_software fs
         WHERE LOWER(cs.display_name) LIKE CONCAT('%', LOWER(fs.display_name), '%')
           AND (fs.publisher IS NULL OR LOWER(cs.publisher) = LOWER(fs.publisher))
-      ) AS is_flagged
+          AND NOT EXISTS (
+            SELECT 1 FROM flagged_software_exceptions fse
+            WHERE fse.flagged_software_id = fs.id AND fse.ip_entry_id = cs.ip_entry_id
+          )
+      ) AS matched_flagged_id
     FROM computer_software cs
     WHERE cs.ip_entry_id = ?
     ORDER BY cs.display_name
@@ -155,11 +159,15 @@ export async function computerDriversList(ipEntryId) {
       cd.manufacturer,
       cd.driver_provider_name,
       cd.inventory_date,
-      EXISTS(
-        SELECT 1 FROM flagged_drivers fd
+      (
+        SELECT MIN(fd.id) FROM flagged_drivers fd
         WHERE LOWER(cd.device_name) LIKE CONCAT('%', LOWER(fd.device_name), '%')
           AND (fd.driver_provider_name IS NULL OR LOWER(cd.driver_provider_name) = LOWER(fd.driver_provider_name))
-      ) AS is_flagged
+          AND NOT EXISTS (
+            SELECT 1 FROM flagged_drivers_exceptions fde
+            WHERE fde.flagged_driver_id = fd.id AND fde.ip_entry_id = cd.ip_entry_id
+          )
+      ) AS matched_flagged_id
     FROM computer_drivers cd
     WHERE cd.ip_entry_id = ?
     ORDER BY cd.device_name
@@ -225,10 +233,14 @@ export async function computerServicesList(ipEntryId) {
       cs.start_name,
       cs.path_name,
       cs.inventory_date,
-      EXISTS(
-        SELECT 1 FROM flagged_services fsv
+      (
+        SELECT MIN(fsv.id) FROM flagged_services fsv
         WHERE LOWER(cs.name) LIKE CONCAT('%', LOWER(fsv.name), '%')
-      ) AS is_flagged
+          AND NOT EXISTS (
+            SELECT 1 FROM flagged_services_exceptions fsve
+            WHERE fsve.flagged_service_id = fsv.id AND fsve.ip_entry_id = cs.ip_entry_id
+          )
+      ) AS matched_flagged_id
     FROM computer_services cs
     WHERE cs.ip_entry_id = ?
     ORDER BY cs.display_name
