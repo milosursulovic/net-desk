@@ -10,7 +10,6 @@ import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
-import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
@@ -35,7 +34,6 @@ const withoutUltravnc = ref([])
 const exportingWithoutUltravncPdf = ref(false)
 const withoutNetdeskAgentManager = ref([])
 const exportingWithoutNetdeskAgentManagerPdf = ref(false)
-const sendingManagerInstall = ref(false)
 
 const activeTab = ref('overview')
 const { search } = usePaginatedRoute({
@@ -383,46 +381,6 @@ async function exportWithoutNetdeskAgentManagerPdf() {
   }
 }
 
-// Mora se poklopiti sa BatchCreateJobSchema.agentIds max u
-// backend/dtos/agentJobs.dto.js - isti obrazac kao forceReinstall u
-// AgentReleasesView.vue.
-const MANAGER_INSTALL_BATCH_CHUNK_SIZE = 500
-
-// Šalje POSTOJEĆI "Instaliraj/ažuriraj NetdeskAgent Manager servis" preset
-// (run_powershell_script) na selektovane agente sa liste "Bez
-// NetdeskAgentManager-a" - isti preset koji se inače ručno bira po agentu,
-// samo ovde predpopunjen i poslat direktno na sve odjednom.
-async function sendManagerInstallJob(agentIds) {
-  if (!agentIds.length) return
-
-  const preset = POWERSHELL_PRESETS.find((p) => p.id === 'install-netdesk-agent-manager')
-  if (!preset) {
-    showToast('Preset za instalaciju Manager-a nije pronađen', { prefix: '❌ ', duration: 3000 })
-    return
-  }
-
-  sendingManagerInstall.value = true
-  try {
-    for (let i = 0; i < agentIds.length; i += MANAGER_INSTALL_BATCH_CHUNK_SIZE) {
-      const chunk = agentIds.slice(i, i + MANAGER_INSTALL_BATCH_CHUNK_SIZE)
-      const res = await fetchWithAuth('/api/protected/agents/jobs/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentIds: chunk, commandType: 'run_powershell_script', payload: { script: preset.script } }),
-      })
-      if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
-    }
-
-    showToast(`Instalacija Manager-a poslata na ${agentIds.length} agenata`)
-    await fetchWithoutNetdeskAgentManager()
-  } catch (err) {
-    console.error('Slanje instalacije Manager-a greška:', err)
-    showToast(err?.message || 'Greška pri slanju instalacije Manager-a', { prefix: '❌ ', duration: 3000 })
-  } finally {
-    sendingManagerInstall.value = false
-  }
-}
-
 async function exportXlsx() {
   exporting.value = true
 
@@ -727,8 +685,6 @@ watch(site, loadStats)
               :without-netdesk-agent-manager="withoutNetdeskAgentManager"
               :exporting-without-netdesk-agent-manager="exportingWithoutNetdeskAgentManagerPdf"
               @export-without-netdesk-agent-manager="exportWithoutNetdeskAgentManagerPdf"
-              :sending-manager-install="sendingManagerInstall"
-              @send-manager-install="sendManagerInstallJob"
             />
 
             <PDSUSoftware

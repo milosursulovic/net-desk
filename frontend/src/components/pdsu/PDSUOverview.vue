@@ -1,9 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 
+const router = useRouter()
+const site = useCurrentSite()
 const { formatNumber, formatDate: formatDateBase } = usePdsuFormatters()
 
 function formatDate(value) {
@@ -70,55 +73,29 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-
-  sendingManagerInstall: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 const emit = defineEmits([
   'export-missing',
   'export-without-ultravnc',
   'export-without-netdesk-agent-manager',
-  'send-manager-install',
 ])
 
-// Selekcija na "Bez NetdeskAgentManager-a" listi - samo redovi SA agentom
-// mogu da prime job (bez agenta nema kome da se pošalje). Set od agentId
-// vrednosti, čisto lokalno UI stanje - roditelj (PDSUAnalyticsView.vue) samo
-// dobija konačnu listu ID-jeva kad se pošalje.
-const selectedManagerAgentIds = ref(new Set())
-
+// Samo redovi SA agentom mogu da se selektuju na Agenti stranici (bez
+// agenta nema kome da se pošalje komanda).
 const managerAgentRows = computed(() =>
   props.withoutNetdeskAgentManager.filter((row) => row.agentId),
 )
 
-const allManagerAgentsSelected = computed(
-  () =>
-    managerAgentRows.value.length > 0 &&
-    managerAgentRows.value.every((row) => selectedManagerAgentIds.value.has(row.agentId)),
-)
-
-function toggleManagerAgentSelection(agentId) {
-  const next = new Set(selectedManagerAgentIds.value)
-  if (next.has(agentId)) {
-    next.delete(agentId)
-  } else {
-    next.add(agentId)
-  }
-  selectedManagerAgentIds.value = next
-}
-
-function toggleSelectAllManagerAgents() {
-  selectedManagerAgentIds.value = allManagerAgentsSelected.value
-    ? new Set()
-    : new Set(managerAgentRows.value.map((row) => row.agentId))
-}
-
-function sendManagerInstallToSelected() {
-  emit('send-manager-install', [...selectedManagerAgentIds.value])
-  selectedManagerAgentIds.value = new Set()
+// Isti obrazac kao "🎯 Selektuj agente" na kartici neželjenih programa
+// (PDSUFlagged.vue) - umesto checkbox-po-redu selekcije + slanja komande
+// direktno sa ove stranice, prosto odeš na Agenti stranicu sa već
+// selektovanim ID-jevima i odatle pošalješ BILO KOJU komandu (ne samo
+// instalaciju Manager-a) preko postojećeg batch mehanizma. Nema backend
+// poziva ovde - ID-jevi su već učitani u props.withoutNetdeskAgentManager.
+function selectAgentsFor() {
+  const ids = managerAgentRows.value.map((row) => row.agentId)
+  router.push({ path: '/agents', query: { site: site.value, agentIds: ids.join(',') } })
 }
 
 const softwareStats = computed(() => props.software?.stats ?? {})
@@ -562,14 +539,14 @@ function percentageClass(percent) {
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <AppButton
+          <button
             v-if="managerAgentRows.length"
-            variant="secondary"
-            :disabled="!selectedManagerAgentIds.size || sendingManagerInstall"
-            @click="sendManagerInstallToSelected"
+            type="button"
+            class="text-blue-600 hover:underline text-sm"
+            @click="selectAgentsFor"
           >
-            {{ sendingManagerInstall ? 'Slanje…' : `Instaliraj Manager na selektovane (${selectedManagerAgentIds.size})` }}
-          </AppButton>
+            🎯 Selektuj agente ({{ managerAgentRows.length }})
+          </button>
           <AppButton
             variant="secondary"
             :disabled="!withoutNetdeskAgentManager.length || exportingWithoutNetdeskAgentManager"
@@ -593,15 +570,6 @@ function percentageClass(percent) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>
-                <input
-                  v-if="managerAgentRows.length"
-                  type="checkbox"
-                  :checked="allManagerAgentsSelected"
-                  title="Selektuj sve (samo računari sa agentom)"
-                  @change="toggleSelectAllManagerAgents"
-                />
-              </th>
               <th>Računar</th>
               <th>IP</th>
               <th>Odeljenje</th>
@@ -613,14 +581,6 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in withoutNetdeskAgentManager" :key="row.id">
-              <td>
-                <input
-                  v-if="row.agentId"
-                  type="checkbox"
-                  :checked="selectedManagerAgentIds.has(row.agentId)"
-                  @change="toggleManagerAgentSelection(row.agentId)"
-                />
-              </td>
               <td class="font-semibold text-slate-900">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}

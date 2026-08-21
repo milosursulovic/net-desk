@@ -167,6 +167,7 @@ function buildAgentsWhereClause({
   processKillExempt,
   deploymentGroupOsOverlap,
   noDeploymentGroup,
+  remoteControlTier,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -183,6 +184,13 @@ function buildAgentsWhereClause({
   if (connectivityStatus) {
     whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) = ?`);
     params.push(connectivityStatus);
+  }
+  // Uživo prijavljen build-tier agenta (enroll/heartbeat) - ne deployment
+  // grupa (koja je samo statička admin-oznaka za targeting, vidi Faza 1
+  // plan) - "koji računari stvarno imaju novi (webrtc_capable) agent".
+  if (remoteControlTier) {
+    whereParts.push("agents.remote_control_tier = ?");
+    params.push(remoteControlTier);
   }
   // deploymentGroup/os/version/versionNot/department su multiselect na
   // frontend-u - "bar jedan izabran" = pogađa BILO KOJU od izabranih

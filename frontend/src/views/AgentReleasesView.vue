@@ -8,6 +8,11 @@
       <AppButton variant="success" @click="openUpload">Otpremi novu verziju</AppButton>
     </div>
 
+    <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <input type="checkbox" v-model="onlyActive" />
+      Samo aktivne
+    </label>
+
     <div class="min-h-50">
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="n in 3" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white shadow-sm p-4">
@@ -17,13 +22,13 @@
         </div>
       </div>
 
-      <div v-else-if="!items.length"
+      <div v-else-if="!visibleItems.length"
         class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
-        Nema otpremljenih verzija.
+        {{ onlyActive && items.length ? 'Nema aktivnih verzija (proveri filter).' : 'Nema otpremljenih verzija.' }}
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="r in items" :key="r.id"
+        <div v-for="r in visibleItems" :key="r.id"
           class="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -74,6 +79,14 @@
               </button>
               <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
                 {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
+              </button>
+              <button
+                v-if="!r.isActive"
+                @click="deleteRelease(r)"
+                class="text-sm text-red-600 hover:underline"
+                title="Trajno brisanje - samo za deaktivirane verzije"
+              >
+                Obriši
               </button>
             </div>
           </div>
@@ -168,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
@@ -188,6 +201,13 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
 const items = ref([])
 const loading = ref(false)
+
+// Klijentska filtracija - lista se već učitava celokupno (limit=100, mala
+// tabela), nema potrebe za backend query parametrom za ovo.
+const onlyActive = ref(false)
+const visibleItems = computed(() =>
+  onlyActive.value ? items.value.filter((r) => r.isActive) : items.value,
+)
 
 // Predlozi za DeploymentGroupPicker (klasične vrednosti + odeljenja + grupe
 // već u upotrebi) - iz istog /agents/filter-options endpoint-a koji
@@ -335,6 +355,27 @@ async function toggleActive(release) {
   } catch (err) {
     console.error(err)
     showToast('Greška pri izmeni statusa', { prefix: '❌ ', duration: 3000 })
+  }
+}
+
+// Dugme je već vidljivo samo za !r.isActive (v-if u template-u), ali backend
+// (deleteReleaseService) i dalje odbija aktivnu verziju - odbrana u dubinu,
+// ne oslanja se samo na skriveno dugme.
+async function deleteRelease(release) {
+  const ok = await askConfirm(
+    `Trajno obrisati verziju ${release.version} (${release.deploymentGroups.join(', ') || 'bez grupa'})? Ovo ne može da se poništi.`,
+    { title: 'Brisanje verzije' },
+  )
+  if (!ok) return
+
+  try {
+    const res = await fetchWithAuth(`/api/protected/agent-releases/${release.id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju verzije'))
+    await fetchData()
+    showToast('Verzija obrisana')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri brisanju verzije', { prefix: '❌ ', duration: 3000 })
   }
 }
 

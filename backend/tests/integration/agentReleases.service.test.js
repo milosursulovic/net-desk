@@ -4,6 +4,7 @@ import path from "path";
 import {
   uploadReleaseService,
   setReleaseActiveService,
+  deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
   updateReleaseGroupsService,
@@ -282,5 +283,40 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
 
   it("updateReleaseGroupsService rejects an unknown release id", async () => {
     await expect(updateReleaseGroupsService(999999999, ["rest"])).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("deleteReleaseService rejects an ACTIVE release", async () => {
+    const release = await uploadReleaseService(
+      { buffer: Buffer.from("x"), originalName: "a.zip", version: "9.9.2", deploymentGroups: [uniqueGroup()] },
+      null,
+    );
+    createdReleases.push(release);
+
+    await expect(deleteReleaseService(release.id)).rejects.toMatchObject({ status: 400 });
+
+    const filePath = path.join(process.cwd(), "uploads", "agent-releases", release.filePath);
+    expect(fs.existsSync(filePath)).toBe(true);
+  });
+
+  it("deleteReleaseService removes a DEACTIVATED release's row and file", async () => {
+    const release = await uploadReleaseService(
+      { buffer: Buffer.from("x"), originalName: "a.zip", version: "9.9.3", deploymentGroups: [uniqueGroup()] },
+      null,
+    );
+    await setReleaseActiveService(release.id, false);
+
+    await deleteReleaseService(release.id);
+
+    const [rows] = await pool.execute("SELECT id FROM agent_releases WHERE id = ?", [release.id]);
+    expect(rows.length).toBe(0);
+    const filePath = path.join(process.cwd(), "uploads", "agent-releases", release.filePath);
+    expect(fs.existsSync(filePath)).toBe(false);
+    // Već obrisano - ne gura se u createdReleases (afterEach bi bezopasno
+    // no-op-ovao na već-nepostojećem id-ju, ali nema potrebe da se oslanja
+    // na to).
+  });
+
+  it("deleteReleaseService rejects an unknown release id", async () => {
+    await expect(deleteReleaseService(999999999)).rejects.toMatchObject({ status: 404 });
   });
 });

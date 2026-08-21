@@ -11,6 +11,7 @@ import {
   findActiveReleasesForGroups,
   listReleases,
   setReleaseActive,
+  deleteRelease,
   insertReleaseFiles,
   findReleaseFiles,
   findReleaseIdByVersion,
@@ -132,6 +133,32 @@ export async function setReleaseActiveService(id, isActive) {
     throw notFound("Verzija nije pronađena");
   }
   return await findReleaseById(id);
+}
+
+// Namerno SAMO za deaktivirane release-e - brisanje aktivne verzije bi
+// moglo da obori auto-update za agente koji je trenutno ciljaju (isti
+// razlog kao zašto se najpre traži eksplicitna deaktivacija, ne jedan
+// nepovratan korak). agent_release_groups/agent_release_files se čiste
+// automatski preko ON DELETE CASCADE (migracije 0006/0003) - ne moraju
+// posebno da se brišu ovde. Fizički fajl na disku se briše best-effort
+// (ne obara ceo zahtev ako fajl već ne postoji/ručno obrisan mimo baze).
+export async function deleteReleaseService(id) {
+  const release = await findReleaseById(id);
+  if (!release) {
+    throw notFound("Verzija nije pronađena");
+  }
+  if (release.isActive) {
+    throw badRequest("Ne može se obrisati aktivna verzija - prvo je deaktiviraj");
+  }
+
+  await deleteRelease(id);
+
+  try {
+    fs.unlinkSync(path.join(RELEASES_DIR, release.filePath));
+  } catch {
+    // Fajl već ne postoji ili je ručno obrisan - baza je posle DELETE-a
+    // iznad ionako izvor istine, ovo je samo best-effort čišćenje diska.
+  }
 }
 
 // "rest" is the implicit default deployment group for agents with none

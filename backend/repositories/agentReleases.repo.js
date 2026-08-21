@@ -225,6 +225,13 @@ export async function setReleaseActive(id, isActive) {
   return result.affectedRows;
 }
 
+// agent_release_groups/agent_release_files imaju ON DELETE CASCADE na
+// release_id - brišu se sami, ne treba posebna DELETE ovde.
+export async function deleteRelease(id) {
+  const [result] = await pool.execute(`DELETE FROM agent_releases WHERE id = ?`, [id]);
+  return result.affectedRows;
+}
+
 // Releases nisu site-vezani, pa nema site-scope parametra ovde (za razliku
 // od agents.repo.js's listDistinctAgentOs i sličnih).
 export async function listDistinctReleaseDeploymentGroups() {

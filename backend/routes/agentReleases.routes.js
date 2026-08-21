@@ -7,6 +7,7 @@ import {
   createReleaseController,
   listReleasesController,
   setReleaseActiveController,
+  deleteReleaseController,
   updateReleaseGroupsController,
   listReleaseFilesController,
 } from "../controllers/agentReleases.controller.js";
@@ -28,6 +29,9 @@ router.post(
   asyncHandler(createReleaseController),
 );
 router.patch("/:id", requireRole("admin"), asyncHandler(setReleaseActiveController));
+// Isti admin-only nivo - namerno samo za VEĆ deaktivirane verzije
+// (deleteReleaseService odbija aktivnu), vidi napomenu tamo.
+router.delete("/:id", requireRole("admin"), asyncHandler(deleteReleaseController));
 // Isti admin-only nivo kao upload/is-active - "širenje" rollout-a na nove
 // grupe je isti blast-radius rizik kao sam upload.
 router.patch("/:id/deployment-groups", requireRole("admin"), asyncHandler(updateReleaseGroupsController));

@@ -8,6 +8,7 @@ import {
   uploadReleaseService,
   listReleasesService,
   setReleaseActiveService,
+  deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
   reportUpdateResultService,
@@ -71,6 +72,13 @@ export async function setReleaseActiveController(req, res) {
 
   const release = await setReleaseActiveService(id, isActive);
   res.json(release);
+}
+
+export async function deleteReleaseController(req, res) {
+  const id = parseIdParam(req, "id", "ID verzije");
+
+  await deleteReleaseService(id);
+  res.status(204).send();
 }
 
 export async function updateReleaseGroupsController(req, res) {
