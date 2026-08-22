@@ -12,6 +12,7 @@ import {
   listDistinctAgentOs,
   listDistinctAgentOsArchitectures,
   listDistinctAgentVersions,
+  listDistinctManagerVersions,
   listDistinctAgentDeploymentGroups,
   revokeAgentById,
   deleteAgentById,
@@ -168,6 +169,8 @@ export async function listAgentsService({
   trustedRootCertInstalled,
   intermediateCertInstalled,
   secureDnsDisabled,
+  managerVersion,
+  managerVersionNot,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -198,6 +201,8 @@ export async function listAgentsService({
     trustedRootCertInstalled,
     intermediateCertInstalled,
     secureDnsDisabled,
+    managerVersion,
+    managerVersionNot,
     limit,
     offset,
   });
@@ -222,6 +227,7 @@ export async function agentFilterOptionsService(site) {
   const os = await listDistinctAgentOs(site);
   const osArchitecture = await listDistinctAgentOsArchitectures(site);
   const version = await listDistinctAgentVersions(site);
+  const managerVersion = await listDistinctManagerVersions(site);
   const department = await listDistinctDepartments(site);
 
   // Deployment grupe su sad ODVOJENE od odeljenja (deployment_groups_list,
@@ -237,7 +243,7 @@ export async function agentFilterOptionsService(site) {
     (a, b) => a.localeCompare(b),
   );
 
-  return { os, osArchitecture, version, department, deploymentGroups };
+  return { os, osArchitecture, version, managerVersion, department, deploymentGroups };
 }
 
 export async function listComputersWithoutAgentService({ page, limit, search, site }) {

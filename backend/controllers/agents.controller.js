@@ -129,6 +129,8 @@ function parseAgentListFilters(query) {
       query.intermediateCertInstalled === "true" ? true : query.intermediateCertInstalled === "false" ? false : undefined,
     secureDnsDisabled:
       query.secureDnsDisabled === "true" ? true : query.secureDnsDisabled === "false" ? false : undefined,
+    managerVersion: toFilterArray(query.managerVersion),
+    managerVersionNot: toFilterArray(query.managerVersionNot),
   };
 }
 

@@ -172,6 +172,8 @@ function buildAgentsWhereClause({
   trustedRootCertInstalled,
   intermediateCertInstalled,
   secureDnsDisabled,
+  managerVersion,
+  managerVersionNot,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -328,6 +330,25 @@ function buildAgentsWhereClause({
   } else if (secureDnsDisabled === false) {
     whereParts.push("(ie.secure_dns_disabled = 0 OR ie.secure_dns_disabled IS NULL)");
   }
+  // managers.manager_version - isti "bar jedna izabrana" multiselect obrazac
+  // kao version/versionNot iznad, preko EXISTS (ne JOIN u WHERE) iz istog
+  // razloga kao hasManagerChannel: whereSql se koristi i u COUNT upitu koji
+  // nema AGENTS_MANAGER_JOIN. NOT EXISTS za managerVersionNot prirodno
+  // pokriva i "Manager uopšte nije registrovan" kao "nije na ovoj verziji" -
+  // isti tretman kao NULL agent_version slučaj kod versionNot, bez potrebe
+  // za posebnim NULL uslovom.
+  if (managerVersion?.length) {
+    whereParts.push(
+      `EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active' AND m.manager_version IN (${managerVersion.map(() => "?").join(",")}))`,
+    );
+    params.push(...managerVersion);
+  }
+  if (managerVersionNot?.length) {
+    whereParts.push(
+      `NOT EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active' AND m.manager_version IN (${managerVersionNot.map(() => "?").join(",")}))`,
+    );
+    params.push(...managerVersionNot);
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
@@ -399,7 +420,8 @@ export async function listAgents(filters) {
       am.antivirus_status AS antivirusStatus,
       am.firewall_status AS firewallStatus,
       cm.wu_service_status AS windowsUpdateStatus,
-      (${MANAGER_CHANNEL_STATUS_SQL}) AS managerChannelStatus
+      (${MANAGER_CHANNEL_STATUS_SQL}) AS managerChannelStatus,
+      mgr.manager_version AS managerVersion
     FROM agents
     ${joins} ${AGENTS_MANAGER_JOIN}
     ${whereSql}
@@ -511,6 +533,39 @@ export async function listDistinctAgentVersions(site) {
     params,
   );
   return rows.map((r) => r.agent_version);
+}
+
+// Isto obrazac kao listDistinctAgentVersions iznad, ali za managers.manager_version
+// (odvojena tabela, povezana preko ip_entry_id - ne agent_id). Samo aktivni
+// Manager-i (status='active') se broje - revoked/istorijski ne treba da se
+// pojave u dropdown-u.
+export async function listDistinctManagerVersions(site) {
+  const whereParts = [
+    "mgr.status = 'active'",
+    "mgr.manager_version IS NOT NULL",
+    "mgr.manager_version != ''",
+  ];
+  const params = [];
+  let siteJoin = "";
+  if (site) {
+    siteJoin = AGENTS_IP_ENTRY_JOIN;
+    whereParts.push("ie.site = ?");
+    params.push(site);
+  }
+  const [rows] = await pool.execute(
+    `
+    SELECT DISTINCT mgr.manager_version
+    FROM agents ${siteJoin}
+    JOIN managers mgr ON mgr.ip_entry_id = agents.ip_entry_id
+    WHERE ${whereParts.join(" AND ")}
+    ORDER BY
+      CAST(SUBSTRING_INDEX(mgr.manager_version, '.', 1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(mgr.manager_version, '.', 2), '.', -1) AS UNSIGNED) DESC,
+      CAST(SUBSTRING_INDEX(mgr.manager_version, '.', -1) AS UNSIGNED) DESC
+    `,
+    params,
+  );
+  return rows.map((r) => r.manager_version);
 }
 
 // Fleet breakdown for the daily report - reuses the same CASE expression

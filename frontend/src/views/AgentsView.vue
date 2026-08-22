@@ -148,6 +148,23 @@
           </label>
 
           <MultiSelect
+            v-model="managerVersion"
+            :options="managerVersionOptions"
+            placeholder="Sve Manager verzije"
+            class="w-auto max-w-40 min-w-0"
+            title="Verzija Netdesk Agent Manager-a (nezavisni HTTP kanal), ne agentova verzija"
+          />
+
+          <label v-if="managerVersion.length" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              :checked="managerVersionMode === 'neq'"
+              @change="managerVersionMode = managerVersionMode === 'neq' ? 'eq' : 'neq'"
+            />
+            Isključi (prikaži zaostale)
+          </label>
+
+          <MultiSelect
             v-model="department"
             :options="departmentOptions"
             placeholder="Sva odeljenja"
@@ -557,6 +574,8 @@ const {
   osArchitecture,
   version,
   versionMode,
+  managerVersion,
+  managerVersionMode,
   department,
   enrolledFrom,
   enrolledTo,
@@ -628,6 +647,8 @@ const {
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
     version: { type: 'array', default: [] },
     versionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
+    managerVersion: { type: 'array', default: [] },
+    managerVersionMode: { default: 'eq', oneOf: ['eq', 'neq'] },
     department: { type: 'array', default: [] },
     enrolledFrom: { type: 'string', default: '', omitIfEmpty: true },
     enrolledTo: { type: 'string', default: '', omitIfEmpty: true },
@@ -651,6 +672,8 @@ const {
     'osArchitecture',
     'version',
     'versionMode',
+    'managerVersion',
+    'managerVersionMode',
     'department',
     'enrolledFrom',
     'enrolledTo',
@@ -685,6 +708,8 @@ watch(
     osArchitecture,
     version,
     versionMode,
+    managerVersion,
+    managerVersionMode,
     department,
     enrolledFrom,
     enrolledTo,
@@ -717,6 +742,8 @@ watch(site, () => {
   osArchitecture.value = ''
   version.value = []
   versionMode.value = 'eq'
+  managerVersion.value = []
+  managerVersionMode.value = 'eq'
   department.value = []
   fetchFilterOptions()
 })
@@ -729,6 +756,7 @@ const loading = ref(false)
 const osOptions = ref([])
 const osArchitectureOptions = ref([])
 const versionOptions = ref([])
+const managerVersionOptions = ref([])
 const departmentOptions = ref([])
 const deploymentGroupOptions = ref([])
 
@@ -743,6 +771,7 @@ const activeDetailedFilterCount = computed(() => {
   if (os.value.length) n++
   if (osArchitecture.value) n++
   if (version.value.length) n++
+  if (managerVersion.value.length) n++
   if (department.value.length) n++
   if (enrolledFrom.value) n++
   if (enrolledTo.value) n++
@@ -774,6 +803,7 @@ async function fetchFilterOptions() {
     osOptions.value = data.os || []
     osArchitectureOptions.value = data.osArchitecture || []
     versionOptions.value = data.version || []
+    managerVersionOptions.value = data.managerVersion || []
     departmentOptions.value = data.department || []
     deploymentGroupOptions.value = data.deploymentGroups || []
   } catch (e) {
@@ -788,6 +818,8 @@ function clearDetailedFilters() {
   osArchitecture.value = ''
   version.value = []
   versionMode.value = 'eq'
+  managerVersion.value = []
+  managerVersionMode.value = 'eq'
   department.value = []
   enrolledFrom.value = ''
   enrolledTo.value = ''
@@ -820,6 +852,10 @@ function buildFilterParams() {
   if (version.value.length) {
     const key = versionMode.value === 'neq' ? 'versionNot' : 'version'
     version.value.forEach((v) => params.append(key, v))
+  }
+  if (managerVersion.value.length) {
+    const key = managerVersionMode.value === 'neq' ? 'managerVersionNot' : 'managerVersion'
+    managerVersion.value.forEach((v) => params.append(key, v))
   }
   department.value.forEach((v) => params.append('department', v))
   if (enrolledFrom.value) params.set('enrolledFrom', enrolledFrom.value)
