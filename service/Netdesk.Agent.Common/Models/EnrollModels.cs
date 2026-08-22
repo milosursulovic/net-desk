@@ -8,6 +8,13 @@ namespace NetdeskAgent.Common.Models
         public string OsVersion { get; set; }
         public string OsBuild { get; set; }
         public string AgentVersion { get; set; }
+
+        /// <summary>
+        /// "rfb_only" ili "webrtc_capable" - compile-time činjenica o samom
+        /// build-u (koji csproj target/TargetFramework je ovo), ne runtime
+        /// probe. Videti AgentWorker.RemoteControlTier.
+        /// </summary>
+        public string RemoteControlTier { get; set; }
     }
 
     public class EnrollResponse

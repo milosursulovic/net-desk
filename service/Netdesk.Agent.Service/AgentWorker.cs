@@ -46,6 +46,19 @@ namespace NetdeskAgent.Service
         [DllImport("kernel32.dll")]
         private static extern ulong GetTickCount64();
 
+        // Compile-time činjenica o ovom build-u (koji csproj TargetFramework
+        // je ovo) - ista NETDESK_WEBRTC_CAPABLE zastavica koja već gate-uje
+        // start_webrtc_bridge job granu ispod. Poslato serveru na SVAKOM
+        // enroll-u i heartbeat-u (agents.remote_control_tier) - živi signal
+        // "koji build stvarno radi na ovoj mašini", odvojeno od statičke
+        // deployment-group oznake koja samo kaže na koju OS grupu je mašina
+        // ADMINSKI dodeljena (može zaostati mid-rollout).
+#if NETDESK_WEBRTC_CAPABLE
+        private const string RemoteControlTier = "webrtc_capable";
+#else
+        private const string RemoteControlTier = "rfb_only";
+#endif
+
         public async Task RunAsync(CancellationToken token)
         {
             FileLogger.Info("Netdesk Agent se pokreće (verzija " + AgentVersionInfo.Current + ")...");
@@ -168,6 +181,7 @@ namespace NetdeskAgent.Service
                     OsVersion = os != null ? os.Version : null,
                     OsBuild = os != null ? os.Build : null,
                     AgentVersion = AgentVersionInfo.Current,
+                    RemoteControlTier = RemoteControlTier,
                 };
 
                 var response = await client.EnrollAsync(settings.EnrollToken, request).ConfigureAwait(false);
@@ -198,6 +212,7 @@ namespace NetdeskAgent.Service
                     AgentVersion = AgentVersionInfo.Current,
                     UptimeSeconds = (int)(GetTickCount64() / 1000),
                     Monitoring = MonitoringCollector.Collect(),
+                    RemoteControlTier = RemoteControlTier,
                 };
 
                 var response = await client.HeartbeatAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
