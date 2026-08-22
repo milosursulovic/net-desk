@@ -19,8 +19,14 @@
   <ItemGroup>
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Configuration.Install" />
-    <!-- UpdateReportClient.cs - jedini mrežni poziv Manager ikad pravi. -->
+    <!-- UpdateReportClient.cs (mailbox put) i ManagerApiClient.cs (novi,
+         nezavisni HTTP kanal) - oba mrežna poziva Manager ikad pravi. -->
     <Reference Include="System.Net.Http" />
+    <!-- InstallUpdateFromServerAsync (ManagerWorker.cs) - ZipFile.ExtractToDirectory
+         za install_update komande sa novog kanala, isti par referenci kao
+         Netdesk.Agent.Common.csproj. -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
 
   <ItemGroup>

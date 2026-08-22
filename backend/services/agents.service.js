@@ -164,6 +164,7 @@ export async function listAgentsService({
   deploymentGroupOsOverlap,
   noDeploymentGroup,
   remoteControlTier,
+  hasManagerChannel,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -190,6 +191,7 @@ export async function listAgentsService({
     deploymentGroupOsOverlap,
     noDeploymentGroup,
     remoteControlTier,
+    hasManagerChannel,
     limit,
     offset,
   });
@@ -408,7 +410,7 @@ function extractServiceFiles(body) {
 // javlja sa stare IP adrese). Bolnica 10.230.62.0/23 i dom_zdravlja
 // 10.160.64.0/21 oba u potpunosti upadaju pod svoj prvi-dva-oktet prefiks,
 // pa je prost prefiks dovoljan bez pune CIDR matematike.
-function inferSiteFromIp(ip) {
+export function inferSiteFromIp(ip) {
   if (typeof ip !== "string") return null;
   if (ip.startsWith("10.160.")) return "dom_zdravlja";
   if (ip.startsWith("10.230.")) return "bolnica";

@@ -68,6 +68,17 @@
             <option value="webrtc_capable">WebRTC-capable (net472)</option>
           </select>
 
+          <select
+            v-model="hasManagerChannel"
+            class="app-input w-auto max-w-full min-w-0 truncate"
+            aria-label="Filter po Manager kanalu"
+            title="Da li je novi (nezavisni HTTP) Netdesk Agent Manager kanal registrovan na ovoj mašini"
+          >
+            <option value="">Svi (Manager kanal)</option>
+            <option value="true">Ima novi Manager</option>
+            <option value="false">Nema novi Manager</option>
+          </select>
+
           <MultiSelect
             v-model="deploymentGroup"
             :options="deploymentGroupOptions"
@@ -393,6 +404,13 @@
               >
                 WEBRTC
               </span>
+              <span
+                v-if="a.managerChannelStatus"
+                class="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-indigo-700"
+                :title="`Novi (nezavisni) Manager kanal registrovan - ${a.managerChannelStatus}`"
+              >
+                MANAGER
+              </span>
             </div>
             <div class="flex items-center gap-2">
               <span class="font-medium">Poslednji heartbeat:</span>
@@ -520,6 +538,7 @@ const {
   deploymentGroupOsOverlap,
   noDeploymentGroup,
   remoteControlTier,
+  hasManagerChannel,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -540,6 +559,12 @@ const {
       default: '',
       omitIfEmpty: true,
       oneOf: ['', 'rfb_only', 'webrtc_capable'],
+    },
+    hasManagerChannel: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', 'true', 'false'],
     },
     // Slobodan tekst (isto tretiranje kao os/version/department ispod) -
     // grupe više nisu ograničene na fiksnu listu, pa nema oneOf ovde (inače
@@ -586,6 +611,7 @@ const {
     'deploymentGroupOsOverlap',
     'noDeploymentGroup',
     'remoteControlTier',
+    'hasManagerChannel',
   ],
   useReplace: true,
 })
@@ -616,6 +642,7 @@ watch(
     deploymentGroupOsOverlap,
     noDeploymentGroup,
     remoteControlTier,
+    hasManagerChannel,
     site,
   ],
   fetchData,
@@ -670,6 +697,7 @@ const activeDetailedFilterCount = computed(() => {
   if (deploymentGroupOsOverlap.value) n++
   if (noDeploymentGroup.value) n++
   if (remoteControlTier.value) n++
+  if (hasManagerChannel.value) n++
   return n
 })
 
@@ -711,6 +739,7 @@ function clearDetailedFilters() {
   deploymentGroupOsOverlap.value = ''
   noDeploymentGroup.value = ''
   remoteControlTier.value = ''
+  hasManagerChannel.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -740,6 +769,7 @@ function buildFilterParams() {
   if (deploymentGroupOsOverlap.value) params.set('deploymentGroupOsOverlap', deploymentGroupOsOverlap.value)
   if (noDeploymentGroup.value) params.set('noDeploymentGroup', noDeploymentGroup.value)
   if (remoteControlTier.value) params.set('remoteControlTier', remoteControlTier.value)
+  if (hasManagerChannel.value) params.set('hasManagerChannel', hasManagerChannel.value)
   return params
 }
 

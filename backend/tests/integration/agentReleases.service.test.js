@@ -7,12 +7,15 @@ import {
   deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
+  downloadReleaseForManagerService,
   updateReleaseGroupsService,
 } from "../../services/agentReleases.service.js";
 import { createJobService } from "../../services/agentJobs.service.js";
+import { createManagerJobService } from "../../services/managerJobs.service.js";
 import { enrollAgent } from "../../services/agents.service.js";
+import { enrollManager } from "../../services/managers.service.js";
 import { findAgentByUid } from "../../repositories/agents.repo.js";
-import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
+import { deleteTestAgent, testHostname, testIp, deleteTestIpEntry } from "../helpers/testDb.js";
 import { pool } from "../../db/pool.js";
 
 let groupCounter = 0;
@@ -240,6 +243,86 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
       }
     },
   );
+
+  describe("downloadReleaseForManagerService", () => {
+    let managerId;
+    let ipEntryId;
+
+    afterEach(async () => {
+      if (managerId) await pool.execute("DELETE FROM managers WHERE id = ?", [managerId]);
+      await deleteTestIpEntry(ipEntryId);
+      managerId = undefined;
+      ipEntryId = undefined;
+    });
+
+    it("refuses a download with no matching install_update job at all (Manager has no deployment-group fallback)", async () => {
+      const release = await uploadReleaseService(
+        { buffer: Buffer.from("v1"), originalName: "a.zip", version: "8.0.0", deploymentGroups: [uniqueGroup()] },
+        null,
+      );
+      createdReleases.push(release);
+
+      const enrolled = await enrollManager({ hostname: testHostname(), managerVersion: "1.0.0", ip: testIp() });
+      const [[row]] = await pool.query(
+        "SELECT id, ip_entry_id AS ipEntryId FROM managers WHERE manager_uid = ?",
+        [enrolled.managerId],
+      );
+      managerId = row.id;
+      ipEntryId = row.ipEntryId;
+
+      await expect(
+        downloadReleaseForManagerService(release.id, { id: managerId }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("succeeds once an admin has dispatched an explicit install_update job for this exact manager+release", async () => {
+      const release = await uploadReleaseService(
+        { buffer: Buffer.from("v1"), originalName: "a.zip", version: "8.0.1", deploymentGroups: [uniqueGroup()] },
+        null,
+      );
+      createdReleases.push(release);
+
+      const enrolled = await enrollManager({ hostname: testHostname(), managerVersion: "1.0.0", ip: testIp() });
+      const [[row]] = await pool.query(
+        "SELECT id, ip_entry_id AS ipEntryId FROM managers WHERE manager_uid = ?",
+        [enrolled.managerId],
+      );
+      managerId = row.id;
+      ipEntryId = row.ipEntryId;
+
+      await createManagerJobService(managerId, { commandType: "install_update", payload: { releaseId: release.id } }, null);
+
+      const ok = await downloadReleaseForManagerService(release.id, { id: managerId });
+      expect(ok.fileName).toBe(release.fileName);
+    });
+
+    it("does not let a job for a DIFFERENT release authorize this one", async () => {
+      const release = await uploadReleaseService(
+        { buffer: Buffer.from("v1"), originalName: "a.zip", version: "8.0.2", deploymentGroups: [uniqueGroup()] },
+        null,
+      );
+      createdReleases.push(release);
+      const otherRelease = await uploadReleaseService(
+        { buffer: Buffer.from("v2"), originalName: "b.zip", version: "8.0.3", deploymentGroups: [uniqueGroup()] },
+        null,
+      );
+      createdReleases.push(otherRelease);
+
+      const enrolled = await enrollManager({ hostname: testHostname(), managerVersion: "1.0.0", ip: testIp() });
+      const [[row]] = await pool.query(
+        "SELECT id, ip_entry_id AS ipEntryId FROM managers WHERE manager_uid = ?",
+        [enrolled.managerId],
+      );
+      managerId = row.id;
+      ipEntryId = row.ipEntryId;
+
+      await createManagerJobService(managerId, { commandType: "install_update", payload: { releaseId: release.id } }, null);
+
+      await expect(
+        downloadReleaseForManagerService(otherRelease.id, { id: managerId }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+  });
 
   it("updateReleaseGroupsService widens rollout - a group added after upload becomes eligible without re-uploading", async () => {
     const groupA = uniqueGroup();

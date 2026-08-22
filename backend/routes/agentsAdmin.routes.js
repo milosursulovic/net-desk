@@ -9,6 +9,7 @@ import {
   listComputersWithoutAgentController,
   exportComputersWithoutAgentPdfController,
   getAgentController,
+  getAgentManagerStatusController,
   revokeAgentController,
   deleteAgentController,
   setProcessKillExemptController,
@@ -44,6 +45,7 @@ router.get("/filter-options", asyncHandler(agentFilterOptionsController));
 router.get("/without-agent-computers", asyncHandler(listComputersWithoutAgentController));
 router.get("/without-agent-computers/export-pdf", asyncHandler(exportComputersWithoutAgentPdfController));
 router.get("/:id", asyncHandler(getAgentController));
+router.get("/:id/manager-status", asyncHandler(getAgentManagerStatusController));
 // Admin-only - povlačenje pristupa je nepovratno bez ponovnog enroll-a na
 // mašini, veći blast radius od rutinskih operator akcija.
 router.post("/:id/revoke", requireRole("admin"), asyncHandler(revokeAgentController));

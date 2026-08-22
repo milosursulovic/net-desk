@@ -17,6 +17,7 @@ import {
   findReleaseIdByVersion,
 } from "../repositories/agentReleases.repo.js";
 import { findRecentForceReinstallJob } from "../repositories/agentJobs.repo.js";
+import { findRecentInstallUpdateJob } from "../repositories/managerJobs.repo.js";
 import {
   insertUpdateLog,
   listUpdateLogForAgent,
@@ -267,6 +268,26 @@ export async function downloadReleaseService(releaseId, agent) {
       ? await findRecentForceReinstallJob(agent.id, releaseId)
       : null;
   if (!release || !release.isActive || (!targeted && !forcedJob)) {
+    throw notFound("Verzija nije pronađena");
+  }
+
+  const filePath = path.join(RELEASES_DIR, release.filePath);
+  if (!fs.existsSync(filePath)) {
+    throw notFound("Fajl paketa nije pronađen na serveru");
+  }
+
+  return { filePath, fileName: release.fileName };
+}
+
+// Manager nema deployment grupe (nije Agent koncept) - jedini put ovde je
+// eksplicitan, admin-pokrenut install_update manager_jobs red za baš ovaj
+// releaseId. Bez fallback grupe ("rest") kao kod downloadReleaseService -
+// Manager instalacije su UVEK eksplicitne, nikad "auto-detektuj šta mi
+// treba" (vidi plan §"Scope decisions").
+export async function downloadReleaseForManagerService(releaseId, manager) {
+  const release = await findReleaseById(releaseId);
+  const job = release ? await findRecentInstallUpdateJob(manager.id, releaseId) : null;
+  if (!release || !release.isActive || !job) {
     throw notFound("Verzija nije pronađena");
   }
 

@@ -25,6 +25,7 @@ import {
   removeAgentDeploymentGroupService,
   addAgentsDeploymentGroupService,
 } from "../services/agents.service.js";
+import { getManagerByIpEntryId } from "../services/managers.service.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
 import { toInt, clamp } from "../utils/numbers.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -120,6 +121,8 @@ function parseAgentListFilters(query) {
     remoteControlTier: REMOTE_CONTROL_TIER_FILTERS.has(query.remoteControlTier)
       ? query.remoteControlTier
       : undefined,
+    hasManagerChannel:
+      query.hasManagerChannel === "true" ? true : query.hasManagerChannel === "false" ? false : undefined,
   };
 }
 
@@ -179,6 +182,16 @@ export async function getAgentController(req, res) {
   const id = parseIdParam(req, "id", "ID agenta");
   const agent = await getAgentService(id);
   res.json(agent);
+}
+
+// Odvojeno od getAgentController-a (ne ugrađeno u njegov odgovor) da se ne
+// dira oblik tog već korišćenog endpoint-a/testova - Manager panel na
+// AgentDetailView.vue ga zove kao poseban poziv.
+export async function getAgentManagerStatusController(req, res) {
+  const id = parseIdParam(req, "id", "ID agenta");
+  const agent = await getAgentService(id);
+  const manager = await getManagerByIpEntryId(agent.ipEntryId);
+  res.json({ manager });
 }
 
 export async function revokeAgentController(req, res) {

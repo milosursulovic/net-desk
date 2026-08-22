@@ -836,13 +836,22 @@ export const POWERSHELL_PRESETS = [
     // isti InstallUtil/OS-bitness/sc failure recept kao ručna Service
     // instalacija u DEPLOYMENT.md.
     script:
-      '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
+      '# --- Izmeni ove redove pre slanja ako se promene ---\n' +
       '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
       '$pkgUrlModern = "https://10.230.62.81:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
+      '# Za Manager-ov NOVI, nezavisni HTTP kanal (enroll/heartbeat/job-poll) -\n' +
+      '# isti server, ali SOPSTVENI enroll token (MANAGER_ENROLL_TOKEN u backend\n' +
+      '# .env, ne AGENT_ENROLL_TOKEN - videti napomenu u config/env.js zašto su\n' +
+      '# odvojeni). Ako ostane prazno, config.json se ne piše i Manager i dalje\n' +
+      '# radi normalno preko starog mailbox puta, samo bez novog kanala.\n' +
+      '$serverBaseUrl = "https://10.230.62.81:3000"\n' +
+      '$managerEnrollToken = ""\n' +
       '# --------------------------------------------------------\n' +
       '\n' +
       '$serviceName = "NetdeskAgentManager"\n' +
       '$installDir = "C:\\Program Files\\NetdeskAgent\\Manager"\n' +
+      '$configDir = "C:\\ProgramData\\NetdeskAgentManager"\n' +
+      '$configFile = Join-Path $configDir "config.json"\n' +
       '\n' +
       '$ErrorActionPreference = "Stop"\n' +
       '[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12\n' +
@@ -897,6 +906,17 @@ export const POWERSHELL_PRESETS = [
       '    & $installUtilPath "$installDir\\Netdesk.Agent.Manager.exe"\n' +
       '    if ($LASTEXITCODE -ne 0) {\n' +
       '        throw "InstallUtil je vratio exit kod $LASTEXITCODE"\n' +
+      '    }\n' +
+      '\n' +
+      '    # Config za novi, nezavisni HTTP kanal - NAMERNO samo ako fajl JOŠ NE\n' +
+      '    # postoji, da ponovno slanje ovog preset-a (update Manager BINARNOG\n' +
+      '    # fajla) ne prepiše/obriše već-enrollovanu mašinu\'s postavke. Ako je\n' +
+      '    # $managerEnrollToken prazan, preskače se potpuno - Manager i dalje\n' +
+      '    # radi normalno preko starog mailbox puta, samo bez novog kanala.\n' +
+      '    if ($managerEnrollToken -and -not (Test-Path $configFile)) {\n' +
+      '        New-Item -ItemType Directory -Path $configDir -Force | Out-Null\n' +
+      '        $config = @{ ServerBaseUrl = $serverBaseUrl; EnrollToken = $managerEnrollToken } | ConvertTo-Json\n' +
+      '        Set-Content -Path $configFile -Value $config -Encoding UTF8\n' +
       '    }\n' +
       '\n' +
       '    sc.exe start $serviceName | Out-Null\n' +

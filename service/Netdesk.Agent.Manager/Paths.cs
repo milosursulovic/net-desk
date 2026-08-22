@@ -20,5 +20,20 @@ namespace NetdeskAgent.Manager
         public static string ManagerCommandFile => Path.Combine(DataDir, "manager-command.json");
 
         public static string ManagerLogFile => Path.Combine(DataDir, "logs", "manager.log");
+
+        // Manager-ov SOPSTVENI config/state za novi, nezavisni HTTP kanal -
+        // NAMERNO u odvojenom ProgramData folderu (NetdeskAgentManager, ne
+        // NetdeskAgent) da ne bude ikakve zabune sa mailbox putanjama iznad
+        // (koje ostaju u Agent-ovom folderu - to je fajl-sistemski ugovor,
+        // ne deljen kod, i mora ostati netaknuto).
+        private static readonly string OwnDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "NetdeskAgentManager");
+
+        public static string ManagerConfigFile => Path.Combine(OwnDataDir, "config.json");
+
+        public static string ManagerOwnStateFile => Path.Combine(OwnDataDir, "manager-state.json");
+
+        public static string UpdateStagingDir => Path.Combine(OwnDataDir, "update-staging");
     }
 }

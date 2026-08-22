@@ -27,6 +27,12 @@ export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 export const AGENT_ENROLL_TOKEN = requireEnv("AGENT_ENROLL_TOKEN");
 
+// Namerno ODVOJEN secret od AGENT_ENROLL_TOKEN - Manager identitet je
+// opasniji primitiv po enrollment-u (start/stop/restart BILO KOG servisa po
+// imenu, zamena fajlova pod install dir-om koji sam razrešava), curenje
+// jednog tokena ne sme da omogući mint drugog identiteta.
+export const MANAGER_ENROLL_TOKEN = requireEnv("MANAGER_ENROLL_TOKEN");
+
 // Opciono - ako nisu podešeni, release paketi se ne potpisuju (spec ovo
 // pominje kao "mogućnost", ne obavezu). Videti utils/agentSigning.js.
 export const AGENT_SIGNING_CERT_PATH = process.env.AGENT_SIGNING_CERT_PATH || null;

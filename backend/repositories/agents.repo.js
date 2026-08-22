@@ -168,6 +168,7 @@ function buildAgentsWhereClause({
   deploymentGroupOsOverlap,
   noDeploymentGroup,
   remoteControlTier,
+  hasManagerChannel,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -290,6 +291,20 @@ function buildAgentsWhereClause({
       "NOT EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id)",
     );
   }
+  // "Da li je NOVI (nezavisni HTTP kanal) Manager registrovan na ovoj
+  // mašini" - poklapa preko istog ip_entry_id, ne agent_id (Manager i Agent
+  // nemaju direktnu vezu, samo dele mašinu). Ne razlikuje "star mailbox-only
+  // Manager" od "nema Manager-a uopšte" - backend generalno ne može, stari
+  // Manager nikad ne javlja ništa serveru (vidi napomenu u planu).
+  if (hasManagerChannel === true) {
+    whereParts.push(
+      "EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active')",
+    );
+  } else if (hasManagerChannel === false) {
+    whereParts.push(
+      "NOT EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active')",
+    );
+  }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   return { whereSql, params };
@@ -303,6 +318,26 @@ const AGENTS_IP_ENTRY_JOIN = "LEFT JOIN ip_entries ie ON ie.id = agents.ip_entry
 // osvežavanja, zato dva odvojena LEFT JOIN-a umesto jednog.
 const AGENTS_MONITORING_JOIN = "LEFT JOIN agent_monitoring am ON am.agent_id = agents.id";
 const AGENTS_METADATA_JOIN = "LEFT JOIN computer_metadata cm ON cm.ip_entry_id = agents.ip_entry_id";
+// Samo za listAgents (badge na listi) - findAgentById/ostale funkcije ovde
+// namerno ne pribavljaju ovo, AgentDetailView.vue zove poseban
+// /manager-status endpoint (getAgentManagerStatusController) umesto da se
+// ovaj JOIN širi na svaki poziv.
+const AGENTS_MANAGER_JOIN =
+  "LEFT JOIN managers mgr ON mgr.ip_entry_id = agents.ip_entry_id AND mgr.status = 'active'";
+
+// Isti pragovi kao CONNECTIVITY_STATUS_SQL - NULL (ne 'unknown') kad
+// nijedan managers red uopšte ne postoji za ovaj ip_entry_id (LEFT JOIN nije
+// pogodio ništa), da se razlikuje "Manager nije registrovan" od "Manager
+// registrovan ali još nije javio heartbeat".
+const MANAGER_CHANNEL_STATUS_SQL = `
+  CASE
+    WHEN mgr.id IS NULL THEN NULL
+    WHEN mgr.last_heartbeat_at IS NULL THEN 'unknown'
+    WHEN TIMESTAMPDIFF(SECOND, mgr.last_heartbeat_at, NOW()) <= 300 THEN 'online'
+    WHEN TIMESTAMPDIFF(SECOND, mgr.last_heartbeat_at, NOW()) <= 1800 THEN 'stale'
+    ELSE 'offline'
+  END
+`;
 
 export async function listAgents(filters) {
   const { whereSql, params } = buildAgentsWhereClause(filters);
@@ -340,9 +375,10 @@ export async function listAgents(filters) {
       ie.is_online AS ipIsOnline,
       am.antivirus_status AS antivirusStatus,
       am.firewall_status AS firewallStatus,
-      cm.wu_service_status AS windowsUpdateStatus
+      cm.wu_service_status AS windowsUpdateStatus,
+      (${MANAGER_CHANNEL_STATUS_SQL}) AS managerChannelStatus
     FROM agents
-    ${joins}
+    ${joins} ${AGENTS_MANAGER_JOIN}
     ${whereSql}
     ORDER BY agents.enrolled_at DESC
     LIMIT ? OFFSET ?

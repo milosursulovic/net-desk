@@ -11,6 +11,7 @@ import {
   deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
+  downloadReleaseForManagerService,
   reportUpdateResultService,
   listUpdateLogService,
   updateReleaseGroupsService,
@@ -113,6 +114,15 @@ export async function downloadUpdateController(req, res) {
   const releaseId = parseIdParam(req, "releaseId", "ID verzije");
 
   const { filePath, fileName } = await downloadReleaseService(releaseId, req.agent);
+  res.download(filePath, fileName);
+}
+
+// Manager (manager auth) — /api/managers/update/download/:releaseId
+
+export async function downloadUpdateForManagerController(req, res) {
+  const releaseId = parseIdParam(req, "releaseId", "ID verzije");
+
+  const { filePath, fileName } = await downloadReleaseForManagerService(releaseId, req.manager);
   res.download(filePath, fileName);
 }
 

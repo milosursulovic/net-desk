@@ -308,6 +308,64 @@
           </div>
         </div>
 
+        <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
+        <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+          <div class="text-sm font-medium text-indigo-900">Netdesk Agent Manager (nezavisni kanal)</div>
+          <p class="text-xs text-indigo-800">
+            Radi nezavisno od NetdeskAgent servisa - dostupno čak i kad je on ugašen ili onemogućen.
+          </p>
+
+          <div v-if="managerStatusLoading" class="text-xs text-indigo-800">Učitavanje…</div>
+          <div v-else-if="!managerStatus" class="text-xs text-indigo-800">
+            Manager nije registrovan na ovoj mašini.
+          </div>
+          <template v-else>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-indigo-900">
+              <span class="rounded-full border px-2 py-0.5" :class="managerConnectivityBadgeClass">
+                {{ managerConnectivityLabel }}
+              </span>
+              <span>Manager v{{ managerStatus.managerVersion || '—' }}</span>
+              <span>
+                NetdeskAgent: <strong>{{ managerStatus.netdeskAgentServiceStatus || 'Nepoznato' }}</strong>,
+                startup: <strong>{{ managerStatus.netdeskAgentStartMode || 'Nepoznato' }}</strong>
+              </span>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('start_service')">
+                Pokreni
+              </AppButton>
+              <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('stop_service')">
+                Zaustavi
+              </AppButton>
+              <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('restart_service')">
+                Restartuj
+              </AppButton>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+              <select v-model="selectedStartMode" class="app-input w-full sm:w-40 text-sm">
+                <option value="Automatic">Automatic</option>
+                <option value="Manual">Manual</option>
+                <option value="Disabled">Disabled</option>
+              </select>
+              <AppButton variant="neutral" :disabled="sendingManagerAction" @click="setManagerStartMode">
+                Postavi startup tip
+              </AppButton>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+              <AppButton
+                variant="neutral"
+                :disabled="!selectedReleaseId || installingViaManager"
+                @click="installViaManager"
+              >
+                {{ installingViaManager ? 'Šaljem…' : 'Instaliraj preko Manager-a (kad Agent nije dostupan)' }}
+              </AppButton>
+            </div>
+          </template>
+        </div>
+
         <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
         <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
         <div v-for="u in updateLog" :key="u.id" class="rounded-lg border bg-white p-3 text-sm">
@@ -460,6 +518,12 @@ const activeReleaseOptions = computed(() => releaseOptions.value.filter((r) => B
 const selectedReleaseId = ref('')
 const installingRelease = ref(false)
 
+const managerStatus = ref(null)
+const managerStatusLoading = ref(false)
+const sendingManagerAction = ref(false)
+const installingViaManager = ref(false)
+const selectedStartMode = ref('Automatic')
+
 async function fetchReleaseOptions() {
   try {
     const res = await fetchWithAuth('/api/protected/agent-releases?limit=100')
@@ -496,6 +560,18 @@ const connectivityLabel = computed(() => {
 })
 const connectivityBadgeClass = computed(() => {
   const s = agent.value?.connectivityStatus
+  if (s === 'online') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (s === 'stale') return 'bg-amber-50 text-amber-700 border-amber-200'
+  if (s === 'offline') return 'bg-red-50 text-red-700 border-red-200'
+  return 'bg-slate-100 text-slate-500 border-slate-200'
+})
+
+const managerConnectivityLabel = computed(() => {
+  const map = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
+  return map[managerStatus.value?.connectivityStatus] || 'Nepoznato'
+})
+const managerConnectivityBadgeClass = computed(() => {
+  const s = managerStatus.value?.connectivityStatus
   if (s === 'online') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (s === 'stale') return 'bg-amber-50 text-amber-700 border-amber-200'
   if (s === 'offline') return 'bg-red-50 text-red-700 border-red-200'
@@ -795,6 +871,95 @@ async function installSelectedRelease() {
   }
 }
 
+async function loadManagerStatus() {
+  managerStatusLoading.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/manager-status`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    managerStatus.value = data.manager || null
+  } catch (err) {
+    console.error('Neuspešno dohvatanje Manager statusa', err)
+    managerStatus.value = null
+  } finally {
+    managerStatusLoading.value = false
+  }
+}
+
+async function sendManagerServiceAction(commandType) {
+  if (!managerStatus.value?.managerId) return
+  sendingManagerAction.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commandType, payload: {} }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    showToast('Komanda poslata Manager-u')
+    await loadManagerStatus()
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    sendingManagerAction.value = false
+  }
+}
+
+async function setManagerStartMode() {
+  if (!managerStatus.value?.managerId) return
+  sendingManagerAction.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commandType: 'set_service_start_mode',
+        payload: { startMode: selectedStartMode.value },
+      }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    showToast(`Startup tip postavljen na ${selectedStartMode.value}`)
+    await loadManagerStatus()
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    sendingManagerAction.value = false
+  }
+}
+
+async function installViaManager() {
+  const release = activeReleaseOptions.value.find((r) => r.id === selectedReleaseId.value)
+  if (!release || !managerStatus.value?.managerId) return
+
+  const ok = await askConfirm(
+    `Instalirati verziju ${release.version} preko Manager-a? Koristi se kad NetdeskAgent nije dostupan da sam preuzme update.`,
+    { title: 'Instalacija preko Manager-a' },
+  )
+  if (!ok) return
+
+  installingViaManager.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commandType: 'install_update',
+        payload: { releaseId: release.id },
+      }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    showToast(`Komanda za instalaciju verzije ${release.version} poslata Manager-u`)
+    await loadManagerStatus()
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    installingViaManager.value = false
+  }
+}
+
 async function loadUpdateLog() {
   updateLogLoading.value = true
   try {
@@ -875,6 +1040,7 @@ function selectTab(name) {
 onMounted(async () => {
   fetchDeploymentGroupOptions()
   fetchReleaseOptions()
+  loadManagerStatus()
   await loadAgent()
   if (!loadError.value) selectTab(tab.value)
 })
