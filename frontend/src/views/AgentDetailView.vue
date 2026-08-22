@@ -353,6 +353,10 @@
               </span>
             </div>
 
+            <div v-if="managerJobStatusText" class="text-xs text-indigo-700 italic">
+              {{ managerJobStatusText }}
+            </div>
+
             <div class="flex flex-wrap gap-2">
               <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('start_service')">
                 Pokreni
@@ -900,9 +904,58 @@ async function loadManagerStatus() {
   }
 }
 
+// Manager svoj job-poll ciklus radi na sopstvenom tajmeru (podrazumevano
+// do 30s, JobsPollIntervalSeconds u config.json), plus stvarno vreme
+// izvršavanja - poll ovde traje dovoljno dugo (do ~60s) da pokrije taj
+// realan najgori slučaj pre nego što odustane i prizna da ne zna ishod.
+const MANAGER_JOB_POLL_INTERVAL_MS = 3000
+const MANAGER_JOB_POLL_MAX_ATTEMPTS = 20
+const managerJobStatusText = ref('')
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Vraća ceo job red kad pređe u završno stanje (completed/failed/cancelled),
+// ili null ako Manager ne potvrdi izvršenje u očekivanom roku (i dalje
+// pending/sent - npr. Manager trenutno offline). Bez ovoga, dugmad su samo
+// javljala da je komanda POSLATA, ne da li je STVARNO uspela.
+async function waitForManagerJobResult(managerId, jobId, maxAttempts = MANAGER_JOB_POLL_MAX_ATTEMPTS) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await sleep(MANAGER_JOB_POLL_INTERVAL_MS)
+    try {
+      const res = await fetchWithAuth(`/api/protected/managers/${managerId}/jobs?limit=20`)
+      if (!res.ok) continue
+      const data = await res.json()
+      const job = (data.items || []).find((j) => j.id === jobId)
+      if (job && ['completed', 'failed', 'cancelled'].includes(job.status)) {
+        return job
+      }
+    } catch {
+      // Best-effort - probaj ponovo sledeći ciklus umesto da odmah odustaneš.
+    }
+  }
+  return null
+}
+
+async function reportManagerJobOutcome(job) {
+  if (!job) {
+    showToast('Manager nije potvrdio izvršenje u očekivanom roku - proveri da li je online.', {
+      prefix: '⚠️ ',
+      duration: 4000,
+    })
+  } else if (job.status === 'completed') {
+    showToast('Komanda uspešno izvršena.')
+  } else {
+    showToast(job.errorOutput || 'Komanda nije uspela.', { prefix: '❌ ', duration: 4000 })
+  }
+  await loadManagerStatus()
+}
+
 async function sendManagerServiceAction(commandType) {
   if (!managerStatus.value?.managerId) return
   sendingManagerAction.value = true
+  managerJobStatusText.value = 'Šaljem komandu…'
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
@@ -910,19 +963,23 @@ async function sendManagerServiceAction(commandType) {
       body: JSON.stringify({ commandType, payload: {} }),
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
-    showToast('Komanda poslata Manager-u')
-    await loadManagerStatus()
+    const job = await res.json()
+    managerJobStatusText.value = 'Čekam da Manager izvrši komandu…'
+    const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id)
+    await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
     showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
   } finally {
     sendingManagerAction.value = false
+    managerJobStatusText.value = ''
   }
 }
 
 async function setManagerStartMode() {
   if (!managerStatus.value?.managerId) return
   sendingManagerAction.value = true
+  managerJobStatusText.value = 'Šaljem komandu…'
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
@@ -933,13 +990,16 @@ async function setManagerStartMode() {
       }),
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
-    showToast(`Startup tip postavljen na ${selectedStartMode.value}`)
-    await loadManagerStatus()
+    const job = await res.json()
+    managerJobStatusText.value = 'Čekam da Manager izvrši komandu…'
+    const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id)
+    await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
     showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
   } finally {
     sendingManagerAction.value = false
+    managerJobStatusText.value = ''
   }
 }
 
@@ -954,6 +1014,7 @@ async function installViaManager() {
   if (!ok) return
 
   installingViaManager.value = true
+  managerJobStatusText.value = 'Šaljem komandu…'
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
@@ -964,13 +1025,18 @@ async function installViaManager() {
       }),
     })
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
-    showToast(`Komanda za instalaciju verzije ${release.version} poslata Manager-u`)
-    await loadManagerStatus()
+    const job = await res.json()
+    // Duži rok od servisnih akcija - preuzimanje+raspakivanje paketa realno
+    // može trajati duže od jednostavnog start/stop/restart poziva.
+    managerJobStatusText.value = 'Čekam da Manager preuzme i instalira paket…'
+    const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id, 40)
+    await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
     showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
   } finally {
     installingViaManager.value = false
+    managerJobStatusText.value = ''
   }
 }
 
