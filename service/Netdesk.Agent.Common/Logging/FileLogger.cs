@@ -18,10 +18,22 @@ namespace NetdeskAgent.Common.Logging
         {
             _logFilePath = logFilePath;
 
-            var dir = Path.GetDirectoryName(logFilePath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            try
             {
-                Directory.CreateDirectory(dir);
+                var dir = Path.GetDirectoryName(logFilePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+            catch
+            {
+                // Isti ugovor kao Write() ispod - logovanje nikad ne sme da
+                // obori pozivaoca. Ova grana je bila propust (uživo otkriven
+                // u WebRtcBridge-u, koji radi pod token-om čiji profil možda
+                // nije potpuno učitan - Directory.CreateDirectory je pucao
+                // OVDE, pre nego što je ijedna Write() uopšte pozvana, gaseći
+                // ceo pozivajući proces potpuno tiho).
             }
         }
 

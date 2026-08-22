@@ -49,10 +49,33 @@ namespace NetdeskAgent.WebRtcBridge
             // je u nikuda), pa je prvi pravi test na terenu ostao
             // nedijagnostikovan (WebRTC bridge se pokrenuo, ali dalje se nije
             // znalo šta se dešava).
-            var logPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "NetdeskAgent", "webrtc-bridge.log");
-            FileLogger.Initialize(logPath);
+            //
+            // NAMERNO Environment.GetEnvironmentVariable("LOCALAPPDATA") (obična
+            // env promenljiva, koju SessionLauncher.CreateEnvironmentBlock već
+            // popunjava za pravog korisnika), NE
+            // Environment.GetFolderPath(SpecialFolder.LocalApplicationData) -
+            // ta druga poziva SHGetKnownFolderPath, koji zahteva da je
+            // korisnikov registry hive (HKEY_CURRENT_USER) učitan u ovaj
+            // proces. SessionLauncher.cs NIKAD ne zove LoadUserProfile() (samo
+            // CreateEnvironmentBlock) - uživo POTVRĐENO uzrok zašto se log
+            // fajl NIKAD nije pojavio: GetFolderPath je bacao izuzetak OVDE,
+            // PRE bilo kakvog try/catch-a, gasio ceo proces potpuno tiho, čak
+            // i posle dodavanja "sveg" logovanja u prethodnoj izmeni. Ceo ovaj
+            // blok je sad u sopstvenom try/catch - ako i env-var pristup ikad
+            // padne, proces nastavlja BEZ logovanja umesto da se ugasi pre
+            // nego što je i pokušao WebRTC posao.
+            try
+            {
+                var localAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+                var baseDir = !string.IsNullOrEmpty(localAppData) ? localAppData : Path.GetTempPath();
+                var logPath = Path.Combine(baseDir, "NetdeskAgent", "webrtc-bridge.log");
+                FileLogger.Initialize(logPath);
+            }
+            catch
+            {
+                // Best-effort - nastavi bez logovanja radije nego da se
+                // proces ugasi pre nego što je i pokušao WebRTC posao.
+            }
 
             try
             {
