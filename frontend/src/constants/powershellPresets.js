@@ -936,10 +936,13 @@ export const POWERSHELL_PRESETS = [
     // trajno registrovan" obrazac dokumentovan u WinDivertInterop.cs), pa
     // samo zaustavljanje je dovoljno i manje rizično od brisanja servisa.
     //
-    // Pokreni OVAJ preset POSLE što je NetdeskAgent servis već zaustavljen
-    // (npr. preko Manager "Zaustavi" dugmeta) - dok agent proces još drži
-    // otvoren WinDivertOpen() handle, sc.exe stop će verovatno vratiti
-    // "ERROR_DEPENDENT_SERVICES_RUNNING" ili slično i neće uspeti.
+    // Redosled u odnosu na NetdeskAgent servis NIJE bitan - uživo potvrđeno
+    // da sc.exe stop uspeva i dok agent proces još drži otvoren
+    // WinDivertOpen() handle. DnsQueryCollector.cs's capture petlja to
+    // preživi bez pada (WinDivertRecv počne da vraća grešku, petlja samo
+    // loguje upozorenje i pokušava dalje - videti CaptureLoop) - eventualni
+    // kratak niz "WinDivertRecv neuspešan" linija u agent logu je bezopasan
+    // i traje samo dok se agent ionako ne zaustavi kao deo istog update toka.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       '$results = New-Object System.Collections.Generic.List[string]\n' +
