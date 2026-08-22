@@ -295,25 +295,10 @@
 
       <!-- Update log -->
       <div v-else-if="tab === 'updates'" class="space-y-3">
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
-          <div class="text-sm font-medium text-amber-900">Instaliraj određenu verziju na ovaj agent</div>
-          <p class="text-xs text-amber-800">
-            Zamenjuje fajlove čak i ako je agent već na toj verziji (radi i za stariju verziju od trenutne - vraćanje unazad).
-          </p>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <select v-model="selectedReleaseId" class="app-input w-full sm:w-64 text-sm">
-              <option value="">— Izaberi verziju —</option>
-              <option v-for="r in activeReleaseOptions" :key="r.id" :value="r.id">{{ r.version }}</option>
-            </select>
-            <AppButton
-              variant="neutral"
-              :disabled="!selectedReleaseId || installingRelease"
-              @click="installSelectedRelease"
-            >
-              {{ installingRelease ? 'Šaljem…' : 'Instaliraj ovu verziju' }}
-            </AppButton>
-          </div>
-        </div>
+        <p class="text-xs text-slate-500">
+          Za instalaciju određene verzije na ovaj agent, koristi tab "Manager" - jedini put koji sad ostaje,
+          radi bez obzira na to da li je NetdeskAgent servis dostupan.
+        </p>
 
         <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
         <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
@@ -534,7 +519,6 @@ const releaseOptions = ref([])
 // vrednost (0/1) za is_active, ne pravi JS boolean.
 const activeReleaseOptions = computed(() => releaseOptions.value.filter((r) => Boolean(r.isActive)))
 const selectedReleaseId = ref('')
-const installingRelease = ref(false)
 
 const managerStatus = ref(null)
 const managerStatusLoading = ref(false)
@@ -854,38 +838,6 @@ async function createJob() {
     showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
   } finally {
     creatingJob.value = false
-  }
-}
-
-async function installSelectedRelease() {
-  const release = activeReleaseOptions.value.find((r) => r.id === selectedReleaseId.value)
-  if (!release) return
-
-  const ok = await askConfirm(
-    `Instalirati verziju ${release.version} na ovaj agent? Zamenjuje fajlove čak i ako je agent već na ovoj verziji.`,
-    { title: 'Instalacija verzije' },
-  )
-  if (!ok) return
-
-  installingRelease.value = true
-  try {
-    const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        commandType: 'force_reinstall_agent',
-        payload: { releaseId: release.id, version: release.version, sha256: release.sha256 },
-      }),
-    })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
-    showToast(`Komanda za instalaciju verzije ${release.version} poslata - prati status u tabu "Komande"`)
-    selectedReleaseId.value = ''
-    await loadJobs()
-  } catch (err) {
-    console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande', { prefix: '❌ ', duration: 3000 })
-  } finally {
-    installingRelease.value = false
   }
 }
 
