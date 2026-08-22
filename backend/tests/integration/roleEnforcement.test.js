@@ -7,6 +7,7 @@ import { JWT_SECRET } from "../../config/env.js";
 import { adminToken, operatorToken, viewerToken } from "../helpers/authToken.js";
 import { createUser } from "../../repositories/users.repo.js";
 import { insertAgent } from "../../repositories/agents.repo.js";
+import { generateDailyReportsForAllSites } from "../../services/dailyReport.service.js";
 import {
   testIp,
   deleteTestIpEntry,
@@ -109,18 +110,13 @@ describe("role enforcement across modules (integration, real DB)", () => {
     expect(res.status).toBe(201);
   });
 
-  it("viewer is blocked (403) from generating a new daily report", async () => {
-    const res = await request(app)
-      .post("/api/protected/reports/generate")
-      .set("Authorization", `Bearer ${viewerToken()}`);
-    expect(res.status).toBe(403);
-  });
-
   it("viewer IS allowed to mark a report as read (personal action, not a data mutation)", async () => {
-    const genRes = await request(app)
-      .post("/api/protected/reports/generate")
-      .set("Authorization", `Bearer ${adminToken()}`);
-    reportIds = genRes.body.map((r) => r.id);
+    // Generisanje izveštaja više nema HTTP rutu (samo cron, videti
+    // dailyReportScheduler.js) - ovaj test ionako testira mark-read
+    // dozvole, ne generisanje samo, pa poziva servis direktno da napravi
+    // izveštaj za setup.
+    const generated = await generateDailyReportsForAllSites();
+    reportIds = generated.map((r) => r.id);
     reportId = reportIds[0];
 
     const res = await request(app)

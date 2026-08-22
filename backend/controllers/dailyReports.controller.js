@@ -2,7 +2,6 @@ import {
   getLatestReportService,
   getReportByIdService,
   listReportsService,
-  generateDailyReportsForAllSites,
   markReportReadService,
 } from "../services/dailyReport.service.js";
 import { parseIdParam } from "../utils/idParam.js";
@@ -37,15 +36,6 @@ export async function getReportPdfController(req, res) {
   const id = parseIdParam(req, "id", "ID izveštaja");
   const report = await getReportByIdService(id);
   sendReportPdf(res, report);
-}
-
-// Ručno okidanje generisanja - koristi se za testiranje pre nego što se
-// veže na dnevni scheduler, i kao rezervni izlaz ako scheduler ikad
-// promaši ciklus (server je bio ugašen u 7h). Generiše po jedan izveštaj
-// za SVAKU lokaciju, isto kao scheduler.
-export async function generateReportController(req, res) {
-  const out = await generateDailyReportsForAllSites();
-  res.status(201).json(out);
 }
 
 export async function markReportReadController(req, res) {

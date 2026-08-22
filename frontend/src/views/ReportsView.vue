@@ -23,9 +23,6 @@
         <AppButton v-if="report" variant="neutral" :disabled="downloadingPdf" @click="downloadPdf">
           {{ downloadingPdf ? 'Pripremam…' : '📄 Preuzmi PDF' }}
         </AppButton>
-        <AppButton variant="secondary" :disabled="generating" @click="generateNow">
-          {{ generating ? 'Generišem…' : 'Generiši sada' }}
-        </AppButton>
       </div>
     </div>
 
@@ -271,7 +268,6 @@ const trendGroups = computed(() => [
 const blacklistedDomainHits = computed(() => report.value?.content?.blacklistedDomainHits || [])
 const loading = ref(false)
 const error = ref('')
-const generating = ref(false)
 const downloadingPdf = ref(false)
 
 async function loadReport() {
@@ -338,20 +334,6 @@ async function loadHistory() {
     history.value = data.items || []
   } catch (err) {
     console.error('Neuspešno učitavanje istorije izveštaja:', err)
-  }
-}
-
-async function generateNow() {
-  generating.value = true
-  try {
-    const res = await fetchWithAuth('/api/protected/reports/generate', { method: 'POST' })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    await loadHistory()
-    await loadReport()
-  } catch (err) {
-    console.error('Neuspešno generisanje izveštaja:', err)
-  } finally {
-    generating.value = false
   }
 }
 

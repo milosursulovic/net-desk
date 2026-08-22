@@ -15,6 +15,7 @@ import {
   deleteTestPushSubscription,
   deleteTestDailyReport,
 } from "../helpers/testDb.js";
+import { generateDailyReportsForAllSites } from "../../services/dailyReport.service.js";
 
 const app = createApp();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -298,16 +299,9 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
   });
 
   describe(
-    "route ordering: /reports/latest and /reports/generate must not be swallowed by " +
+    "route ordering: /reports/latest must not be swallowed by " +
       "/reports/:id (same regression class as the agents route-ordering tests above)",
     () => {
-      let reportIds = [];
-
-      afterEach(async () => {
-        await Promise.all(reportIds.map((id) => deleteTestDailyReport(id)));
-        reportIds = [];
-      });
-
       it("GET /reports/latest resolves to the latest-report lookup, not a parseIdParam 400", async () => {
         const res = await request(app)
           .get("/api/protected/reports/latest")
@@ -316,20 +310,6 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         // 200 if a report already exists, 404 if none do yet - either way it
         // must be the "no report found" 404, not a "bad :id" 400.
         expect([200, 404]).toContain(res.status);
-      });
-
-      it("POST /reports/generate resolves to report generation, not a parseIdParam 400", async () => {
-        const res = await request(app)
-          .post("/api/protected/reports/generate")
-          .set("Authorization", `Bearer ${adminToken()}`);
-
-        // Generiše po jedan izveštaj za SVAKU lokaciju (generateDailyReportsForAllSites) -
-        // odgovor je niz, ne pojedinačan izveštaj.
-        expect(res.status).toBe(201);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBeGreaterThan(0);
-        expect(res.body[0]).toHaveProperty("content");
-        reportIds = res.body.map((r) => r.id);
       });
     },
   );
@@ -347,11 +327,11 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     it("generates a report, fetches it by id, and lists it", async () => {
       const token = adminToken();
 
-      const genRes = await request(app)
-        .post("/api/protected/reports/generate")
-        .set("Authorization", `Bearer ${token}`);
-      expect(genRes.status).toBe(201);
-      reportIds = genRes.body.map((r) => r.id);
+      // Generisanje izveštaja više nema HTTP rutu (samo cron, videti
+      // dailyReportScheduler.js) - ovi testovi testiraju GET/mark-read/pdf
+      // rute, ne generisanje samo, pa pozivaju servis direktno za setup.
+      const generated = await generateDailyReportsForAllSites();
+      reportIds = generated.map((r) => r.id);
       reportId = reportIds[0];
 
       const getRes = await request(app)
@@ -377,12 +357,10 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     it("mark-read sets openedAt, and a GET afterwards reflects it (GET itself has no side effect)", async () => {
       const token = adminToken();
 
-      const genRes = await request(app)
-        .post("/api/protected/reports/generate")
-        .set("Authorization", `Bearer ${token}`);
-      reportIds = genRes.body.map((r) => r.id);
+      const generated = await generateDailyReportsForAllSites();
+      reportIds = generated.map((r) => r.id);
       reportId = reportIds[0];
-      expect(genRes.body[0].openedAt).toBeNull();
+      expect(generated[0].openedAt).toBeNull();
 
       const beforeRes = await request(app)
         .get(`/api/protected/reports/${reportId}`)
@@ -411,10 +389,8 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     it("GET /reports/:id/pdf streams a real PDF, not JSON", async () => {
       const token = adminToken();
 
-      const genRes = await request(app)
-        .post("/api/protected/reports/generate")
-        .set("Authorization", `Bearer ${token}`);
-      reportIds = genRes.body.map((r) => r.id);
+      const generated = await generateDailyReportsForAllSites();
+      reportIds = generated.map((r) => r.id);
       reportId = reportIds[0];
 
       const pdfRes = await request(app)
