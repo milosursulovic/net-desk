@@ -106,20 +106,28 @@ namespace NetdeskAgent.WebRtcBridge
 
             Log("WebRtcBridge pokrenut. sessionId=" + sessionId + " agentId=" + agentId);
 
-            var wsUrl = $"{serverBaseUrl}/api/agents/webrtc-signaling?sessionId={sessionId}&agentId={Uri.EscapeDataString(agentId)}&apiKey={Uri.EscapeDataString(apiKey)}";
+            // NAMERNA konverzija https/http -> wss/ws, isti obrazac kao
+            // VncBridge.cs's BuildWsUrl (RFB put) - serverBaseUrl dolazi iz
+            // config.json kao "https://host:port" (isti string koji
+            // NetdeskApiClient koristi za obične HTTP pozive), ali
+            // websocket-sharp-ov WebSocket konstruktor zahteva ws/wss šemu i
+            // baca ArgumentException na bilo šta drugo. UŽIVO POTVRĐENA
+            // greška - baš OVAJ red je bio nedostajao od početka (VncBridge.cs
+            // ga ima, ovaj fajl NIJE ga imao), pa je konstruktor pucao PRE
+            // nego što je _ws uopšte dodeljen - svaki dijagnostički kanal
+            // (i lokalni fajl i signaling relay dodat u prethodnoj izmeni)
+            // je zato ostajao potpuno prazan, jer nijedan još nije ni
+            // postojao u trenutku pada.
+            var wsUrl = serverBaseUrl.Replace("https://", "wss://").Replace("http://", "ws://")
+                + $"/api/agents/webrtc-signaling?sessionId={sessionId}&agentId={Uri.EscapeDataString(agentId)}&apiKey={Uri.EscapeDataString(apiKey)}";
 
-            // Signaling WS se konektuje PRE WebRtcSession konstrukcije, namerno
-            // obrnuto od prirodnog redosleda - ako WebRtcSession konstruktor
-            // (SIPSorcery RTCPeerConnection/DTLS sertifikat generisanje,
-            // SharpDX/DXGI inicijalizacija) baci izuzetak, taj izuzetak treba
-            // da bude PRIJAVLJIV preko signaling kanala (koji backend
-            // bezuslovno snima u vnc_webrtc_signaling - pouzdanije od lokalnog
-            // fajla, videti FileLogger napomenu ispod). Da je WebRtcSession
-            // konstruisan PRE WS konekcije, baš ta klasa najkritičnijih
-            // padova (native/SIPSorcery inicijalizacija) bi ostala vidljiva
-            // SAMO lokalnom fajlu, koji se uživo pokazao nepouzdanim.
             _ws = new WebSocket(wsUrl);
-            _ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
+            if (wsUrl.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
+            {
+                // Ista TLS 1.2 napomena kao NetdeskApiClient.cs/VncBridge.cs -
+                // .NET Framework ne uključuje je po default-u.
+                _ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
+            }
             _ws.OnMessage += OnSignalingMessage;
             _ws.OnClose += (s, e) =>
             {
@@ -131,7 +139,15 @@ namespace NetdeskAgent.WebRtcBridge
                 FileLogger.Error("Signaling WS greška: " + e.Message, e.Exception);
                 _stopSignal.Set();
             };
-            _ws.Connect();
+            try
+            {
+                _ws.Connect();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Signaling WS konekcija neuspešna (izuzetak iz Connect())", ex);
+                return 1;
+            }
 
             if (!_ws.IsAlive)
             {
