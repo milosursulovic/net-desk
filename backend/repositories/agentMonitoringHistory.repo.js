@@ -47,7 +47,17 @@ export async function listCurrentMonitoringForAllAgents() {
 // One bulk query for every agent's history in the window (not one query per
 // agent) - the caller groups by agentId in JS. Joined with hostname since
 // the report needs it for display, not just the agent id.
-export async function listMonitoringHistorySince(since) {
+//
+// BUG FIX (uživo otkriven OOM pad celog servera): ova funkcija je ranije
+// primala SAMO `since`, dok je dailyReport.service.js pozivao
+// listMonitoringHistorySince(windowStart, site) - drugi argument je tiho
+// odbačen (JS ne baca grešku na višak argumenata), pa je upit VRAĆAO CELU
+// flotu (oba sajta) na SVAKO generisanje izveštaja, za BILO KOJI sajt -
+// neomeđen rast tokom vremena (istorija + broj agenata na oba sajta) je na
+// kraju eksplodirao V8 heap i srušio ceo Node proces, ne samo taj jedan
+// zahtev. site parametar sad stvarno filtrira, isti JOIN obrazac kao
+// agents.repo.js (site živi na ip_entries, ne agents).
+export async function listMonitoringHistorySince(since, site) {
   const [rows] = await pool.execute(
     `
     SELECT
@@ -59,10 +69,12 @@ export async function listMonitoringHistorySince(since) {
       h.recorded_at AS recordedAt
     FROM agent_monitoring_history h
     JOIN agents a ON a.id = h.agent_id
+    ${site ? "JOIN ip_entries ie ON ie.id = a.ip_entry_id" : ""}
     WHERE h.recorded_at >= ?
+      ${site ? "AND ie.site = ?" : ""}
     ORDER BY h.agent_id, h.recorded_at ASC
     `,
-    [since],
+    site ? [since, site] : [since],
   );
   return rows;
 }
