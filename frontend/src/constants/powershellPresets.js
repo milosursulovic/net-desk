@@ -912,6 +912,75 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
+    id: 'force-stop-windivert-driver',
+    label: 'Prinudno zaustavi WinDivert drajver (ako blokira update fajlova)',
+    // Ne oslanja se na hardkodovan naziv servisa drajvera ("WinDivert" je
+    // ono što stvarna instalacija koristi, ali NIJE deo zvanično
+    // dokumentovanog ugovora u WinDivert biblioteci, i teoretski se menja
+    // između verzija/fork-ova) - umesto toga, nalazi drajver PO PUTANJI do
+    // WinDivert64.sys preko Win32_SystemDriver (WMI klasa za kernel-mode
+    // drajvere/servise, RAZLIČITA od Win32_PnPSignedDriver koji koristi
+    // "Obriši drajver uređaja" preset iznad - taj je za PnP hardver uređaje,
+    // WinDivert nije PnP uređaj, ne bi se ni pojavio tamo).
+    //
+    // Isti motiv kao retry-with-backoff u DirectorySync.cs (Manager/Common)
+    // - WinDivert64.sys ume da ostane zaključan kratko VREME i POSLE što je
+    // NetdeskAgent proces (koji ga je otvorio) već potvrđeno zaustavljen,
+    // jer driver-unload nije garantovano sinhron sa gašenjem user-mode
+    // procesa. Taj retry pasivno ČEKA da se otključa; ovaj preset je
+    // AKTIVNIJI korak - eksplicitno zaustavlja sam drajver servis (sc stop),
+    // za slučajeve kad je pasivno čekanje (do ~6s, 8 pokušaja/750ms) i dalje
+    // nedovoljno na nekoj konkretnoj mašini. NAMERNO ne pokušava
+    // deinstalaciju (sc delete) - drajver se ponovo automatski učita na
+    // sledećem WinDivertOpen() pozivu (isti "dinamički instaliran, ne
+    // trajno registrovan" obrazac dokumentovan u WinDivertInterop.cs), pa
+    // samo zaustavljanje je dovoljno i manje rizično od brisanja servisa.
+    //
+    // Pokreni OVAJ preset POSLE što je NetdeskAgent servis već zaustavljen
+    // (npr. preko Manager "Zaustavi" dugmeta) - dok agent proces još drži
+    // otvoren WinDivertOpen() handle, sc.exe stop će verovatno vratiti
+    // "ERROR_DEPENDENT_SERVICES_RUNNING" ili slično i neće uspeti.
+    script:
+      '$ErrorActionPreference = "Stop"\n' +
+      '$results = New-Object System.Collections.Generic.List[string]\n' +
+      '\n' +
+      '$drivers = Get-CimInstance -ClassName Win32_SystemDriver -ErrorAction SilentlyContinue |\n' +
+      '    Where-Object { $_.PathName -like "*WinDivert64.sys*" -or $_.Name -like "*WinDivert*" }\n' +
+      '\n' +
+      'if (-not $drivers) {\n' +
+      '    "WinDivert drajver nije pronadjen kao ucitan servis - vec je otkacen ili nikad nije ucitan."\n' +
+      '    exit 0\n' +
+      '}\n' +
+      '\n' +
+      'foreach ($drv in $drivers) {\n' +
+      '    $name = $drv.Name\n' +
+      '    if ($drv.State -eq "Stopped") {\n' +
+      '        $results.Add("$name : vec zaustavljen")\n' +
+      '        continue\n' +
+      '    }\n' +
+      '\n' +
+      '    try {\n' +
+      '        $out = sc.exe stop $name 2>&1\n' +
+      '        $stopped = $false\n' +
+      '        for ($i = 0; $i -lt 10; $i++) {\n' +
+      '            Start-Sleep -Seconds 1\n' +
+      '            $check = Get-CimInstance -ClassName Win32_SystemDriver -Filter "Name=\'$name\'" -ErrorAction SilentlyContinue\n' +
+      '            if (-not $check -or $check.State -eq "Stopped") { $stopped = $true; break }\n' +
+      '        }\n' +
+      '        if ($stopped) {\n' +
+      '            $results.Add("$name : uspesno zaustavljen")\n' +
+      '        } else {\n' +
+      '            $results.Add(("{0} : NIJE zaustavljen (verovatno jos otvoren handle iz NetdeskAgent procesa) - {1}" -f $name, ($out -join " ")))\n' +
+      '        }\n' +
+      '    }\n' +
+      '    catch {\n' +
+      '        $results.Add("$name : GRESKA - $($_.Exception.Message)")\n' +
+      '    }\n' +
+      '}\n' +
+      '\n' +
+      'Write-Output ($results -join "`n")',
+  },
+  {
     id: 'enable-wake-on-lan',
     label: 'Uključi Wake-on-LAN na mrežnim karticama',
     // OS-nivo deo Wake-on-LAN podešavanja (Device Manager "Allow this device
