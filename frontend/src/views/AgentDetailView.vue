@@ -200,7 +200,7 @@
           type="button"
           @click="selectTab(t)"
           class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
-          :class="tab === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          :class="tabButtonClass(t)"
         >
           {{ TAB_LABELS[t] }}
         </button>
@@ -492,6 +492,18 @@ async function fetchDeploymentGroupOptions() {
 
 const TAB_NAMES = ['screen', 'jobs', 'updates', 'manager', 'events', 'dns']
 const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', manager: 'Manager', events: 'Event Log', dns: 'DNS' }
+
+// "manager" tab prati istu indigo paletu kao Manager panel/bedž (bg-indigo-50
+// border-indigo-200 text-indigo-700/900) umesto generičke plavo/sivo teme
+// ostalih tabova - vizuelna veza sa panelom koji taj tab otvara.
+function tabButtonClass(t) {
+  if (t === 'manager') {
+    return tab.value === t
+      ? 'bg-indigo-600 text-white'
+      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+  }
+  return tab.value === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+}
 
 const { tab } = usePaginatedRoute({
   fields: { tab: { type: 'string', default: 'jobs', oneOf: TAB_NAMES } },
