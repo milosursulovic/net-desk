@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using NetdeskAgent.Common.Logging;
 using SIPSorcery.Net;
 using SIPSorceryMedia.Abstractions;
 
@@ -42,6 +43,7 @@ namespace NetdeskAgent.Common.Webrtc
         private CancellationTokenSource _captureLoopCts;
         private Task _captureLoopTask;
         private long _frameCounter;
+        private bool _loggedFirstCaptureError;
 
         public event Action<RTCIceCandidate> OnIceCandidateGenerated;
         public event Action OnConnectionFailed;
@@ -65,6 +67,7 @@ namespace NetdeskAgent.Common.Webrtc
             // samo "failed"/"closed" su konačni.
             _pc.onconnectionstatechange += (state) =>
             {
+                FileLogger.Info("RTCPeerConnection stanje: " + state);
                 if (state == RTCPeerConnectionState.failed || state == RTCPeerConnectionState.closed)
                 {
                     OnConnectionFailed?.Invoke();
@@ -112,9 +115,18 @@ namespace NetdeskAgent.Common.Webrtc
         /// </summary>
         public bool Start()
         {
-            if (!_capture.Initialize()) return false;
-            if (!InitializeEncoder()) return false;
+            if (!_capture.Initialize())
+            {
+                FileLogger.Error("ScreenCapture.Initialize() neuspešan (ni DXGI ni GDI fallback nisu uspeli)", null);
+                return false;
+            }
+            if (!InitializeEncoder())
+            {
+                FileLogger.Error("VP8 enkoder inicijalizacija neuspešna (vpx_codec_enc_config_default/enc_init)", null);
+                return false;
+            }
 
+            FileLogger.Info("Capture (" + _capture.Width + "x" + _capture.Height + ") + VP8 enkoder inicijalizovani, pokrećem capture petlju.");
             _captureLoopCts = new CancellationTokenSource();
             _captureLoopTask = Task.Run(() => CaptureLoop(_captureLoopCts.Token));
             return true;
@@ -168,12 +180,20 @@ namespace NetdeskAgent.Common.Webrtc
                         EncodeAndSendFrame(yPlane, uPlane, vPlane);
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Best-effort po frejmu - jedan neuspeo capture/encode ciklus
                     // ne sme da obori celu sesiju (isti "graceful degrade" duh
                     // kao RFB relay-a koji samo loguje i nastavlja). Sesija se
                     // gasi samo preko eksplicitnog Stop()/onconnectionstatechange.
+                    // Loguje se SAMO prvi put (na ~15 FPS bi ponavljanje na
+                    // svaki frejm potpuno zatrpalo log bez nove informacije) -
+                    // prvi izuzetak već kaže sve što treba za dijagnozu.
+                    if (!_loggedFirstCaptureError)
+                    {
+                        _loggedFirstCaptureError = true;
+                        FileLogger.Error("Capture/encode ciklus greška (dalja ponavljanja se ne loguju)", ex);
+                    }
                 }
 
                 var elapsed = (DateTime.UtcNow - loopStart).TotalMilliseconds;
