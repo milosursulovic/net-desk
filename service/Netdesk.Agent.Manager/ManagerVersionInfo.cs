@@ -8,6 +8,6 @@ namespace NetdeskAgent.Manager
     /// </summary>
     public static class ManagerVersionInfo
     {
-        public const string Current = "1.0.0";
+        public const string Current = "1.1.0";
     }
 }

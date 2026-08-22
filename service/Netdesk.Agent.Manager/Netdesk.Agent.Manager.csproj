@@ -27,6 +27,10 @@
          Netdesk.Agent.Common.csproj. -->
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <!-- StopWinDivertDriverIfPresent (ManagerWorker.cs) - Win32_SystemDriver
+         preko WMI, ista tehnika kao "Prinudno zaustavi WinDivert drajver"
+         PowerShell preset (powershellPresets.js). -->
+    <Reference Include="System.Management" />
   </ItemGroup>
 
   <ItemGroup>

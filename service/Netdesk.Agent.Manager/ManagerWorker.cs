@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Management;
 using System.Security.Cryptography;
 using System.ServiceProcess;
 using System.Threading;
@@ -659,6 +660,7 @@ namespace NetdeskAgent.Manager
             try
             {
                 KillProcesses(command.KillProcessNames);
+                StopWinDivertDriverIfPresent();
                 DirectorySync.DeleteDirectoryWithRetry(command.InstallDir);
                 DirectorySync.CopyDirectoryRecursive(command.StagingDir, command.InstallDir);
 
@@ -722,6 +724,95 @@ namespace NetdeskAgent.Manager
                         process.Dispose();
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Aktivno zaustavlja WinDivert kernel drajver (WinDivert64.sys, deo
+        /// DnsQueryCollector-a - vidi Netdesk.Agent.Common/DnsLogs/WinDivertInterop.cs)
+        /// pre brisanja/kopiranja install foldera - ista tehnika kao
+        /// "Prinudno zaustavi WinDivert drajver" PowerShell preset
+        /// (powershellPresets.js), portovana ovde da update preko Manager-a
+        /// ne mora da se oslanja SAMO na pasivni retry u
+        /// DirectorySync.DeleteDirectoryWithRetry (8 pokušaja/750ms, ~6s) -
+        /// taj retry i dalje ostaje kao safety-net ako je drajver zaključan
+        /// iz nekog DRUGOG razloga, ne samo sporog unload-a.
+        ///
+        /// Ne oslanja se na hardkodovan naziv servisa ("WinDivert" nije deo
+        /// zvaničnog ugovora biblioteke) - nalazi drajver PO PUTANJI preko
+        /// Win32_SystemDriver (WMI, kernel-mode drajveri/servisi). Best-effort:
+        /// ako WMI upit ili sc stop ne uspeju, samo se loguje upozorenje -
+        /// pasivni retry u DeleteDirectoryWithRetry ostaje poslednja linija
+        /// odbrane, ne sme da obori ceo update.
+        /// </summary>
+        private static void StopWinDivertDriverIfPresent()
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher(
+                    "SELECT * FROM Win32_SystemDriver WHERE PathName LIKE '%WinDivert64.sys%' OR Name LIKE '%WinDivert%'"))
+                using (var drivers = searcher.Get())
+                {
+                    foreach (ManagementObject drv in drivers)
+                    {
+                        var name = (string)drv["Name"];
+                        var state = (string)drv["State"];
+
+                        if (string.Equals(state, "Stopped", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            var psi = new ProcessStartInfo("sc.exe", "stop " + name)
+                            {
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                            };
+                            using (var proc = Process.Start(psi))
+                            {
+                                proc.WaitForExit(5000);
+                            }
+
+                            for (var i = 0; i < 10; i++)
+                            {
+                                Thread.Sleep(1000);
+                                using (var checkSearcher = new ManagementObjectSearcher(
+                                    "SELECT State FROM Win32_SystemDriver WHERE Name = '" + name.Replace("'", "''") + "'"))
+                                using (var checkResults = checkSearcher.Get())
+                                {
+                                    var stillLoaded = false;
+                                    foreach (ManagementObject check in checkResults)
+                                    {
+                                        if (!string.Equals((string)check["State"], "Stopped", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            stillLoaded = true;
+                                        }
+                                    }
+                                    if (!stillLoaded)
+                                    {
+                                        FileLogger.Info("WinDivert drajver '" + name + "' zaustavljen pre update-a.");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Warn("Zaustavljanje WinDivert drajvera '" + name + "' neuspešno: " + ex.Message);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best-effort - WMI nedostupan/upit neuspešan ne sme da obori
+                // update, DeleteDirectoryWithRetry-ev pasivni retry ostaje
+                // safety-net.
+                FileLogger.Warn("Provera WinDivert drajvera neuspešna: " + ex.Message);
             }
         }
 
