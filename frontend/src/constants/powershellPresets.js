@@ -840,12 +840,14 @@ export const POWERSHELL_PRESETS = [
       '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
       '$pkgUrlModern = "https://10.230.62.81:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
       '# Za Manager-ov NOVI, nezavisni HTTP kanal (enroll/heartbeat/job-poll) -\n' +
-      '# isti server, ali SOPSTVENI enroll token (MANAGER_ENROLL_TOKEN u backend\n' +
-      '# .env, ne AGENT_ENROLL_TOKEN - videti napomenu u config/env.js zašto su\n' +
-      '# odvojeni). Ako ostane prazno, config.json se ne piše i Manager i dalje\n' +
-      '# radi normalno preko starog mailbox puta, samo bez novog kanala.\n' +
-      '$serverBaseUrl = "https://10.230.62.81:3000"\n' +
-      '$managerEnrollToken = ""\n' +
+      '# isti hostovi kao pkgUrl iznad (OS-zavisno, ista mreža/DNS ogranicenja),\n' +
+      '# ali SOPSTVENI enroll token (MANAGER_ENROLL_TOKEN u backend .env, ne\n' +
+      '# AGENT_ENROLL_TOKEN - videti napomenu u config/env.js zašto su odvojeni).\n' +
+      '# Ako $managerEnrollToken ostane prazan, config.json se ne piše i Manager\n' +
+      '# i dalje radi normalno preko starog mailbox puta, samo bez novog kanala.\n' +
+      '$serverBaseUrlWin7 = "https://netdesk.local:3000"\n' +
+      '$serverBaseUrlModern = "https://10.230.62.81:3000"\n' +
+      '$managerEnrollToken = "97eb906e34d5645307abbda3af22f21783e501dad5f9e53c"\n' +
       '# --------------------------------------------------------\n' +
       '\n' +
       '$serviceName = "NetdeskAgentManager"\n' +
@@ -859,6 +861,7 @@ export const POWERSHELL_PRESETS = [
       '$osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ErrorAction SilentlyContinue).Version\n' +
       '$isWin7 = $osVersion -like "6.1*"\n' +
       '$pkgUrl = if ($isWin7) { $pkgUrlWin7 } else { $pkgUrlModern }\n' +
+      '$serverBaseUrl = if ($isWin7) { $serverBaseUrlWin7 } else { $serverBaseUrlModern }\n' +
       '\n' +
       '$installUtilPath = if ([Environment]::Is64BitOperatingSystem) {\n' +
       '  "$env:WINDIR\\Microsoft.NET\\Framework64\\v4.0.30319\\InstallUtil.exe"\n' +
