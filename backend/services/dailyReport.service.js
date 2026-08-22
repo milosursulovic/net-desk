@@ -42,17 +42,13 @@ import { sendPushToAll } from "../utils/webPush.js";
 import { paginate } from "../utils/pagination.js";
 import { notFound } from "../utils/httpError.js";
 import { SITES } from "../dtos/ipAddresses.dto.js";
-import {
-  computeDiskFillProjection,
-  computeDiskAnomaly,
-  computeCpuAnomaly,
-  computeRamAnomaly,
-} from "../utils/trendAnalysis.js";
+import { computeDiskFillProjection } from "../utils/trendAnalysis.js";
 
-// 90 days (not 30) - anomaly detection's baseline (mean/stddev) needs a
-// richer window than a threshold projection's slope does, and there's no
-// downside to keeping more history around now while data is still sparse.
-const TREND_WINDOW_DAYS = 90;
+// Disk-fill projection's slope only needs enough points for a reasonable
+// linear regression, not a long baseline - 30 days is plenty (anomaly
+// detection used to need a richer 90-day window for its mean/stddev
+// baseline, but that feature was removed as unhelpful noise).
+const TREND_WINDOW_DAYS = 30;
 
 // Isti prozor kao countBlacklistedDomainHits(24, site) u notifications.
 // service.js - izveštaj prikazuje ISTIH 24h koje već pokreću upozorenje,
@@ -141,24 +137,13 @@ export async function generateDailyReport(
     historyByAgent.get(row.agentId).push(row);
   }
   const diskFillProjections = [];
-  const anomalies = [];
   for (const rows of historyByAgent.values()) {
     const hostname = rows[0].hostname;
 
     const diskProjection = computeDiskFillProjection(rows);
     if (diskProjection) diskFillProjections.push({ hostname, ...diskProjection });
-
-    const diskAnomaly = computeDiskAnomaly(rows);
-    if (diskAnomaly) anomalies.push({ hostname, metric: "disk", ...diskAnomaly });
-
-    const cpuAnomaly = computeCpuAnomaly(rows);
-    if (cpuAnomaly) anomalies.push({ hostname, metric: "cpu", ...cpuAnomaly });
-
-    const ramAnomaly = computeRamAnomaly(rows);
-    if (ramAnomaly) anomalies.push({ hostname, metric: "ram", ...ramAnomaly });
   }
   diskFillProjections.sort((a, b) => a.daysUntilThreshold - b.daysUntilThreshold);
-  anomalies.sort((a, b) => Math.abs(b.zScore) - Math.abs(a.zScore));
 
   const totalAgents =
     connectivity.online + connectivity.stale + connectivity.offline + connectivity.unknown;
@@ -176,7 +161,6 @@ export async function generateDailyReport(
     alerts: alerts.notifications,
     trends: {
       diskFillProjections,
-      anomalies,
     },
     blacklistedDomainHits,
     sinceLastReport: {
@@ -245,9 +229,6 @@ function buildPushSummary(content) {
     parts.push(
       `disk na ${soonest.hostname} stiže do 90% za ~${soonest.daysUntilThreshold} dana`,
     );
-  }
-  if (content.trends.anomalies.length) {
-    parts.push(`${content.trends.anomalies.length} anomalija u ponašanju agenata`);
   }
   if (content.blacklistedDomainHits.length) {
     parts.push(`${content.blacklistedDomainHits.length} poseta domenima sa crne liste`);

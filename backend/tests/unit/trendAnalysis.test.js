@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeDiskFillProjection,
-  computeDiskAnomaly,
-  computeCpuAnomaly,
-  computeRamAnomaly,
-} from "../../utils/trendAnalysis.js";
+import { computeDiskFillProjection } from "../../utils/trendAnalysis.js";
 
 function daysAgo(n) {
   return new Date(Date.now() - n * 86400000).toISOString();
@@ -99,77 +94,5 @@ describe("computeDiskFillProjection", () => {
     const result = computeDiskFillProjection(rows);
     expect(result).not.toBeNull();
     expect(result.currentPct).toBe(70);
-  });
-});
-
-describe("computeDiskAnomaly / computeCpuAnomaly / computeRamAnomaly", () => {
-  it("returns null with fewer than minPoints history rows", () => {
-    const rows = [
-      { diskUsedPct: 40, recordedAt: daysAgo(1) },
-      { diskUsedPct: 90, recordedAt: daysAgo(0) },
-    ];
-    expect(computeDiskAnomaly(rows)).toBeNull();
-  });
-
-  it("returns null when today's value is close to the historical baseline", () => {
-    const rows = [
-      { cpuLoadPct: 20, recordedAt: daysAgo(7) },
-      { cpuLoadPct: 21, recordedAt: daysAgo(6) },
-      { cpuLoadPct: 19, recordedAt: daysAgo(5) },
-      { cpuLoadPct: 22, recordedAt: daysAgo(4) },
-      { cpuLoadPct: 20, recordedAt: daysAgo(3) },
-      { cpuLoadPct: 21, recordedAt: daysAgo(2) },
-      { cpuLoadPct: 19, recordedAt: daysAgo(1) },
-      { cpuLoadPct: 20, recordedAt: daysAgo(0) },
-    ];
-    expect(computeCpuAnomaly(rows)).toBeNull();
-  });
-
-  it("flags a sudden spike far outside the historical baseline (bidirectional z-score)", () => {
-    const rows = [
-      { ramLoadPct: 30, recordedAt: daysAgo(7) },
-      { ramLoadPct: 31, recordedAt: daysAgo(6) },
-      { ramLoadPct: 29, recordedAt: daysAgo(5) },
-      { ramLoadPct: 30, recordedAt: daysAgo(4) },
-      { ramLoadPct: 31, recordedAt: daysAgo(3) },
-      { ramLoadPct: 29, recordedAt: daysAgo(2) },
-      { ramLoadPct: 30, recordedAt: daysAgo(1) },
-      { ramLoadPct: 95, recordedAt: daysAgo(0) }, // today's spike, way outside ~30 +/- 1
-    ];
-    const result = computeRamAnomaly(rows);
-    expect(result).not.toBeNull();
-    expect(result.currentValue).toBe(95);
-    expect(result.zScore).toBeGreaterThan(3);
-  });
-
-  it("returns null when the baseline has zero variance (would divide by zero)", () => {
-    const rows = [
-      { diskUsedPct: 50, recordedAt: daysAgo(7) },
-      { diskUsedPct: 50, recordedAt: daysAgo(6) },
-      { diskUsedPct: 50, recordedAt: daysAgo(5) },
-      { diskUsedPct: 50, recordedAt: daysAgo(4) },
-      { diskUsedPct: 50, recordedAt: daysAgo(3) },
-      { diskUsedPct: 50, recordedAt: daysAgo(2) },
-      { diskUsedPct: 50, recordedAt: daysAgo(1) },
-      { diskUsedPct: 90, recordedAt: daysAgo(0) },
-    ];
-    expect(computeDiskAnomaly(rows)).toBeNull();
-  });
-
-  // Regresioni test za uživo otkriven "14073748835531.5σ" bug: sa dovoljno
-  // baseline tačaka, naivno sabiranje istog DECIMAL(5,2) broja (25.8 nema
-  // tačan binarni zapis) kao float nagomilava zaokruživanje - baselineMean
-  // ispadne 25.800000000000008 umesto tačno 25.8, baselineStdDev ~7e-15
-  // umesto tačno 0, pa deljenje stvarne razlike od 0.1 tom "šumom" da
-  // besmislen z-score. 900 tačaka (realan slučaj: agent čiji se disk % nije
-  // menjao 90 dana) je dovoljno da se zaokruživanje primeti.
-  it("returns null (not an absurd z-score) when many near-identical baseline points accumulate float rounding noise", () => {
-    const rows = [];
-    for (let i = 900; i >= 1; i--) {
-      rows.push({ diskUsedPct: 25.8, recordedAt: daysAgo(i) });
-    }
-    rows.push({ diskUsedPct: 25.9, recordedAt: daysAgo(0) });
-
-    expect(computeDiskAnomaly(rows)).toBeNull();
   });
 });

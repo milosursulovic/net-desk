@@ -87,25 +87,6 @@
         </ul>
       </div>
 
-      <div
-        v-if="anomalies.length"
-        class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm"
-      >
-        <h2 class="font-semibold text-red-900 mb-1">🚨 Anomalije</h2>
-        <p class="text-sm text-red-800 mb-3">
-          Vrednosti koje značajno odstupaju od uobičajenog obrasca agenta (poslednjih
-          {{ TREND_WINDOW_DAYS }} dana), bez obzira na trend — može biti jednokratni skok,
-          ne mora značiti trajni problem.
-        </p>
-        <ul class="space-y-1 text-sm">
-          <li v-for="(a, idx) in anomalies" :key="idx">
-            <span class="font-medium">{{ a.hostname || '—' }}</span>
-            — {{ metricLabel[a.metric] || a.metric }}: {{ a.currentValue.toFixed(1) }}%
-            (uobičajeno ~{{ a.baselineMean.toFixed(1) }}%, odstupanje {{ a.zScore.toFixed(1) }}σ)
-          </li>
-        </ul>
-      </div>
-
       <!-- Posete crnolistiranim domenima -->
       <div
         v-if="blacklistedDomainHits.length"
@@ -275,12 +256,6 @@ const levelIcon = {
   warning: '⚠️',
   info: 'ℹ️',
 }
-const metricLabel = {
-  disk: 'Disk',
-  cpu: 'CPU',
-  ram: 'RAM',
-}
-
 const report = ref(null)
 const history = ref([])
 const trendGroups = computed(() => [
@@ -291,7 +266,6 @@ const trendGroups = computed(() => [
     items: report.value?.content?.trends?.diskFillProjections || [],
   },
 ].filter((g) => g.items.length))
-const anomalies = computed(() => report.value?.content?.trends?.anomalies || [])
 // Optional chaining namerno - stariji izveštaji (pre nego što je ovo dodato)
 // nemaju content.blacklistedDomainHits u sačuvanom JSON-u.
 const blacklistedDomainHits = computed(() => report.value?.content?.blacklistedDomainHits || [])

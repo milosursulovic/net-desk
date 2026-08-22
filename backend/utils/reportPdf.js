@@ -1,8 +1,6 @@
 import PDFDocument from "pdfkit";
 import { FONT_REGULAR, FONT_BOLD } from "./pdfFonts.js";
 
-const METRIC_LABEL = { disk: "Disk", cpu: "CPU", ram: "RAM" };
-
 function fmtDate(d) {
   return new Date(d).toLocaleString("sr-RS");
 }
@@ -84,17 +82,6 @@ export function sendReportPdf(res, report) {
       return (
         `${t.hostname || "—"} — trenutno ${t.currentPct.toFixed(1)}%, ` +
         `raste ~${t.slopePctPerDay.toFixed(2)}%/dan, stiže do 90% za ~${t.daysUntilThreshold} dana`
-      );
-    });
-  }
-
-  if (trends.anomalies?.length) {
-    heading(doc, "Anomalije");
-    bulletOrEmpty(doc, trends.anomalies, "", (a) => {
-      return (
-        `${a.hostname || "—"} — ${METRIC_LABEL[a.metric] || a.metric}: ` +
-        `${a.currentValue.toFixed(1)}% (uobičajeno ~${a.baselineMean.toFixed(1)}%, ` +
-        `odstupanje ${a.zScore.toFixed(1)}σ)`
       );
     });
   }
