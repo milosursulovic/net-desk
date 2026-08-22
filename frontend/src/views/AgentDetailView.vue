@@ -33,6 +33,13 @@
           >
             {{ connectivityLabel }}
           </span>
+          <span
+            v-if="managerStatus"
+            class="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-indigo-700"
+            :title="`Novi (nezavisni) Manager kanal registrovan - ${managerStatus.connectivityStatus}`"
+          >
+            MANAGER
+          </span>
           <span class="text-xs text-slate-500">{{ agent.agentUid }}</span>
           <button @click="copy(agent.agentUid)" class="text-xs text-slate-400 hover:text-slate-600">📋</button>
 
@@ -343,7 +350,8 @@
               </AppButton>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-2">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span class="text-xs font-medium text-indigo-900">Startup tip servisa:</span>
               <select v-model="selectedStartMode" class="app-input w-full sm:w-40 text-sm">
                 <option value="Automatic">Automatic</option>
                 <option value="Manual">Manual</option>
