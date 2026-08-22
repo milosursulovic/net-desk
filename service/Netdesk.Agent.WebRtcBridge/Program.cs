@@ -104,14 +104,60 @@ namespace NetdeskAgent.WebRtcBridge
             var agentId = args[2];
             var apiKey = args[3];
 
-            FileLogger.Info("WebRtcBridge pokrenut. sessionId=" + sessionId + " agentId=" + agentId);
+            Log("WebRtcBridge pokrenut. sessionId=" + sessionId + " agentId=" + agentId);
 
             var wsUrl = $"{serverBaseUrl}/api/agents/webrtc-signaling?sessionId={sessionId}&agentId={Uri.EscapeDataString(agentId)}&apiKey={Uri.EscapeDataString(apiKey)}";
 
-            _session = new WebRtcSession();
+            // Signaling WS se konektuje PRE WebRtcSession konstrukcije, namerno
+            // obrnuto od prirodnog redosleda - ako WebRtcSession konstruktor
+            // (SIPSorcery RTCPeerConnection/DTLS sertifikat generisanje,
+            // SharpDX/DXGI inicijalizacija) baci izuzetak, taj izuzetak treba
+            // da bude PRIJAVLJIV preko signaling kanala (koji backend
+            // bezuslovno snima u vnc_webrtc_signaling - pouzdanije od lokalnog
+            // fajla, videti FileLogger napomenu ispod). Da je WebRtcSession
+            // konstruisan PRE WS konekcije, baš ta klasa najkritičnijih
+            // padova (native/SIPSorcery inicijalizacija) bi ostala vidljiva
+            // SAMO lokalnom fajlu, koji se uživo pokazao nepouzdanim.
+            _ws = new WebSocket(wsUrl);
+            _ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
+            _ws.OnMessage += OnSignalingMessage;
+            _ws.OnClose += (s, e) =>
+            {
+                Log("Signaling WS zatvoren (code=" + e.Code + " reason=" + e.Reason + ").");
+                _stopSignal.Set();
+            };
+            _ws.OnError += (s, e) =>
+            {
+                FileLogger.Error("Signaling WS greška: " + e.Message, e.Exception);
+                _stopSignal.Set();
+            };
+            _ws.Connect();
+
+            if (!_ws.IsAlive)
+            {
+                FileLogger.Error("Signaling WS konekcija neuspešna (IsAlive=false posle Connect()) - proverava se URL/TLS/auth.", null);
+                return 1;
+            }
+            Log("Signaling WS povezan (" + wsUrl.Split('?')[0] + ").");
+
+            try
+            {
+                _session = new WebRtcSession();
+            }
+            catch (Exception ex)
+            {
+                // Sad JESTE prijavljivo - WS je već gore, poruka stiže do
+                // servera čak i ako je ovo baš onaj pad koji je do sad bio
+                // potpuno nevidljiv.
+                Log("WebRtcSession konstrukcija neuspešna: " + ex);
+                SendSignalingMessage(new JObject { ["type"] = "failed" });
+                return 1;
+            }
+
+            _session.OnDiagnostic += msg => Log(msg);
             _session.OnIceCandidateGenerated += candidate =>
             {
-                FileLogger.Info("ICE kandidat generisan (" + candidate.candidate + ") - šaljem signaling.");
+                Log("ICE kandidat generisan (" + candidate.candidate + ") - šaljem signaling.");
                 SendSignalingMessage(new JObject
                 {
                     ["type"] = "ice",
@@ -127,32 +173,10 @@ namespace NetdeskAgent.WebRtcBridge
                 // i pokrene postojeći start_vnc_bridge job za isti sessionId
                 // (Faza 2 fallback mehanizam iz plana). Proces se posle ovoga
                 // gasi - nema smisla da ostane živ bez konekcije.
-                FileLogger.Warn("WebRTC konekcija neuspešna (ICE failed/closed) - javljam 'failed' i gasim se.");
+                Log("WebRTC konekcija neuspešna (ICE failed/closed) - javljam 'failed' i gasim se.");
                 SendSignalingMessage(new JObject { ["type"] = "failed" });
                 _stopSignal.Set();
             };
-
-            _ws = new WebSocket(wsUrl);
-            _ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
-            _ws.OnMessage += OnSignalingMessage;
-            _ws.OnClose += (s, e) =>
-            {
-                FileLogger.Info("Signaling WS zatvoren (code=" + e.Code + " reason=" + e.Reason + ").");
-                _stopSignal.Set();
-            };
-            _ws.OnError += (s, e) =>
-            {
-                FileLogger.Error("Signaling WS greška: " + e.Message, e.Exception);
-                _stopSignal.Set();
-            };
-            _ws.Connect();
-
-            if (!_ws.IsAlive)
-            {
-                FileLogger.Error("Signaling WS konekcija neuspešna (IsAlive=false posle Connect()) - proverava se URL/TLS/auth.", null);
-                return 1;
-            }
-            FileLogger.Info("Signaling WS povezan (" + wsUrl.Split('?')[0] + ").");
 
             StartOfferHandshake();
 
@@ -163,8 +187,29 @@ namespace NetdeskAgent.WebRtcBridge
 
             _session.Dispose();
             if (_ws.IsAlive) _ws.Close();
-            FileLogger.Info("WebRtcBridge se gasi.");
+            Log("WebRtcBridge se gasi.");
             return 0;
+        }
+
+        /// <summary>
+        /// Loguje lokalno (best-effort, FileLogger - uživo se pokazao
+        /// nepouzdanim pod CreateProcessAsUser tokenom, videti napomenu u
+        /// Main()) I preko signaling WS-a kao {"type":"log"} poruka - backend
+        /// (persistMessage u ws/webrtcSignaling.js) snima SVAKU signaling
+        /// poruku u vnc_webrtc_signaling tabelu BEZUSLOVNO, pre bilo kakvog
+        /// grananja po tipu, pa je ovo u praksi pouzdaniji dijagnostički kanal
+        /// od bilo čega na samoj klijentskoj mašini. Viewer strana (frontend)
+        /// nepoznate tipove poruka (uključujući "log") tiho ignoriše - ne
+        /// remeti postojeći "offer"/"ice"/"fallback" tok.
+        /// </summary>
+        private static void Log(string message)
+        {
+            FileLogger.Info(message);
+            if (_ws?.IsAlive == true)
+            {
+                try { _ws.Send(new JObject { ["type"] = "log", ["message"] = message }.ToString(Newtonsoft.Json.Formatting.None)); }
+                catch { /* best effort */ }
+            }
         }
 
         private static async void StartOfferHandshake()
@@ -172,12 +217,12 @@ namespace NetdeskAgent.WebRtcBridge
             try
             {
                 var offer = await _session.CreateOfferAsync().ConfigureAwait(false);
-                FileLogger.Info("SDP offer kreiran, šaljem signaling.");
+                Log("SDP offer kreiran, šaljem signaling.");
                 SendSignalingMessage(new JObject { ["type"] = "offer", ["sdp"] = offer.sdp });
             }
             catch (Exception ex)
             {
-                FileLogger.Error("Neuspešno kreiranje offer-a", ex);
+                Log("Neuspešno kreiranje offer-a: " + ex);
                 _stopSignal.Set();
             }
         }
@@ -201,7 +246,7 @@ namespace NetdeskAgent.WebRtcBridge
             {
                 var json = JObject.Parse(e.Data);
                 var type = (string)json["type"];
-                FileLogger.Info("Signaling poruka primljena: " + type);
+                Log("Signaling poruka primljena: " + type);
 
                 switch (type)
                 {
@@ -219,11 +264,11 @@ namespace NetdeskAgent.WebRtcBridge
                         // interno ponašanje, nije posebno provereno ovde).
                         if (_session.Start())
                         {
-                            FileLogger.Info("Capture+encoder pokrenuti, čekam ICE/DTLS konekciju.");
+                            Log("Capture+encoder pokrenuti, čekam ICE/DTLS konekciju.");
                         }
                         else
                         {
-                            FileLogger.Error("WebRtcSession.Start() neuspešan (capture ili enkoder inicijalizacija) - javljam 'failed'.", null);
+                            Log("WebRtcSession.Start() neuspešan (capture ili enkoder inicijalizacija) - javljam 'failed'.");
                             SendSignalingMessage(new JObject { ["type"] = "failed" });
                             _stopSignal.Set();
                         }
@@ -237,11 +282,11 @@ namespace NetdeskAgent.WebRtcBridge
                         });
                         break;
                     case "stop":
-                        FileLogger.Info("'stop' primljen od servera - gasim se.");
+                        Log("'stop' primljen od servera - gasim se.");
                         _stopSignal.Set();
                         break;
                     default:
-                        FileLogger.Warn("Nepoznat tip signaling poruke: " + type);
+                        Log("Nepoznat tip signaling poruke: " + type);
                         break;
                 }
             }

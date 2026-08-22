@@ -3,6 +3,7 @@ import {
   findVncSessionById,
   markVncSessionEnded,
   markVncSessionFallbackToRfb,
+  listWebrtcSignalingMessages,
 } from "../repositories/vncSessions.repo.js";
 import { insertJob } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
@@ -52,6 +53,22 @@ export async function startVncSessionService(agentId, requestedByUserId) {
 
   const session = await findVncSessionById(sessionId);
   return { ...session, vncPassword: VNC_SHARED_PASSWORD };
+}
+
+// Dijagnostički alat, dodat uživo - WebRtcBridge.exe (klijentska mašina)
+// šalje sopstvene {"type":"log"} poruke preko OVOG istog signaling kanala
+// (ne samo offer/ice/failed), pošto se lokalni FileLogger na toj mašini
+// uživo pokazao nepouzdanim (CreateProcessAsUser token bez učitanog
+// korisničkog profila - videti Program.cs napomenu). Backend već
+// bezuslovno snima svaku signaling poruku (persistMessage u
+// ws/webrtcSignaling.js, pre bilo kakvog grananja po tipu) - ovo je samo
+// čitanje tog već-postojećeg audit loga.
+export async function getWebrtcSignalingLogService(agentId, sessionId) {
+  const session = await findVncSessionById(sessionId);
+  if (!session || session.agentId !== agentId) {
+    throw notFound("VNC sesija nije pronađena");
+  }
+  return await listWebrtcSignalingMessages(sessionId);
 }
 
 export async function endVncSessionService(sessionId) {

@@ -33,6 +33,17 @@
         <span v-if="isFullscreen" class="text-xs text-slate-500 hidden sm:inline">
           Drži Esc da izađeš iz punog ekrana
         </span>
+        <!--
+          Dijagnostički log - čita vnc_webrtc_signaling audit tabelu preko
+          backend-a. Postoji jer se WebRtcBridge.exe-ov lokalni fajl log na
+          klijentskoj mašini uživo pokazao nepouzdanim (CreateProcessAsUser
+          token bez učitanog korisničkog profila) - agent sad iste poruke
+          šalje i preko signaling kanala, koji backend bezuslovno snima.
+          Bezbedno ukloniti kad se WebRTC put potvrdi pouzdanim.
+        -->
+        <AppButton v-if="sessionType" variant="neutral" :disabled="diagLogLoading" @click="toggleDiagLog">
+          {{ diagLogOpen ? 'Sakrij log' : 'Dijagnostički log' }}
+        </AppButton>
         <AppButton v-if="!viewOnly" variant="neutral" @click="pasteToRemote">
           Nalepi na udaljeni računar
         </AppButton>
@@ -42,6 +53,16 @@
         <AppButton variant="danger" :disabled="stopping" @click="stopAndClose">
           {{ stopping ? 'Zatvaram…' : 'Zatvori sesiju' }}
         </AppButton>
+      </div>
+    </div>
+
+    <div v-if="diagLogOpen" class="max-h-48 overflow-auto bg-slate-900 border-b border-slate-800 px-4 py-2 text-xs font-mono text-slate-300 space-y-0.5">
+      <div v-if="diagLogLoading">Učitavanje…</div>
+      <div v-else-if="!diagLog.length" class="text-slate-500">Nema zabeleženih poruka za ovu sesiju.</div>
+      <div v-for="(entry, i) in diagLog" :key="i" class="whitespace-pre-wrap break-all">
+        <span class="text-slate-500">{{ entry.createdAt }}</span>
+        <span :class="entry.direction === 'agent_to_viewer' ? 'text-emerald-400' : 'text-sky-400'">[{{ entry.direction }}]</span>
+        {{ entry.payload }}
       </div>
     </div>
 
@@ -115,6 +136,28 @@ const videoEl = ref(null)
 // prijavljenog remote_control_tier + vnc_webrtc_enabled flag-a, frontend
 // samo grana prema onome što odgovor kaže, nikad sam ne pogađa.
 const sessionType = ref(null)
+
+const diagLogOpen = ref(false)
+const diagLogLoading = ref(false)
+const diagLog = ref([])
+
+async function toggleDiagLog() {
+  diagLogOpen.value = !diagLogOpen.value
+  if (!diagLogOpen.value || !sessionId) return
+
+  diagLogLoading.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agents/${agentId}/vnc/${sessionId}/signaling-log`)
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju loga'))
+    const data = await res.json()
+    diagLog.value = data.items || []
+  } catch (e) {
+    console.error('Neuspešno učitan dijagnostički log', e)
+    showToast(e.message || 'Greška pri učitavanju loga', { prefix: '❌ ', duration: 3000 })
+  } finally {
+    diagLogLoading.value = false
+  }
+}
 
 let rfb = null
 let sessionId = null

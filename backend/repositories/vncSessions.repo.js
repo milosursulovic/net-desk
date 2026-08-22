@@ -68,3 +68,20 @@ export async function insertWebrtcSignalingMessage(sessionId, direction, payload
     [sessionId, direction, payload],
   );
 }
+
+// Čitanje ovog audit loga - dodato uživo kao dijagnostički alat (WebRtcBridge.exe
+// šalje sopstvene {"type":"log"} poruke preko ovog istog signaling kanala kad
+// lokalni FileLogger na klijentskoj mašini ispadne nepouzdan, videti Program.cs
+// napomenu na Log()). Redosled po created_at ASC - hronološki tok razmene.
+export async function listWebrtcSignalingMessages(sessionId) {
+  const [rows] = await pool.execute(
+    `
+    SELECT direction, payload, created_at AS createdAt
+    FROM vnc_webrtc_signaling
+    WHERE session_id = ?
+    ORDER BY created_at ASC, id ASC
+    `,
+    [sessionId],
+  );
+  return rows;
+}

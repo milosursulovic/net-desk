@@ -48,6 +48,28 @@ namespace NetdeskAgent.Common.Webrtc
         public event Action<RTCIceCandidate> OnIceCandidateGenerated;
         public event Action OnConnectionFailed;
 
+        // Dodatno uz FileLogger (koji zavisi od lokalnog fajl-sistema tog
+        // korisničkog profila - uživo se pokazalo nepouzdanim, videti
+        // Program.cs napomenu) - Program.cs se pretplaćuje na ovo i
+        // prosleđuje iste poruke preko signaling WS-a, koji backend već
+        // BEZUSLOVNO snima u vnc_webrtc_signaling tabelu (persistMessage u
+        // ws/webrtcSignaling.js, pre bilo kakvog grananja po tipu poruke) -
+        // pouzdaniji kanal za dijagnostiku od bilo čega lokalnog na
+        // klijentskoj mašini.
+        public event Action<string> OnDiagnostic;
+
+        private void Diag(string message)
+        {
+            FileLogger.Info(message);
+            try { OnDiagnostic?.Invoke(message); } catch { /* best effort */ }
+        }
+
+        private void DiagError(string message, Exception ex)
+        {
+            FileLogger.Error(message, ex);
+            try { OnDiagnostic?.Invoke("ERROR " + message + (ex == null ? "" : ": " + ex.Message)); } catch { /* best effort */ }
+        }
+
         public WebRtcSession()
         {
             _pc = new RTCPeerConnection();
@@ -67,7 +89,7 @@ namespace NetdeskAgent.Common.Webrtc
             // samo "failed"/"closed" su konačni.
             _pc.onconnectionstatechange += (state) =>
             {
-                FileLogger.Info("RTCPeerConnection stanje: " + state);
+                Diag("RTCPeerConnection stanje: " + state);
                 if (state == RTCPeerConnectionState.failed || state == RTCPeerConnectionState.closed)
                 {
                     OnConnectionFailed?.Invoke();
@@ -117,16 +139,16 @@ namespace NetdeskAgent.Common.Webrtc
         {
             if (!_capture.Initialize())
             {
-                FileLogger.Error("ScreenCapture.Initialize() neuspešan (ni DXGI ni GDI fallback nisu uspeli)", null);
+                DiagError("ScreenCapture.Initialize() neuspešan (ni DXGI ni GDI fallback nisu uspeli)", null);
                 return false;
             }
             if (!InitializeEncoder())
             {
-                FileLogger.Error("VP8 enkoder inicijalizacija neuspešna (vpx_codec_enc_config_default/enc_init)", null);
+                DiagError("VP8 enkoder inicijalizacija neuspešna (vpx_codec_enc_config_default/enc_init)", null);
                 return false;
             }
 
-            FileLogger.Info("Capture (" + _capture.Width + "x" + _capture.Height + ") + VP8 enkoder inicijalizovani, pokrećem capture petlju.");
+            Diag("Capture (" + _capture.Width + "x" + _capture.Height + ") + VP8 enkoder inicijalizovani, pokrećem capture petlju.");
             _captureLoopCts = new CancellationTokenSource();
             _captureLoopTask = Task.Run(() => CaptureLoop(_captureLoopCts.Token));
             return true;
@@ -192,7 +214,7 @@ namespace NetdeskAgent.Common.Webrtc
                     if (!_loggedFirstCaptureError)
                     {
                         _loggedFirstCaptureError = true;
-                        FileLogger.Error("Capture/encode ciklus greška (dalja ponavljanja se ne loguju)", ex);
+                        DiagError("Capture/encode ciklus greška (dalja ponavljanja se ne loguju)", ex);
                     }
                 }
 
