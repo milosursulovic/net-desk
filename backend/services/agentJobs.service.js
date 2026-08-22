@@ -16,6 +16,7 @@ import {
 } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
 import { computeConnectivityStatus } from "./agents.service.js";
+import { triggerFallback as triggerWebrtcFallback } from "../ws/webrtcSignaling.js";
 import { paginate } from "../utils/pagination.js";
 import { badRequest, notFound, conflict } from "../utils/httpError.js";
 
@@ -174,6 +175,19 @@ export async function submitJobResultService(agentId, jobId, dto) {
 
   if (!affected) {
     throw conflict("Zadatak je već obrađen");
+  }
+
+  // Poseban slučaj: start_webrtc_bridge može pasti PRE nego što
+  // WebRtcBridge.exe ikad uspe da se poveže na signaling kanal (npr. nema
+  // aktivne interaktivne sesije na mašini za SessionLauncher da pokrene
+  // most u nju - videti AgentWorker.RunWebRtcBridge). Taj neuspeh stiže
+  // OVDE (običan job-result endpoint), ne preko ws/webrtcSignaling.js's
+  // WS konekcije - zato pozivamo NJEGOV triggerFallback (ne
+  // vncSessions.service.js direktno) da i live viewer WS dobije "fallback"
+  // poruku, ne samo da se baza ažurira. Bez ovoga bi frontend ostao zauvek
+  // na "Povezujem", čekajući signaling poruku koja nikad ne bi stigla.
+  if (status === "failed" && job.commandType === "start_webrtc_bridge" && job.payload?.sessionId) {
+    await triggerWebrtcFallback(job.payload.sessionId).catch(() => {});
   }
 
   return await findJobById(jobId);

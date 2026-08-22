@@ -173,7 +173,15 @@ function persistMessage(sessionId, direction, raw) {
 // viewer sam odlučio da pređe na RFB pre nego što je start_vnc_bridge job
 // uopšte upisan), a agent dobija "stop" da WebRtcBridge.exe čisto izađe
 // umesto da ostane da visi na signaling konekciji bez ikoga na drugom kraju.
-async function triggerFallback(sessionId) {
+// Exported (ne samo lokalno korišćen ispod) - agentJobs.service.js ovo
+// poziva kad start_webrtc_bridge job PADNE pre nego što je WebRtcBridge.exe
+// ikad stigao da otvori signaling konekciju (npr. nema aktivne interaktivne
+// sesije za SessionLauncher - videti AgentWorker.RunWebRtcBridge). Taj
+// neuspeh stiže preko običnog job-result endpoint-a, ne preko ove WS veze,
+// pa bez ovog exporta triggerFallback ne bi ni saznao da treba da obavesti
+// viewer-a - ostao bi zauvek na "Povezujem" čekajući signaling poruku koja
+// nikad neće stići.
+export async function triggerFallback(sessionId) {
   await fallbackVncSessionToRfbService(sessionId).catch(() => {});
   const session = sessions.get(sessionId);
   if (session?.viewerSocket?.readyState === WebSocket.OPEN) {
