@@ -367,7 +367,7 @@ namespace NetdeskAgent.Service
                 // prihvatljivo ovde jer je ovo posvećena background nit, ne UI/
                 // dispatcher nit, a inventory sync se poziva retko
                 // (InventoryIntervalSeconds, podrazumevano 1h).
-                var request = InventoryCollector.Collect(Environment.MachineName, department: null, includeAvailableUpdates: true);
+                var request = InventoryCollector.Collect(Environment.MachineName, department: null, includeAvailableUpdates: true, serverBaseUrl: client.BaseUrl);
                 if (request == null)
                 {
                     // InventoryCollector je već ulogovao razlog (npr. nema IPv4 adrese).
@@ -636,7 +636,8 @@ namespace NetdeskAgent.Service
                 var request = InventoryCollector.Collect(
                     Environment.MachineName,
                     department: null,
-                    includeAvailableUpdates: commandType == "collect_inventory");
+                    includeAvailableUpdates: commandType == "collect_inventory",
+                    serverBaseUrl: client.BaseUrl);
 
                 if (request == null)
                 {

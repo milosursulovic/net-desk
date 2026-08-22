@@ -87,13 +87,13 @@
           title="Filter RDP/remote-access alata"
         />
 
-        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600 shrink-0" title="Folder C:\Izvolte pronađen na računaru">
+        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600 shrink-0" title="Folder C:\Izvolte NIJE pronađen na računaru">
           <input
             type="checkbox"
-            :checked="hasIzvolteFolder === 'true'"
-            @change="hasIzvolteFolder = hasIzvolteFolder === 'true' ? '' : 'true'"
+            :checked="missingIzvolteFolder === 'true'"
+            @change="missingIzvolteFolder = missingIzvolteFolder === 'true' ? '' : 'true'"
           />
-          Izvolte folder
+          Nema Izvolte folder
         </label>
 
         <select v-model="sortBy" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm">
@@ -388,7 +388,7 @@ const {
   os,
   osArchitecture,
   rdpApp,
-  hasIzvolteFolder,
+  missingIzvolteFolder,
   nextPage,
   prevPage,
 } = usePaginatedRoute({
@@ -408,7 +408,7 @@ const {
     os: { type: 'array', default: [] },
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
     rdpApp: { type: 'array', default: [] },
-    hasIzvolteFolder: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
+    missingIzvolteFolder: { type: 'string', default: '', omitIfEmpty: true, oneOf: ['', 'true'] },
   },
   resetPageOn: [
     'sortBy',
@@ -419,7 +419,7 @@ const {
     'os',
     'osArchitecture',
     'rdpApp',
-    'hasIzvolteFolder',
+    'missingIzvolteFolder',
   ],
 })
 
@@ -436,7 +436,7 @@ watch(
     os,
     osArchitecture,
     rdpApp,
-    hasIzvolteFolder,
+    missingIzvolteFolder,
     site,
   ],
   fetchData,
@@ -482,7 +482,7 @@ const activeFilterCount = computed(() => {
   if (os.value.length) n++
   if (osArchitecture.value) n++
   if (rdpApp.value.length) n++
-  if (hasIzvolteFolder.value) n++
+  if (missingIzvolteFolder.value) n++
   return n
 })
 
@@ -518,7 +518,7 @@ async function fetchData() {
   os.value.forEach((v) => params.append('os', v))
   if (osArchitecture.value) params.set('osArchitecture', osArchitecture.value)
   rdpApp.value.forEach((v) => params.append('rdpApp', v))
-  if (hasIzvolteFolder.value) params.set('hasIzvolteFolder', hasIzvolteFolder.value)
+  if (missingIzvolteFolder.value) params.set('missingIzvolteFolder', missingIzvolteFolder.value)
 
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses?${params.toString()}`)

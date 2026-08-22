@@ -129,8 +129,8 @@ export async function insertIpEntry(row) {
   const [result] = await pool.execute(
     `
     INSERT INTO ip_entries
-      (ip, ip_numeric, computer_name, rdp_app, os, os_architecture, has_izvolte_folder, department, site, description, entry_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ip, ip_numeric, computer_name, rdp_app, os, os_architecture, has_izvolte_folder, department, site, description, entry_type, trusted_root_cert_installed, intermediate_cert_installed, secure_dns_disabled)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       row.ip,
@@ -144,6 +144,9 @@ export async function insertIpEntry(row) {
       row.site ?? null,
       row.description,
       row.entryType ?? null,
+      row.trustedRootCertInstalled === undefined || row.trustedRootCertInstalled === null ? null : (row.trustedRootCertInstalled ? 1 : 0),
+      row.intermediateCertInstalled === undefined || row.intermediateCertInstalled === null ? null : (row.intermediateCertInstalled ? 1 : 0),
+      row.secureDnsDisabled === undefined || row.secureDnsDisabled === null ? null : (row.secureDnsDisabled ? 1 : 0),
     ],
   );
   return result.insertId;
@@ -178,7 +181,7 @@ export async function listIpEntries({
   rdpApp,
   site,
   pendingRepack,
-  hasIzvolteFolder,
+  missingIzvolteFolder,
 }) {
   const base = buildFastSearchSql(search || "");
 
@@ -242,7 +245,10 @@ export async function listIpEntries({
   if (status === "offline") whereListParts.push("is_online = 0");
 
   if (pendingRepack) whereListParts.push("pending_repack = 1");
-  if (hasIzvolteFolder) whereListParts.push("has_izvolte_folder = 1");
+  // "Nema Izvolte folder" grupiše potvrđeno odsutno (0) i nikad provereno
+  // (NULL, npr. minimalni sync koji ne dodiruje ovo polje) - oba su isto
+  // akciono stanje za admina.
+  if (missingIzvolteFolder) whereListParts.push("(has_izvolte_folder = 0 OR has_izvolte_folder IS NULL)");
 
   const whereListSql = whereListParts.length
     ? `WHERE ${whereListParts.join(" AND ")}`

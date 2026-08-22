@@ -18,7 +18,7 @@ namespace NetdeskAgent.Common.Inventory
     /// </summary>
     public static class InventoryCollector
     {
-        public static InventoryRequest Collect(string hostname, string department, bool includeAvailableUpdates)
+        public static InventoryRequest Collect(string hostname, string department, bool includeAvailableUpdates, string serverBaseUrl)
         {
             var request = new InventoryRequest
             {
@@ -27,6 +27,9 @@ namespace NetdeskAgent.Common.Inventory
                 Department = department,
                 HasIzvolteFolder = SafeCollect(() => Directory.Exists(@"C:\Izvolte"), "Izvolte folder"),
                 ServiceFiles = SafeCollect(CollectServiceFiles, "Service folder fajlovi"),
+                TrustedRootCertInstalled = SafeCollect(() => SecurityPostureCollector.CheckTrustedRootCertInstalled(serverBaseUrl), "Trusted Root sertifikat"),
+                IntermediateCertInstalled = SafeCollect(() => SecurityPostureCollector.CheckIntermediateCertInstalled(serverBaseUrl), "Intermediate sertifikat"),
+                SecureDnsDisabled = SafeCollect(SecurityPostureCollector.CheckSecureDnsDisabled, "Secure DNS stanje"),
             };
 
             if (string.IsNullOrEmpty(request.Ip))

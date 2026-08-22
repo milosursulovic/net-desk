@@ -81,7 +81,10 @@ export const ListSchema = z.object({
   // Isti obrazac kao pendingRepack ispod - query string uvek stiže kao
   // string, pa se eksplicitno poredi sa "istinitim" vrednostima umesto
   // z.coerce.boolean() (koje bi tretiralo i "0"/"false" kao true).
-  hasIzvolteFolder: z
+  // Filtrira ko NEMA Izvolte folder (ne ko ga ima) - to je akciono stanje za
+  // admina (treba doterati tu mašinu), za razliku od "ima ga" koje ne
+  // zahteva nikakvu akciju.
+  missingIzvolteFolder: z
     .string()
     .optional()
     .transform((v) => v === "1" || v === "true"),

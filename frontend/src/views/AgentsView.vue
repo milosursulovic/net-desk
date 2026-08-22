@@ -79,6 +79,39 @@
             <option value="false">Nema novi Manager</option>
           </select>
 
+          <select
+            v-model="trustedRootCertInstalled"
+            class="app-input w-auto max-w-full min-w-0 truncate"
+            aria-label="Filter po Trusted Root sertifikatu"
+            title="cert_CA_SSL_DECRIPT_BOR.crt u Local Machine Trusted Root store-u"
+          >
+            <option value="">Svi (Trusted Root sertifikat)</option>
+            <option value="true">Ima Trusted Root sertifikat</option>
+            <option value="false">Nema Trusted Root sertifikat</option>
+          </select>
+
+          <select
+            v-model="intermediateCertInstalled"
+            class="app-input w-auto max-w-full min-w-0 truncate"
+            aria-label="Filter po Intermediate sertifikatu"
+            title="cert_SSL_TRUST.crt u Local Machine Intermediate store-u"
+          >
+            <option value="">Svi (Intermediate sertifikat)</option>
+            <option value="true">Ima Intermediate sertifikat</option>
+            <option value="false">Nema Intermediate sertifikat</option>
+          </select>
+
+          <select
+            v-model="secureDnsDisabled"
+            class="app-input w-auto max-w-full min-w-0 truncate"
+            aria-label="Filter po Secure DNS stanju"
+            title="Da li je Secure DNS (DoH) isključen preko registry politike na Chrome/Edge/Brave/Firefox"
+          >
+            <option value="">Svi (Secure DNS)</option>
+            <option value="true">Secure DNS isključen</option>
+            <option value="false">Secure DNS uključen/nepoznat</option>
+          </select>
+
           <MultiSelect
             v-model="deploymentGroup"
             :options="deploymentGroupOptions"
@@ -539,6 +572,9 @@ const {
   noDeploymentGroup,
   remoteControlTier,
   hasManagerChannel,
+  trustedRootCertInstalled,
+  intermediateCertInstalled,
+  secureDnsDisabled,
   nextPage,
   prevPage,
   applyServerPagination,
@@ -561,6 +597,24 @@ const {
       oneOf: ['', 'rfb_only', 'webrtc_capable'],
     },
     hasManagerChannel: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', 'true', 'false'],
+    },
+    trustedRootCertInstalled: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', 'true', 'false'],
+    },
+    intermediateCertInstalled: {
+      type: 'string',
+      default: '',
+      omitIfEmpty: true,
+      oneOf: ['', 'true', 'false'],
+    },
+    secureDnsDisabled: {
       type: 'string',
       default: '',
       omitIfEmpty: true,
@@ -612,6 +666,9 @@ const {
     'noDeploymentGroup',
     'remoteControlTier',
     'hasManagerChannel',
+    'trustedRootCertInstalled',
+    'intermediateCertInstalled',
+    'secureDnsDisabled',
   ],
   useReplace: true,
 })
@@ -643,6 +700,9 @@ watch(
     noDeploymentGroup,
     remoteControlTier,
     hasManagerChannel,
+    trustedRootCertInstalled,
+    intermediateCertInstalled,
+    secureDnsDisabled,
     site,
   ],
   fetchData,
@@ -698,6 +758,9 @@ const activeDetailedFilterCount = computed(() => {
   if (noDeploymentGroup.value) n++
   if (remoteControlTier.value) n++
   if (hasManagerChannel.value) n++
+  if (trustedRootCertInstalled.value) n++
+  if (intermediateCertInstalled.value) n++
+  if (secureDnsDisabled.value) n++
   return n
 })
 
@@ -740,6 +803,9 @@ function clearDetailedFilters() {
   noDeploymentGroup.value = ''
   remoteControlTier.value = ''
   hasManagerChannel.value = ''
+  trustedRootCertInstalled.value = ''
+  intermediateCertInstalled.value = ''
+  secureDnsDisabled.value = ''
 }
 
 // Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
@@ -770,6 +836,9 @@ function buildFilterParams() {
   if (noDeploymentGroup.value) params.set('noDeploymentGroup', noDeploymentGroup.value)
   if (remoteControlTier.value) params.set('remoteControlTier', remoteControlTier.value)
   if (hasManagerChannel.value) params.set('hasManagerChannel', hasManagerChannel.value)
+  if (trustedRootCertInstalled.value) params.set('trustedRootCertInstalled', trustedRootCertInstalled.value)
+  if (intermediateCertInstalled.value) params.set('intermediateCertInstalled', intermediateCertInstalled.value)
+  if (secureDnsDisabled.value) params.set('secureDnsDisabled', secureDnsDisabled.value)
   return params
 }
 

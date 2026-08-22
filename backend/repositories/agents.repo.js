@@ -169,6 +169,9 @@ function buildAgentsWhereClause({
   noDeploymentGroup,
   remoteControlTier,
   hasManagerChannel,
+  trustedRootCertInstalled,
+  intermediateCertInstalled,
+  secureDnsDisabled,
 }) {
   const searchClause = buildLikeSearch(["agents.hostname", "agents.agent_uid"], search);
   const whereParts = [];
@@ -304,6 +307,26 @@ function buildAgentsWhereClause({
     whereParts.push(
       "NOT EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active')",
     );
+  }
+  // Sertifikati i Secure DNS stanje žive na ip_entries (SecurityPostureCollector.cs
+  // preko inventory sync-a) - false grupiše "potvrđeno odsutno" (0) i
+  // "nikad provereno" (NULL) u isti "nema ga" rezultat, jer je admin-u
+  // podjednako akciono i jedno i drugo (mašina koju treba doterati), za
+  // razliku od hasManagerChannel iznad gde NULL/EXISTS razlika ne postoji.
+  if (trustedRootCertInstalled === true) {
+    whereParts.push("ie.trusted_root_cert_installed = 1");
+  } else if (trustedRootCertInstalled === false) {
+    whereParts.push("(ie.trusted_root_cert_installed = 0 OR ie.trusted_root_cert_installed IS NULL)");
+  }
+  if (intermediateCertInstalled === true) {
+    whereParts.push("ie.intermediate_cert_installed = 1");
+  } else if (intermediateCertInstalled === false) {
+    whereParts.push("(ie.intermediate_cert_installed = 0 OR ie.intermediate_cert_installed IS NULL)");
+  }
+  if (secureDnsDisabled === true) {
+    whereParts.push("ie.secure_dns_disabled = 1");
+  } else if (secureDnsDisabled === false) {
+    whereParts.push("(ie.secure_dns_disabled = 0 OR ie.secure_dns_disabled IS NULL)");
   }
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";

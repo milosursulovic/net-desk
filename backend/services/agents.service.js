@@ -165,6 +165,9 @@ export async function listAgentsService({
   noDeploymentGroup,
   remoteControlTier,
   hasManagerChannel,
+  trustedRootCertInstalled,
+  intermediateCertInstalled,
+  secureDnsDisabled,
 }) {
   const offset = (page - 1) * limit;
   const { items, total } = await listAgents({
@@ -192,6 +195,9 @@ export async function listAgentsService({
     noDeploymentGroup,
     remoteControlTier,
     hasManagerChannel,
+    trustedRootCertInstalled,
+    intermediateCertInstalled,
+    secureDnsDisabled,
     limit,
     offset,
   });
@@ -404,6 +410,29 @@ function extractServiceFiles(body) {
     .filter((f) => f.path && Number.isFinite(f.size));
 }
 
+// trustedRootCertInstalled/intermediateCertInstalled/secureDnsDisabled su
+// nullable na C# strani (SecurityPostureCollector.cs) isto kao
+// hasIzvolteFolder iznad - undefined kad polje nije poslato ("ne diraj
+// postojeću vrednost"), a i kad JESTE poslato, null je legitiman odgovor
+// (provera nije mogla da se izvrši ovog ciklusa, npr. server sa referentnim
+// sertifikatom nedostupan) - za razliku od hasIzvolteFolder, ovde se null
+// eksplicitno čuva u bazi umesto da se svede na false, jer "nije provereno"
+// i "potvrđeno odsutno" moraju ostati razlučivi.
+function extractTrustedRootCertInstalled(body) {
+  if (body?.trustedRootCertInstalled === undefined) return undefined;
+  return body.trustedRootCertInstalled === null ? null : Boolean(body.trustedRootCertInstalled);
+}
+
+function extractIntermediateCertInstalled(body) {
+  if (body?.intermediateCertInstalled === undefined) return undefined;
+  return body.intermediateCertInstalled === null ? null : Boolean(body.intermediateCertInstalled);
+}
+
+function extractSecureDnsDisabled(body) {
+  if (body?.secureDnsDisabled === undefined) return undefined;
+  return body.secureDnsDisabled === null ? null : Boolean(body.secureDnsDisabled);
+}
+
 // Pretpostavlja lokaciju po IP opsegu SAMO za potpuno nov unos (prvi put
 // vidimo tu IP adresu) - ne dira site na već postojećem unosu, jer ga je
 // admin mogao ručno ispraviti (npr. laptop koji je fizički prenet, ali još
@@ -459,6 +488,24 @@ async function resolveIpEntryId(agent, body) {
       params.push(hasIzvolteFolder ? 1 : 0);
     }
 
+    const trustedRootCertInstalled = extractTrustedRootCertInstalled(body);
+    if (trustedRootCertInstalled !== undefined) {
+      sets.push("trusted_root_cert_installed = ?");
+      params.push(trustedRootCertInstalled === null ? null : (trustedRootCertInstalled ? 1 : 0));
+    }
+
+    const intermediateCertInstalled = extractIntermediateCertInstalled(body);
+    if (intermediateCertInstalled !== undefined) {
+      sets.push("intermediate_cert_installed = ?");
+      params.push(intermediateCertInstalled === null ? null : (intermediateCertInstalled ? 1 : 0));
+    }
+
+    const secureDnsDisabled = extractSecureDnsDisabled(body);
+    if (secureDnsDisabled !== undefined) {
+      sets.push("secure_dns_disabled = ?");
+      params.push(secureDnsDisabled === null ? null : (secureDnsDisabled ? 1 : 0));
+    }
+
     await updateIpEntryPatch(agent.ipEntryId, sets.join(", "), params);
     return agent.ipEntryId;
   }
@@ -477,6 +524,9 @@ async function resolveIpEntryId(agent, body) {
       site: inferSiteFromIp(body.ip),
       description: null,
       entryType: "computer",
+      trustedRootCertInstalled: extractTrustedRootCertInstalled(body) ?? null,
+      intermediateCertInstalled: extractIntermediateCertInstalled(body) ?? null,
+      secureDnsDisabled: extractSecureDnsDisabled(body) ?? null,
     });
   }
 

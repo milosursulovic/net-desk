@@ -48,6 +48,37 @@ namespace NetdeskAgent.Common.Inventory
         [JsonProperty("serviceFiles")]
         public List<InstalledFileItem> ServiceFiles { get; set; }
 
+        /// <summary>
+        /// Da li je org-specifičan "CA_SSL_DECRIPT_BOR" root sertifikat
+        /// (cert_CA_SSL_DECRIPT_BOR.crt, uporeduje se po Thumbprint-u sa
+        /// referentnim fajlom preuzetim sa /uploads/downloads/) instaliran u
+        /// Local Machine "Trusted Root Certification Authorities" store-u.
+        /// Nullable iz istog razloga kao HasIzvolteFolder - null kad provera
+        /// nije mogla da se izvrši (npr. server nedostupan), ne "sigurno
+        /// nedostaje". Videti SecurityPostureCollector.cs.
+        /// </summary>
+        [JsonProperty("trustedRootCertInstalled")]
+        public bool? TrustedRootCertInstalled { get; set; }
+
+        /// <summary>
+        /// Isto kao TrustedRootCertInstalled, samo za "SSL_TRUST" sertifikat
+        /// (cert_SSL_TRUST.crt) u Local Machine "Intermediate Certification
+        /// Authorities" store-u.
+        /// </summary>
+        [JsonProperty("intermediateCertInstalled")]
+        public bool? IntermediateCertInstalled { get; set; }
+
+        /// <summary>
+        /// Da li je Secure DNS (DNS-over-HTTPS) potvrđeno isključen preko
+        /// registry politike na SVA četiri pregledača koje
+        /// "Isključi Secure DNS" preset podešava (Chrome/Edge/Brave/Firefox) -
+        /// true samo ako su SVE četiri provere potvrdile isključeno stanje,
+        /// inače false (ne null - registry čitanje nema mrežnu zavisnost,
+        /// uvek daje određen odgovor). Videti SecurityPostureCollector.cs.
+        /// </summary>
+        [JsonProperty("secureDnsDisabled")]
+        public bool? SecureDnsDisabled { get; set; }
+
         [JsonProperty("OS")]
         public OsInfo Os { get; set; }
 

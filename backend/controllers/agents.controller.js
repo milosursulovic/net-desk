@@ -123,6 +123,12 @@ function parseAgentListFilters(query) {
       : undefined,
     hasManagerChannel:
       query.hasManagerChannel === "true" ? true : query.hasManagerChannel === "false" ? false : undefined,
+    trustedRootCertInstalled:
+      query.trustedRootCertInstalled === "true" ? true : query.trustedRootCertInstalled === "false" ? false : undefined,
+    intermediateCertInstalled:
+      query.intermediateCertInstalled === "true" ? true : query.intermediateCertInstalled === "false" ? false : undefined,
+    secureDnsDisabled:
+      query.secureDnsDisabled === "true" ? true : query.secureDnsDisabled === "false" ? false : undefined,
   };
 }
 
