@@ -1,4 +1,10 @@
 // Mora da se poklapa sa backend-ovim COMMAND_TYPES (dtos/agentJobs.dto.js).
+// start_netdesk_agent/stop_netdesk_agent/restart_netdesk_agent namerno NISU
+// ovde (backend i dalje prihvata te tipove, samo se ne nude ovde) - bile su
+// puki alias za restart_service/start_service/stop_service sa
+// payload.serviceName="NetdeskAgent", i zbunjivale su korisnika sad kad
+// AgentDetailView.vue ima poseban "Manager" tab sa istom svrhom preko
+// stvarno nezavisnog kanala.
 export const COMMAND_TYPES = [
   'restart_computer',
   'shutdown_computer',
@@ -6,9 +12,6 @@ export const COMMAND_TYPES = [
   'restart_service',
   'start_service',
   'stop_service',
-  'start_netdesk_agent',
-  'stop_netdesk_agent',
-  'restart_netdesk_agent',
   'run_powershell_script',
   'collect_inventory',
   'refresh_software_list',
@@ -22,9 +25,6 @@ export const COMMAND_LABELS = {
   restart_service: 'Restart servisa',
   start_service: 'Pokretanje servisa',
   stop_service: 'Zaustavljanje servisa',
-  start_netdesk_agent: 'Pokreni NetdeskAgent (preko Manager-a)',
-  stop_netdesk_agent: 'Zaustavi NetdeskAgent (preko Manager-a)',
-  restart_netdesk_agent: 'Restartuj NetdeskAgent (preko Manager-a)',
   run_powershell_script: 'PowerShell skripta',
   collect_inventory: 'Prikupljanje inventara',
   refresh_software_list: 'Osvežavanje softverske liste',

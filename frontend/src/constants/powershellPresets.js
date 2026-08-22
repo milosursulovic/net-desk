@@ -792,33 +792,6 @@ export const POWERSHELL_PRESETS = [
       '}',
   },
   {
-    id: 'restart-netdesk-agent-deferred',
-    label: 'Restartuj NetdeskAgent servis (odloženo, bezbedno)',
-    // Restartovanje servisa iz JOBA KOJI TAJ ISTI SERVIS IZVRŠAVA ne sme da
-    // ide preko obične ServiceController.Restart logike (restart_service
-    // komanda) - agent bi ubio sam sebe pre nego što stigne da prijavi
-    // rezultat serveru, pa bi job ostao zauvek zaglavljen na "sent". Umesto
-    // toga, Start-Process (bez -Wait) samo pokrene odvojen, "siroče" proces
-    // i odmah se vrati - ovaj PowerShell proces (koji job čeka) se završi za
-    // par milisekundi, job se prijavi kao uspešan, a stvarni restart se desi
-    // tek 5 sekundi kasnije, potpuno nezavisno od agent procesa koji ga je
-    // pokrenuo.
-    //
-    // Restart-Service (PowerShell cmdlet, ide direktno kroz SCM API) umesto
-    // cmd.exe + "net stop X & net start X" - uživo otkriveno da mrežni IPS/
-    // EDR na putu ka statičkoj javnoj IP adresi resetuje konekciju čim telo
-    // zahteva sadrži baš taj obrazac (skriveni cmd.exe koji gasi-pa-pali
-    // servis - klasičan potpis za "gašenje bezbednosnog agenta"), dok isti
-    // zahtev sa bilo kojim drugim sadržajem prolazi normalno. Restart-Service
-    // ne spawn-uje cmd.exe/net.exe uopšte, pa ne nosi taj potpis - ali ovo je
-    // zaobilaženje simptoma, ne rešenje osnovnog uzroka; IPS/firewall na toj
-    // lokaciji i dalje treba izuzetak za port 3000 od strane IT-a.
-    script:
-      'Start-Process -FilePath "powershell.exe" `\n' +
-      '  -ArgumentList \'-NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 5; Restart-Service -Name NetdeskAgent -Force"\' `\n' +
-      '  -WindowStyle Hidden',
-  },
-  {
     id: 'install-netdesk-agent-manager',
     label: 'Instaliraj/ažuriraj NetdeskAgent Manager servis',
     // Bootstrap rollout za NetdeskAgentManager (nov, nezavisan servis - vidi

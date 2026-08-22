@@ -315,7 +315,22 @@
           </div>
         </div>
 
-        <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
+        <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
+        <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
+        <div v-for="u in updateLog" :key="u.id" class="rounded-lg border bg-white p-3 text-sm">
+          <div class="flex items-center justify-between">
+            <div>{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</div>
+            <span class="rounded-full border px-2 py-0.5 text-xs" :class="u.success ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'">
+              {{ u.success ? 'Uspešno' : 'Neuspešno' }}
+            </span>
+          </div>
+          <div v-if="u.reason" class="text-xs text-slate-600 mt-1">{{ u.reason }}</div>
+          <div class="text-xs text-slate-400 mt-1">{{ fmtDate(u.reportedAt) }}</div>
+        </div>
+      </div>
+
+      <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
+      <div v-else-if="tab === 'manager'" class="space-y-3">
         <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-2">
           <div class="text-sm font-medium text-indigo-900">Netdesk Agent Manager (nezavisni kanal)</div>
           <p class="text-xs text-indigo-800">
@@ -363,6 +378,10 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-2">
+              <select v-model="selectedReleaseId" class="app-input w-full sm:w-64 text-sm">
+                <option value="">— Izaberi verziju —</option>
+                <option v-for="r in activeReleaseOptions" :key="r.id" :value="r.id">{{ r.version }}</option>
+              </select>
               <AppButton
                 variant="neutral"
                 :disabled="!selectedReleaseId || installingViaManager"
@@ -372,19 +391,6 @@
               </AppButton>
             </div>
           </template>
-        </div>
-
-        <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
-        <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
-        <div v-for="u in updateLog" :key="u.id" class="rounded-lg border bg-white p-3 text-sm">
-          <div class="flex items-center justify-between">
-            <div>{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</div>
-            <span class="rounded-full border px-2 py-0.5 text-xs" :class="u.success ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'">
-              {{ u.success ? 'Uspešno' : 'Neuspešno' }}
-            </span>
-          </div>
-          <div v-if="u.reason" class="text-xs text-slate-600 mt-1">{{ u.reason }}</div>
-          <div class="text-xs text-slate-400 mt-1">{{ fmtDate(u.reportedAt) }}</div>
         </div>
       </div>
 
@@ -495,8 +501,8 @@ async function fetchDeploymentGroupOptions() {
   }
 }
 
-const TAB_NAMES = ['screen', 'jobs', 'updates', 'events', 'dns']
-const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', events: 'Event Log', dns: 'DNS' }
+const TAB_NAMES = ['screen', 'jobs', 'updates', 'manager', 'events', 'dns']
+const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', manager: 'Manager', events: 'Event Log', dns: 'DNS' }
 
 const { tab } = usePaginatedRoute({
   fields: { tab: { type: 'string', default: 'jobs', oneOf: TAB_NAMES } },
