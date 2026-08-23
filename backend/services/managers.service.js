@@ -4,13 +4,10 @@ import { emptyToNull } from "../utils/strings.js";
 import { ipToNumeric } from "../utils/ip.js";
 import {
   insertManager,
-  findManagerByUid,
   findManagerById,
   findManagerByIpEntryId,
   updateHeartbeat,
   linkManagerToIpEntry,
-  revokeManagerById,
-  deleteManagerById,
 } from "../repositories/managers.repo.js";
 import { findIpEntryIdByIp, insertIpEntry } from "../repositories/ipEntries.repo.js";
 import { computeConnectivityStatus, inferSiteFromIp } from "./agents.service.js";
@@ -114,19 +111,3 @@ export async function getManagerByIpEntryId(ipEntryId) {
   };
 }
 
-export async function revokeManagerService(id) {
-  const affected = await revokeManagerById(id);
-  if (!affected) {
-    throw notFound("Manager nije pronađen");
-  }
-  return await findManagerById(id);
-}
-
-export async function deleteManagerService(id) {
-  const manager = await findManagerById(id);
-  if (!manager) {
-    throw notFound("Manager nije pronađen");
-  }
-  await deleteManagerById(id);
-  return { success: true };
-}

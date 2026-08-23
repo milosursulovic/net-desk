@@ -67,9 +67,6 @@ namespace NetdeskAgent.Common.Webrtc
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private const uint KEYEVENTF_SCANCODE = 0x0008;
 
-        private const int SM_CXSCREEN = 0;
-        private const int SM_CYSCREEN = 1;
-
         /// <summary>
         /// normX/normY su [0,1] preko cele virtuelne ekranske površine.
         /// MOUSEEVENTF_ABSOLUTE traži koordinate skalirane na 0-65535 opseg

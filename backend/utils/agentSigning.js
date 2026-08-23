@@ -41,11 +41,6 @@ function load() {
   cachedKeyPem = fs.readFileSync(AGENT_SIGNING_KEY_PATH, "utf8");
 }
 
-export function isSigningConfigured() {
-  load();
-  return !!(cachedCertPem && cachedKeyPem);
-}
-
 export function signBuffer(buffer) {
   load();
   if (!cachedKeyPem) return null;

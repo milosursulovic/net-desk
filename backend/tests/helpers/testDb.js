@@ -66,17 +66,3 @@ export async function deleteTestUser(id) {
   if (!id) return;
   await pool.execute("DELETE FROM users WHERE id = ?", [id]);
 }
-
-export async function assertNoLeakedTestData() {
-  const [[{ cnt: agentCnt }]] = await pool.query(
-    "SELECT COUNT(*) AS cnt FROM agents WHERE hostname LIKE 'VITEST_TEST_%'",
-  );
-  const [[{ cnt: ipCnt }]] = await pool.query(
-    "SELECT COUNT(*) AS cnt FROM ip_entries WHERE ip LIKE '203.0.113.%'",
-  );
-  if (agentCnt > 0 || ipCnt > 0) {
-    throw new Error(
-      `Leaked test data: ${agentCnt} agents, ${ipCnt} ip_entries still present`,
-    );
-  }
-}
