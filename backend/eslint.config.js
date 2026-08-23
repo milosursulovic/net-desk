@@ -1,6 +1,6 @@
 import js from "@eslint/js";
 import importPlugin from "eslint-plugin-import";
-import sonarjs from "eslint-plugin-sonarjs";
+import globals from "globals";
 
 export default [
   js.configs.recommended,
@@ -9,11 +9,11 @@ export default [
     files: ["**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module"
+      sourceType: "module",
+      globals: globals.node
     },
     plugins: {
-      import: importPlugin,
-      sonarjs
+      import: importPlugin
     },
     rules: {
       // neiskorišćene varijable i funkcije
@@ -25,10 +25,6 @@ export default [
 
       // neiskorišćeni exporti
       "import/no-unused-modules": ["warn", { unusedExports: true }],
-
-      // sonarjs dead code & smells
-      "sonarjs/no-unused-collection": "warn",
-      "sonarjs/no-identical-functions": "warn",
 
       // bonus
       "no-unreachable": "warn",
