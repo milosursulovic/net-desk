@@ -158,10 +158,9 @@ export async function countBlacklistedDomainHits(hours = 24, site) {
     `
     SELECT COUNT(DISTINCT cdq.ip_entry_id) AS cnt
     FROM computer_dns_queries cdq
-    JOIN flagged_domains fd
-      ON ${FLAGGED_DOMAIN_MATCH_SQL}
     ${site ? "JOIN ip_entries ie ON ie.id = cdq.ip_entry_id" : ""}
     WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
+      AND ${FLAGGED_DOMAIN_MATCH_SQL}
       ${site ? "AND ie.site = ?" : ""}
     `,
     [hours, ...(site ? [site] : [])],
@@ -169,9 +168,23 @@ export async function countBlacklistedDomainHits(hours = 24, site) {
   return Number(cnt) || 0;
 }
 
-// Isti JOIN/vremenski-prozor obrazac kao countBlacklistedDomainHits iznad,
-// samo vraća redove (koji računar, koji domen) umesto samo broja - za
-// dnevni izveštaj, gde je bitno i ŠTA je posećeno, ne samo koliko računara.
+// Isti vremenski-prozor obrazac kao countBlacklistedDomainHits iznad, samo
+// vraća redove (koji računar, koji domen) umesto samo broja - za dnevni
+// izveštaj, gde je bitno i ŠTA je posećeno, ne samo koliko računara.
+//
+// FLAGGED_DOMAIN_MATCH_SQL je NAMERNO u WHERE, ne u JOIN ... ON kao pre -
+// to je bio produkcioni OOM bug (uživo pogodio 2026-08-13, kad je
+// flagged_domains skočio sa ~200 na ~88900 redova bulk-importom). Izraz je
+// skup SAMOSTALNIH korelisanih EXISTS podupita (svaki definiše SVOJ
+// lokalni "fd" alias, ne referencira spoljni join), pa "JOIN flagged_domains
+// fd ON <izraz>" nikad nije stvarno zavisio od TOG konkretnog fd reda -
+// MySQL ga je efektivno tretirao kao konstantu po cdq redu, proizvodeći
+// puni unakrsni proizvod (matched_cdq_rows × SVI redovi flagged_domains)
+// umesto filtriranja. Sa 147 pogodaka × 88863 flagged_domains, to je ~13
+// miliona redova koje je mysql2 pokušao da materijalizuje u JS objekte -
+// dovoljno da obori Node heap. WHERE izraz je već sam po sebi kompletan
+// filter (EXISTS podupiti), nikakav spoljni JOIN na flagged_domains nije
+// potreban - SELECT lista ovde nikad i nije čitala nijednu fd.* kolonu.
 export async function listBlacklistedDomainHits(hours = 24, site) {
   const [rows] = await pool.execute(
     `
@@ -184,10 +197,9 @@ export async function listBlacklistedDomainHits(hours = 24, site) {
       ie.computer_name AS computerName,
       ie.department
     FROM computer_dns_queries cdq
-    JOIN flagged_domains fd
-      ON ${FLAGGED_DOMAIN_MATCH_SQL}
     JOIN ip_entries ie ON ie.id = cdq.ip_entry_id
     WHERE cdq.last_seen >= NOW() - INTERVAL ? HOUR
+      AND ${FLAGGED_DOMAIN_MATCH_SQL}
       ${site ? "AND ie.site = ?" : ""}
     ORDER BY cdq.last_seen DESC
     `,
