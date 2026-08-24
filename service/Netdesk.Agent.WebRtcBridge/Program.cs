@@ -173,11 +173,24 @@ namespace NetdeskAgent.WebRtcBridge
             _session.OnDiagnostic += msg => Log(msg);
             _session.OnIceCandidateGenerated += candidate =>
             {
-                Log("ICE kandidat generisan (" + candidate.candidate + ") - šaljem signaling.");
+                // SIPSorcery-ov RTCIceCandidate.candidate je bukvalno alias za
+                // ToString() (public string candidate => ToString();) - VRAĆA
+                // SAMO sirovu SDP atributsku vrednost, BEZ vodećeg "candidate:"
+                // tokena. W3C RTCIceCandidateInit.candidate zahteva taj token
+                // (isto što i standardni "a=candidate:..." SDP red, samo bez
+                // "a=" dela) - SIPSorcery sam to ispravno radi u sopstvenom
+                // ToJson()/toJSON()-u ($"{CANDIDATE_PREFIX}:{this}"), ali mi smo
+                // ranije slali .candidate direktno, bez prefiksa. Uživo
+                // potvrđeno preko chrome://webrtc-internals dump-a 2026-08-24:
+                // browser je odbijao SVAKI kandidat (addIceCandidateFailed) jer
+                // nije mogao da parsira string bez "candidate:" prefiksa - ICE
+                // provera nikad nije ni počela.
+                var candidateString = "candidate:" + candidate.candidate;
+                Log("ICE kandidat generisan (" + candidateString + ") - šaljem signaling.");
                 SendSignalingMessage(new JObject
                 {
                     ["type"] = "ice",
-                    ["candidate"] = candidate.candidate,
+                    ["candidate"] = candidateString,
                     ["sdpMid"] = candidate.sdpMid,
                     ["sdpMLineIndex"] = candidate.sdpMLineIndex,
                 });
