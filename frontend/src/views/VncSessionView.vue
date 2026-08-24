@@ -273,14 +273,20 @@ function startRfb(session) {
     })
 }
 
-// Namerno BEZ iceServers (nema ni javnog STUN-a) - TURN infrastruktura je
-// van dosega ove promene (vidi plan, Faza 4 pominje TURN kao pretpostavku
-// koja tek treba da se postavi). Bez toga, ICE gathering daje samo host
-// kandidate (isti lokalni segment) - u praksi će ovo raditi samo kad su
-// admin i target mašina na istoj mreži dok TURN ne postoji, ne preko NAT-a.
-// Ograničenje je namerno ostavljeno vidljivim ovde umesto tiho zaobiđeno.
+// Javni STUN server (Google) - dodat 2026-08-24 pošto je uživo potvrđeno da
+// bez njega ICE gathering daje SAMO host kandidate (lokalna LAN adresa),
+// koja nije rutabilna preko interneta - viewer izvan interne mreže je video
+// requestsSent da raste dok je responsesReceived ostajalo 0 zauvek. STUN
+// otkriva server-reflexive (javnu NAT) adresu na obe strane, dovoljno za
+// većinu "full cone"/"restricted cone" NAT tipova, ali NE za simetrični NAT
+// ili restriktivne firewall-ove (česti u korporativnim/bolničkim mrežama) -
+// to bi zahtevalo TURN relay, koji I DALJE nije postavljen (zaseban
+// infrastrukturni zadatak). Isti STUN URL MORA biti podešen i na agent
+// strani (WebRtcSession.cs) - ICE gathering je nezavisan na obe strane.
 function startWebrtc(session) {
-  pc = new RTCPeerConnection()
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  })
 
   pc.ontrack = (e) => {
     if (videoEl.value) videoEl.value.srcObject = e.streams[0]
