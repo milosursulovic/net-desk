@@ -1,6 +1,6 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Principal;
 using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Webrtc
@@ -16,31 +16,30 @@ namespace NetdeskAgent.Common.Webrtc
     ///      desktop-a na koji bi se primenio.
     ///   2. DXGI Desktop Duplication (ScreenCapture.cs) TAKOĐE zahteva
     ///      interaktivnu desktop sesiju - ista Session 0 barijera verovatno
-    ///      pogađa i capture, ne samo injection (ovo NIJE bilo eksplicitno
-    ///      u originalnom planu - otkriveno tek pisanjem ovog fajla, vredi
-    ///      zapisati kao ispravku plana).
+    ///      pogađa i capture, ne samo injection.
     ///
-    /// Rešenje (standardna tehnika za servise koji moraju da rade nešto u
-    /// interaktivnoj sesiji - ista opšta ideja kao WTSSendMessage pristupi):
-    /// servis dobije token PRIJAVLJENOG korisnika (WTSQueryUserToken), pa tim
-    /// tokenom pokrene POSEBAN, mali helper proces (CreateProcessAsUser) KOJI
-    /// SE IZVRŠAVA UNUTAR korisničke sesije - taj helper proces (ne sam
-    /// servis) treba da radi i capture i encode i injection i samu SIPSorcery
-    /// peer-konekciju (WebRtcSession.cs), komunicirajući sa glavnim servisom
-    /// preko named pipe-a ili sličnog IPC-a za start/stop signalizaciju. Isti
-    /// opšti oblik kao postojeći Netdesk.Agent.Manager splitting (poseban
-    /// proces za posao koji glavni servis ne može sam da uradi), samo iz
-    /// drugog razloga (session isolation, ne "ne može da prepiše sopstvene
-    /// fajlove").
-    ///
-    /// NIJE RUNTIME TESTIRANO - nema Windows mašine/prijavljenog korisnika u
-    /// ovoj sesiji da se ovo stvarno proveri. CreateProcessAsUser posebno ima
-    /// poznate "radi na papiru, otkaže uživo" zamke (CreateEnvironmentBlock
-    /// mora se pozvati sa istim tokenom PRE CreateProcessAsUser ili environment
-    /// varijable helper procesa budu pogrešne; token mora imati
-    /// SE_ASSIGNPRIMARYTOKEN_NAME i SE_INCREASE_QUOTA_NAME privilegije na
-    /// LocalSystem nalogu servisa - obično već prisutne, ali NIJE potvrđeno
-    /// uživo ovde).
+    /// UŽIVO POTVRĐENO 2026-08-24 (Process Monitor, više krugova): ručno
+    /// sastavljen WTSQueryUserToken → DuplicateTokenEx → LoadUserProfile →
+    /// CreateEnvironmentBlock → CreateProcessAsUser lanac je REDOVNO
+    /// proizvodio proces sa validnim PID-om koji je zatim padao unutar
+    /// sopstvene .NET CLR inicijalizacije (exit code 0x8007045A =
+    /// ERROR_DLL_INIT_FAILED, dosledno na istom mestu, bez ijednog ACCESS
+    /// DENIED reda u celom Procmon capture-u) - ni SeTcbPrivilege/
+    /// SeAssignPrimaryTokenPrivilege/SeIncreaseQuotaPrivilege uključivanje,
+    /// ni eksplicitna dodela pristupa na winsta0\default preko
+    /// GetSecurityInfo/SetSecurityInfo, ni prelazak na WinExe (bez konzole)
+    /// nisu promenili ishod ni za dlaku - isti exit code, isto mesto pada,
+    /// svaki put. PsExec (`psexec -s -i <session>`) sa ISTIM ciljnim .exe-om
+    /// i ISTIM (lažnim) argumentima je USPEO (čist exit code 1 - kontrolisan
+    /// neuspeh konekcije na lažan URL, identično ručnom pokretanju) - dokaz
+    /// da mašina/okruženje NIJE problem, već konkretno naš ručni
+    /// CreateProcessAsUser lanac. PsExec interno koristi CreateProcessWithTokenW
+    /// (viša Win32 funkcija, namenski građena za "pokreni ovaj token u
+    /// TRENUTNOJ desktop sesiji") umesto ručnog sastavljanja - ta funkcija
+    /// sama rešava profil/environment/desktop internO, pa je ceo ovaj fajl
+    /// sad svedan na nju umesto na ručnu rekonstrukciju istog posla.
+    /// Zahteva SeImpersonatePrivilege na pozivajućem (servisnom) nalogu -
+    /// EnablePrivilege ispod je eksplicitno uključuje.
     /// </summary>
     public static class SessionLauncher
     {
@@ -50,44 +49,42 @@ namespace NetdeskAgent.Common.Webrtc
         [DllImport("wtsapi32.dll", SetLastError = true)]
         private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr phToken);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
-        private static extern bool DuplicateTokenEx(
-            IntPtr hExistingToken,
-            uint dwDesiredAccess,
-            IntPtr lpTokenAttributes,
-            int impersonationLevel,
-            int tokenType,
-            out IntPtr phNewToken);
-
-        [DllImport("userenv.dll", SetLastError = true)]
-        private static extern bool CreateEnvironmentBlock(out IntPtr lpEnvironment, IntPtr hToken, bool bInherit);
-
-        [DllImport("userenv.dll", SetLastError = true)]
-        private static extern bool DestroyEnvironmentBlock(IntPtr lpEnvironment);
-
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr hObject);
 
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        private struct ProfileInfo
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out IntPtr tokenHandle);
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, out Luid lpLuid);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool AdjustTokenPrivileges(
+            IntPtr tokenHandle,
+            bool disableAllPrivileges,
+            ref TokenPrivileges newState,
+            uint bufferLength,
+            IntPtr previousState,
+            IntPtr returnLength);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Luid
         {
-            public int dwSize;
-            public int dwFlags;
-            public string lpUserName;
-            public string lpProfilePath;
-            public string lpDefaultPath;
-            public string lpServerName;
-            public string lpPolicyPath;
-            public IntPtr hProfile;
+            public uint LowPart;
+            public int HighPart;
         }
 
-        [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool LoadUserProfile(IntPtr hToken, ref ProfileInfo lpProfileInfo);
+        [StructLayout(LayoutKind.Sequential)]
+        private struct TokenPrivileges
+        {
+            public uint PrivilegeCount;
+            public Luid Luid;
+            public uint Attributes;
+        }
 
-        [DllImport("userenv.dll", SetLastError = true)]
-        private static extern bool UnloadUserProfile(IntPtr hToken, IntPtr hProfile);
-
-        private const int PI_NOUI = 0x00000001;
+        private const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
+        private const uint TOKEN_QUERY = 0x0008;
+        private const uint SE_PRIVILEGE_ENABLED = 0x00000002;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct StartupInfo
@@ -110,25 +107,64 @@ namespace NetdeskAgent.Common.Webrtc
         }
 
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcessAsUser(
+        private static extern bool CreateProcessWithTokenW(
             IntPtr hToken,
+            uint dwLogonFlags,
             string lpApplicationName,
             string lpCommandLine,
-            IntPtr lpProcessAttributes,
-            IntPtr lpThreadAttributes,
-            bool bInheritHandles,
             uint dwCreationFlags,
             IntPtr lpEnvironment,
             string lpCurrentDirectory,
             ref StartupInfo lpStartupInfo,
             out ProcessInformation lpProcessInformation);
 
-        private const uint TOKEN_ALL_ACCESS = 0xF01FF;
-        private const int SECURITY_IMPERSONATION = 2; // SecurityImpersonation
-        private const int TOKEN_TYPE_PRIMARY = 1;      // TokenPrimary
+        private const uint LOGON_WITH_PROFILE = 0x00000001;
         private const uint NORMAL_PRIORITY_CLASS = 0x00000020;
         private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
         private const uint CREATE_NO_WINDOW = 0x08000000;
+
+        // SeImpersonatePrivilege mora biti UKLJUČENA (ne samo prisutna) na OVOM
+        // (pozivajućem, LocalSystem servisnom) procesu pre CreateProcessWithTokenW -
+        // LocalSystem nalog je ima, ali privilegije na Windows tokenu imaju
+        // odvojeno "prisutno" i "uključeno" stanje, i obična Windows servis
+        // instanca ih ne uključuje automatski. Best-effort - ako ne uspe da se
+        // uključi, samo se loguje upozorenje i nastavlja se dalje.
+        private static void EnablePrivilege(string privilegeName)
+        {
+            IntPtr processToken = IntPtr.Zero;
+            try
+            {
+                if (!OpenProcessToken(Process.GetCurrentProcess().Handle, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, out processToken))
+                {
+                    FileLogger.Warn("OpenProcessToken (sopstveni proces) neuspešan pre uključivanja '" + privilegeName + "' (Win32 error " + Marshal.GetLastWin32Error() + ").");
+                    return;
+                }
+
+                if (!LookupPrivilegeValue(null, privilegeName, out var luid))
+                {
+                    FileLogger.Warn("LookupPrivilegeValue('" + privilegeName + "') neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
+                    return;
+                }
+
+                var tp = new TokenPrivileges
+                {
+                    PrivilegeCount = 1,
+                    Luid = luid,
+                    Attributes = SE_PRIVILEGE_ENABLED,
+                };
+
+                var adjusted = AdjustTokenPrivileges(processToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+                var lastError = Marshal.GetLastWin32Error();
+                if (!adjusted || lastError != 0)
+                {
+                    FileLogger.Warn("AdjustTokenPrivileges('" + privilegeName + "') neuspešan (Win32 error " + lastError + ") - privilegija verovatno nije dostupna na ovom nalogu.");
+                }
+            }
+            finally
+            {
+                if (processToken != IntPtr.Zero) CloseHandle(processToken);
+            }
+        }
 
         /// <summary>
         /// Pokreće helper .exe (bridgeExePath) UNUTAR trenutno aktivne
@@ -145,6 +181,8 @@ namespace NetdeskAgent.Common.Webrtc
         /// </summary>
         public static uint LaunchInActiveSession(string bridgeExePath, string arguments)
         {
+            EnablePrivilege("SeImpersonatePrivilege");
+
             uint sessionId = WTSGetActiveConsoleSessionId();
             // 0xFFFFFFFF (uint.MaxValue) znači "nema aktivne konzolne sesije"
             // (npr. mašina je na login ekranu ili u pitanju je headless server).
@@ -156,90 +194,35 @@ namespace NetdeskAgent.Common.Webrtc
                 return 0;
             }
 
-            IntPtr primaryToken = IntPtr.Zero;
-            IntPtr envBlock = IntPtr.Zero;
-            var profileInfo = new ProfileInfo();
-            var profileLoaded = false;
             try
             {
-                if (!DuplicateTokenEx(
-                        userToken, TOKEN_ALL_ACCESS, IntPtr.Zero,
-                        SECURITY_IMPERSONATION, TOKEN_TYPE_PRIMARY, out primaryToken))
-                {
-                    FileLogger.Warn("DuplicateTokenEx neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
-                    return 0;
-                }
-
-                // LoadUserProfile MORA biti pozvano pre CreateEnvironmentBlock da bi
-                // korisnikov profil (registry hive, LOCALAPPDATA/TEMP putanje) bio
-                // stvarno učitan za ovaj token - bez ovoga, CreateEnvironmentBlock
-                // ume da uspe ali sa OSIROMAŠENIM environment-om (ili CreateProcessAsUser
-                // nasledi environment POZIVAOCA - LocalSystem servisa - umesto pravog
-                // korisnika, ako envBlock ispadne IntPtr.Zero), pa dete-proces gleda
-                // pogrešne/nedostupne putanje za sve što zavisi od profila (log fajl,
-                // DirectX/COM per-user registry stanje itd.) - uživo potvrđen simptom:
-                // proces se pokrene (validan PID), ali ne ispiše apsolutno ništa, čak
-                // ni najraniju log liniju, iako identičan .exe pokrenut RUČNO (sa punim
-                // profilom, obična interaktivna prijava) radi besprekorno. Best-effort -
-                // ako padne, nastavljamo bez učitanog profila kao i do sad, radije nego
-                // da odustanemo od celog pokretanja.
-                try
-                {
-                    var userName = new WindowsIdentity(userToken).Name;
-                    var backslash = userName.IndexOf('\\');
-                    if (backslash >= 0) userName = userName.Substring(backslash + 1);
-
-                    profileInfo.dwSize = Marshal.SizeOf(typeof(ProfileInfo));
-                    profileInfo.dwFlags = PI_NOUI;
-                    profileInfo.lpUserName = userName;
-
-                    if (LoadUserProfile(primaryToken, ref profileInfo))
-                    {
-                        profileLoaded = true;
-                    }
-                    else
-                    {
-                        FileLogger.Warn("LoadUserProfile neuspešan za '" + userName + "' (Win32 error " + Marshal.GetLastWin32Error() + ") - nastavljam bez učitanog profila.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    FileLogger.Warn("LoadUserProfile priprema neuspešna: " + ex.Message);
-                }
-
-                // MORA biti pozvano posle DuplicateTokenEx (i, sad, posle LoadUserProfile)
-                // a pre CreateProcessAsUser sa ISTIM tokenom - redosled je bitan
-                // (dokumentovano Win32 ponašanje, ne proizvoljan izbor ovde).
-                if (!CreateEnvironmentBlock(out envBlock, primaryToken, false))
-                {
-                    FileLogger.Warn("CreateEnvironmentBlock neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ") - nastavljam bez environment bloka.");
-                    envBlock = IntPtr.Zero; // nastavi bez environment bloka ako ovo padne
-                }
-
                 var startupInfo = new StartupInfo { cb = Marshal.SizeOf(typeof(StartupInfo)) };
                 // "winsta0\\default" - interaktivni window station + desktop
-                // te sesije. Bez ovoga proces se pokreće na "besktop-less"
+                // te sesije. Bez ovoga proces se pokreće na "desktop-less"
                 // window station-u i SendInput/DXGI capture ne bi imali šta
                 // da vide.
                 startupInfo.lpDesktop = "winsta0\\default";
 
                 var commandLine = "\"" + bridgeExePath + "\" " + arguments;
-                var created = CreateProcessAsUser(
-                    primaryToken,
+                // LOGON_WITH_PROFILE - CreateProcessWithTokenW sam učitava
+                // korisnički profil i gradi environment blok od njega (otud
+                // lpEnvironment=IntPtr.Zero ovde) - zamenjuje ceo ručni
+                // LoadUserProfile/CreateEnvironmentBlock par koji smo ranije
+                // sami sastavljali.
+                var created = CreateProcessWithTokenW(
+                    userToken,
+                    LOGON_WITH_PROFILE,
                     null,
                     commandLine,
-                    IntPtr.Zero,
-                    IntPtr.Zero,
-                    false,
                     NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
-                    envBlock,
+                    IntPtr.Zero,
                     null,
                     ref startupInfo,
                     out var processInfo);
 
                 if (!created)
                 {
-                    FileLogger.Warn("CreateProcessAsUser neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
+                    FileLogger.Warn("CreateProcessWithTokenW neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
                     return 0;
                 }
 
@@ -249,9 +232,6 @@ namespace NetdeskAgent.Common.Webrtc
             }
             finally
             {
-                if (profileLoaded) UnloadUserProfile(primaryToken, profileInfo.hProfile);
-                if (envBlock != IntPtr.Zero) DestroyEnvironmentBlock(envBlock);
-                if (primaryToken != IntPtr.Zero) CloseHandle(primaryToken);
                 CloseHandle(userToken);
             }
         }

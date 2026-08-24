@@ -12,7 +12,18 @@
       Netdesk.Agent.Service sam radi u Session 0 (LocalSystem), gde
       DXGI capture i SendInput nemaju šta da dodirnu.
     -->
-    <OutputType>Exe</OutputType>
+    <!--
+      WinExe (ne Exe/console) NAMERNO - konzolni subsystem povlači
+      Conhost.exe + user32/gdi32/imm32 inicijalizaciju čak i uz
+      CREATE_NO_WINDOW, a bridge nikad ne koristi konzolu (sav "log" ide
+      kroz FileLogger + signaling WS, ne Console.WriteLine). NAPOMENA -
+      ovo NIJE bio stvarni uzrok ERROR_DLL_INIT_FAILED pada uživo
+      potvrđenog 2026-08-24 (taj je bio u SessionLauncher.cs-ovom ručnom
+      CreateProcessAsUser lancu, rešeno prelaskom na CreateProcessWithTokenW
+      - vidi napomenu tamo) - WinExe ostaje kao manje, i dalje opravdano
+      pojednostavljenje (bez nepotrebnog Conhost.exe procesa), ne kao fix.
+    -->
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -23,6 +34,27 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Netdesk.Agent.Common\Netdesk.Agent.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      libvpx (VP8 enkoder, VpxInterop.cs P/Invoke sloj) - NIKAD stvarno
+      provizionisan, uživo potvrđeno 2026-08-24: proces sad ispravno
+      pokreće ceo signaling/SDP/ICE tok (posle SessionLauncher.cs
+      CreateProcessWithTokenW ispravke), ali InitializeEncoder() puca sa
+      System.DllNotFoundException("vpx.dll") - VpxInterop.cs-ov sopstveni
+      header komentar je ovo od početka i priznavao ("pisan/kompajliran u
+      Linux sandbox okruženju... NIJE runtime-testiran").
+      Vpx\vpx.dll NE POSTOJI u repo-u - stavi ovde x64 Windows build koji
+      odgovara VpxEncoderAbiVersion=39 u VpxInterop.cs (npr.
+      ShiftMediaProject/libvpx prebuilt release, ili sopstveni vcpkg/MSVC
+      build) - pogrešna ABI verzija daje glasan VPX_CODEC_ABI_MISMATCH pri
+      init-u, ne tihu grešku, pa je bezbedno probati i proveriti.
+    -->
+    <None Include="Vpx\vpx.dll" Condition="Exists('Vpx\vpx.dll')">
+      <Link>vpx.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

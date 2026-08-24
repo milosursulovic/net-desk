@@ -2,6 +2,6 @@ namespace NetdeskAgent.Common
 {
     public static class AgentVersionInfo
     {
-        public const string Current = "1.7.13";
+        public const string Current = "1.7.18";
     }
 }

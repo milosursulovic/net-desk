@@ -11,30 +11,35 @@ namespace NetdeskAgent.Common.Webrtc
     /// vpx_codec.h/vpx_encoder.h/vpx_image.h/vpx_ext_ratectrl.h/vpx_tpl.h),
     /// ne iz sećanja.
     ///
-    /// VAŽNO OGRANIČENJE OVE IZMENE: ovaj fajl je pisan i kompajliran
-    /// (dotnet build) u Linux sandbox okruženju bez pravog Windows agenta i
-    /// bez pravog vpx.dll-a - NIJE runtime-testiran. `vpx_codec_enc_cfg_t`
-    /// je posebno rizičan (50+ polja, uključujući "vizier RC" polja dodata
-    /// relativno skoro) - polja/redosled su prepisana verbatim iz main grane
-    /// libvpx-a preko WebFetch-a, ali NISU nezavisno odbrojana bajt-po-bajt
-    /// protiv izvornog fajla u ovoj sesiji. Pre prvog stvarnog build-a na
-    /// Windows mašini: proveriti ovu strukturu protiv TAČNO ONE verzije
-    /// libvpx zaglavlja koja odgovara vpx.dll binarnom fajlu koji se stvarno
-    /// distribuira uz agenta (npr. ShiftMediaProject/libvpx release) - ABI
-    /// se vremenom menja (zato i postoji VPX_ENCODER_ABI_VERSION provera
-    /// ispod), stara/nova verzija zaglavlja mogu se razlikovati od ovoga.
+    /// STATUS (2026-08-24): vpx.dll je sad stvarno provizionisan - Netdesk.Agent.WebRtcBridge/Vpx/vpx.dll
+    /// je pravi x64 shared build (ShiftMediaProject/libvpx, tag v1.15.1,
+    /// MSVC17). `vpx_codec_enc_cfg_t` polja/redosled su verifikovana
+    /// field-by-field protiv STVARNIH zaglavlja te tačne verzije (ne "main"
+    /// grane iz sećanja kao pre) - poklapaju se u potpunosti. Sam
+    /// VPX_ENCODER_ABI_VERSION broj se ipak razlikuje po libvpx verziji
+    /// (vidi napomenu kod VpxEncoderAbiVersion ispod) - i dalje NIJE
+    /// live-testirano na Windows-u (samo build + statička provera zaglavlja
+    /// u ovoj sesiji), pogrešna ABI vrednost daje glasan
+    /// VPX_CODEC_ABI_MISMATCH na init, ne tihu grešku.
     /// </summary>
     internal static class VpxInterop
     {
         // VPX_ENCODER_ABI_VERSION = 18 + VPX_CODEC_ABI_VERSION + VPX_EXT_RATECTRL_ABI_VERSION
         //   VPX_CODEC_ABI_VERSION = 4 + VPX_IMAGE_ABI_VERSION = 4 + 5 = 9
-        //   VPX_EXT_RATECTRL_ABI_VERSION = 7 + VPX_TPL_ABI_VERSION = 7 + 5 = 12
-        // => 18 + 9 + 12 = 39 (izračunato uživo iz vpx_codec.h/vpx_image.h/
-        // vpx_ext_ratectrl.h/vpx_tpl.h na "main" grani u trenutku pisanja -
-        // MORA se ponovo izračunati ako se bundle-uje drugačija libvpx verzija,
-        // pogrešna vrednost ovde daje VPX_CODEC_ABI_MISMATCH na init, ne
-        // silentnu grešku).
-        private const int VpxEncoderAbiVersion = 39;
+        //   VPX_EXT_RATECTRL_ABI_VERSION = 6 + VPX_TPL_ABI_VERSION = 6 + 4 = 10
+        // => 18 + 9 + 10 = 37 - potvrđeno 2026-08-24 protiv stvarnih zaglavlja
+        // ShiftMediaProject/libvpx TAG v1.15.1 (isti build koji se stvarno
+        // bundle-uje - vidi Netdesk.Agent.WebRtcBridge.csproj, Vpx\vpx.dll).
+        // Prethodna vrednost (39) je bila izračunata protiv "main" grane u
+        // trenutku pisanja koda, PRE nego što je stvarni vpx.dll ikad
+        // provizionisan - literal u VPX_EXT_RATECTRL_ABI_VERSION formuli
+        // (7 → 6) i VPX_TPL_ABI_VERSION (5 → 4) su se u međuvremenu promenili
+        // uzvodno, dok se sama vpx_codec_enc_cfg_t struktura (polja/redosled)
+        // NIJE promenila - ista je field-by-field protiv v1.15.1 zaglavlja.
+        // MORA se ponovo izračunati ako se ikad bundle-uje DRUGAČIJA libvpx
+        // verzija - pogrešna vrednost ovde daje glasan VPX_CODEC_ABI_MISMATCH
+        // na init, ne tihu grešku.
+        private const int VpxEncoderAbiVersion = 37;
 
         // VPX_IMG_FMT_PLANAR = 0x100, VPX_IMG_FMT_I420 = VPX_IMG_FMT_PLANAR | 2.
         internal const int VpxImgFmtI420 = 0x100 | 2;
