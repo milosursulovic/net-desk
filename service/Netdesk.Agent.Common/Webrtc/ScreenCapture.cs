@@ -36,6 +36,11 @@ namespace NetdeskAgent.Common.Webrtc
     /// </summary>
     internal sealed class ScreenCapture : IDisposable
     {
+        // Vidi napomenu uz DuplicateOutput poziv u TryInitializeDxgi() -
+        // DXGI_ERROR_NOT_CURRENTLY_AVAILABLE je dokumentovano prolazan.
+        private const int DuplicateOutputMaxAttempts = 5;
+        private const int DuplicateOutputRetryDelayMs = 300;
+
         private D3D11Device _device;
         private OutputDuplication _duplication;
         private Texture2D _stagingTexture;
@@ -43,10 +48,6 @@ namespace NetdeskAgent.Common.Webrtc
         private int _height;
         private bool _usingGdiFallback;
 
-        // GDI fallback state
-        private IntPtr _gdiScreenDc;
-        private IntPtr _gdiMemDc;
-        private IntPtr _gdiBitmap;
         private bool _gdiFailureLogged;
 
         internal int Width => _width;
@@ -72,18 +73,111 @@ namespace NetdeskAgent.Common.Webrtc
 
         private bool TryInitializeDxgi()
         {
+            Adapter1 chosenAdapter = null;
+            Output1 chosenOutput1 = null;
             try
             {
                 using (var factory = new Factory1())
-                using (var adapter = factory.GetAdapter1(0))
                 {
-                    _device = new D3D11Device(adapter);
-                    using (var output = adapter.GetOutput(0))
-                    using (var output1 = output.QueryInterface<Output1>())
+                    // Traži prvo output koji prijavljuje IsAttachedToDesktop
+                    // (korisno na mašinama sa više adaptera - integrisana +
+                    // diskretna grafika - gde adapter 0 nije nužno onaj koji
+                    // renderuje desktop). NIJE strogo obavezno: uživo test je
+                    // pokazao IsAttachedToDesktop=false za JEDINI stvarni
+                    // output na mašini (adapterCount=2 - adapter 0 je
+                    // "Microsoft Basic Render Driver" sa NULA output-a,
+                    // pravi Intel adapter je na indexu 1), iako je desktop
+                    // očigledno aktivan i vidljiv - to polje nije pouzdano na
+                    // ovoj drajver/SharpDX kombinaciji. Zato se usput čuva i
+                    // "any" kandidat - prvi output nađen bilo gde, kroz SVE
+                    // adaptere (ne samo adapter 0, koji ovde nema nijedan
+                    // output) - kao rezerva ako nijedan output ne prijavi
+                    // attached.
+                    Adapter1 anyAdapter = null;
+                    Output1 anyOutput1 = null;
+                    int anyWidth = 0, anyHeight = 0;
+
+                    var adapterCount = factory.GetAdapterCount1();
+                    for (int a = 0; a < adapterCount && chosenOutput1 == null; a++)
                     {
-                        _width = output.Description.DesktopBounds.Right - output.Description.DesktopBounds.Left;
-                        _height = output.Description.DesktopBounds.Bottom - output.Description.DesktopBounds.Top;
-                        _duplication = output1.DuplicateOutput(_device);
+                        var adapter = factory.GetAdapter1(a);
+                        var outputCount = adapter.GetOutputCount();
+                        // Detaljan log po adapteru (ime + broj output-a) - dosadašnji
+                        // pokušaji nagađanja koji je adapter "pravi" su bili pogrešni
+                        // (IsAttachedToDesktop nepouzdano, adapter 0 nije uvek prazan
+                        // WARP/Basic Render adapter), pa je vreme za tvrde podatke
+                        // umesto sledeće pretpostavke.
+                        FileLogger.Info("DXGI adapter[" + a + "]: \"" + adapter.Description1.Description +
+                            "\", outputCount=" + outputCount);
+                        var keepAsChosen = false;
+                        var keepAsAny = false;
+                        for (int o = 0; o < outputCount; o++)
+                        {
+                            using (var output = adapter.GetOutput(o))
+                            {
+                                if (output.Description.IsAttachedToDesktop)
+                                {
+                                    _width = output.Description.DesktopBounds.Right - output.Description.DesktopBounds.Left;
+                                    _height = output.Description.DesktopBounds.Bottom - output.Description.DesktopBounds.Top;
+                                    chosenOutput1 = output.QueryInterface<Output1>();
+                                    keepAsChosen = true;
+                                    break;
+                                }
+                                if (anyOutput1 == null)
+                                {
+                                    anyWidth = output.Description.DesktopBounds.Right - output.Description.DesktopBounds.Left;
+                                    anyHeight = output.Description.DesktopBounds.Bottom - output.Description.DesktopBounds.Top;
+                                    anyOutput1 = output.QueryInterface<Output1>();
+                                    keepAsAny = true;
+                                }
+                            }
+                        }
+                        if (keepAsChosen) chosenAdapter = adapter;
+                        else if (keepAsAny) anyAdapter = adapter;
+                        else adapter.Dispose();
+                    }
+
+                    if (chosenAdapter == null && anyAdapter != null)
+                    {
+                        chosenAdapter = anyAdapter;
+                        chosenOutput1 = anyOutput1;
+                        _width = anyWidth;
+                        _height = anyHeight;
+                    }
+                    else
+                    {
+                        anyOutput1?.Dispose();
+                        anyAdapter?.Dispose();
+                    }
+
+                    if (chosenAdapter == null || chosenOutput1 == null)
+                    {
+                        FileLogger.Warn("DXGI Desktop Duplication init: nijedan adapter/output nije pronađen (adapterCount=" + adapterCount + ").");
+                        return false;
+                    }
+
+                    _device = new D3D11Device(chosenAdapter);
+
+                    // DXGI_ERROR_NOT_CURRENTLY_AVAILABLE je po zvaničnoj MSDN
+                    // dokumentaciji za DuplicateOutput OČEKIVANO prolazna
+                    // greška (npr. odmah po pokretanju procesa dok se
+                    // desktop/compositor još "ne slegne", ili tokom kratkog
+                    // desktop prelaza) - uživo test je DOSLEDNO hvatao baš
+                    // ovaj HRESULT, uvek u istoj milisekundi kad proces kreće,
+                    // na potpuno aktivnoj/nezaključanoj/fizički-za-mašinom
+                    // sesiji. Zvanično preporučen lek je ponovni pokušaj
+                    // posle kratke pauze, ne odmah odustajanje na GDI.
+                    for (int attempt = 1; attempt <= DuplicateOutputMaxAttempts; attempt++)
+                    {
+                        try
+                        {
+                            _duplication = chosenOutput1.DuplicateOutput(_device);
+                            break;
+                        }
+                        catch (SharpDX.SharpDXException) when (attempt < DuplicateOutputMaxAttempts)
+                        {
+                            System.Threading.Thread.Sleep(DuplicateOutputRetryDelayMs);
+                        }
                     }
 
                     // CPU-čitljiva staging tekstura - ImmediateContext.CopyResource
@@ -105,34 +199,51 @@ namespace NetdeskAgent.Common.Webrtc
                 }
                 return true;
             }
-            catch (SharpDX.SharpDXException)
+            catch (SharpDX.SharpDXException ex)
             {
                 // Bilo koji DXGI/D3D11 HRESULT (E_ACCESSDENIED kad nema aktivne
                 // sesije, DXGI_ERROR_UNSUPPORTED na starijem/virtuelnom hardveru,
                 // itd.) - tretira se kao "DXGI nije dostupan ovde", ne kao
                 // fatalna greška. Čisti delimično alocirane resurse pre povratka
                 // false da Initialize() može bezbedno da pređe na GDI granu.
+                // HResult/poruka se ipak loguje (samo ovde, ne po frejmu) - bez
+                // ovoga je nemoguće razlikovati "nema display sesije uopšte"
+                // od "GPU/drajver ne podržava Desktop Duplication" od bilo
+                // kog drugog HRESULT-a, a to direktno određuje da li je ovo
+                // uopšte popravljivo iz koda ili je ograničenje mašine.
+                FileLogger.Warn("DXGI Desktop Duplication init neuspešan (HResult=0x" +
+                    ex.HResult.ToString("X8") + "): " + ex.Message);
                 DisposeDxgiResources();
                 return false;
             }
+            finally
+            {
+                // chosenOutput1/chosenAdapter se ne drže dugoročno - D3D11Device
+                // i IDXGIOutputDuplication (_device/_duplication) drže sopstvene
+                // COM reference, isti životni vek kao u originalnom using-based
+                // kodu koji je odmah nakon kreiranja device/duplication oslobađao
+                // adapter/output.
+                chosenOutput1?.Dispose();
+                chosenAdapter?.Dispose();
+            }
         }
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr GetDC(IntPtr hwnd);
 
         [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int index);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int width, int height);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         private static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         private static extern bool BitBlt(
             IntPtr hdcDest, int xDest, int yDest, int w, int h,
             IntPtr hdcSrc, int xSrc, int ySrc, uint rop);
@@ -143,10 +254,10 @@ namespace NetdeskAgent.Common.Webrtc
         [DllImport("gdi32.dll")]
         private static extern bool DeleteDC(IntPtr hdc);
 
-        [DllImport("kernel32.dll")]
-        private static extern uint GetLastError();
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         private static extern int GetDIBits(
             IntPtr hdc, IntPtr hbmp, uint uStartScan, uint cScanLines,
             [Out] byte[] lpvBits, ref BitmapInfoHeader lpbi, uint uUsage);
@@ -181,12 +292,22 @@ namespace NetdeskAgent.Common.Webrtc
                 _height = GetSystemMetrics(SM_CYSCREEN);
                 if (_width <= 0 || _height <= 0) return false;
 
-                _gdiScreenDc = GetDC(IntPtr.Zero);
-                if (_gdiScreenDc == IntPtr.Zero) return false;
+                // Samo smoke-test da GDI uopšte može da dobije screen DC ovde
+                // - stvarni handle-ovi za BitBlt/GetDIBits se dobijaju iznova
+                // na SVAKOM frejmu u CaptureFrameGdi(), na thread-u koji ih
+                // stvarno koristi (vidi napomenu tamo: uživo test je pokazao
+                // BitBlt ERROR_INVALID_HANDLE kad su handle-ovi keširani ovde
+                // - na WS message thread-u - pa korišćeni kasnije sa
+                // CaptureLoop-ovog Task.Run thread-a; GetDC-ov "common" DC
+                // keš nije pouzdano deljiv preko granice niti).
+                var screenDc = GetDC(IntPtr.Zero);
+                if (screenDc == IntPtr.Zero)
+                {
+                    FileLogger.Warn("GDI fallback init: GetDC(NULL) neuspešan, GetLastError=" + Marshal.GetLastWin32Error());
+                    return false;
+                }
+                ReleaseDC(IntPtr.Zero, screenDc);
 
-                _gdiMemDc = CreateCompatibleDC(_gdiScreenDc);
-                _gdiBitmap = CreateCompatibleBitmap(_gdiScreenDc, _width, _height);
-                SelectObject(_gdiMemDc, _gdiBitmap);
                 _usingGdiFallback = true;
                 return true;
             }
@@ -255,36 +376,90 @@ namespace NetdeskAgent.Common.Webrtc
             }
         }
 
+        // Svi GDI handle-ovi (screen DC, mem DC, bitmap) se dobijaju i
+        // oslobađaju OVDE, u okviru jednog poziva, na thread-u koji stvarno
+        // radi capture (CaptureLoop-ov Task.Run thread) - ne kešira se ništa
+        // iz TryInitializeGdi() (koja se izvršava na Start()-ovom thread-u).
+        // Uživo test je pokazao BitBlt ERROR_INVALID_HANDLE baš u tom
+        // keširanom-preko-niti scenariju; GetDC-ov "common" DC keš nije
+        // pouzdano deljiv preko granice niti. Malo skuplje po frejmu
+        // (create/delete DC+bitmap 15x/s) nego keširanje, ali GDI je već
+        // samo redak fallback put, ne primarni.
         private byte[] CaptureFrameGdi()
         {
-            if (!BitBlt(_gdiMemDc, 0, 0, _width, _height, _gdiScreenDc, 0, 0, SRCCOPY))
+            var screenDc = GetDC(IntPtr.Zero);
+            if (screenDc == IntPtr.Zero)
             {
-                LogGdiFailureOnce("BitBlt neuspešan, GetLastError=" + GetLastError());
+                LogGdiFailureOnce("GetDC(NULL) neuspešan, GetLastError=" + Marshal.GetLastWin32Error());
                 return null;
             }
-
-            // biHeight negativan = top-down DIB (isti red-po-red raspored
-            // koji CaptureFrameDxgi/BgraToI420 već očekuju) - bez ovoga
-            // GetDIBits vraća bottom-up i slika bi bila naopako, ne crna,
-            // ali ipak pogrešna.
-            var header = new BitmapInfoHeader
+            try
             {
-                biSize = (uint)Marshal.SizeOf(typeof(BitmapInfoHeader)),
-                biWidth = _width,
-                biHeight = -_height,
-                biPlanes = 1,
-                biBitCount = 32,
-                biCompression = BI_RGB,
-            };
+                var memDc = CreateCompatibleDC(screenDc);
+                if (memDc == IntPtr.Zero)
+                {
+                    LogGdiFailureOnce("CreateCompatibleDC neuspešan, GetLastError=" + Marshal.GetLastWin32Error());
+                    return null;
+                }
+                try
+                {
+                    var bitmap = CreateCompatibleBitmap(screenDc, _width, _height);
+                    if (bitmap == IntPtr.Zero)
+                    {
+                        LogGdiFailureOnce("CreateCompatibleBitmap neuspešan, GetLastError=" + Marshal.GetLastWin32Error());
+                        return null;
+                    }
+                    try
+                    {
+                        SelectObject(memDc, bitmap);
 
-            var buffer = new byte[_width * _height * 4];
-            var scanLines = GetDIBits(_gdiMemDc, _gdiBitmap, 0, (uint)_height, buffer, ref header, DIB_RGB_COLORS);
-            if (scanLines == 0)
-            {
-                LogGdiFailureOnce("GetDIBits neuspešan (vratio 0 scan-linija), GetLastError=" + GetLastError());
-                return null;
+                        // Marshal.GetLastWin32Error() (ne ručni kernel32!GetLastError
+                        // p/invoke) - mora se čitati odmah posle p/invoke poziva koji
+                        // ima SetLastError=true, jer CLR marshaling kod između dva
+                        // odvojena p/invoke poziva može da pregazi pravu vrednost.
+                        if (!BitBlt(memDc, 0, 0, _width, _height, screenDc, 0, 0, SRCCOPY))
+                        {
+                            LogGdiFailureOnce("BitBlt neuspešan, GetLastError=" + Marshal.GetLastWin32Error());
+                            return null;
+                        }
+
+                        // biHeight negativan = top-down DIB (isti red-po-red
+                        // raspored koji CaptureFrameDxgi/BgraToI420 već
+                        // očekuju) - bez ovoga GetDIBits vraća bottom-up i
+                        // slika bi bila naopako, ne crna, ali ipak pogrešna.
+                        var header = new BitmapInfoHeader
+                        {
+                            biSize = (uint)Marshal.SizeOf(typeof(BitmapInfoHeader)),
+                            biWidth = _width,
+                            biHeight = -_height,
+                            biPlanes = 1,
+                            biBitCount = 32,
+                            biCompression = BI_RGB,
+                        };
+
+                        var buffer = new byte[_width * _height * 4];
+                        var scanLines = GetDIBits(memDc, bitmap, 0, (uint)_height, buffer, ref header, DIB_RGB_COLORS);
+                        if (scanLines == 0)
+                        {
+                            LogGdiFailureOnce("GetDIBits neuspešan (vratio 0 scan-linija), GetLastError=" + Marshal.GetLastWin32Error());
+                            return null;
+                        }
+                        return buffer;
+                    }
+                    finally
+                    {
+                        DeleteObject(bitmap);
+                    }
+                }
+                finally
+                {
+                    DeleteDC(memDc);
+                }
             }
-            return buffer;
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, screenDc);
+            }
         }
 
         // Loguje se samo prvi put - na ~15 FPS bi ponavljanje na svaki frejm
@@ -347,13 +522,10 @@ namespace NetdeskAgent.Common.Webrtc
 
         public void Dispose()
         {
+            // GDI grana više ne drži nijedan dugotrajan handle - svaki DC/
+            // bitmap se dobija i oslobađa unutar CaptureFrameGdi() poziva,
+            // ništa ovde nije potrebno čistiti za taj put.
             DisposeDxgiResources();
-            if (_gdiBitmap != IntPtr.Zero) DeleteObject(_gdiBitmap);
-            if (_gdiMemDc != IntPtr.Zero) DeleteDC(_gdiMemDc);
-            // _gdiScreenDc je iz GetDC(NULL) - ReleaseDC bi bio "ispravniji"
-            // Win32 poziv, ali izostavljen namerno kratkoće radi u ovoj
-            // spike/prototip fazi; treba dodati pre produkcijske upotrebe
-            // (curenje jednog window DC-a po sesiji dok se ne restartuje agent).
         }
     }
 }
