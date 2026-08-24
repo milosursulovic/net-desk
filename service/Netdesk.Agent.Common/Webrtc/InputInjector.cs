@@ -5,9 +5,9 @@ namespace NetdeskAgent.Common.Webrtc
 {
     /// <summary>
     /// SendInput-bazirana injekcija miša/tastature - namenjeno da se izvršava
-    /// UNUTAR helper procesa koji SessionLauncher pokrene u interaktivnoj
-    /// korisničkoj sesiji, NIKAD direktno iz Netdesk.Agent.Service (Session 0,
-    /// vidi opsežnu napomenu u SessionLauncher.cs - SendInput iz Session 0
+    /// UNUTAR Netdesk.Agent.WebRtcBridge.exe, koji se sad pokreće kao trajan
+    /// Scheduled Task "at logon" (genuinski interaktivan korisnički logon),
+    /// NIKAD direktno iz Netdesk.Agent.Service (Session 0 - SendInput odatle
     /// ne stiže nigde). Koordinate su normalizovane [0,1] (isto što
     /// RTCDataChannel poruke sa browser strane nose - klijent zna svoju
     /// canvas/video element rezoluciju, agent zna stvarnu rezoluciju ekrana

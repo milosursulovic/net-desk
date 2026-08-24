@@ -1,8 +1,12 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Threading;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NetdeskAgent.Common.Configuration;
 using NetdeskAgent.Common.Logging;
 using NetdeskAgent.Common.Webrtc;
 using SIPSorcery.Net;
@@ -11,16 +15,30 @@ using WebSocketSharp;
 namespace NetdeskAgent.WebRtcBridge
 {
     /// <summary>
-    /// Companion proces koji SessionLauncher (Netdesk.Agent.Common/Webrtc/)
-    /// pokreće preko CreateProcessAsUser UNUTAR interaktivne korisničke
-    /// sesije - postoji isključivo zato što Netdesk.Agent.Service (Session 0,
-    /// LocalSystem) ne može sam da radi DXGI capture ni SendInput (vidi
-    /// SessionLauncher.cs). Argumenti se prosleđuju preko komandne linije
-    /// (vidi AgentWorker.cs poziv) - NIJE hardened protiv drugih lokalnih
-    /// procesa/naloga koji bi mogli da vide komandnu liniju preko Task
-    /// Manager-a/WMI-ja (apiKey bi im bio vidljiv) - prihvatljivo za
-    /// prototip/spike fazu, trebalo bi ojačati (named pipe umesto argv) pre
-    /// stvarnog rollout-a na pilot grupu.
+    /// Persistent per-sesijski helper, registrovan kao Scheduled Task koji se
+    /// pokreće "at logon" (bilo koji korisnik, interaktivno, "Run only when
+    /// user is logged on") - NE više na zahtev preko SessionLauncher-a
+    /// (CreateProcessAsUser/CreateProcessWithTokenW iz Session 0 servisa).
+    ///
+    /// UŽIVO POTVRĐENO 2026-08-24: session-retargetovan SYSTEM token
+    /// (SessionLauncher.cs, sad obrisan) je uspevao da pokrene proces i
+    /// izbegne CLR crash, ali DXGI Desktop Duplication/GDI BitBlt NIKAD nisu
+    /// videli pravi ekran (DXGI outputCount=0, BitBlt ERROR_INVALID_HANDLE) -
+    /// ni za jedan token/desktop-targeting pokušaj isprobran u toj sesiji.
+    /// Test preko Scheduled Task-a "at logon" (genuinski interaktivan logon,
+    /// ne naknadno prikačen token) je ODMAH uspeo: prava rezolucija
+    /// (1920x1080, ne 1024x768 fallback), pravi DXGI put, pun frejm. Zaključak:
+    /// DXGI/GDI capture zahteva GENUINSKI interaktivni logon, ne samo
+    /// ispravan window station/desktop naziv.
+    ///
+    /// Pošto se proces sad pokreće JEDNOM po logon-u (ne po WebRTC sesiji),
+    /// on čeka na "pokreni sesiju sad" mailbox komandu
+    /// (WebRtcBridgeCommand/WebRtcBridgeCommandClient, isti obrazac kao
+    /// Service->Manager ManagerCommand) umesto da dobija sessionId/serverUrl/
+    /// agentId/apiKey preko argv - vidi RunPersistentLoop/TryDequeueForActiveSession
+    /// ispod. Ceo stari per-sesijski tok (SDP/ICE/capture/WebRtcSession) je
+    /// nepromenjen, samo je premešten u RunOneSession i sad se izvršava u
+    /// petlji umesto jednom pa exit.
     ///
     /// Koristi websocket-sharp (isti izbor kao Vnc/VncBridge.cs, isti Win7-
     /// -kompatibilni razlog ne primenjuje se ovde pošto je ovaj tier
@@ -31,39 +49,35 @@ namespace NetdeskAgent.WebRtcBridge
     {
         private static WebRtcSession _session;
         private static WebSocket _ws;
-        private static readonly ManualResetEventSlim _stopSignal = new ManualResetEventSlim(false);
+        private static ManualResetEventSlim _stopSignal;
 
-        // Args: [0]=serverBaseUrl (npr. wss://netdesk.local:5138), [1]=sessionId,
-        // [2]=agentId, [3]=apiKey. Isti redosled kao VncBridge.RunAsync
-        // parametri, radi konzistentnosti između dva bridge poziva u
-        // AgentWorker.cs.
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern uint WTSGetActiveConsoleSessionId();
+
+        // Poll fallback ako FileSystemWatcher event promaši (poznato: watcher
+        // može propustiti event pod određenim uslovima - isti razlog zašto
+        // ManagerWorker.RunAsync kombinuje WakeEvent SA periodičnim tick-om
+        // umesto da se osloni SAMO na signal).
+        private const int MailboxPollFallbackMs = 3000;
+
         private static int Main(string[] args)
         {
             // Log fajl u KORISNIKOVOM profilu, ne %ProgramData%\NetdeskAgent -
-            // ovaj proces radi pod interaktivnim korisničkim tokenom
-            // (CreateProcessAsUser), ne LocalSystem, pa se ne može
-            // garantovati write pristup deljenom ProgramData folderu koji
-            // Agent servis (LocalSystem) koristi/kreira. Otkriveno uživo:
-            // prva verzija ovog fajla nije imala NIKAKVO logovanje (samo
-            // Console.Error.WriteLine u proces bez konzole/redirekcije - išlo
-            // je u nikuda), pa je prvi pravi test na terenu ostao
-            // nedijagnostikovan (WebRTC bridge se pokrenuo, ali dalje se nije
-            // znalo šta se dešava).
+            // ovaj proces sad radi kao genuinski ulogovan korisnik (Scheduled
+            // Task "at logon"), ne LocalSystem, pa se ne može garantovati
+            // write pristup deljenom ProgramData folderu koji Agent servis
+            // (LocalSystem) koristi/kreira (vidi Paths.cs napomenu o zašto je
+            // taj folder namerno ACL-ovan samo za LocalSystem/Administrators).
             //
-            // NAMERNO Environment.GetEnvironmentVariable("LOCALAPPDATA") (obična
-            // env promenljiva, koju SessionLauncher.CreateEnvironmentBlock već
-            // popunjava za pravog korisnika), NE
+            // NAMERNO Environment.GetEnvironmentVariable("LOCALAPPDATA")
+            // (obična env promenljiva), NE
             // Environment.GetFolderPath(SpecialFolder.LocalApplicationData) -
-            // ta druga poziva SHGetKnownFolderPath, koji zahteva da je
-            // korisnikov registry hive (HKEY_CURRENT_USER) učitan u ovaj
-            // proces. SessionLauncher.cs NIKAD ne zove LoadUserProfile() (samo
-            // CreateEnvironmentBlock) - uživo POTVRĐENO uzrok zašto se log
-            // fajl NIKAD nije pojavio: GetFolderPath je bacao izuzetak OVDE,
-            // PRE bilo kakvog try/catch-a, gasio ceo proces potpuno tiho, čak
-            // i posle dodavanja "sveg" logovanja u prethodnoj izmeni. Ceo ovaj
-            // blok je sad u sopstvenom try/catch - ako i env-var pristup ikad
-            // padne, proces nastavlja BEZ logovanja umesto da se ugasi pre
-            // nego što je i pokušao WebRTC posao.
+            // ta druga poziva SHGetKnownFolderPath, koji je uživo pucao kad je
+            // ovaj proces bio pokretan preko ručno sastavljenog tokena bez
+            // učitanog korisničkog registry hive-a (stari SessionLauncher.cs
+            // pristup, sad uklonjen). Scheduled Task "at logon" bi trebalo da
+            // ima potpuno normalan, učitan profil, ali env-var pristup je i
+            // dalje bezbedniji/dokazan izbor - nema razloga menjati ga.
             try
             {
                 var localAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
@@ -93,31 +107,157 @@ namespace NetdeskAgent.WebRtcBridge
 
         private static int RunMain(string[] args)
         {
-            if (args.Length < 4)
+            // Dijagnostički režim bez signaling/ICE/enkodera - samo
+            // Initialize()+jedan frejm, pa izlaz. Koristi se da se jeftino
+            // proveri da li DXGI/GDI capture uopšte radi u trenutnom launch
+            // kontekstu, bez potrebe da se prođe kroz punu signaling/mailbox
+            // infrastrukturu.
+            if (args.Length == 1 && args[0] == "--test-capture")
             {
-                FileLogger.Error("Očekivano 4 argumenta (serverBaseUrl, sessionId, agentId, apiKey), dobijeno " + args.Length, null);
-                return 1;
+                Log("--test-capture rezim - inicijalizujem capture, jedan frejm, bez signaling-a.");
+                var result = WebRtcSession.TestCaptureOnce();
+                Log("--test-capture rezultat: " + result);
+                return 0;
             }
 
-            var serverBaseUrl = args[0];
-            var sessionId = args[1];
-            var agentId = args[2];
-            var apiKey = args[3];
+            // Kompatibilnost sa direktnim ručnim pokretanjem (npr. PsExec
+            // testiranje tokom dijagnostike) - ako su data 4 argumenta,
+            // odradi TAČNO jednu sesiju pa izađi, isto ponašanje kao pre ove
+            // izmene. Normalan Scheduled-Task slučaj se pokreće bez argumenata
+            // i ulazi u trajnu petlju ispod.
+            if (args.Length >= 4)
+            {
+                return RunOneSession(args[0], args[1], args[2], args[3]);
+            }
 
-            Log("WebRtcBridge pokrenut. sessionId=" + sessionId + " agentId=" + agentId);
+            return RunPersistentLoop();
+        }
+
+        /// <summary>
+        /// Trajna petlja - proces se pokreće JEDNOM po korisničkom logon-u
+        /// (Scheduled Task), pa čeka na WebRtcBridgeCommand mailbox poruke
+        /// (jedna po WebRTC sesiji) umesto da dobija argumente preko argv i
+        /// izlazi posle jedne sesije. Ne vraća se dok proces ne bude ubijen
+        /// (logoff, update koji ubija proces preko KillProcessNames, itd).
+        /// </summary>
+        private static int RunPersistentLoop()
+        {
+            Log("WebRtcBridge helper pokrenut (trajni mod) - čekam komande iz mailbox-a.");
+
+            Directory.CreateDirectory(Paths.WebRtcMailboxDir);
+
+            using (var mailboxSignal = new AutoResetEvent(false))
+            {
+                FileSystemWatcher watcher = null;
+                try
+                {
+                    watcher = new FileSystemWatcher(Paths.WebRtcMailboxDir, "*.json")
+                    {
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+                    };
+                    watcher.Created += (s, e) => mailboxSignal.Set();
+                    watcher.Renamed += (s, e) => mailboxSignal.Set();
+                    watcher.EnableRaisingEvents = true;
+                }
+                catch (Exception ex)
+                {
+                    // Best-effort - bez watcher-a i dalje radi preko poll
+                    // fallback-a ispod, samo sa malo većim kašnjenjem.
+                    FileLogger.Warn("FileSystemWatcher na " + Paths.WebRtcMailboxDir + " nije uspeo: " + ex.Message);
+                }
+
+                try
+                {
+                    while (true)
+                    {
+                        mailboxSignal.WaitOne(MailboxPollFallbackMs);
+
+                        WebRtcBridgeCommand command;
+                        try
+                        {
+                            command = TryDequeueForActiveSession();
+                        }
+                        catch (Exception ex)
+                        {
+                            FileLogger.Error("Čitanje WebRtcBridgeCommand mailbox-a nije uspelo", ex);
+                            continue;
+                        }
+
+                        if (command == null) continue;
+
+                        Log("Nova WebRTC sesija iz mailbox-a: sessionId=" + command.SessionId);
+                        RunOneSession(command.ServerBaseUrl, command.SessionId, command.AgentId, command.ApiKey);
+                        Log("WebRTC sesija završena, vraćam se na čekanje sledeće komande.");
+                    }
+                }
+                finally
+                {
+                    watcher?.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Proverava da li JE OVAJ proces trenutno u aktivnoj konzolnoj
+        /// sesiji PRE nego što uopšte dotakne mailbox fajl - na mašini sa
+        /// više istovremenih interaktivnih sesija (RDS/fast user switching,
+        /// redak slučaj za ovaj RMM, ali mogući) svaki ulogovani korisnik ima
+        /// SVOJ helper, i svi vide ISTI mailbox fajl/folder. Samo onaj čija
+        /// sesija je TRENUTNO aktivna konzolna sesija sme da pročita/obriše
+        /// komandu - ostali je ostavljaju netaknutu za pravog primaoca.
+        /// </summary>
+        private static WebRtcBridgeCommand TryDequeueForActiveSession()
+        {
+            var activeSessionId = WTSGetActiveConsoleSessionId();
+            if (activeSessionId == uint.MaxValue || activeSessionId != (uint)Process.GetCurrentProcess().SessionId)
+            {
+                return null;
+            }
+
+            var path = Paths.WebRtcBridgeCommandFile;
+            if (!File.Exists(path)) return null;
+
+            string json;
+            try
+            {
+                json = File.ReadAllText(path);
+                // Briši ODMAH po čitanju (pre deserializacije/obrade) - isti
+                // delete-before-execute obrazac kao ManagerWorker.Dequeue,
+                // sprečava duplu obradu ako i signal i poll fallback stignu
+                // skoro istovremeno.
+                File.Delete(path);
+            }
+            catch (IOException)
+            {
+                // Fajl je verovatno usred pisanja (tmp->final rename nije
+                // atomičan sa gledišta FileSystemWatcher-ovog Created eventa
+                // koji može stići pre nego što je Move završen) - preskoči
+                // ovaj ciklus, sledeći poll/signal će ga pokupiti.
+                return null;
+            }
+
+            return JsonConvert.DeserializeObject<WebRtcBridgeCommand>(json);
+        }
+
+        /// <summary>
+        /// Ceo per-sesijski WebRTC tok (signaling WS, SDP offer/answer, ICE,
+        /// capture/encode, blokira do kraja sesije) - identično onome što je
+        /// pre ove izmene bilo CELO RunMain telo, sad izdvojeno u metodu da
+        /// bi moglo da se pozove više puta (jednom po mailbox komandi) iz
+        /// RunPersistentLoop, umesto tačno jednom pa exit.
+        /// </summary>
+        private static int RunOneSession(string serverBaseUrl, string sessionId, string agentId, string apiKey)
+        {
+            _stopSignal = new ManualResetEventSlim(false);
+
+            Log("WebRtcBridge sesija pokrenuta. sessionId=" + sessionId + " agentId=" + agentId);
 
             // NAMERNA konverzija https/http -> wss/ws, isti obrazac kao
             // VncBridge.cs's BuildWsUrl (RFB put) - serverBaseUrl dolazi iz
             // config.json kao "https://host:port" (isti string koji
             // NetdeskApiClient koristi za obične HTTP pozive), ali
             // websocket-sharp-ov WebSocket konstruktor zahteva ws/wss šemu i
-            // baca ArgumentException na bilo šta drugo. UŽIVO POTVRĐENA
-            // greška - baš OVAJ red je bio nedostajao od početka (VncBridge.cs
-            // ga ima, ovaj fajl NIJE ga imao), pa je konstruktor pucao PRE
-            // nego što je _ws uopšte dodeljen - svaki dijagnostički kanal
-            // (i lokalni fajl i signaling relay dodat u prethodnoj izmeni)
-            // je zato ostajao potpuno prazan, jer nijedan još nije ni
-            // postojao u trenutku pada.
+            // baca ArgumentException na bilo šta drugo.
             var wsUrl = serverBaseUrl.Replace("https://", "wss://").Replace("http://", "ws://")
                 + $"/api/agents/webrtc-signaling?sessionId={sessionId}&agentId={Uri.EscapeDataString(agentId)}&apiKey={Uri.EscapeDataString(apiKey)}";
 
@@ -162,9 +302,6 @@ namespace NetdeskAgent.WebRtcBridge
             }
             catch (Exception ex)
             {
-                // Sad JESTE prijavljivo - WS je već gore, poruka stiže do
-                // servera čak i ako je ovo baš onaj pad koji je do sad bio
-                // potpuno nevidljiv.
                 Log("WebRtcSession konstrukcija neuspešna: " + ex);
                 SendSignalingMessage(new JObject { ["type"] = "failed" });
                 return 1;
@@ -174,17 +311,9 @@ namespace NetdeskAgent.WebRtcBridge
             _session.OnIceCandidateGenerated += candidate =>
             {
                 // SIPSorcery-ov RTCIceCandidate.candidate je bukvalno alias za
-                // ToString() (public string candidate => ToString();) - VRAĆA
-                // SAMO sirovu SDP atributsku vrednost, BEZ vodećeg "candidate:"
-                // tokena. W3C RTCIceCandidateInit.candidate zahteva taj token
-                // (isto što i standardni "a=candidate:..." SDP red, samo bez
-                // "a=" dela) - SIPSorcery sam to ispravno radi u sopstvenom
-                // ToJson()/toJSON()-u ($"{CANDIDATE_PREFIX}:{this}"), ali mi smo
-                // ranije slali .candidate direktno, bez prefiksa. Uživo
-                // potvrđeno preko chrome://webrtc-internals dump-a 2026-08-24:
-                // browser je odbijao SVAKI kandidat (addIceCandidateFailed) jer
-                // nije mogao da parsira string bez "candidate:" prefiksa - ICE
-                // provera nikad nije ni počela.
+                // ToString() - vraća samo sirovu SDP atributsku vrednost, BEZ
+                // vodećeg "candidate:" tokena. W3C RTCIceCandidateInit.candidate
+                // zahteva taj token.
                 var candidateString = "candidate:" + candidate.candidate;
                 Log("ICE kandidat generisan (" + candidateString + ") - šaljem signaling.");
                 SendSignalingMessage(new JObject
@@ -197,11 +326,6 @@ namespace NetdeskAgent.WebRtcBridge
             };
             _session.OnConnectionFailed += () =>
             {
-                // Signalizuje nazad backend-u da je WebRTC put propao, kako bi
-                // vncSessions.service.js mogao da prebaci session_type na 'rfb'
-                // i pokrene postojeći start_vnc_bridge job za isti sessionId
-                // (Faza 2 fallback mehanizam iz plana). Proces se posle ovoga
-                // gasi - nema smisla da ostane živ bez konekcije.
                 Log("WebRTC konekcija neuspešna (ICE failed/closed) - javljam 'failed' i gasim se.");
                 SendSignalingMessage(new JObject { ["type"] = "failed" });
                 _stopSignal.Set();
@@ -210,24 +334,22 @@ namespace NetdeskAgent.WebRtcBridge
             StartOfferHandshake();
 
             // Blokira dok se sesija ne završi (fallback, viewer prekine,
-            // WS se zatvori) - ovaj proces nema drugi posao osim da drži
-            // WebRTC sesiju živu.
+            // WS se zatvori) - NE gasi ceo proces više, samo ovu jednu
+            // sesiju; RunPersistentLoop se vraća na čekanje sledeće komande.
             _stopSignal.Wait();
 
             _session.Dispose();
             if (_ws.IsAlive) _ws.Close();
-            Log("WebRtcBridge se gasi.");
             return 0;
         }
 
         /// <summary>
-        /// Loguje lokalno (best-effort, FileLogger - uživo se pokazao
-        /// nepouzdanim pod CreateProcessAsUser tokenom, videti napomenu u
-        /// Main()) I preko signaling WS-a kao {"type":"log"} poruka - backend
-        /// (persistMessage u ws/webrtcSignaling.js) snima SVAKU signaling
-        /// poruku u vnc_webrtc_signaling tabelu BEZUSLOVNO, pre bilo kakvog
-        /// grananja po tipu, pa je ovo u praksi pouzdaniji dijagnostički kanal
-        /// od bilo čega na samoj klijentskoj mašini. Viewer strana (frontend)
+        /// Loguje lokalno (best-effort, FileLogger) I preko signaling WS-a
+        /// kao {"type":"log"} poruka - backend (persistMessage u
+        /// ws/webrtcSignaling.js) snima SVAKU signaling poruku u
+        /// vnc_webrtc_signaling tabelu BEZUSLOVNO, pre bilo kakvog grananja po
+        /// tipu, pa je ovo u praksi pouzdaniji dijagnostički kanal od bilo
+        /// čega na samoj klijentskoj mašini. Viewer strana (frontend)
         /// nepoznate tipove poruka (uključujući "log") tiho ignoriše - ne
         /// remeti postojeći "offer"/"ice"/"fallback" tok.
         /// </summary>

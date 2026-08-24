@@ -18,7 +18,6 @@ using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
 #if NETDESK_WEBRTC_CAPABLE
-using System.IO;
 using NetdeskAgent.Common.Webrtc;
 #endif
 
@@ -491,11 +490,16 @@ namespace NetdeskAgent.Service
             {
 #if NETDESK_WEBRTC_CAPABLE
                 // Isti fire-and-forget oblik kao start_vnc_bridge iznad -
-                // uspeh se prijavljuje čim je SessionLauncher POKUŠAO da
-                // pokrene bridge proces, ne kad WebRTC sesija stvarno uspe
-                // (sam WebRtcBridge.exe javlja "failed" na signaling kanalu
-                // preko WebRtcSession.OnConnectionFailed ako kasnije ne
-                // uspe - vidi Program.cs u Netdesk.Agent.WebRtcBridge).
+                // uspeh se prijavljuje čim je komanda UPISANA u mailbox, ne
+                // kad WebRTC sesija stvarno uspe (sam WebRtcBridge.exe javlja
+                // "failed" na signaling kanalu preko
+                // WebRtcSession.OnConnectionFailed ako kasnije ne uspe - vidi
+                // Program.cs u Netdesk.Agent.WebRtcBridge). Da li će neki
+                // WebRtcBridge helper stvarno pokupiti komandu (npr. ako
+                // trenutno niko nije ulogovan na konzoli) se ne proverava
+                // ovde - taj slučaj se i dalje hvata kroz postojeći
+                // signaling-nivo fallback (agent nikad ne otvori WS ->
+                // vncSessions.service.js prebacuje na RFB), isto kao pre.
                 var sessionId = ExtractSessionId(job.Payload);
                 var launched = RunWebRtcBridge(sessionId, settings, state);
 
@@ -503,8 +507,8 @@ namespace NetdeskAgent.Service
                 {
                     Success = launched,
                     ExitCode = launched ? 0 : 1,
-                    Output = launched ? "WebRTC most pokrenut." : null,
-                    ErrorOutput = launched ? null : "Nema aktivne interaktivne sesije za WebRTC most (SessionLauncher).",
+                    Output = launched ? "WebRTC komanda upisana u mailbox." : null,
+                    ErrorOutput = launched ? null : "Upis WebRTC mailbox komande nije uspeo.",
                     DurationMs = 0,
                 }).ConfigureAwait(false);
 #else
@@ -571,35 +575,25 @@ namespace NetdeskAgent.Service
         }
 
 #if NETDESK_WEBRTC_CAPABLE
-        // SessionLauncher (Netdesk.Agent.Common/Webrtc/) pokreće poseban
-        // WebRtcBridge.exe UNUTAR interaktivne korisničke sesije preko
-        // CreateProcessAsUser - vidi opsežnu napomenu tamo o Session 0
-        // izolaciji (ni DXGI capture ni SendInput ne rade iz ovog LocalSystem
-        // servisa direktno). Vraća false (bez izuzetka) ako trenutno nema
-        // prijavljenog korisnika (WTSQueryUserToken padne na zaključanoj/
-        // odjavljenoj konzoli) - očekivano stanje na mašini bez ikoga
-        // prijavljenog, ne greška koju treba logovati kao fatalnu.
-        //
-        // POZNAT NEDOSTATAK (ne rešeno u ovoj promeni): putanja do
-        // WebRtcBridge.exe pretpostavlja da je kopiran u isti "Service\"
-        // instalacioni folder kao ovaj .exe - DEPLOYMENT.md/paketovanje
-        // treba ažurirati da to stvarno uključi u net472 release zip pre
-        // prvog stvarnog rollout-a, ovo NIJE još urađeno.
+        // Netdesk.Agent.WebRtcBridge.exe je sad TRAJAN proces, pokrenut
+        // JEDNOM po korisničkom logon-u preko Scheduled Task-a "at logon"
+        // (ne više na zahtev preko SessionLauncher-a/CreateProcessWithTokenW
+        // iz ovog Session 0 servisa - taj pristup je uživo potvrđen kao
+        // nedovoljan za pravi DXGI/GDI pristup, vidi Program.cs napomenu u
+        // Netdesk.Agent.WebRtcBridge). Ovaj metod samo upisuje "pokreni
+        // sesiju sad" komandu u mailbox (WebRtcBridgeCommandClient) - ne zna
+        // niti proverava da li je neki helper trenutno živ/ulogovan da je
+        // pokupi; to ostaje na postojećem signaling-nivo fallback-u.
         private static bool RunWebRtcBridge(long sessionId, AgentSettings settings, AgentState state)
         {
-            var bridgeExePath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "Netdesk.Agent.WebRtcBridge.exe");
-            var arguments = string.Join(" ",
+            var sent = WebRtcBridgeCommandClient.TrySend(
                 settings.ServerBaseUrl, sessionId.ToString(), state.AgentId, state.ApiKey);
-
-            var pid = SessionLauncher.LaunchInActiveSession(bridgeExePath, arguments);
-            if (pid == 0)
+            if (!sent)
             {
-                FileLogger.Error(
-                    "WebRTC sesija #" + sessionId + " - nema aktivne interaktivne sesije za pokretanje mosta", null);
+                FileLogger.Error("WebRTC sesija #" + sessionId + " - upis mailbox komande nije uspeo", null);
                 return false;
             }
-            FileLogger.Info("WebRTC most #" + sessionId + " pokrenut, PID " + pid);
+            FileLogger.Info("WebRTC most #" + sessionId + " - komanda upisana u mailbox.");
             return true;
         }
 #endif

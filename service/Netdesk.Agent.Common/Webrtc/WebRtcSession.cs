@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,19 +17,20 @@ namespace NetdeskAgent.Common.Webrtc
     /// bajt-blind proksiranja ka UltraVNC-u, ovde se ekran STVARNO hvata i
     /// enkoduje ovde.
     ///
-    /// Namenjeno da se instancira UNUTAR helper procesa kojeg SessionLauncher
-    /// pokrene u interaktivnoj korisničkoj sesiji (vidi opsežnu napomenu u
-    /// SessionLauncher.cs) - NE direktno u Netdesk.Agent.Service (Session 0)
-    /// procesu, jer i ScreenCapture (DXGI) i InputInjector (SendInput)
-    /// zahtevaju pristup interaktivnom desktop-u.
+    /// Namenjeno da se instancira UNUTAR Netdesk.Agent.WebRtcBridge.exe, koji
+    /// se sad pokreće kao trajan Scheduled Task "at logon" (genuinski
+    /// interaktivan korisnički logon - vidi napomenu na vrhu
+    /// WebRtcBridge/Program.cs zašto je ovo zamenilo stari
+    /// SessionLauncher/CreateProcessWithTokenW pristup) - NE direktno u
+    /// Netdesk.Agent.Service (Session 0) procesu, jer i ScreenCapture (DXGI)
+    /// i InputInjector (SendInput) zahtevaju pristup interaktivnom desktop-u.
     ///
     /// SIPSorcery API pozivi ovde (RTCPeerConnection/MediaStreamTrack/
     /// VideoFormat/createDataChannel/SendVideo/createOffer) su UŽIVO
     /// provereni protiv stvarno restore-ovanog SIPSorcery 10.0.16 paketa na
-    /// net472 u ovoj sesiji (probni fajl kompajliran pa obrisan) - nisu
-    /// nagađani iz dokumentacije. Sam capture->encode->send ciklus i
-    /// data-channel->InputInjector smer NISU runtime testirani (nema
-    /// Windows mašine/pravog WebRTC peer-a u ovoj sesiji).
+    /// net472 - nisu nagađani iz dokumentacije. Capture->encode->send ciklus
+    /// je UŽIVO potvrđen (DXGI Desktop Duplication, pravi frejmovi) kad
+    /// proces radi kao genuinski interaktivno ulogovan korisnik.
     /// </summary>
     public sealed class WebRtcSession : IDisposable
     {
@@ -72,7 +74,29 @@ namespace NetdeskAgent.Common.Webrtc
 
         public WebRtcSession()
         {
-            _pc = new RTCPeerConnection();
+            // Bez iceServers, ICE gathering daje SAMO host kandidate (lokalna
+            // LAN adresa) - uživo potvrđeno 2026-08-24: radi kad su agent i
+            // viewer na istoj mreži (host adresa je direktno dostižna), ali
+            // NIKAD ne uspeva preko interneta/NAT-a (viewer izvan interne
+            // mreže vidi requestsSent rasti dok responsesReceived ostaje 0 -
+            // host adresa poput 10.230.62.100 nije rutabilna sa interneta).
+            // STUN otkriva server-reflexive (javnu NAT) adresu na obe strane,
+            // dovoljno za većinu "full cone"/"restricted cone" NAT tipova.
+            // NIJE dovoljno za simetrični NAT ili restriktivne firewall-ove
+            // (česti u korporativnim/bolničkim mrežama) - to zahteva TURN
+            // relay, koji NIJE ovde postavljen (zaseban infrastrukturni
+            // zadatak, van dosega ove izmene). Isti STUN URL MORA biti
+            // podešen i na frontend strani (VncSessionView.vue) - ICE
+            // gathering je nezavisan na obe strane, ne razmenjuje se preko
+            // signaling-a.
+            var config = new RTCConfiguration
+            {
+                iceServers = new List<RTCIceServer>
+                {
+                    new RTCIceServer { urls = "stun:stun.l.google.com:19302" },
+                },
+            };
+            _pc = new RTCPeerConnection(config);
             var videoFormat = new VideoFormat(VideoCodecsEnum.VP8, 96);
             var track = new MediaStreamTrack(videoFormat);
             _pc.addTrack(track);
@@ -127,6 +151,33 @@ namespace NetdeskAgent.Common.Webrtc
         public void AddRemoteIceCandidate(RTCIceCandidateInit candidate)
         {
             _pc.addIceCandidate(candidate);
+        }
+
+        /// <summary>
+        /// Samostalni test capture inicijalizacije/jednog frejma, BEZ
+        /// signaling/ICE/enkodera - korišćeno da se uživo dokaže (2026-08-24)
+        /// da genuinski interaktivan logon (Scheduled Task "at logon") daje
+        /// pravi DXGI pristup tamo gde stari session-retargetovan SYSTEM
+        /// token (bivši SessionLauncher.cs) nije. Zadržano kao trajan
+        /// dijagnostički alat - pokreće se preko "--test-capture" argv flaga
+        /// u WebRtcBridge/Program.cs.
+        /// </summary>
+        public static string TestCaptureOnce()
+        {
+            using (var capture = new ScreenCapture())
+            {
+                if (!capture.Initialize())
+                {
+                    return "Initialize() neuspešan (ni DXGI ni GDI fallback).";
+                }
+
+                var path = capture.UsingGdiFallback ? "GDI fallback" : "DXGI";
+                var frame = capture.CaptureFrameBgra(2000);
+                var frameResult = frame == null
+                    ? "CaptureFrameBgra() vratio null"
+                    : "CaptureFrameBgra() vratio " + frame.Length + " bajtova (uspeh)";
+                return "Capture (" + capture.Width + "x" + capture.Height + ", " + path + "): " + frameResult;
+            }
         }
 
         /// <summary>

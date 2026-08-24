@@ -45,13 +45,13 @@ namespace NetdeskAgent.Common.Manager
         /// brisanja/kopiranja - generičko, Manager ne zna NIŠTA o tome ŠTA
         /// instalira niti ZAŠTO neki proces treba ubijen, samo dobije listu
         /// imena. Postoji konkretno zbog Netdesk.Agent.WebRtcBridge.exe -
-        /// poseban proces koji Service pokreće preko CreateProcessAsUser
-        /// (SessionLauncher.cs) u interaktivnoj korisničkoj sesiji za trajanje
-        /// WebRTC sesije; ako je aktivan tokom update-a, drži zaključane SVE
-        /// DLL-ove koje je učitao iz Service foldera (SIPSorcery.dll,
-        /// SharpDX*.dll...) - potencijalno MINUTIMA (dok traje sesija), daleko
-        /// duže od DirectorySync-ovog ~6s retry prozora koji pokriva samo
-        /// kratkotrajne zaključane fajlove (WinDivert driver-unload lag i sl).
+        /// TRAJAN proces (Scheduled Task "at logon", ne više pokrenut samo za
+        /// trajanje jedne WebRTC sesije) koji drži zaključane SVE DLL-ove
+        /// učitane iz Service foldera (SIPSorcery.dll, SharpDX*.dll...) praktično
+        /// STALNO, daleko duže od DirectorySync-ovog ~6s retry prozora koji
+        /// pokriva samo kratkotrajne zaključane fajlove (WinDivert
+        /// driver-unload lag i sl). Ubijanje ovde je bezbedno - Scheduled
+        /// Task-ovo "restart on failure" podešavanje ga sam ponovo pokreće.
         /// </summary>
         public string[] KillProcessNames { get; set; }
         public string ServerBaseUrl { get; set; }
