@@ -328,8 +328,18 @@ async function onSignalingMessage(event) {
     sendSignaling({ type: 'answer', sdp: answer.sdp })
   } else if (msg.type === 'ice') {
     try {
+      // SIPSorcery (agent strana) ume da pošalje sdpMid kao prazan string
+      // umesto null kad ga ne popuni - Chromium to strogo tretira kao
+      // "prosleđen, ali ne odgovara nijednom mid-u u SDP-u" i ODBIJE ceo
+      // kandidat (addIceCandidateFailed), umesto da padne nazad na
+      // sdpMLineIndex kao kad je vrednost stvarno null/undefined. Uživo
+      // potvrđeno preko chrome://webrtc-internals dump-a 2026-08-24 - jedini
+      // poslati kandidat je bio odbijen na ovaj način, pa ICE nikad nije ni
+      // počeo proveru (nema iceconnectionstatechange uopšte).
       await pc.addIceCandidate({
-        candidate: msg.candidate, sdpMid: msg.sdpMid, sdpMLineIndex: msg.sdpMLineIndex,
+        candidate: msg.candidate,
+        sdpMid: msg.sdpMid || null,
+        sdpMLineIndex: msg.sdpMLineIndex,
       })
     } catch (e) {
       console.error('Neuspešno dodavanje ICE kandidata:', e)
