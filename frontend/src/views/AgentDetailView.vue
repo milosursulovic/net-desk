@@ -303,8 +303,16 @@
         <div v-if="updateLogLoading" class="text-slate-600 text-sm">Učitavanje…</div>
         <div v-else-if="!updateLog.length" class="text-slate-500 text-sm">Nema pokušaja ažuriranja.</div>
         <div v-for="u in updateLog" :key="u.id" class="rounded-lg border bg-white p-3 text-sm">
-          <div class="flex items-center justify-between">
-            <div>{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span>{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</span>
+              <span
+                class="rounded-full border px-2 py-0.5 text-xs"
+                :class="u.channel === 'manager' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-600 border-slate-200'"
+              >
+                {{ u.channel === 'manager' ? 'Manager' : 'Agent' }}
+              </span>
+            </div>
             <span class="rounded-full border px-2 py-0.5 text-xs" :class="u.success ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'">
               {{ u.success ? 'Uspešno' : 'Neuspešno' }}
             </span>
@@ -380,6 +388,22 @@
               </AppButton>
             </div>
           </template>
+        </div>
+
+        <div v-if="managerStatus" class="space-y-2">
+          <div class="text-sm font-medium text-slate-700">Istorija Manager poslova</div>
+          <div v-if="managerJobHistoryLoading" class="text-slate-600 text-sm">Učitavanje…</div>
+          <div v-else-if="!managerJobHistory.length" class="text-slate-500 text-sm">Nema poslova za ovaj Manager.</div>
+          <div v-for="j in managerJobHistory" :key="j.id" class="rounded-lg border bg-white p-3 text-sm">
+            <div class="flex items-center justify-between gap-2">
+              <div>{{ MANAGER_COMMAND_LABELS[j.commandType] || j.commandType }}</div>
+              <span class="rounded-full border px-2 py-0.5 text-xs" :class="managerJobStatusClass(j.status)">
+                {{ MANAGER_JOB_STATUS_LABELS[j.status] || j.status }}
+              </span>
+            </div>
+            <div v-if="j.errorOutput" class="text-xs text-slate-600 mt-1">{{ j.errorOutput }}</div>
+            <div class="text-xs text-slate-400 mt-1">{{ fmtDate(j.completedAt || j.sentAt || j.createdAt) }}</div>
+          </div>
         </div>
       </div>
 
@@ -537,6 +561,32 @@ const managerStatusLoading = ref(false)
 const sendingManagerAction = ref(false)
 const installingViaManager = ref(false)
 const selectedStartMode = ref('Automatic')
+const managerJobHistory = ref([])
+const managerJobHistoryLoading = ref(false)
+const managerJobHistoryLoaded = ref(false)
+
+const MANAGER_COMMAND_LABELS = {
+  start_service: 'Pokreni servis',
+  stop_service: 'Zaustavi servis',
+  restart_service: 'Restartuj servis',
+  set_service_start_mode: 'Promena startup tipa',
+  install_update: 'Instalacija update-a',
+}
+
+const MANAGER_JOB_STATUS_LABELS = {
+  pending: 'Na čekanju',
+  sent: 'Poslato Manager-u',
+  completed: 'Uspešno',
+  failed: 'Neuspešno',
+  cancelled: 'Otkazano',
+}
+
+function managerJobStatusClass(status) {
+  if (status === 'completed') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (status === 'failed') return 'bg-red-50 text-red-700 border-red-200'
+  if (status === 'cancelled') return 'bg-slate-50 text-slate-500 border-slate-200'
+  return 'bg-amber-50 text-amber-700 border-amber-200'
+}
 
 async function fetchReleaseOptions() {
   try {
@@ -868,6 +918,32 @@ async function loadManagerStatus() {
   }
 }
 
+// Trajna istorija SVIH Manager poslova (ne samo poslednjeg poslatog) - bez
+// ovoga, ishod komande (posebno install_update) je bio vidljiv SAMO u
+// trenutku dispečovanja (jednokratan toast u reportManagerJobOutcome), i
+// zauvek nestaje čim se izađe sa stranice ili se posao završi dok niko ne
+// gleda - uživo potvrđeno kao pravi problem (manager_jobs ima stvarne
+// install_update redove, uključujući neuspehe, koje niko nikad nije video u
+// UI-u).
+async function loadManagerJobHistory() {
+  if (!managerStatus.value?.managerId) {
+    managerJobHistory.value = []
+    return
+  }
+  managerJobHistoryLoading.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs?limit=20`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    managerJobHistory.value = data.items || []
+    managerJobHistoryLoaded.value = true
+  } catch (err) {
+    console.error('Neuspešno dohvatanje istorije Manager poslova', err)
+  } finally {
+    managerJobHistoryLoading.value = false
+  }
+}
+
 // Manager svoj job-poll ciklus radi na sopstvenom tajmeru (podrazumevano
 // do 30s, JobsPollIntervalSeconds u config.json), plus stvarno vreme
 // izvršavanja - poll ovde traje dovoljno dugo (do ~60s) da pokrije taj
@@ -914,6 +990,7 @@ async function reportManagerJobOutcome(job) {
     showToast(job.errorOutput || 'Komanda nije uspela.', { prefix: '❌ ', duration: 4000 })
   }
   await loadManagerStatus()
+  await loadManagerJobHistory()
 }
 
 async function sendManagerServiceAction(commandType) {
@@ -1078,6 +1155,7 @@ function selectTab(name) {
     if (name === 'updates' && !updateLogLoaded.value) loadUpdateLog()
     else if (name === 'events' && !eventLogsLoaded.value) loadEventLogs()
     else if (name === 'dns' && !dnsLogsLoaded.value) loadDnsLogs()
+    else if (name === 'manager' && !managerJobHistoryLoaded.value) loadManagerJobHistory()
   }
 }
 

@@ -17,12 +17,13 @@ import {
   findReleaseIdByVersion,
 } from "../repositories/agentReleases.repo.js";
 import { findRecentForceReinstallJob } from "../repositories/agentJobs.repo.js";
-import { findRecentInstallUpdateJob } from "../repositories/managerJobs.repo.js";
+import { findRecentInstallUpdateJob, listJobsForManager } from "../repositories/managerJobs.repo.js";
+import { findManagerByIpEntryId } from "../repositories/managers.repo.js";
 import {
   insertUpdateLog,
   listUpdateLogForAgent,
 } from "../repositories/agentUpdateLog.repo.js";
-import { updateAgentVersion } from "../repositories/agents.repo.js";
+import { updateAgentVersion, findAgentById } from "../repositories/agents.repo.js";
 import { compareVersions, isNewerVersion } from "../utils/semver.js";
 import { paginate } from "../utils/pagination.js";
 import { badRequest, notFound } from "../utils/httpError.js";
@@ -333,10 +334,70 @@ export async function reportUpdateResultService(agent, dto) {
   return { ok: true };
 }
 
+// Manager (managers.repo.js) je povezan preko istog ip_entry_id kao agent,
+// ne agent_id direktno - Manager i Agent nemaju direktnu vezu, samo dele
+// mašinu (isti obrazac kao getAgentManagerStatusController). Rezultat je
+// oblikovan da liči na agent_update_log red (fromVersion/toVersion/success/
+// reason/reportedAt), plus channel:'manager' za razlikovanje u UI-u.
+async function listManagerInstallLogForAgent(agentId, limit) {
+  const agent = await findAgentById(agentId);
+  if (!agent?.ipEntryId) return [];
+
+  const manager = await findManagerByIpEntryId(agent.ipEntryId);
+  if (!manager) return [];
+
+  const { items: jobs } = await listJobsForManager({ managerId: manager.id, limit, offset: 0 });
+
+  const installJobs = jobs.filter(
+    (j) => j.commandType === "install_update" && (j.status === "completed" || j.status === "failed"),
+  );
+
+  return Promise.all(
+    installJobs.map(async (j) => {
+      const releaseId = j.payload?.releaseId;
+      const release = releaseId ? await findReleaseById(releaseId) : null;
+      return {
+        id: "mgr-" + j.id,
+        fromVersion: null,
+        toVersion: release?.version ?? null,
+        success: j.status === "completed",
+        reason: j.status === "failed" ? j.errorOutput || "Neuspešno (bez detalja)" : null,
+        reportedAt: j.completedAt ?? j.createdAt,
+        channel: "manager",
+      };
+    }),
+  );
+}
+
+// Spaja DVA odvojena izvora - agent_update_log (stari put, agent sam sebe
+// javlja preko POST /api/agents/update/report) i manager_jobs install_update
+// poslove (novi, JEDINI put od kad je force-install po agentu uklonjen -
+// vidi ManagerWorker.cs InstallUpdateFromServerAsync, koji NAMERNO ostavlja
+// ServerBaseUrl prazan pa ReportResultIfConfiguredAsync nikad ne piše u
+// agent_update_log). Bez ovog spajanja, Update log tab bi ostao trajno prazan
+// za svaki update urađen preko Manager-a - uživo potvrđeno: agent_update_log
+// poslednji red 2026-08-22 pre nego što je Manager kanal preuzeo instalacije,
+// manager_jobs ima stvarne install_update redove posle tog trenutka.
+//
+// Pravo cross-source pagination nije vredno komplikacije za ovu tabelu (po
+// agentu, retko više od par desetina pokušaja ukupno) - umesto toga, uzima se
+// do `limit` redova iz SVAKOG izvora, spaja, sortira po vremenu, i seče na
+// `limit`. `total`/`totalPages` su najbolja procena (zbir oba izvora), ne
+// tačna cross-source vrednost - dovoljno za "ima još/nema još" osećaj bez
+// tačne stranice N.
 export async function listUpdateLogService(agentId, { page, limit }) {
   const offset = (page - 1) * limit;
-  const { items, total } = await listUpdateLogForAgent(agentId, { limit, offset });
+  const [{ items: agentItems, total: agentTotal }, managerItems] = await Promise.all([
+    listUpdateLogForAgent(agentId, { limit, offset: 0 }),
+    listManagerInstallLogForAgent(agentId, limit),
+  ]);
+
+  const merged = [...agentItems.map((row) => ({ ...row, channel: "agent" })), ...managerItems]
+    .sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt))
+    .slice(offset, offset + limit);
+
+  const total = agentTotal + managerItems.length;
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
-  return { items, page: safePage, limit, total, totalPages };
+  return { items: merged, page: safePage, limit, total, totalPages };
 }
