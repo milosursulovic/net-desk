@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using NetdeskAgent.Common.Logging;
 using SharpDX.DXGI;
 using SharpDX.Direct3D11;
 using D3D11Device = SharpDX.Direct3D11.Device;
@@ -46,6 +47,7 @@ namespace NetdeskAgent.Common.Webrtc
         private IntPtr _gdiScreenDc;
         private IntPtr _gdiMemDc;
         private IntPtr _gdiBitmap;
+        private bool _gdiFailureLogged;
 
         internal int Width => _width;
         internal int Height => _height;
@@ -140,6 +142,9 @@ namespace NetdeskAgent.Common.Webrtc
 
         [DllImport("gdi32.dll")]
         private static extern bool DeleteDC(IntPtr hdc);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetLastError();
 
         [DllImport("gdi32.dll")]
         private static extern int GetDIBits(
@@ -254,6 +259,7 @@ namespace NetdeskAgent.Common.Webrtc
         {
             if (!BitBlt(_gdiMemDc, 0, 0, _width, _height, _gdiScreenDc, 0, 0, SRCCOPY))
             {
+                LogGdiFailureOnce("BitBlt neuspešan, GetLastError=" + GetLastError());
                 return null;
             }
 
@@ -273,7 +279,22 @@ namespace NetdeskAgent.Common.Webrtc
 
             var buffer = new byte[_width * _height * 4];
             var scanLines = GetDIBits(_gdiMemDc, _gdiBitmap, 0, (uint)_height, buffer, ref header, DIB_RGB_COLORS);
-            return scanLines == 0 ? null : buffer;
+            if (scanLines == 0)
+            {
+                LogGdiFailureOnce("GetDIBits neuspešan (vratio 0 scan-linija), GetLastError=" + GetLastError());
+                return null;
+            }
+            return buffer;
+        }
+
+        // Loguje se samo prvi put - na ~15 FPS bi ponavljanje na svaki frejm
+        // zatrpalo log bez nove informacije (isti obrazac kao
+        // WebRtcSession._loggedFirstCaptureError).
+        private void LogGdiFailureOnce(string detail)
+        {
+            if (_gdiFailureLogged) return;
+            _gdiFailureLogged = true;
+            FileLogger.Warn("GDI capture frejm neuspešan (dalja ponavljanja se ne loguju): " + detail);
         }
 
         /// <summary>
