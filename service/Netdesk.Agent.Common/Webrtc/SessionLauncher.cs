@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
+using NetdeskAgent.Common.Logging;
 
 namespace NetdeskAgent.Common.Webrtc
 {
@@ -66,6 +68,27 @@ namespace NetdeskAgent.Common.Webrtc
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr hObject);
 
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct ProfileInfo
+        {
+            public int dwSize;
+            public int dwFlags;
+            public string lpUserName;
+            public string lpProfilePath;
+            public string lpDefaultPath;
+            public string lpServerName;
+            public string lpPolicyPath;
+            public IntPtr hProfile;
+        }
+
+        [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool LoadUserProfile(IntPtr hToken, ref ProfileInfo lpProfileInfo);
+
+        [DllImport("userenv.dll", SetLastError = true)]
+        private static extern bool UnloadUserProfile(IntPtr hToken, IntPtr hProfile);
+
+        private const int PI_NOUI = 0x00000001;
+
         [StructLayout(LayoutKind.Sequential)]
         private struct StartupInfo
         {
@@ -127,24 +150,69 @@ namespace NetdeskAgent.Common.Webrtc
             // (npr. mašina je na login ekranu ili u pitanju je headless server).
             if (sessionId == uint.MaxValue) return 0;
 
-            if (!WTSQueryUserToken(sessionId, out var userToken)) return 0;
+            if (!WTSQueryUserToken(sessionId, out var userToken))
+            {
+                FileLogger.Warn("WTSQueryUserToken neuspešan za session #" + sessionId + " (Win32 error " + Marshal.GetLastWin32Error() + ").");
+                return 0;
+            }
 
             IntPtr primaryToken = IntPtr.Zero;
             IntPtr envBlock = IntPtr.Zero;
+            var profileInfo = new ProfileInfo();
+            var profileLoaded = false;
             try
             {
                 if (!DuplicateTokenEx(
                         userToken, TOKEN_ALL_ACCESS, IntPtr.Zero,
                         SECURITY_IMPERSONATION, TOKEN_TYPE_PRIMARY, out primaryToken))
                 {
+                    FileLogger.Warn("DuplicateTokenEx neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
                     return 0;
                 }
 
-                // MORA biti pozvano posle DuplicateTokenEx a pre
-                // CreateProcessAsUser sa ISTIM tokenom - redosled je bitan
+                // LoadUserProfile MORA biti pozvano pre CreateEnvironmentBlock da bi
+                // korisnikov profil (registry hive, LOCALAPPDATA/TEMP putanje) bio
+                // stvarno učitan za ovaj token - bez ovoga, CreateEnvironmentBlock
+                // ume da uspe ali sa OSIROMAŠENIM environment-om (ili CreateProcessAsUser
+                // nasledi environment POZIVAOCA - LocalSystem servisa - umesto pravog
+                // korisnika, ako envBlock ispadne IntPtr.Zero), pa dete-proces gleda
+                // pogrešne/nedostupne putanje za sve što zavisi od profila (log fajl,
+                // DirectX/COM per-user registry stanje itd.) - uživo potvrđen simptom:
+                // proces se pokrene (validan PID), ali ne ispiše apsolutno ništa, čak
+                // ni najraniju log liniju, iako identičan .exe pokrenut RUČNO (sa punim
+                // profilom, obična interaktivna prijava) radi besprekorno. Best-effort -
+                // ako padne, nastavljamo bez učitanog profila kao i do sad, radije nego
+                // da odustanemo od celog pokretanja.
+                try
+                {
+                    var userName = new WindowsIdentity(userToken).Name;
+                    var backslash = userName.IndexOf('\\');
+                    if (backslash >= 0) userName = userName.Substring(backslash + 1);
+
+                    profileInfo.dwSize = Marshal.SizeOf(typeof(ProfileInfo));
+                    profileInfo.dwFlags = PI_NOUI;
+                    profileInfo.lpUserName = userName;
+
+                    if (LoadUserProfile(primaryToken, ref profileInfo))
+                    {
+                        profileLoaded = true;
+                    }
+                    else
+                    {
+                        FileLogger.Warn("LoadUserProfile neuspešan za '" + userName + "' (Win32 error " + Marshal.GetLastWin32Error() + ") - nastavljam bez učitanog profila.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    FileLogger.Warn("LoadUserProfile priprema neuspešna: " + ex.Message);
+                }
+
+                // MORA biti pozvano posle DuplicateTokenEx (i, sad, posle LoadUserProfile)
+                // a pre CreateProcessAsUser sa ISTIM tokenom - redosled je bitan
                 // (dokumentovano Win32 ponašanje, ne proizvoljan izbor ovde).
                 if (!CreateEnvironmentBlock(out envBlock, primaryToken, false))
                 {
+                    FileLogger.Warn("CreateEnvironmentBlock neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ") - nastavljam bez environment bloka.");
                     envBlock = IntPtr.Zero; // nastavi bez environment bloka ako ovo padne
                 }
 
@@ -169,7 +237,11 @@ namespace NetdeskAgent.Common.Webrtc
                     ref startupInfo,
                     out var processInfo);
 
-                if (!created) return 0;
+                if (!created)
+                {
+                    FileLogger.Warn("CreateProcessAsUser neuspešan (Win32 error " + Marshal.GetLastWin32Error() + ").");
+                    return 0;
+                }
 
                 CloseHandle(processInfo.hThread);
                 CloseHandle(processInfo.hProcess);
@@ -177,6 +249,7 @@ namespace NetdeskAgent.Common.Webrtc
             }
             finally
             {
+                if (profileLoaded) UnloadUserProfile(primaryToken, profileInfo.hProfile);
                 if (envBlock != IntPtr.Zero) DestroyEnvironmentBlock(envBlock);
                 if (primaryToken != IntPtr.Zero) CloseHandle(primaryToken);
                 CloseHandle(userToken);
