@@ -165,6 +165,15 @@ let currentSession = null // ceo /vnc/start odgovor - treba i posle, za RFB re-d
 let pc = null
 let signalingWs = null
 let dataChannel = null
+// Trickle ICE kandidati ume da stignu PRE nego što je 'offer' poruka
+// stigla/obrađena (setRemoteDescription još nije pozvan) - odvojeni
+// WebSocket onmessage pozivi se NE serijalizuju međusobno samo zato što je
+// handler async, pa dva poruke stigle blizu jedna drugoj mogu da se
+// obrađuju u bilo kom redosledu. Uživo potvrđeno 2026-08-24 (Chrome
+// konzola): "InvalidStateError...addIceCandidate...remote description was
+// null". Kandidati koji stignu pre nego što remoteDescription postoji se
+// čuvaju ovde i primenjuju čim 'offer' grana završi setRemoteDescription.
+let pendingIceCandidates = []
 
 function buildWsUrl(id) {
   const token = localStorage.getItem('token')
@@ -326,23 +335,43 @@ async function onSignalingMessage(event) {
     const answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
     sendSignaling({ type: 'answer', sdp: answer.sdp })
+    // Iscedi kandidate koji su stigli pre setRemoteDescription-a iznad -
+    // vidi napomenu kod pendingIceCandidates deklaracije.
+    const queued = pendingIceCandidates
+    pendingIceCandidates = []
+    for (const c of queued) {
+      try {
+        await pc.addIceCandidate(c)
+      } catch (e) {
+        console.error('Neuspešno dodavanje odloženog ICE kandidata:', e)
+      }
+    }
   } else if (msg.type === 'ice') {
-    try {
-      // SIPSorcery (agent strana) ume da pošalje sdpMid kao prazan string
-      // umesto null kad ga ne popuni - Chromium to strogo tretira kao
-      // "prosleđen, ali ne odgovara nijednom mid-u u SDP-u" i ODBIJE ceo
-      // kandidat (addIceCandidateFailed), umesto da padne nazad na
-      // sdpMLineIndex kao kad je vrednost stvarno null/undefined. Uživo
-      // potvrđeno preko chrome://webrtc-internals dump-a 2026-08-24 - jedini
-      // poslati kandidat je bio odbijen na ovaj način, pa ICE nikad nije ni
-      // počeo proveru (nema iceconnectionstatechange uopšte).
-      await pc.addIceCandidate({
-        candidate: msg.candidate,
-        sdpMid: msg.sdpMid || null,
-        sdpMLineIndex: msg.sdpMLineIndex,
-      })
-    } catch (e) {
-      console.error('Neuspešno dodavanje ICE kandidata:', e)
+    // SIPSorcery (agent strana) ume da pošalje sdpMid kao prazan string
+    // umesto null kad ga ne popuni - Chromium to strogo tretira kao
+    // "prosleđen, ali ne odgovara nijednom mid-u u SDP-u" i ODBIJE ceo
+    // kandidat (addIceCandidateFailed), umesto da padne nazad na
+    // sdpMLineIndex kao kad je vrednost stvarno null/undefined. Uživo
+    // potvrđeno preko chrome://webrtc-internals dump-a 2026-08-24 - jedini
+    // poslati kandidat je bio odbijen na ovaj način, pa ICE nikad nije ni
+    // počeo proveru (nema iceconnectionstatechange uopšte).
+    const iceCandidate = {
+      candidate: msg.candidate,
+      sdpMid: msg.sdpMid || null,
+      sdpMLineIndex: msg.sdpMLineIndex,
+    }
+    if (!pc.remoteDescription) {
+      // 'offer' poruka još nije obrađena (setRemoteDescription nije
+      // pozvan) - odloži umesto da odmah pukne sa
+      // "InvalidStateError...remote description was null" (uživo
+      // potvrđeno 2026-08-24, browser konzola).
+      pendingIceCandidates.push(iceCandidate)
+    } else {
+      try {
+        await pc.addIceCandidate(iceCandidate)
+      } catch (e) {
+        console.error('Neuspešno dodavanje ICE kandidata:', e)
+      }
     }
   } else if (msg.type === 'fallback') {
     teardownWebrtc()
@@ -363,6 +392,7 @@ function teardownWebrtc() {
   pc = null
   dataChannel = null
   signalingWs = null
+  pendingIceCandidates = []
   connected.value = false
 }
 
