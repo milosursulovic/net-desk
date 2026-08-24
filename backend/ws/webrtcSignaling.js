@@ -71,11 +71,22 @@ function closeSession(sessionId) {
 function getOrCreateSession(sessionId) {
   let entry = sessions.get(sessionId);
   if (!entry) {
-    entry = {};
+    entry = { pendingToAgent: [], pendingToViewer: [] };
     entry.timeoutHandle = setTimeout(() => closeSession(sessionId), MAX_SESSION_MS);
     sessions.set(sessionId, entry);
   }
   return entry;
+}
+
+// Agent i viewer se povezuju na signaling WS nezavisno (viewer-ova strana
+// prolazi kroz JWT verifikaciju + DB lookup pre nego što se otvori, agent
+// nema taj korak) - offer/ICE poruka poslata pre nego što se druga strana
+// stigla da poveže se ovde čuva umesto da se tiho izgubi (bez ovoga, viewer
+// zna da ostane zauvek na "Povezujem..." jer offer nikad nije stigao).
+function flushPending(queue, ws) {
+  if (!queue.length) return;
+  for (const raw of queue) ws.send(raw);
+  queue.length = 0;
 }
 
 /**
@@ -118,6 +129,7 @@ export function attachWebrtcSignaling(server) {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const entry = getOrCreateSession(sessionId);
         entry.agentSocket = ws;
+        flushPending(entry.pendingToAgent, ws);
 
         ws.on("message", (data) => handleAgentMessage(sessionId, data));
         ws.on("close", () => closeSession(sessionId));
@@ -141,6 +153,7 @@ export function attachWebrtcSignaling(server) {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const entry = getOrCreateSession(sessionId);
         entry.viewerSocket = ws;
+        flushPending(entry.pendingToViewer, ws);
 
         ws.on("message", (data) => handleViewerMessage(sessionId, data));
         ws.on("close", () => closeSession(sessionId));
@@ -208,8 +221,12 @@ async function handleAgentMessage(sessionId, data) {
     return;
   }
 
-  const viewer = sessions.get(sessionId)?.viewerSocket;
-  if (viewer?.readyState === WebSocket.OPEN) viewer.send(raw);
+  const entry = sessions.get(sessionId);
+  if (entry?.viewerSocket?.readyState === WebSocket.OPEN) {
+    entry.viewerSocket.send(raw);
+  } else {
+    entry?.pendingToViewer.push(raw);
+  }
 }
 
 async function handleViewerMessage(sessionId, data) {
@@ -228,6 +245,10 @@ async function handleViewerMessage(sessionId, data) {
     return;
   }
 
-  const agentSocket = sessions.get(sessionId)?.agentSocket;
-  if (agentSocket?.readyState === WebSocket.OPEN) agentSocket.send(raw);
+  const entry = sessions.get(sessionId);
+  if (entry?.agentSocket?.readyState === WebSocket.OPEN) {
+    entry.agentSocket.send(raw);
+  } else {
+    entry?.pendingToAgent.push(raw);
+  }
 }
