@@ -23,6 +23,15 @@ namespace NetdeskAgent.Common.Webrtc
     /// STVARNO razrešavaju na net472, ne samo teoretski - vidi commit
     /// istoriju), ali sam capture loop NIJE runtime-testiran ni na jednoj
     /// pravoj mašini u ovoj sesiji.
+    ///
+    /// NAPOMENA (crn ekran, prvi uživo test): GDI fallback grana je prvobitno
+    /// bila ostavljena kao stub koji uvek vraća null (BitBlt bez GetDIBits) -
+    /// ako je DXGI iz bilo kog razloga tiho pao na inicijalizaciji, ceo
+    /// capture bi zauvek vraćao null bez ijednog loga (WebRtcSession null
+    /// tretira kao "nema promene ovog ciklusa", ne kao grešku), što izgleda
+    /// identično kao "konekcija radi, ali ekran ostaje crn". GetDIBits je
+    /// sad implementiran; Start() u WebRtcSession.cs takođe sad loguje koji
+    /// put (DXGI/GDI) je stvarno aktivan da se ovo ubuduće odmah vidi iz loga.
     /// </summary>
     internal sealed class ScreenCapture : IDisposable
     {
@@ -132,9 +141,32 @@ namespace NetdeskAgent.Common.Webrtc
         [DllImport("gdi32.dll")]
         private static extern bool DeleteDC(IntPtr hdc);
 
+        [DllImport("gdi32.dll")]
+        private static extern int GetDIBits(
+            IntPtr hdc, IntPtr hbmp, uint uStartScan, uint cScanLines,
+            [Out] byte[] lpvBits, ref BitmapInfoHeader lpbi, uint uUsage);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BitmapInfoHeader
+        {
+            public uint biSize;
+            public int biWidth;
+            public int biHeight;
+            public short biPlanes;
+            public short biBitCount;
+            public uint biCompression;
+            public uint biSizeImage;
+            public int biXPelsPerMeter;
+            public int biYPelsPerMeter;
+            public uint biClrUsed;
+            public uint biClrImportant;
+        }
+
         private const int SM_CXSCREEN = 0;
         private const int SM_CYSCREEN = 1;
         private const uint SRCCOPY = 0x00CC0020;
+        private const uint BI_RGB = 0;
+        private const uint DIB_RGB_COLORS = 0;
 
         private bool TryInitializeGdi()
         {
@@ -220,15 +252,28 @@ namespace NetdeskAgent.Common.Webrtc
 
         private byte[] CaptureFrameGdi()
         {
-            BitBlt(_gdiMemDc, 0, 0, _width, _height, _gdiScreenDc, 0, 0, SRCCOPY);
-            // GetDIBits (BITMAPINFOHEADER sa negativnim biHeight za top-down)
-            // izostavljeno ovde radi kratkoće - GDI fallback grana treba
-            // dovršiti pre prvog stvarnog Windows testa; DXGI je primarni put
-            // za ceo ciljni tier (win10/win11/winsrv), GDI se očekuje da
-            // pogodi samo redak edge-case (RDP-disconnected konzola na
-            // winsrv). Vraća null namerno dok se ne dovrši, WebRtcSession
-            // mora tretirati null kao "preskoči ovaj frejm", ne kao grešku.
-            return null;
+            if (!BitBlt(_gdiMemDc, 0, 0, _width, _height, _gdiScreenDc, 0, 0, SRCCOPY))
+            {
+                return null;
+            }
+
+            // biHeight negativan = top-down DIB (isti red-po-red raspored
+            // koji CaptureFrameDxgi/BgraToI420 već očekuju) - bez ovoga
+            // GetDIBits vraća bottom-up i slika bi bila naopako, ne crna,
+            // ali ipak pogrešna.
+            var header = new BitmapInfoHeader
+            {
+                biSize = (uint)Marshal.SizeOf(typeof(BitmapInfoHeader)),
+                biWidth = _width,
+                biHeight = -_height,
+                biPlanes = 1,
+                biBitCount = 32,
+                biCompression = BI_RGB,
+            };
+
+            var buffer = new byte[_width * _height * 4];
+            var scanLines = GetDIBits(_gdiMemDc, _gdiBitmap, 0, (uint)_height, buffer, ref header, DIB_RGB_COLORS);
+            return scanLines == 0 ? null : buffer;
         }
 
         /// <summary>

@@ -148,7 +148,9 @@ namespace NetdeskAgent.Common.Webrtc
                 return false;
             }
 
-            Diag("Capture (" + _capture.Width + "x" + _capture.Height + ") + VP8 enkoder inicijalizovani, pokrećem capture petlju.");
+            Diag("Capture (" + _capture.Width + "x" + _capture.Height + ", " +
+                (_capture.UsingGdiFallback ? "GDI fallback" : "DXGI") +
+                ") + VP8 enkoder inicijalizovani, pokrećem capture petlju.");
             _captureLoopCts = new CancellationTokenSource();
             _captureLoopTask = Task.Run(() => CaptureLoop(_captureLoopCts.Token));
             return true;
@@ -189,6 +191,15 @@ namespace NetdeskAgent.Common.Webrtc
             var yPlane = new byte[_capture.Width * _capture.Height];
             var uPlane = new byte[(_capture.Width / 2) * (_capture.Height / 2)];
             var vPlane = new byte[(_capture.Width / 2) * (_capture.Height / 2)];
+            // Watchdog za "konekcija radi, ekran ostaje crn" klasu bugova:
+            // CaptureFrameBgra() koji stalno vraća null se inače ne loguje
+            // NIGDE (tretira se kao normalno "ekran se nije promenio"), pa je
+            // prvi uživo bug ovog tipa (GDI fallback stub) bio potpuno tih u
+            // logovima. Ako 5s od starta petlje nijedan frejm nije poslat,
+            // to više nije normalno mirovanje ekrana - vredno je jednog loga.
+            var noFrameWarningThreshold = TargetFps * 5;
+            var iterationsSinceStart = 0;
+            var loggedNoFramesWarning = false;
 
             while (!token.IsCancellationRequested)
             {
@@ -216,6 +227,17 @@ namespace NetdeskAgent.Common.Webrtc
                         _loggedFirstCaptureError = true;
                         DiagError("Capture/encode ciklus greška (dalja ponavljanja se ne loguju)", ex);
                     }
+                }
+
+                iterationsSinceStart++;
+                if (!loggedNoFramesWarning && _frameCounter == 0 && iterationsSinceStart >= noFrameWarningThreshold)
+                {
+                    loggedNoFramesWarning = true;
+                    DiagError(
+                        "Nijedan frejm nije uspešno uhvaćen/poslat " + (noFrameWarningThreshold / TargetFps) +
+                        "s od starta capture petlje (CaptureFrameBgra stalno vraća null) - " +
+                        (_capture.UsingGdiFallback ? "GDI" : "DXGI") + " put verovatno ne isporučuje frejmove.",
+                        null);
                 }
 
                 var elapsed = (DateTime.UtcNow - loopStart).TotalMilliseconds;
