@@ -39,21 +39,6 @@ namespace NetdeskAgent.Common.Manager
         // javi rezultat serveru (videti ManagerWorker.ReportResultIfConfiguredAsync).
         public string StagingDir { get; set; }
         public string InstallDir { get; set; }
-
-        /// <summary>
-        /// Nazivi procesa (bez .exe) koje Manager treba nasilno da ubije PRE
-        /// brisanja/kopiranja - generičko, Manager ne zna NIŠTA o tome ŠTA
-        /// instalira niti ZAŠTO neki proces treba ubijen, samo dobije listu
-        /// imena. Postoji konkretno zbog Netdesk.Agent.WebRtcBridge.exe -
-        /// TRAJAN proces (Scheduled Task "at logon", ne više pokrenut samo za
-        /// trajanje jedne WebRTC sesije) koji drži zaključane SVE DLL-ove
-        /// učitane iz Service foldera (SIPSorcery.dll, SharpDX*.dll...) praktično
-        /// STALNO, daleko duže od DirectorySync-ovog ~6s retry prozora koji
-        /// pokriva samo kratkotrajne zaključane fajlove (WinDivert
-        /// driver-unload lag i sl). Ubijanje ovde je bezbedno - Scheduled
-        /// Task-ovo "restart on failure" podešavanje ga sam ponovo pokreće.
-        /// </summary>
-        public string[] KillProcessNames { get; set; }
         public string ServerBaseUrl { get; set; }
         public string AgentId { get; set; }
         public string ApiKey { get; set; }

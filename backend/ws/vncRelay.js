@@ -129,24 +129,19 @@ export function attachVncRelay(server) {
     // Nagle's algorithm is on by default for a net/tls.Socket - it batches
     // small writes for up to ~40ms hoping to coalesce them, which is
     // exactly wrong for a relay carrying individual RFB messages (mouse
-    // moves, small incremental screen updates). NOTE: as of the WebRTC
-    // dual-path work, ws/webrtcSignaling.js ALSO listens on this same
-    // server's "upgrade" event (Node fires every registered listener, not
-    // just one) - setNoDelay here is harmless for signaling's small JSON
-    // messages too, so applying it unconditionally is still fine.
+    // moves, small incremental screen updates).
     socket.setNoDelay(true);
 
     let url;
     try {
       url = new URL(req.url, "https://placeholder.invalid");
     } catch {
-      // Ne uništavamo socket ovde bezuslovno - webrtcSignaling.js-ov
-      // handler na istom "upgrade" event-u dobija priliku da obradi svoju
-      // putanju (oba handlera se pozivaju za SVAKI upgrade, ne samo prvi
-      // koji se poklopi). Neprepoznata/nevalidna putanja jednostavno ostaje
-      // nerukovana ako je nijedan handler ne prepozna - klijent dobija
-      // timeout umesto eksplicitnog RST-a, prihvatljiv kompromis da bi dva
-      // nezavisna WS handlera mogla bezbedno da dele isti HTTPS server.
+      // Ne uništavamo socket ovde bezuslovno - ostavlja prostor da neki
+      // drugi "upgrade" listener na istom HTTPS serveru obradi putanju koju
+      // ovaj handler ne prepoznaje (Node poziva SVAKI registrovani listener,
+      // ne samo prvi koji se poklopi). Neprepoznata/nevalidna putanja
+      // jednostavno ostaje nerukovana ako je nijedan handler ne prepozna -
+      // klijent dobija timeout umesto eksplicitnog RST-a.
       return;
     }
 
@@ -207,7 +202,6 @@ export function attachVncRelay(server) {
 
     // Namerno NEMA socket.destroy() ovde - vidi napomenu kod URL parse
     // catch-a iznad, ovaj handler ne sme da uništi socket za putanje koje
-    // pripadaju webrtcSignaling.js-u (ili bilo kom budućem trećem handleru
-    // na istom serveru).
+    // pripadaju nekom drugom "upgrade" handleru na istom serveru.
   });
 }

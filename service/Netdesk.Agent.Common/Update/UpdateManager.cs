@@ -125,12 +125,6 @@ namespace NetdeskAgent.Common.Update
                     ServiceName = "NetdeskAgent",
                     StagingDir = stagingDir,
                     InstallDir = installDir,
-                    // WebRtcBridge.exe je sad TRAJAN proces (Scheduled Task
-                    // "at logon") - drži zaključane DLL-ove iz ovog istog
-                    // Service foldera (SIPSorcery, SharpDX...) praktično
-                    // stalno, ne samo tokom aktivne sesije - vidi
-                    // ManagerCommand.KillProcessNames za pun kontekst.
-                    KillProcessNames = new[] { "Netdesk.Agent.WebRtcBridge" },
                     ServerBaseUrl = client.BaseUrl,
                     AgentId = state.AgentId,
                     ApiKey = state.ApiKey,

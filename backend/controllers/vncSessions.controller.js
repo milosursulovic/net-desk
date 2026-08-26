@@ -1,8 +1,4 @@
-import {
-  startVncSessionService,
-  endVncSessionService,
-  getWebrtcSignalingLogService,
-} from "../services/vncSessions.service.js";
+import { startVncSessionService, endVncSessionService } from "../services/vncSessions.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt } from "../utils/numbers.js";
 import { badRequest } from "../utils/httpError.js";
@@ -19,12 +15,4 @@ export async function endVncSessionController(req, res) {
 
   const session = await endVncSessionService(sessionId);
   res.json(session);
-}
-
-export async function getVncSignalingLogController(req, res) {
-  const agentId = parseIdParam(req, "id", "ID agenta");
-  const sessionId = parseIdParam(req, "sessionId", "ID sesije");
-
-  const items = await getWebrtcSignalingLogService(agentId, sessionId);
-  res.json({ items });
 }

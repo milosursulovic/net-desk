@@ -58,17 +58,6 @@
           </select>
 
           <select
-            v-model="remoteControlTier"
-            class="app-input w-auto max-w-full min-w-0 truncate"
-            aria-label="Filter po tier-u udaljenog upravljanja"
-            title="Uživo prijavljen build agenta (enroll/heartbeat) - ne deployment grupa"
-          >
-            <option value="">Svi tier-ovi (RFB/WebRTC)</option>
-            <option value="rfb_only">RFB-only (net452)</option>
-            <option value="webrtc_capable">WebRTC-capable (net472)</option>
-          </select>
-
-          <select
             v-model="hasManagerChannel"
             class="app-input w-auto max-w-full min-w-0 truncate"
             aria-label="Filter po Manager kanalu"
@@ -448,13 +437,6 @@
               <span class="font-medium">Verzija agenta:</span>
               <span>{{ a.agentVersion || '—' }}</span>
               <span
-                v-if="a.remoteControlTier === 'webrtc_capable'"
-                class="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-emerald-700"
-                title="Agent je uživo prijavio net472 (RFB+WebRTC) build"
-              >
-                WEBRTC
-              </span>
-              <span
                 v-if="a.managerChannelStatus"
                 class="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-indigo-700"
                 :title="`Novi (nezavisni) Manager kanal registrovan - ${a.managerChannelStatus}`"
@@ -589,7 +571,6 @@ const {
   processKillExempt,
   deploymentGroupOsOverlap,
   noDeploymentGroup,
-  remoteControlTier,
   hasManagerChannel,
   trustedRootCertInstalled,
   intermediateCertInstalled,
@@ -608,12 +589,6 @@ const {
       default: '',
       omitIfEmpty: true,
       oneOf: ['', 'online', 'stale', 'offline', 'unknown'],
-    },
-    remoteControlTier: {
-      type: 'string',
-      default: '',
-      omitIfEmpty: true,
-      oneOf: ['', 'rfb_only', 'webrtc_capable'],
     },
     hasManagerChannel: {
       type: 'string',
@@ -687,7 +662,6 @@ const {
     'processKillExempt',
     'deploymentGroupOsOverlap',
     'noDeploymentGroup',
-    'remoteControlTier',
     'hasManagerChannel',
     'trustedRootCertInstalled',
     'intermediateCertInstalled',
@@ -723,7 +697,6 @@ watch(
     processKillExempt,
     deploymentGroupOsOverlap,
     noDeploymentGroup,
-    remoteControlTier,
     hasManagerChannel,
     trustedRootCertInstalled,
     intermediateCertInstalled,
@@ -785,7 +758,6 @@ const activeDetailedFilterCount = computed(() => {
   if (processKillExempt.value) n++
   if (deploymentGroupOsOverlap.value) n++
   if (noDeploymentGroup.value) n++
-  if (remoteControlTier.value) n++
   if (hasManagerChannel.value) n++
   if (trustedRootCertInstalled.value) n++
   if (intermediateCertInstalled.value) n++
@@ -833,7 +805,6 @@ function clearDetailedFilters() {
   processKillExempt.value = ''
   deploymentGroupOsOverlap.value = ''
   noDeploymentGroup.value = ''
-  remoteControlTier.value = ''
   hasManagerChannel.value = ''
   trustedRootCertInstalled.value = ''
   intermediateCertInstalled.value = ''
@@ -870,7 +841,6 @@ function buildFilterParams() {
   if (processKillExempt.value) params.set('processKillExempt', processKillExempt.value)
   if (deploymentGroupOsOverlap.value) params.set('deploymentGroupOsOverlap', deploymentGroupOsOverlap.value)
   if (noDeploymentGroup.value) params.set('noDeploymentGroup', noDeploymentGroup.value)
-  if (remoteControlTier.value) params.set('remoteControlTier', remoteControlTier.value)
   if (hasManagerChannel.value) params.set('hasManagerChannel', hasManagerChannel.value)
   if (trustedRootCertInstalled.value) params.set('trustedRootCertInstalled', trustedRootCertInstalled.value)
   if (intermediateCertInstalled.value) params.set('intermediateCertInstalled', intermediateCertInstalled.value)

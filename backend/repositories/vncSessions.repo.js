@@ -1,12 +1,12 @@
 import { pool } from "../db/pool.js";
 
-export async function insertVncSession({ agentId, requestedByUserId, sessionType }) {
+export async function insertVncSession({ agentId, requestedByUserId }) {
   const [result] = await pool.execute(
     `
-    INSERT INTO vnc_sessions (agent_id, requested_by_user_id, status, session_type)
-    VALUES (?, ?, 'pending', ?)
+    INSERT INTO vnc_sessions (agent_id, requested_by_user_id, status)
+    VALUES (?, ?, 'pending')
     `,
-    [agentId, requestedByUserId, sessionType || "rfb"],
+    [agentId, requestedByUserId],
   );
   return result.insertId;
 }
@@ -16,7 +16,6 @@ const SELECT_FIELDS = `
   agent_id AS agentId,
   requested_by_user_id AS requestedByUserId,
   status,
-  session_type AS sessionType,
   started_at AS startedAt,
   ended_at AS endedAt
 `;
@@ -43,45 +42,4 @@ export async function markVncSessionEnded(id) {
     [id],
   );
   return result.affectedRows;
-}
-
-// Fallback sa WebRTC na RFB ZA ISTI sessionId (ne nova sesija) - status se
-// namerno vraća na 'pending' (ne dira se ako je već 'ended') jer novi
-// start_vnc_bridge job tek treba da poveže agenta, isto stanje kao svaki
-// nov RFB pokušaj pre nego što VncBridge.RunAsync stigne da markVncSessionActive.
-export async function markVncSessionFallbackToRfb(id) {
-  const [result] = await pool.execute(
-    `UPDATE vnc_sessions SET session_type = 'rfb', status = 'pending' WHERE id = ? AND status != 'ended'`,
-    [id],
-  );
-  return result.affectedRows;
-}
-
-// Append-only audit log signaling razmene (SDP offer/answer + ICE
-// kandidati) - vidi migraciju 0009. Ne učestvuje u samom real-time
-// forwarding-u (to radi ws/webrtcSignaling.js direktno preko in-memory
-// socket para, isti obrazac kao ws/vncRelay.js), samo beleži šta se
-// razmenilo za kasniju dijagnostiku.
-export async function insertWebrtcSignalingMessage(sessionId, direction, payload) {
-  await pool.execute(
-    `INSERT INTO vnc_webrtc_signaling (session_id, direction, payload) VALUES (?, ?, ?)`,
-    [sessionId, direction, payload],
-  );
-}
-
-// Čitanje ovog audit loga - dodato uživo kao dijagnostički alat (WebRtcBridge.exe
-// šalje sopstvene {"type":"log"} poruke preko ovog istog signaling kanala kad
-// lokalni FileLogger na klijentskoj mašini ispadne nepouzdan, videti Program.cs
-// napomenu na Log()). Redosled po created_at ASC - hronološki tok razmene.
-export async function listWebrtcSignalingMessages(sessionId) {
-  const [rows] = await pool.execute(
-    `
-    SELECT direction, payload, created_at AS createdAt
-    FROM vnc_webrtc_signaling
-    WHERE session_id = ?
-    ORDER BY created_at ASC, id ASC
-    `,
-    [sessionId],
-  );
-  return rows;
 }

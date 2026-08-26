@@ -34,7 +34,6 @@ import { sendTablePdf } from "../utils/pdfTable.js";
 
 const STATUS_FILTERS = new Set(["active", "revoked"]);
 const CONNECTIVITY_FILTERS = new Set(["online", "stale", "offline", "unknown"]);
-const REMOTE_CONTROL_TIER_FILTERS = new Set(["rfb_only", "webrtc_capable"]);
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateFilter(value) {
@@ -118,9 +117,6 @@ function parseAgentListFilters(query) {
     processKillExempt: query.processKillExempt === "true",
     deploymentGroupOsOverlap: query.deploymentGroupOsOverlap === "true",
     noDeploymentGroup: query.noDeploymentGroup === "true",
-    remoteControlTier: REMOTE_CONTROL_TIER_FILTERS.has(query.remoteControlTier)
-      ? query.remoteControlTier
-      : undefined,
     hasManagerChannel:
       query.hasManagerChannel === "true" ? true : query.hasManagerChannel === "false" ? false : undefined,
     trustedRootCertInstalled:

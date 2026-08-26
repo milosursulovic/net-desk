@@ -31,13 +31,6 @@ import { signBuffer, getSigningCertificatePem } from "../utils/agentSigning.js";
 
 const RELEASES_DIR = path.join(process.cwd(), "uploads", "agent-releases");
 
-// Mapira agent-ov prijavljeni build-tier (agents.remote_control_tier) na
-// odgovarajući release target_runtime - dva odvojena koncepta istog niza
-// vrednosti namerno (agent tier je ono što je agent SAM sebi svestan da je,
-// release target_runtime je ono što je release build-ovan da bude), ali se
-// 1:1 poklapaju u ovoj fazi (dodaje se treći tier ovde ako ikad zatreba).
-const TIER_TO_RUNTIME = { rfb_only: "net452", webrtc_capable: "net472" };
-
 function ensureReleasesDir() {
   fs.mkdirSync(RELEASES_DIR, { recursive: true });
 }
@@ -61,7 +54,7 @@ export async function listReleaseFilesOnDiskService() {
 }
 
 export async function uploadReleaseService(
-  { buffer, originalName, version, deploymentGroups, releaseNotes, targetRuntime },
+  { buffer, originalName, version, deploymentGroups, releaseNotes },
   createdByUserId,
 ) {
   if (!buffer || !buffer.length) {
@@ -89,7 +82,6 @@ export async function uploadReleaseService(
     sha256,
     signature,
     releaseNotes: releaseNotes ?? null,
-    targetRuntime,
     createdByUserId,
   });
 
@@ -171,13 +163,7 @@ export async function deleteReleaseService(id) {
 // of them is targeted by the release.
 export async function checkForUpdateService(agent) {
   const groups = agent.deploymentGroups?.length ? agent.deploymentGroups : ["rest"];
-  // Bez ovog filtera, agent bi mogao da dobije ponuđen build za DRUGI tier
-  // (npr. rfb_only agent ponuđen net472 WebRTC build koji nikad neće moći da
-  // pokrene) - vidi TIER_TO_RUNTIME iznad. undefined (nepoznat/stariji tier
-  // string) namerno prosleđuje undefined dalje, findActiveReleasesForGroups
-  // tretira to kao "bez runtime filtera" (stari single-tier ponašanje).
-  const targetRuntime = TIER_TO_RUNTIME[agent.remoteControlTier];
-  const candidates = await findActiveReleasesForGroups(groups, targetRuntime);
+  const candidates = await findActiveReleasesForGroups(groups);
   if (!candidates.length) return { updateAvailable: false };
 
   let best = candidates[0];
@@ -208,16 +194,12 @@ export async function checkForUpdateService(agent) {
 // da je na novoj verziji), ne "agent je zastareo" (to je već vidljivo preko
 // verzije same). Bez hash-a namerno - ime+veličina je dovoljno za ovu svrhu
 // i ne zahteva da agent čita/heš-uje svaki fajl na svakom inventory sync-u.
-export async function checkServiceFilesMismatchService(
-  agentVersion,
-  reportedFiles,
-  remoteControlTier,
-) {
+export async function checkServiceFilesMismatchService(agentVersion, reportedFiles) {
   if (!agentVersion || !Array.isArray(reportedFiles) || !reportedFiles.length) {
     return { mismatch: false, details: null };
   }
 
-  const releaseId = await findReleaseIdByVersion(agentVersion, TIER_TO_RUNTIME[remoteControlTier]);
+  const releaseId = await findReleaseIdByVersion(agentVersion);
   if (!releaseId) {
     // Verzija bez poznatog release-a u bazi (npr. ručno instalirana, ili
     // otpremljena pre nego što je ovaj manifest mehanizam postojao) - nema sa

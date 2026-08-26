@@ -422,11 +422,6 @@ namespace NetdeskAgent.Manager
                     ServiceName = serviceName,
                     StagingDir = extractDir,
                     InstallDir = installDir,
-                    // Isti razlog kao UpdateManager.cs (Agent strana) - WebRtcBridge
-                    // ume da drži zaključane fajlove duže od običnog driver-unload
-                    // lag-a. Manager ovde i dalje samo "zna ime za ubijanje", ne
-                    // zašto - isti princip kao mailbox put.
-                    KillProcessNames = new[] { "Netdesk.Agent.WebRtcBridge" },
                     // ServerBaseUrl namerno prazan - ReportResultIfConfiguredAsync
                     // (unutar InstallFilesAsync) zato tiho preskače UpdateReportClient
                     // poziv, rezultat se javlja OVDE preko novog kanala umesto toga.
@@ -659,7 +654,6 @@ namespace NetdeskAgent.Manager
 
             try
             {
-                KillProcesses(command.KillProcessNames);
                 StopWinDivertDriverIfPresent();
                 DirectorySync.DeleteDirectoryWithRetry(command.InstallDir);
                 DirectorySync.CopyDirectoryRecursive(command.StagingDir, command.InstallDir);
@@ -676,55 +670,6 @@ namespace NetdeskAgent.Manager
 
             await ReportResultIfConfiguredAsync(command, success, failureReason).ConfigureAwait(false);
             return new InstallResult { Success = success, FailureReason = failureReason };
-        }
-
-        /// <summary>
-        /// Nasilno ubija sve procese sa datim nazivima (bez .exe) - best-effort,
-        /// jedan proces koji ne uspe da se ubije (već izašao, access denied,
-        /// itd.) ne sme da obori ostatak install koraka. Namerno se poziva PRE
-        /// brisanja/kopiranja fajlova, ne posle - ovi procesi mogu držati
-        /// zaključane baš one fajlove koje DirectorySync sledeći treba da
-        /// obriše/prepiše (vidi ManagerCommand.KillProcessNames za pun
-        /// kontekst zašto ovo uopšte postoji).
-        /// </summary>
-        private static void KillProcesses(string[] processNames)
-        {
-            if (processNames == null || processNames.Length == 0) return;
-
-            foreach (var name in processNames)
-            {
-                if (string.IsNullOrWhiteSpace(name)) continue;
-
-                Process[] matches;
-                try
-                {
-                    matches = Process.GetProcessesByName(name);
-                }
-                catch (Exception ex)
-                {
-                    FileLogger.Warn("GetProcessesByName('" + name + "') neuspešno: " + ex.Message);
-                    continue;
-                }
-
-                foreach (var process in matches)
-                {
-                    try
-                    {
-                        process.Kill();
-                        process.WaitForExit(5000);
-                        FileLogger.Info("Proces '" + name + "' (PID " + process.Id + ") ubijen pre update-a.");
-                    }
-                    catch (Exception ex)
-                    {
-                        FileLogger.Warn(
-                            "Ubijanje procesa '" + name + "' (PID " + process.Id + ") neuspešno: " + ex.Message);
-                    }
-                    finally
-                    {
-                        process.Dispose();
-                    }
-                }
-            }
         }
 
         /// <summary>

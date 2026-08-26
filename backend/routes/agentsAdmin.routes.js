@@ -31,7 +31,6 @@ import { listUpdateLogController } from "../controllers/agentReleases.controller
 import {
   startVncSessionController,
   endVncSessionController,
-  getVncSignalingLogController,
 } from "../controllers/vncSessions.controller.js";
 
 const router = express.Router();
@@ -84,8 +83,5 @@ router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));
 router.post("/:id/vnc/stop", asyncHandler(endVncSessionController));
-// Dijagnostički alat - čita vnc_webrtc_signaling audit log (uključujući
-// WebRtcBridge.exe-ove {"type":"log"} poruke, videti servis napomenu).
-router.get("/:id/vnc/:sessionId/signaling-log", asyncHandler(getVncSignalingLogController));
 
 export default router;

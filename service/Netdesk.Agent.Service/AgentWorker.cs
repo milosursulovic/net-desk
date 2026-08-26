@@ -17,9 +17,6 @@ using NetdeskAgent.Common.ProcessMonitor;
 using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
-#if NETDESK_WEBRTC_CAPABLE
-using NetdeskAgent.Common.Webrtc;
-#endif
 
 namespace NetdeskAgent.Service
 {
@@ -44,19 +41,6 @@ namespace NetdeskAgent.Service
         // uptimeSeconds postane negativan (zod schema zahteva >= 0).
         [DllImport("kernel32.dll")]
         private static extern ulong GetTickCount64();
-
-        // Compile-time činjenica o ovom build-u (koji csproj TargetFramework
-        // je ovo) - ista NETDESK_WEBRTC_CAPABLE zastavica koja već gate-uje
-        // start_webrtc_bridge job granu ispod. Poslato serveru na SVAKOM
-        // enroll-u i heartbeat-u (agents.remote_control_tier) - živi signal
-        // "koji build stvarno radi na ovoj mašini", odvojeno od statičke
-        // deployment-group oznake koja samo kaže na koju OS grupu je mašina
-        // ADMINSKI dodeljena (može zaostati mid-rollout).
-#if NETDESK_WEBRTC_CAPABLE
-        private const string RemoteControlTier = "webrtc_capable";
-#else
-        private const string RemoteControlTier = "rfb_only";
-#endif
 
         public async Task RunAsync(CancellationToken token)
         {
@@ -180,7 +164,6 @@ namespace NetdeskAgent.Service
                     OsVersion = os != null ? os.Version : null,
                     OsBuild = os != null ? os.Build : null,
                     AgentVersion = AgentVersionInfo.Current,
-                    RemoteControlTier = RemoteControlTier,
                 };
 
                 var response = await client.EnrollAsync(settings.EnrollToken, request).ConfigureAwait(false);
@@ -211,7 +194,6 @@ namespace NetdeskAgent.Service
                     AgentVersion = AgentVersionInfo.Current,
                     UptimeSeconds = (int)(GetTickCount64() / 1000),
                     Monitoring = MonitoringCollector.Collect(),
-                    RemoteControlTier = RemoteControlTier,
                 };
 
                 var response = await client.HeartbeatAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
@@ -486,50 +468,6 @@ namespace NetdeskAgent.Service
                 return;
             }
 
-            if (job.CommandType == "start_webrtc_bridge")
-            {
-#if NETDESK_WEBRTC_CAPABLE
-                // Isti fire-and-forget oblik kao start_vnc_bridge iznad -
-                // uspeh se prijavljuje čim je komanda UPISANA u mailbox, ne
-                // kad WebRTC sesija stvarno uspe (sam WebRtcBridge.exe javlja
-                // "failed" na signaling kanalu preko
-                // WebRtcSession.OnConnectionFailed ako kasnije ne uspe - vidi
-                // Program.cs u Netdesk.Agent.WebRtcBridge). Da li će neki
-                // WebRtcBridge helper stvarno pokupiti komandu (npr. ako
-                // trenutno niko nije ulogovan na konzoli) se ne proverava
-                // ovde - taj slučaj se i dalje hvata kroz postojeći
-                // signaling-nivo fallback (agent nikad ne otvori WS ->
-                // vncSessions.service.js prebacuje na RFB), isto kao pre.
-                var sessionId = ExtractSessionId(job.Payload);
-                var launched = RunWebRtcBridge(sessionId, settings, state);
-
-                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
-                {
-                    Success = launched,
-                    ExitCode = launched ? 0 : 1,
-                    Output = launched ? "WebRTC komanda upisana u mailbox." : null,
-                    ErrorOutput = launched ? null : "Upis WebRTC mailbox komande nije uspeo.",
-                    DurationMs = 0,
-                }).ConfigureAwait(false);
-#else
-                // net452 build (Win7) - WebRTC nikad nije opcija ovde (vidi
-                // Netdesk.Agent.Common.csproj napomenu: nijedna podržana
-                // WebRTC biblioteka ne radi na net452). Ovaj job ne bi
-                // trebalo ni da stigne net452 agentu (backend targeting
-                // preko agents.remote_control_tier), ali ako ipak stigne
-                // (npr. zastarela targeting odluka), čisto prijavi
-                // "nepodržano" - nikad unhandled exception.
-                await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
-                {
-                    Success = false,
-                    ExitCode = 1,
-                    ErrorOutput = "WebRTC most nije podržan na ovom agent build-u.",
-                    DurationMs = 0,
-                }).ConfigureAwait(false);
-#endif
-                return;
-            }
-
             JobExecutor.ExecutionResult result;
 
             if (job.CommandType == "collect_inventory" || job.CommandType == "refresh_software_list")
@@ -573,30 +511,6 @@ namespace NetdeskAgent.Service
                 FileLogger.Error("VNC sesija #" + sessionId + " - neočekivana greška u mostu", ex);
             }
         }
-
-#if NETDESK_WEBRTC_CAPABLE
-        // Netdesk.Agent.WebRtcBridge.exe je sad TRAJAN proces, pokrenut
-        // JEDNOM po korisničkom logon-u preko Scheduled Task-a "at logon"
-        // (ne više na zahtev preko SessionLauncher-a/CreateProcessWithTokenW
-        // iz ovog Session 0 servisa - taj pristup je uživo potvrđen kao
-        // nedovoljan za pravi DXGI/GDI pristup, vidi Program.cs napomenu u
-        // Netdesk.Agent.WebRtcBridge). Ovaj metod samo upisuje "pokreni
-        // sesiju sad" komandu u mailbox (WebRtcBridgeCommandClient) - ne zna
-        // niti proverava da li je neki helper trenutno živ/ulogovan da je
-        // pokupi; to ostaje na postojećem signaling-nivo fallback-u.
-        private static bool RunWebRtcBridge(long sessionId, AgentSettings settings, AgentState state)
-        {
-            var sent = WebRtcBridgeCommandClient.TrySend(
-                settings.ServerBaseUrl, sessionId.ToString(), state.AgentId, state.ApiKey);
-            if (!sent)
-            {
-                FileLogger.Error("WebRTC sesija #" + sessionId + " - upis mailbox komande nije uspeo", null);
-                return false;
-            }
-            FileLogger.Info("WebRTC most #" + sessionId + " - komanda upisana u mailbox.");
-            return true;
-        }
-#endif
 
         private static async Task ReportJobResultAsync(
             NetdeskApiClient client, AgentState state, long jobId, JobExecutor.ExecutionResult result)

@@ -7,9 +7,6 @@ namespace NetdeskAgent.Common.Models
         public string AgentVersion { get; set; }
         public int? UptimeSeconds { get; set; }
         public MonitoringData Monitoring { get; set; }
-
-        /// <summary>Isto polje/značenje kao EnrollRequest.RemoteControlTier.</summary>
-        public string RemoteControlTier { get; set; }
     }
 
     /// <summary>

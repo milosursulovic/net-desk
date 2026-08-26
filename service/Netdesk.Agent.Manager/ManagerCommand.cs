@@ -30,16 +30,6 @@ namespace NetdeskAgent.Manager
         // Manager ne pokušava da javi rezultat serveru. ---
         public string StagingDir { get; set; }
         public string InstallDir { get; set; }
-
-        /// <summary>
-        /// Nazivi procesa (bez .exe) za nasilno ubijanje PRE brisanja/
-        /// kopiranja - Manager namerno ne zna ŠTA ili ZAŠTO, samo dobije
-        /// listu imena da ubije (vidi Netdesk.Agent.Common/Manager/
-        /// ManagerCommand.cs za pun kontekst zašto ovo uopšte postoji -
-        /// WebRTC companion proces koji ume da drži zaključane fajlove
-        /// mnogo duže od običnog driver-unload lag-a).
-        /// </summary>
-        public string[] KillProcessNames { get; set; }
         public string ServerBaseUrl { get; set; }
         public string AgentId { get; set; }
         public string ApiKey { get; set; }

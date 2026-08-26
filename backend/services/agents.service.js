@@ -69,7 +69,6 @@ export async function enrollAgent(dto) {
     osVersion: emptyToNull(dto.osVersion),
     osBuild: emptyToNull(dto.osBuild),
     agentVersion: emptyToNull(dto.agentVersion),
-    remoteControlTier: dto.remoteControlTier,
   });
 
   const agent = await findAgentById(id);
@@ -86,7 +85,6 @@ export async function heartbeat(agentId, dto, remoteIp) {
     hostname: dto.hostname !== undefined ? emptyToNull(dto.hostname) : undefined,
     agentVersion:
       dto.agentVersion !== undefined ? emptyToNull(dto.agentVersion) : undefined,
-    remoteControlTier: dto.remoteControlTier,
     lastIp: remoteIp,
   });
 
@@ -164,7 +162,6 @@ export async function listAgentsService({
   processKillExempt,
   deploymentGroupOsOverlap,
   noDeploymentGroup,
-  remoteControlTier,
   hasManagerChannel,
   trustedRootCertInstalled,
   intermediateCertInstalled,
@@ -196,7 +193,6 @@ export async function listAgentsService({
     processKillExempt,
     deploymentGroupOsOverlap,
     noDeploymentGroup,
-    remoteControlTier,
     hasManagerChannel,
     trustedRootCertInstalled,
     intermediateCertInstalled,
@@ -586,11 +582,7 @@ export async function syncAgentInventory(agent, body) {
   const serviceFiles = extractServiceFiles(body);
   if (serviceFiles !== undefined) {
     otherTasks.push(
-      checkServiceFilesMismatchService(
-        agent.agentVersion,
-        serviceFiles,
-        agent.remoteControlTier,
-      ).then(
+      checkServiceFilesMismatchService(agent.agentVersion, serviceFiles).then(
         ({ mismatch, details }) => updateAgentServiceFilesMismatch(agent.id, mismatch, details),
       ),
     );
