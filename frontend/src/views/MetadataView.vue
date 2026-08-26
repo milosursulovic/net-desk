@@ -873,6 +873,7 @@ async function fetchMissingMetadata() {
     const data = await res.json()
     missingMetadata.value = Array.isArray(data.items) ? data.items : []
   } catch {
+    /* best effort */
   }
 }
 
@@ -969,6 +970,7 @@ async function fetchStatsPreferServer() {
       totalIpEntries.value = Number(payload.cover?.totalIpEntries) || 0
     }
   } catch {
+    /* best effort */
   }
 
   try {
@@ -992,7 +994,7 @@ async function fetchStatsPreferServer() {
       }
     }
     meta.value = all
-  } catch { }
+  } catch { /* best effort */ }
 }
 
 async function refreshAll() {

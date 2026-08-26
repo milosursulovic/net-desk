@@ -95,10 +95,3 @@ export async function revokeManagerById(id) {
   const [result] = await pool.execute(`UPDATE managers SET status = 'revoked' WHERE id = ?`, [id]);
   return result.affectedRows;
 }
-
-// manager_jobs ima FK na managers.id sa ON DELETE CASCADE - jedan DELETE
-// ovde je dovoljan, isti obrazac kao deleteAgentById u agents.repo.js.
-export async function deleteManagerById(id) {
-  const [result] = await pool.execute(`DELETE FROM managers WHERE id = ?`, [id]);
-  return result.affectedRows;
-}

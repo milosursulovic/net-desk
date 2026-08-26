@@ -142,7 +142,7 @@ describe("activity-log routes (integration, real DB)", () => {
   });
 
   it("captures the request body as details for a write", async () => {
-    const { id, username, token } = await tokenForRealUser("viewer");
+    const { id } = await tokenForRealUser("viewer");
     realUserId = id;
 
     const res = await request(app)

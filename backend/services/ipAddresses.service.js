@@ -104,7 +104,9 @@ async function probeTCP(ip, port, timeoutMs = 100) {
       settled = true;
       try {
         socket.destroy();
-      } catch {}
+      } catch {
+        /* best effort */
+      }
       resolve({
         ip,
         port,

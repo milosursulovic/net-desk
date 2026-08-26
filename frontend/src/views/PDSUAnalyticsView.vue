@@ -313,6 +313,7 @@ async function fetchMissingPdsu() {
     const data = await res.json()
     missingPdsu.value = Array.isArray(data.items) ? data.items : []
   } catch {
+    /* best effort */
   }
 }
 
@@ -338,6 +339,7 @@ async function fetchWithoutUltravnc() {
     const data = await res.json()
     withoutUltravnc.value = Array.isArray(data.items) ? data.items : []
   } catch {
+    /* best effort */
   }
 }
 
@@ -363,6 +365,7 @@ async function fetchWithoutNetdeskAgentManager() {
     const data = await res.json()
     withoutNetdeskAgentManager.value = Array.isArray(data.items) ? data.items : []
   } catch {
+    /* best effort */
   }
 }
 

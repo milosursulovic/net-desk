@@ -791,7 +791,7 @@ export async function getUnusualServicePaths(limit = 30, site) {
         -- Double-escaped on purpose: the JS template literal needs \\ to
         -- produce one literal backslash, and MySQL's LIKE needs \\ to match
         -- one literal backslash (its default escape char) - so four
-        -- backslashes here become a single '\' in the path being matched.
+        -- backslashes here become a single backslash in the path being matched.
         AND LOWER(cs.path_name) NOT LIKE '%\\\\windows\\\\%'
         AND LOWER(cs.path_name) NOT LIKE '%\\\\program files\\\\%'
         AND LOWER(cs.path_name) NOT LIKE '%\\\\program files (x86)\\\\%'
