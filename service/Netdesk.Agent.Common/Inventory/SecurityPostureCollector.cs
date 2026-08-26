@@ -26,6 +26,15 @@ namespace NetdeskAgent.Common.Inventory
         public static bool? CheckIntermediateCertInstalled(string serverBaseUrl)
             => CheckCertInstalled(serverBaseUrl, IntermediateCertFileName, StoreName.CertificateAuthority);
 
+        // Razdvojeno u tri koraka (download / parse / store-read) sa
+        // sopstvenim WARN po koraku - uživo na Windows 7 su OBA sertifikata
+        // padala sa istom generičkom "Cannot find the requested object"
+        // (CryptographicException) porukom, koja sama ne kaže da li puca
+        // parsiranje preuzetog fajla ili čitanje Local Machine store-a
+        // (poznat, dokumentovan .NET/Windows 7 problem baš sa
+        // StoreName.Root/CertificateAuthority - vidi DescribeException za
+        // HResult koji to razlikuje: CRYPT_E_NOT_FOUND=0x80092004 od npr.
+        // access-denied=0x80070005).
         private static bool? CheckCertInstalled(string serverBaseUrl, string fileName, StoreName storeName)
         {
             if (string.IsNullOrEmpty(serverBaseUrl))
@@ -33,24 +42,45 @@ namespace NetdeskAgent.Common.Inventory
                 return null;
             }
 
-            X509Certificate2 refCert = null;
-            X509Store store = null;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+            byte[] certBytes;
             try
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
-                byte[] certBytes;
                 using (var http = new HttpClient { BaseAddress = new Uri(serverBaseUrl) })
                 {
                     certBytes = http.GetByteArrayAsync("/uploads/downloads/" + fileName).GetAwaiter().GetResult();
                 }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Warn("Provera sertifikata (" + fileName + ") - preuzimanje referentnog fajla neuspešno: " + DescribeException(ex));
+                return null;
+            }
 
-                // X509Certificate2/X509Store ne implementiraju IDisposable pre
-                // .NET 4.6 (agent cilja net452) - try/finally + .Reset()/.Close()
-                // umesto "using", isti obrazac kao UpdateManager.cs.
+            // X509Certificate2/X509Store ne implementiraju IDisposable pre
+            // .NET 4.6 (agent cilja net452) - try/finally + .Reset()/.Close()
+            // umesto "using", isti obrazac kao UpdateManager.cs.
+            X509Certificate2 refCert = null;
+            string thumbprint;
+            try
+            {
                 refCert = new X509Certificate2(certBytes);
-                var thumbprint = refCert.Thumbprint;
+                thumbprint = refCert.Thumbprint;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Warn("Provera sertifikata (" + fileName + ") - parsiranje preuzetog fajla kao X.509 sertifikata neuspešno: " + DescribeException(ex));
+                return null;
+            }
+            finally
+            {
+                if (refCert != null) refCert.Reset();
+            }
 
+            X509Store store = null;
+            try
+            {
                 store = new X509Store(storeName, StoreLocation.LocalMachine);
                 store.Open(OpenFlags.ReadOnly);
                 var matches = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, false);
@@ -58,14 +88,18 @@ namespace NetdeskAgent.Common.Inventory
             }
             catch (Exception ex)
             {
-                FileLogger.Warn("Provera sertifikata (" + fileName + ") neuspešna: " + ex.Message);
+                FileLogger.Warn("Provera sertifikata (" + fileName + ") - čitanje '" + storeName + "' Local Machine store-a neuspešno: " + DescribeException(ex));
                 return null;
             }
             finally
             {
                 if (store != null) store.Close();
-                if (refCert != null) refCert.Reset();
             }
+        }
+
+        private static string DescribeException(Exception ex)
+        {
+            return ex.GetType().Name + " (HResult=0x" + ex.HResult.ToString("X8") + "): " + ex.Message;
         }
 
         /// <summary>
