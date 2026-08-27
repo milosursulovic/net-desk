@@ -807,7 +807,10 @@ export const POWERSHELL_PRESETS = [
     // fajlova/foldera dirne. Isti obrazac preuzimanja kao deploy-trusted-root-cert
     // preset (OS-zavisan URL, TLS 1.2 forsiran, WebClient.DownloadFile) i
     // isti InstallUtil/OS-bitness/sc failure recept kao ručna Service
-    // instalacija u DEPLOYMENT.md.
+    // instalacija u DEPLOYMENT.md. Takođe briše manager-state.json na svaki
+    // run (namerno bezuslovno, videti napomenu unutar skripte) - Manager se
+    // sam nikad ne oporavlja ako server izgubi/invalidira njegov identitet,
+    // ovaj preset je i taj "force fresh re-enroll" recept.
     script:
       '# --- Izmeni ove redove pre slanja ako se promene ---\n' +
       '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
@@ -893,6 +896,19 @@ export const POWERSHELL_PRESETS = [
       '        New-Item -ItemType Directory -Path $configDir -Force | Out-Null\n' +
       '        $config = @{ ServerBaseUrl = $serverBaseUrl; EnrollToken = $managerEnrollToken } | ConvertTo-Json\n' +
       '        Set-Content -Path $configFile -Value $config -Encoding UTF8\n' +
+      '    }\n' +
+      '\n' +
+      '    # Bezuslovno brisanje na SVAKI install/update run - namerno (videti\n' +
+      '    # service/README.md, "Netdesk Agent Manager": ManagerState.IsEnrolled\n' +
+      '    # je čisto lokalni keš, Manager se NIKAD sam ne oporavlja ako server\n' +
+      '    # izgubi/invalidira taj identitet - ostaje zauvek "enrolled" lokalno i\n' +
+      '    # tiho puca na heartbeat/poll). Odabrana jednostavnost: svaki run ovog\n' +
+      '    # preseta radi svež enroll, čak i na već zdravoj mašini - stari red u\n' +
+      '    # managers tabeli ostaje kao siroče (nikad više ne heartbeat-uje), ne\n' +
+      '    # briše se automatski.\n' +
+      '    $stateFile = Join-Path $configDir "manager-state.json"\n' +
+      '    if (Test-Path $stateFile) {\n' +
+      '        Remove-Item $stateFile -Force\n' +
       '    }\n' +
       '\n' +
       '    sc.exe start $serviceName | Out-Null\n' +

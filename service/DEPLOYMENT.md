@@ -44,15 +44,13 @@ LICENSE-WinDivert.txt
 ```
 Netdesk.Agent.Manager.exe
 Netdesk.Agent.Manager.exe.config
-Netdesk.Agent.Common.dll
 Newtonsoft.Json.dll
-websocket-sharp.dll
 ```
 
-(`websocket-sharp.dll` je dodat zbog VNC bridge-a - videti README.md,
-sekcija "Udaljena kontrola ekrana", za razlog. Kopira se u OBA foldera kao
-tranzitivna zavisnost preko `Netdesk.Agent.Common` reference, iako ga
-Manager stvarno ne koristi u radu.
+(Manager NE referencira `Netdesk.Agent.Common` niti `websocket-sharp` -
+videti README.md, sekciju "Netdesk Agent Manager": Manager ima sopstveni
+FileLogger/Paths/ManagerCommand/DirectorySync, namerno odvojeno da Agent
+update nikad ne može da obori Manager i obrnuto.
 
 `WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` su SAMO u Service
 folderu (Manager ne radi DNS logging) - od verzije 1.5.7, DNS query logging

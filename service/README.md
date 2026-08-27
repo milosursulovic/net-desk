@@ -94,50 +94,33 @@ Netdesk.Agent.Manager/    Netdesk.Agent.Manager.exe - odvojen, TRAJAN Windows
 C:\Program Files\NetdeskAgent\
 ├── Service\
 │   ├── Netdesk.Agent.Service.exe
+│   ├── Netdesk.Agent.Service.exe.config
 │   ├── Netdesk.Agent.Common.dll
 │   ├── Newtonsoft.Json.dll
 │   ├── websocket-sharp.dll
-│   ├── Microsoft.Diagnostics.Tracing.TraceEvent.dll
-│   ├── Microsoft.Diagnostics.FastSerialization.dll
-│   ├── Dia2Lib.dll
-│   ├── OSExtensions.dll
-│   ├── TraceReloggerLib.dll
-│   ├── System.Runtime.CompilerServices.Unsafe.dll
-│   ├── amd64\ (KernelTraceControl.dll, msdia140.dll, msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll)
-│   └── x86\ (isti fajlovi + KernelTraceControl.Win61.dll)
+│   ├── WinDivert.dll
+│   ├── WinDivert64.sys
+│   └── LICENSE-WinDivert.txt
 └── Manager\
     ├── Netdesk.Agent.Manager.exe
-    ├── Netdesk.Agent.Common.dll
-    ├── Newtonsoft.Json.dll
-    ├── websocket-sharp.dll
-    ├── Microsoft.Diagnostics.Tracing.TraceEvent.dll
-    ├── Microsoft.Diagnostics.FastSerialization.dll
-    ├── Dia2Lib.dll
-    ├── OSExtensions.dll
-    ├── TraceReloggerLib.dll
-    ├── System.Runtime.CompilerServices.Unsafe.dll
-    ├── amd64\ (isti podfolder kao gore)
-    └── x86\ (isti podfolder kao gore)
+    ├── Netdesk.Agent.Manager.exe.config
+    └── Newtonsoft.Json.dll
 ```
 
 `websocket-sharp.dll` (paket `WebSocketSharp-netstandard`) je dodat zbog
 `VncBridge`-a - videti napomenu u sekciji "Udaljena kontrola ekrana"
 ispod za razlog (`System.Net.WebSockets.ClientWebSocket` ne radi na
-Windows 7). Preostalih 6 DLL-ova su tranzitivne zavisnosti paketa
-`Microsoft.Diagnostics.Tracing.TraceEvent` (DNS query logging - videti
-sekciju "DNS query logging" ispod), pinovanog na 2.0.77 jer je to
-poslednja verzija koja i dalje isporučuje `net45` lib target (3.x+ je
-samo `netstandard2.0`/`net462+`, ni jedno net452 ne može da konzumira).
-MSBuild sve ovo kopira u oba foldera (tranzitivna zavisnost preko
-`Netdesk.Agent.Common.dll`) iako ih `Manager.exe` stvarno ne koristi u
-radu - bezopasno, samo dodatni fajlovi. `amd64\`/`x86\` podfolderi
-(native helper DLL-ovi, arh-specifični - managed sklopovi su MSIL/AnyCPU
-i rade na oba, ali proces traži native helpere u podfolderu koji
-odgovara SVOJOJ stvarnoj bitnosti) su uključeni preventivno - nije uživo
-potvrđeno da li ih plain real-time ETW sesija na manifest provajderu (bez
-kernel provajdera ili .etl merge-a) uopšte zahteva u praksi, ali je cena
-zanemarljiva. `x86\` je posebno bitan zbog `KernelTraceControl.Win61.dll`
-(Windows 7 varijanta) - baš ono što ovaj projekat cilja.
+Windows 7). `WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` su
+za DNS query logging - videti sekciju "DNS query logging" ispod
+(`Microsoft.Diagnostics.Tracing.TraceEvent` paket, ETW-bazirani DNS
+logging do verzije 1.5.5, je potpuno uklonjen, zajedno sa svih 6
+tranzitivnih DLL-ova i `amd64\`/`x86\` native helper podfoldera).
+
+`Manager\` NEMA `Netdesk.Agent.Common.dll` niti `websocket-sharp.dll` -
+videti sekciju "Netdesk Agent Manager" ispod: Manager ima sopstveni
+FileLogger/Paths/ManagerCommand/DirectorySync, namerno odvojeno od
+`Netdesk.Agent.Common` da Agent update nikad ne može da obori Manager i
+obrnuto (ni WinDivert - Manager ne radi DNS logging).
 
 **`Service\` i `Manager\` moraju biti odvojeni folderi.** Auto-update paket
 prepisuje samo sadržaj `Service\` — `Manager\` namerno ostaje netaknut jer
