@@ -17,6 +17,7 @@ using NetdeskAgent.Common.ProcessMonitor;
 using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
+using NetdeskAgent.Common.FileTransfer;
 
 namespace NetdeskAgent.Service
 {
@@ -458,6 +459,12 @@ namespace NetdeskAgent.Service
                 var cts = new CancellationTokenSource();
                 RunVncBridgeFireAndForget(sessionId, settings, state, cts.Token);
 
+                // Zaseban kanal od VNC mosta (vidi FileTransferBridge.cs) - sopstveni
+                // CancellationTokenSource, namerno ne deli isti sa VNC mostom iznad,
+                // da zatvaranje jednog ne otkaže drugi.
+                var fileTransferCts = new CancellationTokenSource();
+                RunFileTransferBridgeFireAndForget(sessionId, settings, state, fileTransferCts.Token);
+
                 await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
                 {
                     Success = true,
@@ -509,6 +516,24 @@ namespace NetdeskAgent.Service
             catch (Exception ex)
             {
                 FileLogger.Error("VNC sesija #" + sessionId + " - neočekivana greška u mostu", ex);
+            }
+        }
+
+        // Isti fire-and-forget razlog kao RunVncBridgeFireAndForget iznad -
+        // FileTransferBridge.RunAsync ne treba lokalni TCP port (radi direktno
+        // sa fajl sistemom, ne proksira ka lokalnom servisu kao VncBridge).
+        private static async void RunFileTransferBridgeFireAndForget(
+            long sessionId, AgentSettings settings, AgentState state, CancellationToken token)
+        {
+            try
+            {
+                await FileTransferBridge.RunAsync(
+                    sessionId, settings.ServerBaseUrl, state.AgentId, state.ApiKey, token)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("Fajl-transfer sesija #" + sessionId + " - neočekivana greška u mostu", ex);
             }
         }
 

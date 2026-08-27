@@ -32,6 +32,7 @@ import {
   startVncSessionController,
   endVncSessionController,
 } from "../controllers/vncSessions.controller.js";
+import { downloadFileFromAgentController } from "../controllers/fileTransfer.controller.js";
 
 const router = express.Router();
 
@@ -83,5 +84,16 @@ router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));
 router.post("/:id/vnc/stop", asyncHandler(endVncSessionController));
+// Eksplicitan requireRole ovde iako je GET (writeRequiresOperator default
+// ostavlja GET otvoren i "viewer" ulozi) - isti stroži prag kao gledanje
+// VNC ekrana (vidi ws/vncRelay.js's authenticateViewer), ne router-ov
+// default za obično čitanje. Upload je i dalje strože gejtovan (tačno
+// "admin") unutar ws/fileTransferRelay.js samog, jer ide preko WS poruke,
+// ne kroz Express rutu koju bi requireRole ovde mogao da pokrije.
+router.get(
+  "/:id/file-transfer/:sessionId/download",
+  requireRole("admin", "operator"),
+  asyncHandler(downloadFileFromAgentController),
+);
 
 export default router;
