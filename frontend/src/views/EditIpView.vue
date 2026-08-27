@@ -62,6 +62,10 @@
         </p>
       </div>
 
+      <div class="mt-6">
+        <AppButton type="button" variant="danger" @click="clearComputerData">Očisti podatke</AppButton>
+      </div>
+
       <div class="flex justify-between mt-6">
         <AppButton type="button" variant="neutral" @click="goBack">Poništi</AppButton>
         <AppButton type="submit" variant="primary">Sačuvaj izmene</AppButton>
@@ -69,6 +73,14 @@
 
       <p v-if="error" class="text-red-500 mt-4 text-center">{{ error }}</p>
     </form>
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      @confirm="resolveConfirm(true)"
+      @cancel="resolveConfirm(false)"
+    />
   </div>
 </template>
 
@@ -86,11 +98,14 @@ import {
 import { ENTRY_TYPE_OPTIONS } from '@/constants/entryTypes.js'
 import { SITE_OPTIONS } from '@/constants/sites.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
+import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import GroupSelect from '@/components/GroupSelect.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { isAdmin } = useCurrentUser()
+const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const error = ref('')
 const form = ref(createIpEntryForm())
 // 'department' se renderuje posebno iznad (GroupSelect), ne u generičkoj petlji.
@@ -141,6 +156,23 @@ const handleUpdate = async () => {
     console.error(err)
     error.value = 'Greška na serveru'
   }
+}
+
+// Briše samo podatke o računaru (ime, RDP app, sistem, odeljenje) - ostavlja
+// IP/lokaciju/opis/tip netaknutim. Menja SAMO lokalni form state (kao i sva
+// ostala polja ovde) - korisnik i dalje mora da klikne "Sačuvaj izmene" da bi
+// se izmena stvarno upisala, isti obrazac kao ostatak forme.
+async function clearComputerData() {
+  const ok = await askConfirm(
+    'Obrisati ime računara, RDP app, sistem i odeljenje za ovaj unos? Izmena se čuva tek klikom na "Sačuvaj izmene".',
+    { title: 'Očisti podatke o računaru' },
+  )
+  if (!ok) return
+
+  form.value.computerName = ''
+  form.value.rdpApp = ''
+  form.value.os = ''
+  form.value.department = ''
 }
 
 const goBack = () => router.push('/')
