@@ -38,9 +38,9 @@ const totalPrinters = computed(() => Number(stats.value?.totalPrinters) || 0)
 function statusBadgeClass(status) {
   const s = String(status || '').trim().toLowerCase()
   if (['ok', 'idle', 'unknown', ''].includes(s)) {
-    return 'bg-green-600 text-white'
+    return 'bg-good text-white'
   }
-  return 'bg-red-600 text-white'
+  return 'bg-bad text-white'
 }
 
 // Grupisanje po proizvođaču sad broji SVAKI štampač (ne jedan po računaru),
@@ -68,7 +68,7 @@ async function exportActivePrintersPdf() {
     )
   } catch (err) {
     console.error('Export aktivnih štampača greška:', err)
-    showToast('Greška pri izvozu PDF-a', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri izvozu PDF-a', { kind: 'error', duration: 3000 })
   } finally {
     exportingActivePrintersPdf.value = false
   }
@@ -81,11 +81,11 @@ async function exportActivePrintersPdf() {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Ukupno štampača</div>
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-xs text-ink-muted mb-1">Ukupno štampača</div>
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalPrinters) }}
           </div>
-          <div class="text-xs text-slate-500 mt-2">
+          <div class="text-xs text-ink-muted mt-2">
             Na {{ formatNumber(stats.computersWithPrinters) }} računara
           </div>
         </div>
@@ -93,44 +93,44 @@ async function exportActivePrintersPdf() {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Jedinstveni štampači</div>
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-xs text-ink-muted mb-1">Jedinstveni štampači</div>
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniquePrinters) }}
           </div>
-          <div class="text-xs text-slate-500 mt-2">Različitih naziva štampača</div>
+          <div class="text-xs text-ink-muted mt-2">Različitih naziva štampača</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Prosek po računaru</div>
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.avgPerComputer) }}
           </div>
-          <div class="text-xs text-slate-500 mt-2">Štampača po računaru sa štampačem</div>
+          <div class="text-xs text-ink-muted mt-2">Štampača po računaru sa štampačem</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Podrazumevani</div>
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-xs text-ink-muted mb-1">Podrazumevani</div>
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.defaultCount) }}
           </div>
-          <div class="text-xs text-slate-500 mt-2">Označeni kao podrazumevani</div>
+          <div class="text-xs text-ink-muted mt-2">Označeni kao podrazumevani</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Problematičan status</div>
+          <div class="text-xs text-ink-muted mb-1">Problematičan status</div>
           <div
             class="text-2xl font-bold tracking-tight"
-            :class="Number(stats.problemStatus) > 0 ? 'text-red-600' : 'text-green-600'"
+            :class="Number(stats.problemStatus) > 0 ? 'text-bad' : 'text-good'"
           >
             {{ formatNumber(stats.problemStatus) }}
           </div>
-          <div class="text-xs text-slate-500 mt-2">Status različit od OK/Idle</div>
+          <div class="text-xs text-ink-muted mt-2">Status različit od OK/Idle</div>
         </div>
       </div>
     </div>
@@ -140,12 +140,12 @@ async function exportActivePrintersPdf() {
       <div class="p-4">
         <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-xs text-slate-500">Najstariji PDSU zapis štampača</div>
-            <div class="font-semibold text-slate-900">{{ formatDate(stats.oldestInventoryDate) }}</div>
+            <div class="text-xs text-ink-muted">Najstariji PDSU zapis štampača</div>
+            <div class="font-semibold text-ink">{{ formatDate(stats.oldestInventoryDate) }}</div>
           </div>
           <div class="md:text-right">
-            <div class="text-xs text-slate-500">Najnoviji PDSU zapis štampača</div>
-            <div class="font-semibold text-slate-900">{{ formatDate(stats.newestInventoryDate) }}</div>
+            <div class="text-xs text-ink-muted">Najnoviji PDSU zapis štampača</div>
+            <div class="font-semibold text-ink">{{ formatDate(stats.newestInventoryDate) }}</div>
           </div>
         </div>
       </div>
@@ -156,7 +156,7 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Aktivni štampač po računaru</h5>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Svi sinhronizovani štampači po računaru - dosta mašina nema nijedan štampač
             markiran kao podrazumevani, pa se ovde prikazuju svi da nijedan računar ne bude
             izostavljen. "Podrazumevani" označava Windows-ov Default štampač, ako postoji.
@@ -171,7 +171,7 @@ async function exportActivePrintersPdf() {
           >
             {{ exportingActivePrintersPdf ? 'Izvoz…' : 'Izvezi PDF' }}
           </AppButton>
-          <span class="pdsu-badge bg-blue-600 text-white">{{ formatNumber(activePerComputer.length) }}</span>
+          <span class="pdsu-badge bg-accent text-white">{{ formatNumber(activePerComputer.length) }}</span>
         </div>
       </div>
 
@@ -191,12 +191,12 @@ async function exportActivePrintersPdf() {
           </thead>
           <tbody>
             <tr v-for="(item, index) in activePerComputer" :key="item.ipEntryId ? `${item.ipEntryId}-${item.name}` : `${item.ip}-${index}`">
-              <td class="font-semibold text-slate-900">{{ item.computerName || 'Nepoznat računar' }}</td>
+              <td class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</td>
               <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
               <td>{{ item.department || '—' }}</td>
               <td>
                 <div>{{ item.name || '—' }}</div>
-                <span v-if="item.isDefault" class="text-xs text-blue-600">Podrazumevani</span>
+                <span v-if="item.isDefault" class="text-xs text-accent">Podrazumevani</span>
               </td>
               <td>{{ item.manufacturer || 'Nepoznato' }}</td>
               <td>{{ item.driverName || '—' }}</td>
@@ -208,7 +208,7 @@ async function exportActivePrintersPdf() {
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="activePerComputer.length === 0">
-              <td colspan="8" class="text-center text-slate-500 py-4">
+              <td colspan="8" class="text-center text-ink-muted py-4">
                 Nema sinhronizovanih štampača.
               </td>
             </tr>
@@ -222,12 +222,12 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Aktivni štampači po proizvođaču</h5>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Grupisano po brendu (izvedeno iz naziva drajvera/štampača - Win32_Printer nema strukturiran
             proizvođač podatak). Broji sve sinhronizovane štampače, ne samo podrazumevane.
           </div>
         </div>
-        <span class="pdsu-badge bg-slate-900 text-white">{{ formatNumber(groupedByManufacturer.length) }}</span>
+        <span class="pdsu-badge bg-ink text-white">{{ formatNumber(groupedByManufacturer.length) }}</span>
       </div>
 
       <div class="pdsu-table-wrap">
@@ -241,16 +241,16 @@ async function exportActivePrintersPdf() {
           </thead>
           <tbody>
             <tr v-for="group in groupedByManufacturer" :key="group.manufacturer">
-              <td class="font-semibold text-slate-900">{{ group.manufacturer }}</td>
+              <td class="font-semibold text-ink">{{ group.manufacturer }}</td>
               <td class="text-center">
-                <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(group.count) }}</span>
+                <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(group.count) }}</span>
               </td>
               <td>
                 <div class="flex flex-wrap gap-1">
                   <span
                     v-for="computer in uniqueComputers(group.computers)"
                     :key="computer.ipEntryId"
-                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
+                    class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line"
                   >
                     {{ computer.computerName || computer.ip }}
                   </span>
@@ -258,7 +258,7 @@ async function exportActivePrintersPdf() {
               </td>
             </tr>
             <tr v-if="groupedByManufacturer.length === 0">
-              <td colspan="3" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -270,9 +270,9 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Štampači sa problematičnim statusom</h5>
-          <div class="text-xs text-slate-500">Status različit od OK/Idle/Unknown - potencijalno zahtevaju proveru</div>
+          <div class="text-xs text-ink-muted">Status različit od OK/Idle/Unknown - potencijalno zahtevaju proveru</div>
         </div>
-        <span class="pdsu-badge" :class="problemStatus.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'">
+        <span class="pdsu-badge" :class="problemStatus.length > 0 ? 'bg-bad text-white' : 'bg-good text-white'">
           {{ formatNumber(problemStatus.length) }}
         </span>
       </div>
@@ -295,13 +295,13 @@ async function exportActivePrintersPdf() {
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
-                <div class="font-semibold text-slate-900">{{ item.name || 'Nepoznat štampač' }}</div>
-                <span v-if="item.isDefault" class="text-xs text-blue-600">Podrazumevani</span>
+                <div class="font-semibold text-ink">{{ item.name || 'Nepoznat štampač' }}</div>
+                <span v-if="item.isDefault" class="text-xs text-accent">Podrazumevani</span>
               </td>
               <td>
-                <div class="font-semibold text-slate-900">{{ item.computerName || 'Nepoznat računar' }}</div>
+                <div class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</div>
                 <div><code class="pdsu-code">{{ item.ip || '—' }}</code></div>
-                <div class="text-xs text-slate-500">{{ item.department || '—' }}</div>
+                <div class="text-xs text-ink-muted">{{ item.department || '—' }}</div>
               </td>
               <td>{{ item.driverName || '—' }}</td>
               <td>{{ item.portName || '—' }}</td>
@@ -313,7 +313,7 @@ async function exportActivePrintersPdf() {
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="problemStatus.length === 0">
-              <td colspan="6" class="text-center text-slate-500 py-4">Nema štampača sa problematičnim statusom.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">Nema štampača sa problematičnim statusom.</td>
             </tr>
           </tbody>
         </table>
@@ -325,9 +325,9 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Najčešći štampači</h5>
-          <div class="text-xs text-slate-500">Rangirano po broju računara koji imaju konfigurisan taj štampač</div>
+          <div class="text-xs text-ink-muted">Rangirano po broju računara koji imaju konfigurisan taj štampač</div>
         </div>
-        <span class="pdsu-badge bg-slate-900 text-white">Top {{ formatNumber(topNames.length) }}</span>
+        <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(topNames.length) }}</span>
       </div>
 
       <div class="pdsu-table-wrap">
@@ -341,14 +341,14 @@ async function exportActivePrintersPdf() {
           </thead>
           <tbody>
             <tr v-for="(item, index) in topNames" :key="`${item.name}-${index}`">
-              <td class="text-slate-500">{{ index + 1 }}</td>
-              <td class="font-semibold text-slate-900">{{ item.name }}</td>
+              <td class="text-ink-muted">{{ index + 1 }}</td>
+              <td class="font-semibold text-ink">{{ item.name }}</td>
               <td class="text-center">
-                <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(item.computers) }}</span>
+                <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(item.computers) }}</span>
               </td>
             </tr>
             <tr v-if="topNames.length === 0">
-              <td colspan="3" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -360,9 +360,9 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Najčešći drajveri štampača</h5>
-          <div class="text-xs text-slate-500">Korisno za planiranje ažuriranja drajvera</div>
+          <div class="text-xs text-ink-muted">Korisno za planiranje ažuriranja drajvera</div>
         </div>
-        <span class="pdsu-badge bg-slate-900 text-white">Top {{ formatNumber(topDrivers.length) }}</span>
+        <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(topDrivers.length) }}</span>
       </div>
 
       <div class="pdsu-table-wrap">
@@ -377,15 +377,15 @@ async function exportActivePrintersPdf() {
           </thead>
           <tbody>
             <tr v-for="(item, index) in topDrivers" :key="`${item.driverName}-${index}`">
-              <td class="text-slate-500">{{ index + 1 }}</td>
-              <td class="font-semibold text-slate-900">{{ item.driverName }}</td>
+              <td class="text-ink-muted">{{ index + 1 }}</td>
+              <td class="font-semibold text-ink">{{ item.driverName }}</td>
               <td class="text-center">{{ formatNumber(item.printers) }}</td>
               <td class="text-center">
-                <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(item.computers) }}</span>
+                <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(item.computers) }}</span>
               </td>
             </tr>
             <tr v-if="topDrivers.length === 0">
-              <td colspan="4" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="4" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -397,9 +397,9 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Retki štampači</h5>
-          <div class="text-xs text-slate-500">Štampači pronađeni na malom broju računara</div>
+          <div class="text-xs text-ink-muted">Štampači pronađeni na malom broju računara</div>
         </div>
-        <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(rarePrinters.length) }}</span>
+        <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(rarePrinters.length) }}</span>
       </div>
 
       <div class="pdsu-table-wrap">
@@ -413,25 +413,25 @@ async function exportActivePrintersPdf() {
           </thead>
           <tbody>
             <tr v-for="(item, index) in rarePrinters" :key="`${item.name}-${index}`">
-              <td class="font-semibold text-slate-900">{{ item.name }}</td>
+              <td class="font-semibold text-ink">{{ item.name }}</td>
               <td class="text-center">
-                <span class="pdsu-badge bg-slate-500 text-white">{{ formatNumber(item.computers) }}</span>
+                <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(item.computers) }}</span>
               </td>
               <td>
                 <div class="flex flex-wrap gap-1">
                   <span
                     v-for="computer in splitValues(item.computerNames)"
                     :key="computer"
-                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
+                    class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line"
                   >
                     {{ computer }}
                   </span>
-                  <span v-if="splitValues(item.computerNames).length === 0" class="text-slate-500">Nema podatka</span>
+                  <span v-if="splitValues(item.computerNames).length === 0" class="text-ink-muted">Nema podatka</span>
                 </div>
               </td>
             </tr>
             <tr v-if="rarePrinters.length === 0">
-              <td colspan="3" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -443,9 +443,9 @@ async function exportActivePrintersPdf() {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">Računari sa najviše štampača</h5>
-          <div class="text-xs text-slate-500">Rangirano prema ukupnom broju konfigurisanih štampača</div>
+          <div class="text-xs text-ink-muted">Rangirano prema ukupnom broju konfigurisanih štampača</div>
         </div>
-        <span class="pdsu-badge bg-slate-900 text-white">Top {{ formatNumber(computersWithMostPrinters.length) }}</span>
+        <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(computersWithMostPrinters.length) }}</span>
       </div>
 
       <div class="pdsu-table-wrap">
@@ -465,17 +465,17 @@ async function exportActivePrintersPdf() {
               v-for="(item, index) in computersWithMostPrinters"
               :key="item.ipEntryId ?? `${item.ip}-${index}`"
             >
-              <td class="text-slate-500">{{ index + 1 }}</td>
-              <td class="font-semibold text-slate-900">{{ item.computerName || 'Nepoznat računar' }}</td>
+              <td class="text-ink-muted">{{ index + 1 }}</td>
+              <td class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</td>
               <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
               <td>{{ item.department || '—' }}</td>
               <td class="text-center">
-                <span class="pdsu-badge bg-green-600 text-white">{{ formatNumber(item.printerCount) }}</span>
+                <span class="pdsu-badge bg-good text-white">{{ formatNumber(item.printerCount) }}</span>
               </td>
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="computersWithMostPrinters.length === 0">
-              <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>

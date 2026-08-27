@@ -56,7 +56,7 @@
           <AppButton variant="neutral" :disabled="!filePathStack.length" @click="goBack">
             Nazad
           </AppButton>
-          <span class="text-sm text-slate-500 truncate">{{ currentFilePath || 'Diskovi' }}</span>
+          <span class="text-sm text-ink-muted truncate">{{ currentFilePath || 'Diskovi' }}</span>
         </div>
 
         <label v-if="isAdmin" class="inline-block">
@@ -68,13 +68,13 @@
             @change="handleFileUpload"
           />
         </label>
-        <p v-if="uploading" class="text-sm text-slate-500">Otpremam…</p>
+        <p v-if="uploading" class="text-sm text-ink-muted">Otpremam…</p>
 
-        <p v-if="fileError" class="text-sm text-red-600">{{ fileError }}</p>
-        <p v-else-if="fileLoading" class="text-sm text-slate-500">Učitavam…</p>
-        <p v-else-if="!fileEntries.length" class="text-sm text-slate-500">Prazno.</p>
+        <p v-if="fileError" class="text-sm text-bad">{{ fileError }}</p>
+        <p v-else-if="fileLoading" class="text-sm text-ink-muted">Učitavam…</p>
+        <p v-else-if="!fileEntries.length" class="text-sm text-ink-muted">Prazno.</p>
 
-        <ul v-else class="divide-y divide-slate-200">
+        <ul v-else class="divide-y divide-line">
           <li
             v-for="entry in fileEntries"
             :key="entry.name"
@@ -83,15 +83,15 @@
             <button
               v-if="entry.isDirectory"
               type="button"
-              class="text-left text-sm text-sky-700 hover:underline truncate"
+              class="inline-flex items-center gap-1.5 text-left text-sm text-accent hover:underline truncate"
               @click="openEntry(entry)"
             >
-              📁 {{ entry.name }}
+              <NavIcon name="folder" /> {{ entry.name }}
             </button>
-            <span v-else class="text-sm text-slate-700 truncate">📄 {{ entry.name }}</span>
+            <span v-else class="inline-flex items-center gap-1.5 text-sm text-ink truncate"><NavIcon name="file" /> {{ entry.name }}</span>
 
             <div class="flex items-center gap-3 shrink-0">
-              <span v-if="!entry.isDirectory" class="text-xs text-slate-400">{{ formatFileSize(entry.size) }}</span>
+              <span v-if="!entry.isDirectory" class="text-xs text-ink-muted">{{ formatFileSize(entry.size) }}</span>
               <AppButton v-if="!entry.isDirectory" variant="neutral" @click="downloadEntry(entry)">
                 Preuzmi
               </AppButton>
@@ -115,6 +115,7 @@ import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const route = useRoute()
 const agentId = route.params.id
@@ -169,7 +170,7 @@ async function start() {
     startRfb(session)
   } catch (e) {
     console.error('Neuspešno pokretanje VNC sesije:', e)
-    showToast(e.message || 'Greška pri pokretanju sesije', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri pokretanju sesije', { kind: 'error', duration: 3000 })
     starting.value = false
   }
 }
@@ -213,9 +214,9 @@ function startRfb(session) {
     })
     rfb.addEventListener('disconnect', (e) => {
       if (starting.value) {
-        showToast('Neuspešno povezivanje na ekran', { prefix: '❌ ', duration: 3000 })
+        showToast('Neuspešno povezivanje na ekran', { kind: 'error', duration: 3000 })
       } else if (connected.value && !e.detail?.clean) {
-        showToast('VNC konekcija je prekinuta', { prefix: '⚠️ ', duration: 3000 })
+        showToast('VNC konekcija je prekinuta', { kind: 'warning', duration: 3000 })
       }
       cleanup()
     })
@@ -244,7 +245,7 @@ async function pasteToRemote() {
     sendPasteKeystroke()
   } catch (e) {
     console.error('Neuspešno čitanje clipboard-a:', e)
-    showToast('Nije moguće pročitati clipboard (dozvoli pristup u browseru)', { prefix: '❌ ', duration: 3000 })
+    showToast('Nije moguće pročitati clipboard (dozvoli pristup u browseru)', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -466,7 +467,7 @@ async function downloadEntry(entry) {
     )
   } catch (e) {
     console.error('Preuzimanje fajla neuspešno:', e)
-    showToast('Preuzimanje fajla neuspešno', { prefix: '❌ ', duration: 3000 })
+    showToast('Preuzimanje fajla neuspešno', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -483,7 +484,7 @@ async function handleFileUpload(event) {
   if (!file) return
   const ws = ensureFileWs()
   if (ws.readyState !== WebSocket.OPEN) {
-    showToast('Konekcija za fajlove nije spremna, pokušaj ponovo', { prefix: '❌ ', duration: 3000 })
+    showToast('Konekcija za fajlove nije spremna, pokušaj ponovo', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -515,7 +516,7 @@ async function handleFileUpload(event) {
     listPath(currentFilePath.value)
   } catch (e) {
     console.error('Otpremanje fajla neuspešno:', e)
-    showToast(e.message || 'Otpremanje fajla neuspešno', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Otpremanje fajla neuspešno', { kind: 'error', duration: 3000 })
   } finally {
     uploading.value = false
   }
@@ -533,7 +534,7 @@ async function toggleFullscreen() {
       await rootEl.value.requestFullscreen()
     } catch (e) {
       console.error('Fullscreen zahtev neuspešan:', e)
-      showToast('Puni ekran nije dozvoljen u ovom browseru', { prefix: '❌ ', duration: 3000 })
+      showToast('Puni ekran nije dozvoljen u ovom browseru', { kind: 'error', duration: 3000 })
       return
     }
     if (navigator.keyboard?.lock) {

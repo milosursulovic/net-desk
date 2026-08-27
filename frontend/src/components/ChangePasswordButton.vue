@@ -6,6 +6,15 @@ import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
+defineProps({
+  // Kad se dugme prikazuje unutar UserMenu.vue dropdown-a, taj meni stavka
+  // je trigger - ovde ostaje samo modal (i dalje montiran/kontrolisan
+  // isključivo preko open() iz defineExpose ispod).
+  hideTrigger: { type: Boolean, default: false },
+})
+
+defineExpose({ open: openModal })
+
 const { toast, showToast } = useToast()
 
 const open = ref(false)
@@ -27,15 +36,15 @@ function close() {
 
 async function save() {
   if (!currentPassword.value) {
-    showToast('Unesi trenutnu lozinku.', { prefix: '❌ ', duration: 3000 })
+    showToast('Unesi trenutnu lozinku.', { kind: 'error', duration: 3000 })
     return
   }
   if (newPassword.value.length < 8) {
-    showToast('Nova lozinka mora imati bar 8 karaktera.', { prefix: '❌ ', duration: 3000 })
+    showToast('Nova lozinka mora imati bar 8 karaktera.', { kind: 'error', duration: 3000 })
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    showToast('Nova lozinka i potvrda se ne poklapaju.', { prefix: '❌ ', duration: 3000 })
+    showToast('Nova lozinka i potvrda se ne poklapaju.', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -55,7 +64,7 @@ async function save() {
     showToast('Lozinka promenjena')
   } catch (e) {
     console.error('Greška pri promeni lozinke:', e)
-    showToast(e.message || 'Greška pri promeni lozinke.', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri promeni lozinke.', { kind: 'error', duration: 3000 })
   } finally {
     saving.value = false
   }
@@ -67,8 +76,9 @@ async function save() {
     <ToastNotification :message="toast" />
 
     <button
+      v-if="!hideTrigger"
       type="button"
-      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-sm text-ink-secondary transition-colors hover:bg-accent-subtle hover:text-accent"
       title="Promeni lozinku"
       @click="openModal"
     >
@@ -79,25 +89,25 @@ async function save() {
       <transition name="fade">
         <div
           v-if="open"
-          class="fixed inset-0 z-[9997] flex items-center justify-center bg-black/50 p-4"
+          class="fixed inset-0 z-9997 flex items-center justify-center bg-black/50 p-4"
           @click.self="close"
           role="dialog"
           aria-modal="true"
         >
-          <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
-            <h2 class="text-lg font-semibold text-slate-800 mb-4">Promena lozinke</h2>
+          <div class="w-full max-w-sm rounded-xl bg-surface p-6 shadow-2xl">
+            <h2 class="text-lg font-semibold text-ink mb-4">Promena lozinke</h2>
 
             <div class="space-y-3">
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Trenutna lozinka</label>
+                <label class="block text-xs text-ink-muted mb-1">Trenutna lozinka</label>
                 <input v-model="currentPassword" type="password" class="app-input w-full text-sm" />
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Nova lozinka</label>
+                <label class="block text-xs text-ink-muted mb-1">Nova lozinka</label>
                 <input v-model="newPassword" type="password" class="app-input w-full text-sm" placeholder="Minimum 8 karaktera" />
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">Potvrdi novu lozinku</label>
+                <label class="block text-xs text-ink-muted mb-1">Potvrdi novu lozinku</label>
                 <input v-model="confirmPassword" type="password" class="app-input w-full text-sm" />
               </div>
             </div>

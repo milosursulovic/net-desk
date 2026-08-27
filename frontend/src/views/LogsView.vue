@@ -1,8 +1,8 @@
 <template>
-  <div class="glass-container">
-    <h1 class="text-2xl font-bold text-slate-800 mb-4">Logovi</h1>
+  <div class="space-y-4">
+    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Logovi</h1>
 
-    <div class="mb-4 flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2">
       <input
         v-model="username"
         type="text"
@@ -17,57 +17,52 @@
       />
     </div>
 
-    <div class="overflow-x-auto rounded-xl border bg-white shadow-sm">
+    <div class="table-shell overflow-x-auto">
       <table class="min-w-full text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-3">Vreme</th>
-            <th class="px-4 py-3">Korisnik</th>
-            <th class="px-4 py-3">Akcija</th>
-            <th class="px-4 py-3">IP adresa</th>
-            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3 text-left">Vreme</th>
+            <th class="px-4 py-3 text-left">Korisnik</th>
+            <th class="px-4 py-3 text-left">Akcija</th>
+            <th class="px-4 py-3 text-left">IP adresa</th>
+            <th class="px-4 py-3 text-left">Status</th>
           </tr>
         </thead>
-        <tbody class="divide-y">
-          <tr v-for="entry in entries" :key="entry.id">
-            <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ fmtDate(entry.createdAt) }}</td>
-            <td class="px-4 py-3 font-medium">{{ entry.username || '—' }}</td>
-            <td class="px-4 py-3 font-mono text-xs">
+        <tbody>
+          <tr v-for="entry in entries" :key="entry.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+            <td class="px-4 py-3 font-mono text-ink-muted whitespace-nowrap">{{ fmtDate(entry.createdAt) }}</td>
+            <td class="px-4 py-3 font-medium text-ink">{{ entry.username || '—' }}</td>
+            <td class="px-4 py-3 font-mono text-xs text-ink-secondary">
               <div>{{ entry.action }}</div>
               <div
                 v-if="entry.details"
-                class="mt-0.5 max-w-xs truncate text-slate-400"
+                class="mt-0.5 max-w-xs truncate text-ink-muted"
                 :title="entry.details"
               >
                 {{ entry.details }}
               </div>
             </td>
-            <td class="px-4 py-3 text-slate-500">{{ entry.ipAddress || '—' }}</td>
+            <td class="px-4 py-3 font-mono text-ink-secondary">{{ entry.ipAddress || '—' }}</td>
             <td class="px-4 py-3">
-              <span
-                class="rounded-full border px-2 py-0.5 text-xs"
-                :class="statusClass(entry.statusCode)"
-              >
-                {{ entry.statusCode ?? '—' }}
-              </span>
+              <StatusPill :status="statusTone(entry.statusCode)" :label="String(entry.statusCode ?? '—')" :dot="false" />
             </td>
           </tr>
           <tr v-if="!loading && !entries.length">
-            <td colspan="5" class="px-4 py-8 text-center text-slate-500">Nema zapisa.</td>
+            <td colspan="5" class="px-4 py-8 text-center text-ink-muted">Nema zapisa.</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="mt-4 flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <button @click="prevPage" :disabled="page === 1"
-        class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100">
-        ⬅️
+        class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken">
+        <NavIcon name="chevron-left" />
       </button>
-      <span class="text-sm text-slate-600">Strana {{ page }} / {{ totalPages || 1 }} ({{ total }} ukupno)</span>
+      <span class="text-sm text-ink-secondary font-mono">Strana {{ page }} / {{ totalPages || 1 }} ({{ total }} ukupno)</span>
       <button @click="nextPage({ totalPages })" :disabled="page >= totalPages"
-        class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100">
-        ➡️
+        class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken">
+        <NavIcon name="chevron-right" />
       </button>
     </div>
   </div>
@@ -78,6 +73,8 @@ import { ref, watch, onMounted } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
+import StatusPill from '@/components/StatusPill.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const { page, limit, nextPage, prevPage, applyServerPagination } = usePaginatedRoute({
   fields: {
@@ -96,11 +93,11 @@ const total = ref(0)
 const totalPages = ref(0)
 const loading = ref(false)
 
-function statusClass(status) {
-  if (!status) return 'bg-slate-50 text-slate-500 border-slate-200'
-  if (status >= 500) return 'bg-red-50 text-red-700 border-red-200'
-  if (status >= 400) return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-green-50 text-green-700 border-green-200'
+function statusTone(status) {
+  if (!status) return 'neutral'
+  if (status >= 500) return 'bad'
+  if (status >= 400) return 'warn'
+  return 'good'
 }
 
 async function fetchData() {

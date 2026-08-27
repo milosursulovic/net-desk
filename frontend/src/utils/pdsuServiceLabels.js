@@ -33,18 +33,18 @@ export function stateBadgeClass(value) {
   const state = normalizeState(value)
 
   if (state === 'running') {
-    return 'bg-green-600 text-white'
+    return 'bg-good text-white'
   }
 
   if (state === 'stopped') {
-    return 'bg-red-600 text-white'
+    return 'bg-bad text-white'
   }
 
   if (state === 'paused') {
-    return 'bg-amber-500 text-amber-950'
+    return 'bg-warn text-white'
   }
 
-  return 'bg-slate-500 text-white'
+  return 'bg-ink-muted text-white'
 }
 
 // Matches both English (raw WMI StartMode values) and Serbian (already
@@ -73,16 +73,16 @@ export function startModeBadgeClass(value) {
   const mode = normalizeStartMode(value)
 
   if (mode === 'auto' || mode === 'automatic' || mode === 'automatski') {
-    return 'bg-blue-600 text-white'
+    return 'bg-accent text-white'
   }
 
   if (mode === 'manual' || mode === 'ručno' || mode === 'rucno') {
-    return 'bg-amber-500 text-amber-950'
+    return 'bg-warn text-white'
   }
 
   if (mode === 'disabled' || mode === 'isključen' || mode === 'iskljucen') {
-    return 'bg-slate-500 text-white'
+    return 'bg-ink-muted text-white'
   }
 
-  return 'bg-slate-100 text-slate-700 border border-slate-200'
+  return 'bg-surface-sunken text-ink-secondary border border-line'
 }

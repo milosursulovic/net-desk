@@ -20,14 +20,14 @@ const KpiCard = defineComponent({
   props: { title: String, value: [String, Number], sub: String, warn: Boolean },
   setup(props) {
     return () =>
-      h('div', { class: 'rounded-xl border bg-white p-4 shadow-sm' }, [
-        h('div', { class: 'text-slate-500 text-sm' }, props.title),
+      h('div', { class: 'rounded-xl border border-line bg-surface p-4 shadow-sm' }, [
+        h('div', { class: 'text-ink-muted text-sm' }, props.title),
         h(
           'div',
-          { class: ['text-2xl font-semibold tracking-tight', props.warn ? 'text-red-600' : 'text-slate-800'] },
+          { class: ['text-2xl font-semibold tracking-tight font-mono', props.warn ? 'text-bad' : 'text-ink'] },
           props.value ?? '—',
         ),
-        props.sub ? h('div', { class: 'text-slate-400 text-xs mt-1' }, props.sub) : null,
+        props.sub ? h('div', { class: 'text-ink-muted text-xs mt-1' }, props.sub) : null,
       ])
   },
 })
@@ -49,7 +49,7 @@ const TrendLine = defineComponent({
       const pad = 10
       const n = props.points.length
       if (n < 2) {
-        return h('div', { class: 'text-sm text-slate-400 py-8 text-center' }, 'Nema dovoljno podataka još.')
+        return h('div', { class: 'text-sm text-ink-muted py-8 text-center' }, 'Nema dovoljno podataka još.')
       }
       const ys = props.points.map((p) => p.y ?? 0)
       const max = Math.max(1, ...ys)
@@ -65,9 +65,9 @@ const TrendLine = defineComponent({
 
       return h('div', { class: 'relative' }, [
         h('svg', { width, height, viewBox: `0 0 ${width} ${height}`, class: 'w-full', preserveAspectRatio: 'none' }, [
-          h('polygon', { points: areaPoints, class: 'fill-blue-100' }),
-          h('polyline', { points: linePoints, fill: 'none', stroke: 'currentColor', 'stroke-width': 2, class: 'text-blue-600' }),
-          activePt ? h('circle', { cx: activePt[0], cy: activePt[1], r: 4, class: 'fill-blue-600' }) : null,
+          h('polygon', { points: areaPoints, class: 'fill-accent-subtle' }),
+          h('polyline', { points: linePoints, fill: 'none', stroke: 'currentColor', 'stroke-width': 2, class: 'text-accent' }),
+          activePt ? h('circle', { cx: activePt[0], cy: activePt[1], r: 4, class: 'fill-accent' }) : null,
           ...pts.map(([x], i) =>
             h('rect', {
               key: i,
@@ -86,12 +86,12 @@ const TrendLine = defineComponent({
               'div',
               {
                 class:
-                  'absolute top-0 -translate-y-full rounded-lg border bg-white px-2 py-1 text-xs shadow-sm pointer-events-none whitespace-nowrap',
+                  'absolute top-0 -translate-y-full rounded-lg border border-line bg-surface px-2 py-1 text-xs shadow-sm pointer-events-none whitespace-nowrap',
                 style: { left: `${(activePt[0] / width) * 100}%`, transform: 'translate(-50%, -100%)' },
               },
               [
-                h('div', { class: 'font-medium' }, `${props.points[hoverIdx.value].y ?? '—'}${props.unit}`),
-                h('div', { class: 'text-slate-500' }, fmtHistTime(props.points[hoverIdx.value].x)),
+                h('div', { class: 'font-medium text-ink font-mono' }, `${props.points[hoverIdx.value].y ?? '—'}${props.unit}`),
+                h('div', { class: 'text-ink-muted font-mono' }, fmtHistTime(props.points[hoverIdx.value].x)),
               ],
             )
           : null,
@@ -165,7 +165,7 @@ async function runGhostAudit() {
     ghostAudit.value = await res.json()
   } catch (err) {
     console.error('Greška pri proveri ghost referenci:', err)
-    showToast('Greška pri proveri baze.', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri proveri baze.', { kind: 'error', duration: 3000 })
   } finally {
     ghostAuditLoading.value = false
   }
@@ -188,7 +188,7 @@ async function cleanGhostReferences() {
     await runGhostAudit()
   } catch (err) {
     console.error('Greška pri čišćenju baze:', err)
-    showToast('Greška pri čišćenju baze.', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri čišćenju baze.', { kind: 'error', duration: 3000 })
   } finally {
     ghostCleaning.value = false
   }
@@ -207,17 +207,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="glass-container space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Server</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Server</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Live opterećenje backend servera (CPU/RAM/disk, baza, requestovi) — osvežava se automatski.
         </p>
       </div>
     </div>
 
-    <div v-if="liveError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
+    <div v-if="liveError" class="rounded-lg border border-bad/40 bg-bad-subtle px-4 py-3 text-bad text-sm">
       {{ liveError }}
     </div>
 
@@ -292,15 +292,15 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
-        <h2 class="font-semibold text-slate-800 mb-3">
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
+        <h2 class="font-semibold text-ink mb-3">
           Najaktivnije rute (poslednji minut)
         </h2>
-        <div v-if="!live.requests.topRoutes.length" class="text-sm text-slate-500">
+        <div v-if="!live.requests.topRoutes.length" class="text-sm text-ink-muted">
           Nema zabeleženih requestova u poslednjem minutu.
         </div>
         <table v-else class="min-w-full text-left text-sm">
-          <thead class="bg-slate-100 text-slate-700">
+          <thead class="table-head-row">
             <tr>
               <th class="px-3 py-2 font-medium whitespace-nowrap">Ruta</th>
               <th class="px-3 py-2 font-medium whitespace-nowrap">Broj</th>
@@ -309,11 +309,11 @@ onBeforeUnmount(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in live.requests.topRoutes" :key="r.route" class="border-b">
-              <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.route }}</td>
-              <td class="px-3 py-2 whitespace-nowrap">{{ r.count }}</td>
-              <td class="px-3 py-2 whitespace-nowrap">{{ r.avgMs }}</td>
-              <td class="px-3 py-2 whitespace-nowrap" :class="r.errors ? 'text-red-600 font-medium' : ''">
+            <tr v-for="r in live.requests.topRoutes" :key="r.route" class="border-b border-line last:border-0">
+              <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ r.route }}</td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ r.count }}</td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ r.avgMs }}</td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono" :class="r.errors ? 'text-bad font-medium' : 'text-ink-secondary'">
                 {{ r.errors }}
               </td>
             </tr>
@@ -322,7 +322,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- ================= BAZA ================= -->
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 pt-2">Baza</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">Baza</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
@@ -345,40 +345,40 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
-          <h3 class="font-semibold text-slate-800 mb-3">Najveće tabele</h3>
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
+          <h3 class="font-semibold text-ink mb-3">Najveće tabele</h3>
           <table class="min-w-full text-left text-sm">
-            <thead class="bg-slate-100 text-slate-700">
+            <thead class="table-head-row">
               <tr>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela</th>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">Veličina</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in live.db.size.topTables" :key="t.table" class="border-b">
-                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ t.table }}</td>
-                <td class="px-3 py-2 whitespace-nowrap">{{ t.sizeMb }} MB</td>
+              <tr v-for="t in live.db.size.topTables" :key="t.table" class="border-b border-line last:border-0">
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ t.table }}</td>
+                <td class="px-3 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ t.sizeMb }} MB</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
-          <h3 class="font-semibold text-slate-800 mb-3">Najsporiji upiti (poslednji minut)</h3>
-          <div v-if="!live.db.slowestQueries.length" class="text-sm text-slate-500">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
+          <h3 class="font-semibold text-ink mb-3">Najsporiji upiti (poslednji minut)</h3>
+          <div v-if="!live.db.slowestQueries.length" class="text-sm text-ink-muted">
             Nema zabeleženih upita u poslednjem minutu.
           </div>
           <table v-else class="min-w-full text-left text-sm">
-            <thead class="bg-slate-100 text-slate-700">
+            <thead class="table-head-row">
               <tr>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">Upit</th>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">ms</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(q, idx) in live.db.slowestQueries" :key="idx" class="border-b">
-                <td class="px-3 py-2 font-mono text-xs">{{ q.sql }}</td>
-                <td class="px-3 py-2 whitespace-nowrap" :class="q.durationMs >= 200 ? 'text-red-600 font-medium' : ''">
+              <tr v-for="(q, idx) in live.db.slowestQueries" :key="idx" class="border-b border-line last:border-0">
+                <td class="px-3 py-2 font-mono text-xs text-ink-secondary">{{ q.sql }}</td>
+                <td class="px-3 py-2 whitespace-nowrap font-mono" :class="q.durationMs >= 200 ? 'text-bad font-medium' : 'text-ink-secondary'">
                   {{ q.durationMs }}
                 </td>
               </tr>
@@ -387,11 +387,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <div>
-            <h3 class="font-semibold text-slate-800">Ghost reference / desinhronizacije</h3>
-            <p class="text-xs text-slate-500 mt-1">
+            <h3 class="font-semibold text-ink">Ghost reference / desinhronizacije</h3>
+            <p class="text-xs text-ink-muted mt-1">
               Redovi koji pokazuju na obrisane zapise (npr. metapodaci vezani za obrisan IP unos), ili
               zapisi kojima je izgubljen pokazivač iako podatak postoji.
             </p>
@@ -414,12 +414,12 @@ onBeforeUnmount(() => {
         <div v-if="ghostAudit">
           <div
             v-if="ghostAudit.totalOrphans === 0"
-            class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"
+            class="text-sm text-good bg-good-subtle border border-good/40 rounded-lg px-3 py-2"
           >
             ✓ Baza je čista — nema ghost referenci ni desinhronizacija.
           </div>
           <table v-else class="min-w-full text-left text-sm">
-            <thead class="bg-slate-100 text-slate-700">
+            <thead class="table-head-row">
               <tr>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela.kolona</th>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">Referencira</th>
@@ -430,11 +430,11 @@ onBeforeUnmount(() => {
               <tr
                 v-for="r in ghostAudit.results.filter((r) => r.orphanCount > 0)"
                 :key="r.table + r.column"
-                class="border-b"
+                class="border-b border-line last:border-0"
               >
-                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.table }}.{{ r.column }}</td>
-                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.references }}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-red-600 font-medium">{{ r.orphanCount }}</td>
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ r.table }}.{{ r.column }}</td>
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ r.references }}</td>
+                <td class="px-3 py-2 whitespace-nowrap font-mono text-bad font-medium">{{ r.orphanCount }}</td>
               </tr>
             </tbody>
           </table>
@@ -442,10 +442,10 @@ onBeforeUnmount(() => {
       </div>
     </template>
 
-    <div v-else-if="!liveError" class="text-slate-500 text-sm">Učitavanje…</div>
+    <div v-else-if="!liveError" class="text-ink-secondary text-sm">Učitavanje…</div>
 
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 pt-2">Istorija</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">Istorija</h2>
       <div class="flex gap-2">
         <AppButton
           v-for="opt in [{ h: 6, label: '6h' }, { h: 24, label: '24h' }, { h: 168, label: '7d' }]"
@@ -458,49 +458,49 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="historyLoading" class="text-slate-500 text-sm">Učitavanje istorije…</div>
+    <div v-if="historyLoading" class="text-ink-secondary text-sm">Učitavanje istorije…</div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">CPU %</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">CPU %</h3>
         <TrendLine :points="cpuPoints" unit="%" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">RAM %</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">RAM %</h3>
         <TrendLine :points="ramPoints" unit="%" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">Requestova/min</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">Requestova/min</h3>
         <TrendLine :points="reqPoints" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">Prosečno vreme odgovora (ms)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">Prosečno vreme odgovora (ms)</h3>
         <TrendLine :points="respPoints" unit="ms" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">P95 vreme odgovora (ms)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">P95 vreme odgovora (ms)</h3>
         <TrendLine :points="p95Points" unit="ms" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">P99 vreme odgovora (ms)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">P99 vreme odgovora (ms)</h3>
         <TrendLine :points="p99Points" unit="ms" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">Veličina baze (MB)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">Veličina baze (MB)</h3>
         <TrendLine :points="dbSizePoints" unit="MB" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">Prosečno trajanje upita (ms)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">Prosečno trajanje upita (ms)</h3>
         <TrendLine :points="queryMsPoints" unit="ms" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm">
-        <h3 class="font-semibold text-slate-800 mb-3">MariaDB proces — CPU (%)</h3>
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h3 class="font-semibold text-ink mb-3">MariaDB proces — CPU (%)</h3>
         <TrendLine :points="mariadbCpuPoints" unit="%" />
       </div>
-      <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
-        <h3 class="font-semibold text-slate-800 mb-3">
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm lg:col-span-2">
+        <h3 class="font-semibold text-ink mb-3">
           Node proces — heap (MB)
-          <span class="text-xs font-normal text-slate-400">— stabilnost kroz vreme (očekivano ~50-70 MB)</span>
+          <span class="text-xs font-normal text-ink-muted">— stabilnost kroz vreme (očekivano ~50-70 MB)</span>
         </h3>
         <TrendLine :points="heapPoints" unit="MB" />
       </div>

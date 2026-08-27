@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import NavIcon from '@/components/NavIcon.vue'
 import { parseError } from '@/utils/api.js'
 
 // Jedinstven dropdown za "grupu" (odeljenje na IP unosu, deployment grupa na
@@ -72,9 +73,9 @@ async function addGroup() {
         v-if="isAdmin"
         type="button"
         @click="showAddForm = !showAddForm"
-        class="shrink-0 px-3 rounded-lg border text-sm hover:bg-slate-50"
+        class="shrink-0 px-3 rounded-lg border border-line hover:bg-surface-sunken"
         title="Dodaj novu grupu"
-      >+</button>
+      ><NavIcon name="plus" /></button>
     </div>
     <div v-if="showAddForm" class="flex gap-2">
       <input
@@ -84,7 +85,7 @@ async function addGroup() {
         placeholder="Naziv nove grupe..."
         @keydown.enter.prevent="addGroup"
       />
-      <button type="button" :disabled="adding" @click="addGroup" class="px-3 py-1.5 border rounded-lg text-sm hover:bg-slate-50">
+      <button type="button" :disabled="adding" @click="addGroup" class="px-3 py-1.5 border rounded-lg text-sm hover:bg-surface-sunken">
         Dodaj
       </button>
     </div>

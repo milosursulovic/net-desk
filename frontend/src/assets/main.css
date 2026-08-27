@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
 /* Class-based dark mode (manual toggle, not just OS preference) - putting
@@ -7,12 +7,105 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =========================================================
+   DESIGN TOKENS (v2) - additive, redesign rollout batch 1.
+   Consumed by NEW/redesigned components only (Sidebar, StatusPill,
+   TagChip, StatTile, PaginationBar, AgentsView, AgentDetailView).
+   Views not yet redesigned keep using literal slate-*/emerald-*/etc.
+   classes, remapped further below in "DARK MODE - semantic overrides" -
+   that block is untouched by this one, on purpose, so nothing already
+   shipped regresses mid-rollout.
+   ========================================================= */
+
+:root {
+  --surface-canvas: #F3F6F5;
+  --surface-card: #FFFFFF;
+  --surface-sunken: #EAF0EE;
+  --line-default: #DBE3E0;
+  --line-strong: #C1CCC8;
+
+  --ink-primary: #10201D;
+  --ink-secondary: #4A5A56;
+  --ink-muted: #7B8D88;
+
+  --accent-default: #0B6E63;
+  --accent-emphasis: #08544B;
+  --accent-subtle: #E1F1EE;
+
+  --status-good: #1F9D6C;
+  --status-good-subtle: #E5F7EE;
+  --status-bad: #D8404A;
+  --status-bad-subtle: #FCEAEC;
+  --status-warn: #C6821E;
+  --status-warn-subtle: #FBF0DD;
+  --status-info: #2E6FBA;
+  --status-info-subtle: #E9F1FB;
+}
+
+.dark {
+  --surface-canvas: #0D1615;
+  --surface-card: #142120;
+  --surface-sunken: #182524;
+  --line-default: #263130;
+  --line-strong: #34423F;
+
+  --ink-primary: #E9F2F0;
+  --ink-secondary: #B4C3BF;
+  --ink-muted: #7C8D89;
+
+  --accent-default: #3FBDA8;
+  --accent-emphasis: #63D0BE;
+  --accent-subtle: #16332F;
+
+  --status-good: #34D399;
+  --status-good-subtle: #103122;
+  --status-bad: #F87171;
+  --status-bad-subtle: #391417;
+  --status-warn: #FBBF24;
+  --status-warn-subtle: #392B0D;
+  --status-info: #60A5FA;
+  --status-info-subtle: #10233A;
+}
+
+@theme inline {
+  --color-canvas: var(--surface-canvas);
+  --color-surface: var(--surface-card);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--line-default);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink-primary);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+
+  --color-accent: var(--accent-default);
+  --color-accent-emphasis: var(--accent-emphasis);
+  --color-accent-subtle: var(--accent-subtle);
+
+  --color-good: var(--status-good);
+  --color-good-subtle: var(--status-good-subtle);
+  --color-bad: var(--status-bad);
+  --color-bad-subtle: var(--status-bad-subtle);
+  --color-warn: var(--status-warn);
+  --color-warn-subtle: var(--status-warn-subtle);
+  --color-info: var(--status-info);
+  --color-info-subtle: var(--status-info-subtle);
+
+  /* Headings/nav/table-header labels. Body text keeps the plain
+     font-family declarations below (Tailwind has no bare "font-body"
+     utility key) - only font-sans/font-mono are Tailwind-recognized
+     utility keys, so those two are the ones upgraded app-wide here. */
+  --font-display: 'IBM Plex Sans Condensed', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* =========================================================
    GLOBAL
    ========================================================= */
 
 :root {
   font-family:
-    Inter,
+    'IBM Plex Sans',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -40,12 +133,10 @@ body,
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.07), transparent 32rem),
-    linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+  background-color: var(--surface-canvas);
   color: #1e293b;
   font-family:
-    Inter,
+    'IBM Plex Sans',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -54,9 +145,7 @@ body {
 }
 
 .dark body {
-  background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 32rem),
-    linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background-color: var(--surface-canvas);
   color: #e2e8f0;
 }
 
@@ -65,10 +154,6 @@ input,
 select,
 textarea {
   font: inherit;
-}
-
-.glass-container {
-  @apply rounded-xl bg-white/70 p-6 shadow-lg backdrop-blur-md dark:bg-slate-900/70;
 }
 
 /* =========================================================
@@ -80,7 +165,7 @@ textarea {
 }
 
 .app-btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700;
+  @apply bg-accent text-white hover:bg-accent-emphasis;
 }
 
 .app-btn-secondary {
@@ -88,7 +173,7 @@ textarea {
 }
 
 .app-btn-neutral {
-  @apply border border-slate-300 bg-white text-slate-700 shadow-none hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
+  @apply border border-line bg-surface text-ink-secondary shadow-none hover:bg-surface-sunken;
 }
 
 .app-btn-danger {
@@ -104,7 +189,27 @@ textarea {
    ========================================================= */
 
 .app-input {
-  @apply rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500;
+  @apply rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+}
+
+/* =========================================================
+   REDESIGN v2 - TABLE PRIMITIVES
+   Own class family, deliberately separate from .pdsu-* (out of
+   scope for this batch) and driven entirely by the token layer
+   above, not literal slate/emerald classes.
+   ========================================================= */
+
+.table-shell {
+  @apply overflow-hidden rounded-xl border border-line bg-surface;
+}
+
+.table-head-row {
+  @apply bg-surface-sunken text-[11px] font-semibold tracking-wider text-ink-muted uppercase;
+  font-family: var(--font-display);
+}
+
+.table-row-actions {
+  @apply flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100;
 }
 
 /* =========================================================
@@ -348,13 +453,6 @@ textarea {
   .text-blue-700 { color: #1d4ed8 !important; }
   .border-blue-200 { border-color: #bfdbfe !important; }
 
-  /* Blur/shadow/translucency are screen-only effects - flatten to a plain
-     white card so the printed page isn't washed out or grayish. */
-  .glass-container {
-    background-color: #fff !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-  }
 }
 
 /* =========================================================
@@ -375,15 +473,20 @@ textarea {
    PDSU - TABS
    ========================================================= */
 
+/* Redesign v2 - token-driven (var(--surface-*)/var(--ink-*)/var(--accent-*)/
+   var(--status-*), defined near the top of this file). These flip
+   automatically under `.dark` since the tokens themselves do - no separate
+   "PDSU - DARK MODE" block needed anymore (removed, folded in here). */
+
 .pdsu-tabs {
   display: flex;
   gap: 0.4rem;
   margin-bottom: 1.5rem;
   padding: 0.4rem;
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line-default);
   border-radius: 0.9rem;
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: var(--surface-card);
   box-shadow: 0 0.25rem 0.9rem rgba(15, 23, 42, 0.045);
   scrollbar-width: thin;
 }
@@ -399,7 +502,8 @@ textarea {
   border: 0;
   border-radius: 0.65rem;
   background-color: transparent;
-  color: #64748b;
+  color: var(--ink-muted);
+  font-family: var(--font-display, inherit);
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
@@ -411,20 +515,20 @@ textarea {
 }
 
 .pdsu-tab:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: var(--surface-sunken);
+  color: var(--ink-primary);
 }
 
 .pdsu-tab:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline: 3px solid var(--accent-subtle);
   outline-offset: 1px;
 }
 
 .pdsu-tab-active,
 .pdsu-tab-active:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-default);
   color: #ffffff;
-  box-shadow: 0 0.25rem 0.65rem rgba(37, 99, 235, 0.24);
+  box-shadow: 0 0.25rem 0.65rem rgba(11, 110, 99, 0.24);
 }
 
 .pdsu-tab-icon {
@@ -433,7 +537,7 @@ textarea {
   height: 1.55rem;
   place-items: center;
   border-radius: 0.4rem;
-  background-color: rgba(100, 116, 139, 0.1);
+  background-color: var(--surface-sunken);
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
@@ -450,10 +554,10 @@ textarea {
 .pdsu-alert {
   margin-bottom: 1.5rem;
   padding: 0.9rem 1.1rem;
-  border: 1px solid #fde68a;
+  border: 1px solid color-mix(in srgb, var(--status-warn) 40%, transparent);
   border-radius: 0.8rem;
-  background-color: #fffbeb;
-  color: #92400e;
+  background-color: var(--status-warn-subtle);
+  color: var(--status-warn);
   font-size: 0.9rem;
 }
 
@@ -471,8 +575,8 @@ textarea {
   width: 2.5rem;
   height: 2.5rem;
   border-width: 0.28rem;
-  border-color: rgba(37, 99, 235, 0.2);
-  border-top-color: #2563eb;
+  border-color: var(--accent-subtle);
+  border-top-color: var(--accent-default);
 }
 
 @keyframes pdsu-spin {
@@ -488,9 +592,9 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line-default);
   border-radius: 1rem;
-  background-color: #ffffff;
+  background-color: var(--surface-card);
   text-align: center;
   box-shadow: 0 0.3rem 1.2rem rgba(15, 23, 42, 0.055);
 }
@@ -502,8 +606,8 @@ textarea {
   margin-bottom: 1rem;
   place-items: center;
   border-radius: 50%;
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: var(--status-bad-subtle);
+  color: var(--status-bad);
   font-size: 1.5rem;
   font-weight: 700;
 }
@@ -514,9 +618,9 @@ textarea {
 
 .pdsu-card {
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line-default);
   border-radius: 0.75rem;
-  background-color: #ffffff;
+  background-color: var(--surface-card);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition:
     border-color 0.15s ease,
@@ -524,7 +628,7 @@ textarea {
 }
 
 .pdsu-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--line-strong);
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -2px rgba(0, 0, 0, 0.1);
@@ -532,13 +636,14 @@ textarea {
 
 .pdsu-card-header {
   padding: 1rem 1.15rem;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border-bottom: 1px solid var(--line-default);
+  background-color: var(--surface-sunken);
 }
 
 .pdsu-card-title {
   margin-bottom: 0.2rem;
-  color: #0f172a;
+  color: var(--ink-primary);
+  font-family: var(--font-display, inherit);
   font-size: 1rem;
   font-weight: 700;
 }
@@ -588,7 +693,7 @@ textarea {
   overflow: hidden;
   height: 7px;
   border-radius: 999px;
-  background-color: #e9eef5;
+  background-color: var(--surface-sunken);
 }
 
 .pdsu-progress-bar {
@@ -608,18 +713,19 @@ textarea {
   width: 100%;
   min-width: max-content;
   border-collapse: collapse;
-  color: #334155;
+  color: var(--ink-secondary);
   font-size: 0.875rem;
 }
 
 .pdsu-table thead tr {
-  background-color: #f8fafc;
+  background-color: var(--surface-sunken);
 }
 
 .pdsu-table th {
   padding: 0.8rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  color: #64748b;
+  border-bottom: 1px solid var(--line-default);
+  color: var(--ink-muted);
+  font-family: var(--font-display, inherit);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -630,7 +736,7 @@ textarea {
 
 .pdsu-table td {
   padding: 0.8rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--line-default);
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -640,7 +746,7 @@ textarea {
 }
 
 .pdsu-table tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: var(--surface-sunken);
 }
 
 /* =========================================================
@@ -657,21 +763,22 @@ textarea {
 .pdsu-input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line-strong);
   border-radius: 0.65rem;
   padding: 0.5rem 0.75rem;
-  color: #334155;
+  background-color: var(--surface-card);
+  color: var(--ink-secondary);
   font-size: 0.9rem;
 }
 
 .pdsu-input::placeholder {
-  color: #94a3b8;
+  color: var(--ink-muted);
 }
 
 .pdsu-input:focus {
   outline: none;
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+  border-color: var(--accent-default);
+  box-shadow: 0 0 0 0.2rem var(--accent-subtle);
 }
 
 /* =========================================================
@@ -681,8 +788,8 @@ textarea {
 .pdsu-code {
   padding: 0.15rem 0.35rem;
   border-radius: 0.3rem;
-  background-color: #f1f5f9;
-  color: #334155;
+  background-color: var(--surface-sunken);
+  color: var(--ink-secondary);
   font-size: 0.82rem;
   overflow-wrap: anywhere;
 }
@@ -801,98 +908,6 @@ textarea {
   }
 }
 
-/* =========================================================
-   PDSU - DARK MODE
-   ========================================================= */
-
-.dark .pdsu-tabs {
-  border-color: #334155;
-  background-color: rgb(30 41 59 / 92%);
-}
-
-.dark .pdsu-tab {
-  color: #94a3b8;
-}
-
-.dark .pdsu-tab:hover {
-  background-color: #334155;
-  color: #f1f5f9;
-}
-
-.dark .pdsu-tab-icon {
-  background-color: rgb(148 163 184 / 15%);
-}
-
-.dark .pdsu-alert {
-  border-color: #92400e;
-  background-color: rgb(69 26 3 / 40%);
-  color: #fcd34d;
-}
-
-.dark .pdsu-state-card {
-  border-color: #334155;
-  background-color: #1e293b;
-}
-
-.dark .pdsu-error-icon {
-  background-color: rgb(69 10 10 / 40%);
-  color: #fca5a5;
-}
-
-.dark .pdsu-card {
-  border-color: #334155;
-  background-color: #1e293b;
-}
-
-.dark .pdsu-card:hover {
-  border-color: #475569;
-}
-
-.dark .pdsu-card-header {
-  border-color: #334155;
-  background-color: rgb(15 23 42 / 50%);
-}
-
-.dark .pdsu-card-title {
-  color: #f1f5f9;
-}
-
-.dark .pdsu-progress {
-  background-color: #334155;
-}
-
-.dark .pdsu-table {
-  color: #cbd5e1;
-}
-
-.dark .pdsu-table thead tr {
-  background-color: rgb(15 23 42 / 50%);
-}
-
-.dark .pdsu-table th {
-  border-color: #334155;
-  color: #94a3b8;
-}
-
-.dark .pdsu-table td {
-  border-color: #334155;
-}
-
-.dark .pdsu-table tbody tr:hover {
-  background-color: rgb(51 65 85 / 50%);
-}
-
-.dark .pdsu-input {
-  border-color: #475569;
-  background-color: #1e293b;
-  color: #e2e8f0;
-}
-
-.dark .pdsu-input::placeholder {
-  color: #64748b;
-}
-
-.dark .pdsu-code {
-  background-color: #334155;
-  color: #cbd5e1;
-}
+/* PDSU dark-mode overrides removed - every rule above is now token-driven
+   (var(--surface-*)/var(--ink-*)/var(--accent-*)/var(--status-*)), which
+   already flips under `.dark` on its own. */

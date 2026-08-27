@@ -12,6 +12,7 @@ import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 import PDSUOverview from '@/components/pdsu/PDSUOverview.vue'
 import PDSUSoftware from '@/components/pdsu/PDSUSoftware.vue'
@@ -154,7 +155,7 @@ async function flagSoftware(item) {
     showToast('Program označen kao neželjen')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju programa', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri označavanju programa', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -170,7 +171,7 @@ async function flagService(item) {
     showToast('Servis označen kao neželjen')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju servisa', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri označavanju servisa', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -186,7 +187,7 @@ async function flagDriver(item) {
     showToast('Drajver označen kao neželjen')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju drajvera', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri označavanju drajvera', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -198,7 +199,7 @@ async function removeFlaggedSoftware(id) {
     showToast('Uklonjeno sa liste neželjenih')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -210,7 +211,7 @@ async function removeFlaggedService(id) {
     showToast('Uklonjeno sa liste neželjenih')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -222,7 +223,7 @@ async function removeFlaggedDriver(id) {
     showToast('Uklonjeno sa liste neželjenih')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -409,24 +410,24 @@ watch(site, loadStats)
 </script>
 
 <template>
-  <div class="glass-container">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">PDSU analitika</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">PDSU analitika</h1>
 
-        <p class="text-sm text-slate-500 mt-1">
+        <p class="text-sm text-ink-muted mt-1">
           Centralni pregled programa, drajvera, servisa, Windows update podataka i štampača.
           Prikazani su samo računari (Aparati su isključeni iz analitike).
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <AppButton variant="secondary" :disabled="exporting || loading || !stats" @click="exportXlsx">
+      <div class="flex flex-nowrap items-center gap-2 shrink-0">
+        <AppButton variant="secondary" class="whitespace-nowrap" :disabled="exporting || loading || !stats" @click="exportXlsx">
           <span v-if="exporting" class="pdsu-spinner" role="status" aria-hidden="true" />
           <span>{{ exporting ? 'Izvoz...' : 'Izvezi XLSX' }}</span>
         </AppButton>
 
-        <AppButton variant="primary" :disabled="loading" @click="loadStats">
+        <AppButton variant="primary" class="whitespace-nowrap" :disabled="loading" @click="loadStats">
           <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
           <span>{{ loading ? 'Osvežavanje...' : 'Osveži' }}</span>
         </AppButton>
@@ -438,9 +439,9 @@ watch(site, loadStats)
         <span class="sr-only">Učitavanje...</span>
       </div>
 
-      <h2 class="text-lg font-bold text-slate-900 mb-2">Učitavanje PDSU analitike</h2>
+      <h2 class="text-lg font-bold text-ink mb-2">Učitavanje PDSU analitike</h2>
 
-      <p class="text-slate-500 mb-0">
+      <p class="text-ink-muted mb-0">
         Prikupljamo statistiku programa, drajvera, servisa i update podataka.
       </p>
     </div>
@@ -448,9 +449,9 @@ watch(site, loadStats)
     <div v-else-if="error && !stats" class="pdsu-state-card">
       <div class="pdsu-error-icon">!</div>
 
-      <h2 class="text-lg font-bold text-slate-900 mb-2">Podaci nisu učitani</h2>
+      <h2 class="text-lg font-bold text-ink mb-2">Podaci nisu učitani</h2>
 
-      <p class="text-slate-500 mb-4">
+      <p class="text-ink-muted mb-4">
         {{ error }}
       </p>
 
@@ -476,11 +477,11 @@ watch(site, loadStats)
           <button
             v-if="search"
             type="button"
-            class="shrink-0 text-slate-400 hover:text-slate-600"
+            class="shrink-0 text-ink-muted hover:text-ink"
             title="Obriši pretragu"
             @click="search = ''"
           >
-            ✕
+            <NavIcon name="x" />
           </button>
         </div>
       </div>
@@ -491,13 +492,13 @@ watch(site, loadStats)
           <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
             <span class="sr-only">Pretraživanje...</span>
           </div>
-          <p class="text-slate-500 mb-0">Pretražujem programe, drajvere, servise, update-e i štampače...</p>
+          <p class="text-ink-muted mb-0">Pretražujem programe, drajvere, servise, update-e i štampače...</p>
         </div>
 
         <template v-else>
           <div v-if="searchTotalCount === 0" class="pdsu-state-card mb-4">
-            <h2 class="text-lg font-bold text-slate-900 mb-2">Nema rezultata</h2>
-            <p class="text-slate-500 mb-0">
+            <h2 class="text-lg font-bold text-ink mb-2">Nema rezultata</h2>
+            <p class="text-ink-muted mb-0">
               Ništa ne odgovara pojmu "{{ search.trim() }}" ni u jednoj kategoriji.
             </p>
           </div>
@@ -511,7 +512,7 @@ watch(site, loadStats)
               <div class="pdsu-card-header flex items-center justify-between gap-3">
                 <h5 class="pdsu-card-title">{{ searchCategoryLabels[cat] }}</h5>
 
-                <span class="pdsu-badge bg-blue-600 text-white">
+                <span class="pdsu-badge bg-accent text-white">
                   {{ searchResults[cat].length }}{{ searchResults[cat].length >= 50 ? '+' : '' }}
                 </span>
               </div>
@@ -530,7 +531,7 @@ watch(site, loadStats)
 
                   <tbody>
                     <tr v-for="(item, idx) in searchResults[cat]" :key="idx">
-                      <td class="font-semibold text-slate-900">
+                      <td class="font-semibold text-ink">
                         {{ item.computerName || 'Nepoznat računar' }}
                       </td>
 
@@ -545,44 +546,44 @@ watch(site, loadStats)
                       </td>
 
                       <td v-if="cat === 'software'" class="text-right">
-                        <span v-if="isSoftwareFlagged(item)" class="pdsu-badge bg-red-600 text-white">
-                          ✓ Već označeno
+                        <span v-if="isSoftwareFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
+                          <NavIcon name="check" /> Već označeno
                         </span>
                         <button
                           v-else
                           type="button"
-                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagSoftware(item)"
                         >
-                          🚫 Označi kao neželjen
+                          <NavIcon name="ban" /> Označi kao neželjen
                         </button>
                       </td>
 
                       <td v-else-if="cat === 'services'" class="text-right">
-                        <span v-if="isServiceFlagged(item)" class="pdsu-badge bg-red-600 text-white">
-                          ✓ Već označeno
+                        <span v-if="isServiceFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
+                          <NavIcon name="check" /> Već označeno
                         </span>
                         <button
                           v-else
                           type="button"
-                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagService(item)"
                         >
-                          🚫 Označi kao neželjen
+                          <NavIcon name="ban" /> Označi kao neželjen
                         </button>
                       </td>
 
                       <td v-else-if="cat === 'drivers'" class="text-right">
-                        <span v-if="isDriverFlagged(item)" class="pdsu-badge bg-red-600 text-white">
-                          ✓ Već označeno
+                        <span v-if="isDriverFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
+                          <NavIcon name="check" /> Već označeno
                         </span>
                         <button
                           v-else
                           type="button"
-                          class="text-red-600 hover:underline text-sm whitespace-nowrap"
+                          class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagDriver(item)"
                         >
-                          🚫 Označi kao neželjen
+                          <NavIcon name="ban" /> Označi kao neželjen
                         </button>
                       </td>
                     </tr>
@@ -663,7 +664,7 @@ watch(site, loadStats)
             :class="{ 'pdsu-tab-active': activeTab === 'flagged' }"
             @click="activeTab = 'flagged'"
           >
-            <span class="pdsu-tab-icon">⚠</span>
+            <span class="pdsu-tab-icon"><NavIcon name="alert-triangle" /></span>
             <span>Neželjeni</span>
           </button>
         </nav>

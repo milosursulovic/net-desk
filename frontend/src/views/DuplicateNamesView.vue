@@ -1,34 +1,34 @@
 <template>
-  <div class="glass-container w-full max-w-2xl mx-auto">
+  <div class="w-full max-w-2xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-slate-800">Duplirana imena računara</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Duplirana imena računara</h1>
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <template v-else>
-      <div v-if="duplicateGroups.length === 0" class="text-slate-600">
+      <div v-if="duplicateGroups.length === 0" class="text-ink-secondary">
         Nema duplih imena računara.
       </div>
 
       <div v-else class="space-y-3">
-        <div v-for="g in duplicateGroups" :key="g.key || g.name" class="rounded border bg-slate-50 p-3">
+        <div v-for="g in duplicateGroups" :key="g.key || g.name" class="rounded-lg border border-line bg-surface-sunken p-3">
           <div class="flex items-center justify-between">
-            <div class="font-medium">
-              {{ g.name }} <span class="text-xs text-slate-500">({{ g.count }} kom)</span>
+            <div class="font-medium text-ink">
+              {{ g.name }} <span class="text-xs text-ink-muted">({{ g.count }} kom)</span>
             </div>
             <div class="flex items-center gap-2">
               <button
-                class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                class="text-xs px-2 py-1 rounded bg-accent text-white hover:bg-accent-emphasis"
                 @click="filterOn(g.name)"
                 title="Filtriraj na ovo ime (search)"
               >
                 Filtriraj
               </button>
               <button
-                class="text-xs px-2 py-1 rounded border"
+                class="text-xs px-2 py-1 rounded border border-line text-ink-secondary hover:bg-surface"
                 @click="copyToClipboard(g.name, `Ime '${g.name}' kopirano!`)"
               >
                 Kopiraj ime
@@ -40,15 +40,15 @@
             <div
               v-for="it in g.items"
               :key="it.id"
-              class="bg-white rounded border p-2 text-sm flex items-center justify-between gap-2"
+              class="bg-surface rounded-lg border border-line p-2 text-sm flex items-center justify-between gap-2"
             >
               <div class="min-w-0">
-                <div class="font-medium truncate">{{ it.ip }}</div>
-                <div class="text-xs text-slate-500 truncate">{{ it.department || '—' }}</div>
+                <div class="font-medium text-ink font-mono truncate">{{ it.ip }}</div>
+                <div class="text-xs text-ink-muted truncate">{{ it.department || '—' }}</div>
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <button
-                  class="text-xs text-blue-600 hover:underline"
+                  class="text-xs text-accent hover:underline"
                   @click="router.push(`/edit/${it.id}`)"
                   title="Otvori za izmenu"
                 >
@@ -59,7 +59,7 @@
                   @click="copyToClipboard(it.ip, `IP ${it.ip} kopiran!`)"
                   title="Kopiraj IP"
                 >
-                  📋
+                  <NavIcon name="copy" />
                 </button>
               </div>
             </div>
@@ -67,7 +67,7 @@
         </div>
       </div>
 
-      <div v-if="duplicateGroups.length" class="mt-3 text-xs text-slate-500">
+      <div v-if="duplicateGroups.length" class="mt-3 text-xs text-ink-muted">
         Savet: U idealnom slučaju svaka mašina ima jedinstveno ime (npr. standardizovan prefiks i
         inventarski broj). Ove grupe pomažu da brzo uočite konfliktne nazive.
       </div>
@@ -85,6 +85,7 @@ import { useToast } from '@/composables/useToast.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const router = useRouter()
 const site = useCurrentSite()

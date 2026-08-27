@@ -1,86 +1,82 @@
 <template>
-  <div class="glass-container w-full max-w-3xl mx-auto">
+  <div class="w-full max-w-3xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-slate-800">Port scan — {{ entry?.ip || 'Nepoznato' }}</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Port scan — {{ entry?.ip || 'Nepoznato' }}</h1>
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
-    <div v-if="entryLoading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="entryError" class="text-red-600">{{ entryError }}</div>
+    <div v-if="entryLoading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="entryError" class="text-bad">{{ entryError }}</div>
 
     <div v-else class="space-y-4">
-      <div class="rounded border p-3 bg-slate-50">
+      <div class="rounded-lg border border-line p-3 bg-surface-sunken">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div>
-            <label class="text-xs text-slate-500">Custom portovi (npr: 22,80,443 ili 20-25,80)</label>
+            <label class="text-xs text-ink-muted">Custom portovi (npr: 22,80,443 ili 20-25,80)</label>
             <input
               v-model="portScanPorts"
-              class="w-full border px-3 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              class="app-input w-full"
               placeholder="prazno = podrazumevana lista"
             />
           </div>
           <div>
-            <label class="text-xs text-slate-500">Timeout po portu (ms)</label>
+            <label class="text-xs text-ink-muted">Timeout po portu (ms)</label>
             <input
               v-model.number="portScanTimeoutMs"
               type="number"
               min="200"
               max="5000"
-              class="w-full border px-3 py-2 rounded shadow-sm"
+              class="app-input w-full"
             />
           </div>
           <div class="flex gap-2">
-            <button
-              @click="runPortScan"
-              :disabled="portScanLoading"
-              class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <AppButton variant="primary" :disabled="portScanLoading" @click="runPortScan">
               Pokreni sken
-            </button>
-            <button
+            </AppButton>
+            <AppButton
               v-if="portScanResult"
+              variant="neutral"
               @click="copyToClipboard(JSON.stringify(portScanResult.open, null, 2), 'Rezultat kopiran!')"
-              class="px-3 py-2 rounded border"
             >
               Kopiraj JSON
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
 
-      <div v-if="portScanLoading" class="text-slate-600">Skeniram…</div>
-      <div v-else-if="portScanError" class="text-red-600">{{ portScanError }}</div>
+      <div v-if="portScanLoading" class="text-ink-secondary">Skeniram…</div>
+      <div v-else-if="portScanError" class="text-bad">{{ portScanError }}</div>
 
       <div v-else-if="portScanResult">
-        <div class="text-sm text-slate-600 mb-2">
-          Otvoreni: <b>{{ portScanResult.openCount }}</b> / Skenirano: {{ portScanResult.scanned }}
+        <div class="text-sm text-ink-secondary mb-2">
+          Otvoreni: <b class="font-mono text-ink">{{ portScanResult.openCount }}</b> / Skenirano: {{ portScanResult.scanned }}
         </div>
 
-        <div v-if="portScanResult.openCount === 0" class="text-slate-600">
+        <div v-if="portScanResult.openCount === 0" class="text-ink-secondary">
           Nije pronađen nijedan otvoren TCP port (za zadate uslove).
         </div>
 
         <div v-else class="space-y-2">
-          <div v-for="p in portScanResult.open" :key="p.port" class="rounded border p-3 bg-white">
+          <div v-for="p in portScanResult.open" :key="p.port" class="rounded-lg border border-line p-3 bg-surface">
             <div class="flex items-center justify-between">
-              <div class="font-medium">Port {{ p.port }} / {{ p.protocol?.toUpperCase() || 'TCP' }}</div>
-              <div class="text-xs text-slate-500">~{{ p.rttMs }} ms</div>
+              <div class="font-medium text-ink font-mono">Port {{ p.port }} / {{ p.protocol?.toUpperCase() || 'TCP' }}</div>
+              <div class="text-xs text-ink-muted font-mono">~{{ p.rttMs }} ms</div>
             </div>
-            <div class="text-sm">
+            <div class="text-sm text-ink-secondary">
               <div>
-                <span class="text-slate-500">Servis:</span>
+                <span class="text-ink-muted">Servis:</span>
                 {{ p.serviceHint || 'nepoznat' }}
               </div>
               <div v-if="p.banner">
-                <span class="text-slate-500">Baner:</span>
-                <code class="text-xs break-all">{{ p.banner }}</code>
+                <span class="text-ink-muted">Baner:</span>
+                <code class="text-xs font-mono break-all">{{ p.banner }}</code>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="text-xs text-slate-500">
+      <div class="text-xs text-ink-muted">
         Napomena: Ovo je brzi TCP connect sken (ne radi UDP). Neki servisi ne šalju baner iako je port
         otvoren.
       </div>

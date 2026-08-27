@@ -1,9 +1,9 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">DNS Logovi</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">DNS Logovi</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Domeni koje su računari upitivali (DNS), agregirano po računaru - za bezbednosnu
           vidljivost i naknadnu forenziku.
         </p>
@@ -18,13 +18,13 @@
           class="app-input w-full pr-10"
           aria-label="Pretraga DNS logova" />
         <button v-if="searchInput" @click="clearSearch"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
           aria-label="Obriši pretragu">
-          ✖️
+          <NavIcon name="x" />
         </button>
       </div>
 
-      <!-- Sortiranje, po strani i paginacija -->
+      <!-- Sortiranje i filter -->
       <div class="flex flex-wrap items-center gap-2">
         <select v-model="sortBy" class="app-input w-auto py-1.5 text-sm">
           <option value="lastSeen">Poslednji put viđen</option>
@@ -34,15 +34,15 @@
           <option value="computerName">Računar</option>
         </select>
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-2.5 py-1.5 border rounded-lg text-sm hover:bg-slate-50"
+          class="px-2.5 py-1.5 border border-line rounded-lg text-sm hover:bg-surface-sunken"
           :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
           aria-label="Promeni redosled sortiranja">
-          {{ sortOrder === 'asc' ? '↑' : '↓' }}
+          <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
 
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+        <span class="mx-1 hidden h-5 w-px bg-line sm:inline-block"></span>
 
-        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+        <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
           <input
             type="checkbox"
             :checked="blacklistedOnly === 'true'"
@@ -50,105 +50,95 @@
           />
           Samo domeni sa crne liste
         </label>
-
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <label class="text-sm text-slate-600" for="pp">Po strani</label>
-        <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-        </select>
-
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <button @click="prevPage" :disabled="page === 1 || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
-        </button>
-        <span class="text-sm text-slate-600">
-          Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
-        </span>
-        <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
-        </button>
       </div>
 
-      <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} unosa</p>
+      <PaginationBar
+        :page="page"
+        :limit="limit"
+        :total="total"
+        :total-pages="totalPages"
+        :loading="loading"
+        :limit-options="[20, 50, 100]"
+        @prev="prevPage"
+        @next="nextPage({ total })"
+        @update:limit="(v) => (limit = v)"
+      />
+
+      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} unosa</p>
     </div>
 
-    <div class="min-h-50 overflow-x-auto">
-      <div v-if="loading" class="space-y-2">
-        <div v-for="n in 6" :key="n" class="animate-pulse h-12 bg-white border border-slate-200 rounded-lg"></div>
+    <div class="table-shell">
+      <div v-if="loading" class="space-y-2 p-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse h-8 bg-surface-sunken rounded-lg"></div>
       </div>
 
-      <div v-else-if="!items.length"
-        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
         Nema DNS zapisa za zadate filtere.
       </div>
 
-      <table v-else class="w-full text-sm border-collapse">
-        <thead>
-          <tr class="text-left text-slate-500 border-b border-slate-200">
-            <th class="py-2 pr-3">Domen</th>
-            <th class="py-2 pr-3">Računar</th>
-            <th class="py-2 pr-3">IP</th>
-            <th class="py-2 pr-3">Odeljenje</th>
-            <th class="py-2 pr-3">Prvi put viđen</th>
-            <th class="py-2 pr-3">Poslednji put viđen</th>
-            <th class="py-2 pr-3 text-right">Broj upita</th>
-            <th class="py-2 pr-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in items" :key="row.id"
-            class="border-b border-slate-100 hover:bg-slate-50"
-            :class="row.isBlacklisted ? 'bg-red-50' : ''">
-            <td class="py-2 pr-3 font-mono whitespace-nowrap">
-              {{ row.domain }}
-              <span v-if="row.isBlacklisted" class="ml-1 text-red-600" title="Domen je na crnoj listi">🚫</span>
-            </td>
-            <td class="py-2 pr-3">
-              <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-blue-600 hover:underline">
-                {{ row.computerName || '—' }}
-              </RouterLink>
-            </td>
-            <td class="py-2 pr-3 font-mono">{{ row.ip }}</td>
-            <td class="py-2 pr-3">{{ row.department || '—' }}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.firstSeen) }}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.lastSeen) }}</td>
-            <td class="py-2 pr-3 text-right tabular-nums">{{ row.queryCount }}</td>
-            <td class="py-2 pr-3 text-right">
-              <button v-if="!row.isBlacklisted && isAdmin" @click="blacklistDomain(row.domain)"
-                class="text-red-600 hover:underline text-xs whitespace-nowrap">
-                Na crnu listu
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="table-scroll overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="table-head-row">
+              <th class="py-2 px-3 text-left">Domen</th>
+              <th class="py-2 px-3 text-left">Računar</th>
+              <th class="py-2 px-3 text-left">IP</th>
+              <th class="py-2 px-3 text-left">Odeljenje</th>
+              <th class="py-2 px-3 text-left">Prvi put viđen</th>
+              <th class="py-2 px-3 text-left">Poslednji put viđen</th>
+              <th class="py-2 px-3 text-right">Broj upita</th>
+              <th class="py-2 px-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in items" :key="row.id"
+              class="border-b border-line last:border-0 hover:bg-surface-sunken"
+              :class="row.isBlacklisted ? 'bg-bad-subtle' : ''">
+              <td class="py-2 px-3 font-mono whitespace-nowrap text-ink">
+                {{ row.domain }}
+                <span v-if="row.isBlacklisted" class="ml-1 inline-flex text-bad" title="Domen je na crnoj listi"><NavIcon name="ban" /></span>
+              </td>
+              <td class="py-2 px-3">
+                <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-accent hover:underline">
+                  {{ row.computerName || '—' }}
+                </RouterLink>
+              </td>
+              <td class="py-2 px-3 font-mono text-ink-secondary">{{ row.ip }}</td>
+              <td class="py-2 px-3 text-ink-secondary">{{ row.department || '—' }}</td>
+              <td class="py-2 px-3 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(row.firstSeen) }}</td>
+              <td class="py-2 px-3 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(row.lastSeen) }}</td>
+              <td class="py-2 px-3 text-right font-mono tabular-nums text-ink">{{ row.queryCount }}</td>
+              <td class="py-2 px-3 text-right">
+                <button v-if="!row.isBlacklisted && isAdmin" @click="blacklistDomain(row.domain)"
+                  class="text-bad hover:underline text-xs whitespace-nowrap">
+                  Na crnu listu
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Crna lista domena -->
-    <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex items-center justify-between gap-3 p-4 border-b border-slate-100">
+    <div class="table-shell">
+      <div class="flex items-center justify-between gap-3 p-4 border-b border-line">
         <div>
-          <h2 class="font-semibold text-slate-800">Crna lista domena</h2>
-          <p class="text-xs text-slate-500 mt-0.5">
+          <h2 class="font-semibold text-ink" style="font-family: var(--font-display)">Crna lista domena</h2>
+          <p class="text-xs text-ink-muted mt-0.5">
             Domeni koji, ako ih bilo koji računar poseti, izazivaju upozorenje (uključujući poddomene).
           </p>
         </div>
-        <span class="rounded-full bg-red-600 text-white text-xs px-2 py-0.5">{{ blacklistTotal }}</span>
+        <span class="rounded-full bg-bad text-white text-xs px-2 py-0.5 font-mono">{{ blacklistTotal }}</span>
       </div>
 
-      <form v-if="isAdmin" @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-slate-100">
+      <form v-if="isAdmin" @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-line">
         <div class="flex-1 min-w-40">
-          <label class="text-xs text-slate-600">Domen</label>
+          <label class="text-xs text-ink-secondary">Domen</label>
           <input v-model.trim="newBlacklistDomain" type="text" class="app-input w-full" placeholder="npr. malware-c2.example.com" />
         </div>
         <div class="flex-1 min-w-40">
-          <label class="text-xs text-slate-600">Napomena (opciono)</label>
+          <label class="text-xs text-ink-secondary">Napomena (opciono)</label>
           <input v-model.trim="newBlacklistReason" type="text" class="app-input w-full" placeholder="npr. poznat C2 domen" />
         </div>
         <AppButton type="submit" variant="danger" :disabled="!newBlacklistDomain || savingBlacklist">
@@ -156,7 +146,7 @@
         </AppButton>
       </form>
 
-      <div class="flex flex-wrap items-center gap-2 p-4 border-b border-slate-100">
+      <div class="flex flex-wrap items-center gap-2 p-4 border-b border-line">
         <input
           v-model="blacklistSearchInput"
           @input="onBlacklistSearchInput"
@@ -166,42 +156,42 @@
           aria-label="Pretraga crne liste domena"
         />
         <button @click="prevBlacklistPage" :disabled="blacklistPage === 1"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Prethodna strana">
+          <NavIcon name="chevron-left" />
         </button>
-        <span class="text-sm text-slate-600 whitespace-nowrap">
+        <span class="text-sm text-ink-secondary whitespace-nowrap font-mono">
           Strana {{ blacklistTotalPages === 0 ? '0' : blacklistPage }} / {{ blacklistTotalPages }}
         </span>
         <button @click="nextBlacklistPage" :disabled="blacklistPage >= blacklistTotalPages"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Sledeća strana">
+          <NavIcon name="chevron-right" />
         </button>
       </div>
 
       <div class="overflow-x-auto">
         <table v-if="blacklist.length" class="w-full text-sm border-collapse">
           <thead>
-            <tr class="text-left text-slate-500 border-b border-slate-200">
-              <th class="py-2 px-4">Domen</th>
-              <th class="py-2 px-4">Napomena</th>
-              <th class="py-2 px-4">Dodato</th>
+            <tr class="table-head-row">
+              <th class="py-2 px-4 text-left">Domen</th>
+              <th class="py-2 px-4 text-left">Napomena</th>
+              <th class="py-2 px-4 text-left">Dodato</th>
               <th v-if="isAdmin" class="py-2 px-4"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in blacklist" :key="item.id" class="border-b border-slate-100">
-              <td class="py-2 px-4 font-mono">{{ item.domain }}</td>
-              <td class="py-2 px-4">{{ item.reason || '—' }}</td>
-              <td class="py-2 px-4 whitespace-nowrap">{{ fmtDate(item.createdAt) }}</td>
+            <tr v-for="item in blacklist" :key="item.id" class="border-b border-line last:border-0">
+              <td class="py-2 px-4 font-mono text-ink">{{ item.domain }}</td>
+              <td class="py-2 px-4 text-ink-secondary">{{ item.reason || '—' }}</td>
+              <td class="py-2 px-4 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(item.createdAt) }}</td>
               <td v-if="isAdmin" class="py-2 px-4 text-right">
-                <button @click="removeFromBlacklist(item.id)" class="text-red-600 hover:underline text-xs">
+                <button @click="removeFromBlacklist(item.id)" class="text-bad hover:underline text-xs">
                   Ukloni
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
-        <p v-else class="text-sm text-slate-500 p-4">Nema domena za zadatu pretragu.</p>
+        <p v-else class="text-sm text-ink-muted p-4">Nema domena za zadatu pretragu.</p>
       </div>
     </div>
   </div>
@@ -219,6 +209,8 @@ import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { useToast } from '@/composables/useToast.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const site = useCurrentSite()
@@ -374,7 +366,7 @@ async function addToBlacklist() {
     showToast('Domen dodat na crnu listu')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri dodavanju na crnu listu', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri dodavanju na crnu listu', { kind: 'error', duration: 3000 })
   } finally {
     savingBlacklist.value = false
   }
@@ -399,7 +391,7 @@ async function removeFromBlacklist(id) {
     showToast('Uklonjeno sa crne liste')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
   }
 }
 

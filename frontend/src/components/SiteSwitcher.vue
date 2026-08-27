@@ -1,29 +1,37 @@
 <template>
-  <button
+  <div
     v-if="currentSite"
-    type="button"
-    class="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-medium text-slate-600 transition-colors hover:text-slate-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-    title="Promeni lokaciju"
-    @click="switchSite"
+    class="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-line bg-surface-sunken p-1"
+    role="tablist"
+    aria-label="Lokacija"
   >
-    <span>{{ currentSite === 'bolnica' ? '🏥' : '⛑️' }}</span>
-    <span>{{ label }}</span>
-  </button>
+    <button
+      v-for="option in SITE_OPTIONS"
+      :key="option.value"
+      type="button"
+      role="tab"
+      :aria-selected="option.value === currentSite"
+      class="rounded-md px-3 py-1 text-sm font-semibold transition-colors"
+      :class="option.value === currentSite ? 'bg-accent text-white shadow-sm' : 'text-ink-secondary hover:bg-line hover:text-ink'"
+      @click="selectSite(option.value)"
+    >
+      {{ option.label }}
+    </button>
+  </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { labelForSite, isValidSite } from '@/constants/sites.js'
+import { SITE_OPTIONS, isValidSite } from '@/constants/sites.js'
 
 const route = useRoute()
 const router = useRouter()
 
 const currentSite = computed(() => (isValidSite(route.query.site) ? route.query.site : null))
-const label = computed(() => labelForSite(currentSite.value))
 
-function switchSite() {
-  const returnTo = encodeURIComponent(route.fullPath)
-  router.push(`/select-site?returnTo=${returnTo}`)
+function selectSite(site) {
+  if (site === currentSite.value) return
+  router.push({ path: route.path, query: { ...route.query, site } })
 }
 </script>

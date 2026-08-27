@@ -1,89 +1,81 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Verzije agenta</h1>
-        <RouterLink to="/agents" class="text-sm text-blue-600 hover:underline">← Nazad na agente</RouterLink>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Verzije agenta</h1>
+        <RouterLink to="/agents" class="inline-flex items-center gap-1 text-sm text-accent hover:underline"><NavIcon name="chevron-left" /> Nazad na agente</RouterLink>
       </div>
       <AppButton variant="success" @click="openUpload">Otpremi novu verziju</AppButton>
     </div>
 
-    <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+    <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
       <input type="checkbox" v-model="onlyActive" />
       Samo aktivne
     </label>
 
     <div class="min-h-50">
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="n in 3" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white shadow-sm p-4">
-          <div class="h-5 w-2/3 bg-slate-200 rounded mb-3"></div>
-          <div class="h-4 w-1/2 bg-slate-200 rounded mb-2"></div>
-          <div class="h-4 w-1/3 bg-slate-200 rounded"></div>
+        <div v-for="n in 3" :key="n" class="animate-pulse rounded-xl border border-line bg-surface shadow-sm p-4">
+          <div class="h-5 w-2/3 bg-surface-sunken rounded mb-3"></div>
+          <div class="h-4 w-1/2 bg-surface-sunken rounded mb-2"></div>
+          <div class="h-4 w-1/3 bg-surface-sunken rounded"></div>
         </div>
       </div>
 
       <div v-else-if="!visibleItems.length"
-        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+        class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
         {{ onlyActive && items.length ? 'Nema aktivnih verzija (proveri filter).' : 'Nema otpremljenih verzija.' }}
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="r in visibleItems" :key="r.id"
-          class="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
+          class="rounded-xl border border-line bg-surface shadow-sm hover:shadow-md transition p-4 flex flex-col">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <div class="text-lg font-semibold text-slate-800">{{ r.version }}</div>
-              <div class="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
-                <RouterLink v-for="g in r.deploymentGroups" :key="g"
-                  :to="outdatedAgentsLink(r, g)"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full border bg-slate-50 hover:bg-slate-100"
-                  :title="`Zaostali agenti u grupi '${g}'`">
-                  {{ g }}
+              <div class="text-lg font-semibold text-ink font-mono">{{ r.version }}</div>
+              <div class="mt-1 flex flex-wrap items-center gap-1">
+                <RouterLink v-for="g in r.deploymentGroups" :key="g" :to="outdatedAgentsLink(r, g)" :title="`Zaostali agenti u grupi '${g}'`">
+                  <TagChip :label="g" />
                 </RouterLink>
               </div>
             </div>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
-              :class="r.isActive
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-slate-100 text-slate-500 border-slate-200'">
-              {{ r.isActive ? 'Aktivna' : 'Deaktivirana' }}
-            </span>
+            <StatusPill :status="r.isActive ? 'good' : 'neutral'" :label="r.isActive ? 'Aktivna' : 'Deaktivirana'" />
           </div>
 
-          <div class="mt-3 space-y-1.5 text-sm">
+          <div class="mt-3 space-y-1.5 text-sm text-ink-secondary">
             <div class="flex items-center gap-2">
-              <span class="font-medium">Fajl:</span>
-              <span class="truncate">{{ r.fileName }}</span>
+              <span class="font-medium text-ink">Fajl:</span>
+              <span class="truncate font-mono">{{ r.fileName }}</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="font-medium">Veličina:</span>
-              <span>{{ fmtBytes(r.fileSize) }}</span>
+              <span class="font-medium text-ink">Veličina:</span>
+              <span class="font-mono">{{ fmtBytes(r.fileSize) }}</span>
             </div>
             <div class="flex items-center gap-2 min-w-0">
-              <span class="font-medium shrink-0">SHA-256:</span>
+              <span class="font-medium text-ink shrink-0">SHA-256:</span>
               <span class="truncate font-mono text-xs">{{ shortHash(r.sha256) }}</span>
-              <button @click="copy(r.sha256)" class="shrink-0 text-xs text-slate-400 hover:text-slate-600">📋</button>
+              <button @click="copy(r.sha256)" class="shrink-0 text-xs text-ink-muted hover:text-ink"><NavIcon name="copy" /></button>
             </div>
-            <div v-if="r.releaseNotes" class="text-slate-600">{{ r.releaseNotes }}</div>
+            <div v-if="r.releaseNotes" class="text-ink-secondary">{{ r.releaseNotes }}</div>
           </div>
 
-          <div class="mt-3 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
-            <span>{{ fmtDate(r.createdAt) }}</span>
+          <div class="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs text-ink-muted">
+            <span class="font-mono">{{ fmtDate(r.createdAt) }}</span>
             <div class="flex items-center gap-3">
-              <button @click="openEditGroups(r)" class="text-sm text-blue-600 hover:underline">
+              <button @click="openEditGroups(r)" class="text-sm text-accent hover:underline">
                 Uredi grupe
               </button>
-              <button @click="forceReinstall(r)" class="text-sm text-amber-700 hover:underline"
+              <button @click="forceReinstall(r)" class="text-sm text-warn hover:underline"
                 title="Zameni fajlove na svim agentima u ciljanim grupama, čak i ako su već na ovoj verziji">
                 Forsiraj reinstalaciju
               </button>
-              <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-red-600' : 'text-emerald-600'">
+              <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-bad' : 'text-good'">
                 {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
               </button>
               <button
                 v-if="!r.isActive"
                 @click="deleteRelease(r)"
-                class="text-sm text-red-600 hover:underline"
+                class="text-sm text-bad hover:underline"
                 title="Trajno brisanje - samo za deaktivirane verzije"
               >
                 Obriši
@@ -95,29 +87,29 @@
     </div>
 
     <div class="space-y-2">
-      <h2 class="text-lg font-semibold text-slate-800">Fajlovi na disku (uploads/agent-releases)</h2>
-      <p class="text-sm text-slate-500">
+      <h2 class="text-lg font-semibold text-ink" style="font-family: var(--font-display)">Fajlovi na disku (uploads/agent-releases)</h2>
+      <p class="text-sm text-ink-muted">
         Read-only uvid u stvarno stanje foldera - za poređenje sa verzijama iznad, ne za upravljanje.
       </p>
 
-      <div v-if="loadingDiskFiles" class="text-slate-600">Učitavanje…</div>
-      <div v-else-if="!diskFiles.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      <div v-if="loadingDiskFiles" class="text-ink-secondary">Učitavanje…</div>
+      <div v-else-if="!diskFiles.length" class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
         Folder je prazan.
       </div>
-      <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+      <div v-else class="table-shell overflow-x-auto">
         <table class="w-full min-w-max text-sm">
-          <thead class="bg-slate-50 text-slate-600 text-left">
+          <thead class="table-head-row">
             <tr>
-              <th class="px-4 py-2 font-medium">Naziv</th>
-              <th class="px-4 py-2 font-medium">Veličina</th>
-              <th class="px-4 py-2 font-medium">Izmenjeno</th>
+              <th class="px-4 py-2 text-left">Naziv</th>
+              <th class="px-4 py-2 text-left">Veličina</th>
+              <th class="px-4 py-2 text-left">Izmenjeno</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="f in diskFiles" :key="f.name">
-              <td class="px-4 py-2 whitespace-nowrap">{{ f.name }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ fmtBytes(f.size) }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ fmtDate(f.modifiedAt) }}</td>
+          <tbody>
+            <tr v-for="f in diskFiles" :key="f.name" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+              <td class="px-4 py-2 whitespace-nowrap text-ink">{{ f.name }}</td>
+              <td class="px-4 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ fmtBytes(f.size) }}</td>
+              <td class="px-4 py-2 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(f.modifiedAt) }}</td>
             </tr>
           </tbody>
         </table>
@@ -129,18 +121,18 @@
         <FormInput v-model.trim="form.version" label="Verzija" placeholder="1.1.0" />
 
         <div>
-          <label class="text-sm text-slate-600">Deployment grupe (bar jedna)</label>
+          <label class="text-sm text-ink-secondary">Deployment grupe (bar jedna)</label>
           <DeploymentGroupPicker v-model="form.deploymentGroups" :options="deploymentGroupOptions" />
         </div>
 
         <div>
-          <label class="text-sm text-slate-600">Napomene (opciono)</label>
+          <label class="text-sm text-ink-secondary">Napomene (opciono)</label>
           <textarea v-model="form.releaseNotes" rows="3" class="app-input w-full"
             placeholder="Šta je novo u ovoj verziji..."></textarea>
         </div>
 
         <div>
-          <label class="text-sm text-slate-600">Paket (.zip)</label>
+          <label class="text-sm text-ink-secondary">Paket (.zip)</label>
           <input type="file" accept=".zip" @change="onFileChange" class="app-input w-full" />
         </div>
 
@@ -155,8 +147,8 @@
 
     <SlideOverPanel :open="showEditGroups" title="Uredi deployment grupe" @close="closeEditGroups">
       <div class="space-y-4">
-        <p class="text-sm text-slate-600">
-          Verzija <span class="font-semibold">{{ editForm.version }}</span> - dodaj grupe da proširiš rollout,
+        <p class="text-sm text-ink-secondary">
+          Verzija <span class="font-semibold text-ink">{{ editForm.version }}</span> - dodaj grupe da proširiš rollout,
           ili ukloni da suziš.
         </p>
         <DeploymentGroupPicker v-model="editForm.deploymentGroups" :options="deploymentGroupOptions" />
@@ -194,6 +186,9 @@ import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeploymentGroupPicker from '@/components/DeploymentGroupPicker.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TagChip from '@/components/TagChip.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const { toast, showToast, copyToClipboard } = useToast()
@@ -272,7 +267,7 @@ async function fetchData() {
     items.value = data.items || []
   } catch (err) {
     console.error(err)
-    showToast('Greška pri učitavanju verzija', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri učitavanju verzija', { kind: 'error', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -294,15 +289,15 @@ function onFileChange(e) {
 
 async function upload() {
   if (!form.value.version.trim()) {
-    showToast('Verzija je obavezna', { prefix: '❌ ', duration: 3000 })
+    showToast('Verzija je obavezna', { kind: 'error', duration: 3000 })
     return
   }
   if (!form.value.deploymentGroups.length) {
-    showToast('Bar jedna deployment grupa je obavezna', { prefix: '❌ ', duration: 3000 })
+    showToast('Bar jedna deployment grupa je obavezna', { kind: 'error', duration: 3000 })
     return
   }
   if (!selectedFile.value) {
-    showToast('Paket (.zip) je obavezan', { prefix: '❌ ', duration: 3000 })
+    showToast('Paket (.zip) je obavezan', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -329,7 +324,7 @@ async function upload() {
     showToast('Verzija otpremljena')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri otpremanju verzije', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri otpremanju verzije', { kind: 'error', duration: 3000 })
   } finally {
     uploading.value = false
   }
@@ -354,7 +349,7 @@ async function toggleActive(release) {
     showToast(nextActive ? 'Verzija aktivirana' : 'Verzija deaktivirana')
   } catch (err) {
     console.error(err)
-    showToast('Greška pri izmeni statusa', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri izmeni statusa', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -375,7 +370,7 @@ async function deleteRelease(release) {
     showToast('Verzija obrisana')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri brisanju verzije', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri brisanju verzije', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -394,7 +389,7 @@ function closeEditGroups() {
 
 async function saveGroups() {
   if (!editForm.value.deploymentGroups.length) {
-    showToast('Bar jedna deployment grupa je obavezna', { prefix: '❌ ', duration: 3000 })
+    showToast('Bar jedna deployment grupa je obavezna', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -411,7 +406,7 @@ async function saveGroups() {
     showToast('Deployment grupe sačuvane')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri čuvanju grupa', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri čuvanju grupa', { kind: 'error', duration: 3000 })
   } finally {
     savingGroups.value = false
   }
@@ -430,7 +425,7 @@ const BATCH_CHUNK_SIZE = 500
 // za novim backend endpoint-om.
 async function forceReinstall(release) {
   if (!release.deploymentGroups.length) {
-    showToast('Release ne cilja nijednu grupu', { prefix: '❌ ', duration: 3000 })
+    showToast('Release ne cilja nijednu grupu', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -451,7 +446,7 @@ async function forceReinstall(release) {
     }
 
     if (!idSet.size) {
-      showToast('Nema aktivnih agenata u ciljanim grupama', { prefix: '⚠️ ', duration: 3000 })
+      showToast('Nema aktivnih agenata u ciljanim grupama', { kind: 'warning', duration: 3000 })
       return
     }
 
@@ -471,7 +466,7 @@ async function forceReinstall(release) {
     showToast(`Forsirana reinstalacija poslata na ${ids.length} agenata`)
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri forsiranoj reinstalaciji', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri forsiranoj reinstalaciji', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -492,7 +487,7 @@ async function fetchDiskFiles() {
     diskFiles.value = data.items || []
   } catch (err) {
     console.error('Neuspešno učitavanje fajlova sa diska', err)
-    showToast(err?.message || 'Greška pri učitavanju fajlova sa diska', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri učitavanju fajlova sa diska', { kind: 'error', duration: 3000 })
   } finally {
     loadingDiskFiles.value = false
   }

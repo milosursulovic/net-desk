@@ -1,7 +1,10 @@
 <template>
-  <div class="glass-container space-y-4">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-slate-800">Netdesk Agenti</h1>
+  <div class="space-y-5">
+    <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Agenti</h1>
+        <p class="mt-0.5 text-sm text-ink-muted">Pregled i upravljanje registrovanim agentima</p>
+      </div>
       <div class="flex flex-wrap gap-2">
         <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
         <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
@@ -9,6 +12,18 @@
         <AppButton variant="secondary" to="/deployment-groups">Deployment grupe</AppButton>
         <AppButton v-if="isAdmin" variant="secondary" to="/downloads-folder">Deljeni fajlovi</AppButton>
       </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <StatTile label="Ukupno (filtrirano)" :value="total" tone="accent" />
+      <StatTile label="Online" :value="statOnline" tone="good" :proportion="total ? statOnline / total : 0" />
+      <StatTile label="Offline" :value="statOffline" tone="bad" :proportion="total ? statOffline / total : 0" />
+      <StatTile
+        label="Manager pokrivenost"
+        :value="total ? `${Math.round((statManagerCoverage / total) * 100)}%` : '—'"
+        tone="info"
+        :proportion="total ? statManagerCoverage / total : 0"
+      />
     </div>
 
     <div class="space-y-3">
@@ -20,9 +35,9 @@
             class="app-input w-full pr-10"
             aria-label="Pretraga agenata" />
           <button v-if="searchInput" @click="clearSearch"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
             aria-label="Obriši pretragu">
-            ✖️
+            <NavIcon name="x" />
           </button>
         </div>
 
@@ -34,15 +49,24 @@
 
         <button
           type="button"
-          class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 sm:hidden"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-sunken sm:hidden"
           @click="detailedFiltersOpen = !detailedFiltersOpen"
         >
           Detaljni filteri
           <span
             v-if="activeDetailedFilterCount"
-            class="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white"
+            class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white"
           >{{ activeDetailedFilterCount }}</span>
-          <span class="text-xs">{{ detailedFiltersOpen ? '▲' : '▼' }}</span>
+          <NavIcon :name="detailedFiltersOpen ? 'chevron-up' : 'chevron-down'" class="text-xs" />
+        </button>
+      </div>
+
+      <!-- Aktivni filteri kao chip-ovi - vidljivo bez obzira na
+           detailedFiltersOpen, brzi pregled šta trenutno filtrira listu. -->
+      <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-1.5">
+        <TagChip v-for="chip in activeFilterChips" :key="chip.key" :label="chip.label" removable @remove="chip.clear" />
+        <button type="button" class="text-xs text-ink-muted hover:text-ink hover:underline" @click="clearAllFilters">
+          Obriši sve
         </button>
       </div>
 
@@ -127,7 +151,7 @@
             class="w-auto max-w-40 min-w-0"
           />
 
-          <label v-if="version.length" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label v-if="version.length" class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="versionMode === 'neq'"
@@ -144,7 +168,7 @@
             title="Verzija Netdesk Agent Manager-a (nezavisni HTTP kanal), ne agentova verzija"
           />
 
-          <label v-if="managerVersion.length" class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label v-if="managerVersion.length" class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="managerVersionMode === 'neq'"
@@ -160,7 +184,7 @@
             class="w-auto max-w-40 min-w-0"
           />
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="antivirusInactive === 'true'"
@@ -169,7 +193,7 @@
             Bez aktivnog antivirusa
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="firewallInactive === 'true'"
@@ -178,7 +202,7 @@
             Bez aktivnog firewall-a
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="windowsUpdateInactive === 'true'"
@@ -187,7 +211,7 @@
             Isključen Windows Update
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
             <input
               type="checkbox"
               :checked="agentOfflineIpOnline === 'true'"
@@ -196,7 +220,7 @@
             Agent offline, računar online (moguć kvar)
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Instalirani fajlovi u Service folderu se ne poklapaju sa release-om za prijavljenu verziju agenta">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Instalirani fajlovi u Service folderu se ne poklapaju sa release-om za prijavljenu verziju agenta">
             <input
               type="checkbox"
               :checked="serviceFilesMismatch === 'true'"
@@ -205,7 +229,7 @@
             Neusklađeni fajlovi agenta
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Agent i dalje detektuje/loguje procese sa watchlist-e, ali ih nikad ne ubija čak i kad je globalno uključeno">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Agent i dalje detektuje/loguje procese sa watchlist-e, ali ih nikad ne ubija čak i kad je globalno uključeno">
             <input
               type="checkbox"
               :checked="processKillExempt === 'true'"
@@ -214,7 +238,7 @@
             Izuzet od ubijanja procesa
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600" title="Agent je istovremeno u dve ili više OS deployment grupa (win7/win10/win11/winsrv) - obično greška u unosu">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Agent je istovremeno u dve ili više OS deployment grupa (win7/win10/win11/winsrv) - obično greška u unosu">
             <input
               type="checkbox"
               :checked="deploymentGroupOsOverlap === 'true'"
@@ -223,7 +247,7 @@
             Preklapanje OS grupa (win7/win10/win11/winsrv)
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input
               type="checkbox"
               :checked="noDeploymentGroup === 'true'"
@@ -235,60 +259,46 @@
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
           <div>
-            <label class="block text-xs text-slate-500 mb-1" for="enrolledFrom">Enroll od</label>
+            <label class="block text-xs text-ink-muted mb-1" for="enrolledFrom">Enroll od</label>
             <input id="enrolledFrom" v-model="enrolledFrom" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1" for="enrolledTo">Enroll do</label>
+            <label class="block text-xs text-ink-muted mb-1" for="enrolledTo">Enroll do</label>
             <input id="enrolledTo" v-model="enrolledTo" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1" for="heartbeatFrom">Heartbeat od</label>
+            <label class="block text-xs text-ink-muted mb-1" for="heartbeatFrom">Heartbeat od</label>
             <input id="heartbeatFrom" v-model="heartbeatFrom" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1" for="heartbeatTo">Heartbeat do</label>
+            <label class="block text-xs text-ink-muted mb-1" for="heartbeatTo">Heartbeat do</label>
             <input id="heartbeatTo" v-model="heartbeatTo" type="date" class="app-input w-auto text-sm" />
           </div>
           <AppButton variant="neutral" @click="clearDetailedFilters">Poništi filtere</AppButton>
         </div>
       </div>
 
-      <!-- Po strani i paginacija -->
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="text-sm text-slate-600" for="pp">Po strani</label>
-        <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-        </select>
+      <PaginationBar
+        :page="page"
+        :limit="limit"
+        :total="total"
+        :total-pages="totalPages"
+        :loading="loading"
+        @prev="prevPage"
+        @next="nextPage({ total })"
+        @update:limit="(v) => (limit = v)"
+      />
 
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <button @click="prevPage" :disabled="page === 1 || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
-        </button>
-        <span class="text-sm text-slate-600">
-          Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
-        </span>
-        <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
-        </button>
-      </div>
-
-      <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} agenata</p>
+      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} agenata</p>
 
       <div v-if="items.length" class="flex flex-wrap items-center gap-3">
-        <label class="flex items-center gap-2 text-sm text-slate-600">
+        <label class="flex items-center gap-2 text-sm text-ink-secondary">
           <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAllVisible" />
           Selektuj sve prikazane ({{ selectedIds.size }} izabrano)
         </label>
         <button
           type="button"
-          class="text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:no-underline"
+          class="text-sm text-accent hover:underline disabled:opacity-50 disabled:no-underline"
           :disabled="selectingAllMatching"
           @click="selectAllMatching"
         >
@@ -298,37 +308,37 @@
     </div>
 
     <!-- Batch komanda - vidljivo samo kad je bar 1 agent selektovan -->
-    <div v-if="selectedIds.size" class="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
-      <div class="font-medium text-blue-900">
+    <div v-if="selectedIds.size" class="rounded-xl border border-info/30 bg-info-subtle p-4 space-y-3">
+      <div class="font-medium text-info">
         Pošalji komandu na {{ selectedIds.size }} izabranih agenata
       </div>
-      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-red-700">
+      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-bad">
         Batch komande podržavaju najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju
         (npr. suzi filter) pre slanja.
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label class="text-sm text-slate-600">Tip komande</label>
+          <label class="text-sm text-ink-secondary">Tip komande</label>
           <select v-model="batchForm.commandType" class="app-input w-full">
             <option v-for="c in COMMAND_TYPES" :key="c" :value="c">{{ COMMAND_LABELS[c] }}</option>
           </select>
         </div>
         <FormInput v-if="isBatchServiceCommand" v-model.trim="batchForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
       </div>
-      <label class="flex items-center gap-2 text-sm text-blue-900">
+      <label class="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" v-model="batchOnlyOnline" />
         Pošalji samo online agentima (preskoči offline/neaktivne)
       </label>
       <div v-if="batchForm.commandType === 'run_powershell_script'" class="space-y-2">
         <div>
-          <label class="text-sm text-slate-600">Gotova skripta (opciono)</label>
+          <label class="text-sm text-ink-secondary">Gotova skripta (opciono)</label>
           <select v-model="batchSelectedPresetId" class="app-input w-full" @change="applyBatchPreset">
             <option value="">— Prilagođena skripta —</option>
             <option v-for="p in POWERSHELL_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
         </div>
         <div>
-          <label class="text-sm text-slate-600">PowerShell skripta</label>
+          <label class="text-sm text-ink-secondary">PowerShell skripta</label>
           <textarea v-model="batchForm.script" rows="6" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
         </div>
       </div>
@@ -346,16 +356,16 @@
 
     <!-- Masovna dodela deployment grupe - admin-only, isto kao pojedinačna
          dodela na Agent Detail strani. -->
-    <div v-if="selectedIds.size && isAdmin" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
-      <div class="font-medium text-emerald-900">
+    <div v-if="selectedIds.size && isAdmin" class="rounded-xl border border-accent/30 bg-accent-subtle p-4 space-y-3">
+      <div class="font-medium text-accent-emphasis">
         Dodeli deployment grupu na {{ selectedIds.size }} izabranih agenata
       </div>
-      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-red-700">
+      <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-bad">
         Podržava najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju pre slanja.
       </div>
       <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
         <div class="flex-1 min-w-0">
-          <label class="text-sm text-slate-600">Deployment grupa</label>
+          <label class="text-sm text-ink-secondary">Deployment grupa</label>
           <GroupSelect
             v-model="massDeploymentGroup"
             :options="deploymentGroupOptions"
@@ -363,7 +373,7 @@
             :allow-empty="true"
             create-endpoint="/api/protected/deployment-groups"
             @group-added="(name) => { if (!deploymentGroupOptions.includes(name)) deploymentGroupOptions.push(name) }"
-            @error="(msg) => showToast(msg, { prefix: '❌ ', duration: 3000 })"
+            @error="(msg) => showToast(msg, { kind: 'error', duration: 3000 })"
           />
         </div>
         <AppButton
@@ -377,125 +387,126 @@
     </div>
 
     <div class="min-h-50">
-      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-slate-200 bg-white shadow-sm p-4">
-          <div class="h-5 w-2/3 bg-slate-200 rounded mb-3"></div>
-          <div class="h-4 w-1/2 bg-slate-200 rounded mb-2"></div>
-          <div class="h-4 w-1/3 bg-slate-200 rounded mb-4"></div>
+      <div v-if="loading" class="table-shell p-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse border-b border-line py-3 last:border-0">
+          <div class="mb-2 h-4 w-1/3 rounded bg-surface-sunken"></div>
+          <div class="h-3 w-1/4 rounded bg-surface-sunken"></div>
         </div>
       </div>
 
-      <div v-else-if="!items.length"
-        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      <div v-else-if="!items.length" class="table-shell p-8 text-center text-ink-muted">
         Nema agenata za zadate filtere.
       </div>
 
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="a in items" :key="a.id"
-          class="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex items-start gap-2">
-              <input
-                type="checkbox"
-                class="mt-1.5 shrink-0"
-                :checked="selectedIds.has(a.id)"
-                @change="toggleSelect(a.id)"
-                aria-label="Selektuj agenta"
-              />
-              <div class="min-w-0">
-                <RouterLink :to="`/agents/${a.id}`" class="text-lg font-semibold text-slate-800 truncate hover:underline block">
-                  {{ a.hostname || '—' }}
-                </RouterLink>
-                <div class="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                  <span class="truncate">{{ a.agentUid }}</span>
-                  <button @click="copy(a.agentUid)" class="shrink-0 text-slate-400 hover:text-slate-600" aria-label="Kopiraj agent id">
-                    📋
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center gap-1.5">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
-                :class="a.status === 'active'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-500 border-slate-200'">
-                {{ a.status === 'active' ? 'Aktivan' : 'Povučen' }}
-              </span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
-                :class="connectivityBadgeClass(a)">
-                {{ connectivityLabel(a) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="mt-3 space-y-1.5 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="font-medium">OS:</span>
-              <span>{{ a.osCaption || '—' }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="font-medium">Verzija agenta:</span>
-              <span>{{ a.agentVersion || '—' }}</span>
-              <span
-                v-if="a.managerChannelStatus"
-                class="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-indigo-700"
-                :title="`Novi (nezavisni) Manager kanal registrovan - ${a.managerChannelStatus}`"
-              >
-                MANAGER
-              </span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="font-medium">Poslednji heartbeat:</span>
-              <span>{{ fmtRelative(a.lastHeartbeatAt) }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="font-medium">Poslednji IP:</span>
-              <span>{{ a.lastIp || '—' }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="font-medium">Povezan računar:</span>
-              <RouterLink v-if="a.ipEntryId" :to="`/ip/${a.ipEntryId}/meta`" class="text-blue-600 hover:underline">
-                Otvori
-              </RouterLink>
-              <span v-else>—</span>
-            </div>
-          </div>
-
-          <div v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
-            class="mt-2 flex flex-wrap gap-1.5">
-            <span v-if="a.antivirusStatus !== 'enabled'"
-              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
-              title="Antivirus nije potvrđen kao aktivan">
-              🦠 Antivirus
-            </span>
-            <span v-if="a.firewallStatus !== 'enabled'"
-              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
-              title="Firewall nije potvrđen kao aktivan">
-              🧱 Firewall
-            </span>
-            <span v-if="a.windowsUpdateStatus !== 'Running'"
-              class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
-              title="Windows Update servis nije potvrđen kao pokrenut">
-              🔄 Windows Update
-            </span>
-            <span v-if="isAgentMismatch(a)"
-              class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
-              title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
-              ⚠️ Moguć kvar agenta
-            </span>
-            <span v-if="a.serviceFilesMismatch"
-              class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
-              :title="a.serviceFilesMismatchDetails || 'Instalirani fajlovi u Service folderu ne odgovaraju release-u za prijavljenu verziju'">
-              🗂️ Fajlovi ne odgovaraju release-u
-            </span>
-          </div>
-
-          <div class="mt-3 pt-3 border-t flex items-center justify-between text-xs text-slate-500">
-            <span>Enroll: {{ fmtDate(a.enrolledAt) }}</span>
-            <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="text-red-600 hover:underline text-sm">
-              Povuci
-            </button>
-          </div>
+      <div v-else class="table-shell">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-275 border-collapse text-sm">
+            <thead>
+              <tr class="table-head-row">
+                <th class="px-3 py-2 text-left"></th>
+                <th class="px-3 py-2 text-left">Računar</th>
+                <th class="px-3 py-2 text-left">Status</th>
+                <th class="px-3 py-2 text-left">Konekcija</th>
+                <th class="px-3 py-2 text-left">OS</th>
+                <th class="px-3 py-2 text-left">Verzija</th>
+                <th class="px-3 py-2 text-left">Poslednji heartbeat</th>
+                <th class="px-3 py-2 text-left">IP</th>
+                <th class="px-3 py-2 text-left">Enroll</th>
+                <th class="px-3 py-2 text-left">Deployment</th>
+                <th class="px-3 py-2 text-left">Nalazi</th>
+                <th class="px-3 py-2 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in items" :key="a.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
+                <td class="px-3 py-2.5 align-top">
+                  <input
+                    type="checkbox"
+                    class="mt-1"
+                    :checked="selectedIds.has(a.id)"
+                    @change="toggleSelect(a.id)"
+                    aria-label="Selektuj agenta"
+                  />
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <RouterLink :to="`/agents/${a.id}`" class="block truncate font-semibold text-ink hover:underline">
+                    {{ a.hostname || '—' }}
+                  </RouterLink>
+                  <div class="mt-0.5 flex items-center gap-1 font-mono text-xs text-ink-muted">
+                    <span class="truncate">{{ a.agentUid }}</span>
+                    <button @click="copy(a.agentUid)" class="shrink-0 text-ink-muted hover:text-ink" aria-label="Kopiraj agent id">
+                      <NavIcon name="copy" />
+                    </button>
+                  </div>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <StatusPill :status="agentStatusTone(a.status)" :label="agentStatusLabel(a.status)" />
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <StatusPill :status="connectivityTone(a.connectivityStatus)" :label="connectivityLabel(a.connectivityStatus)" />
+                </td>
+                <td class="px-3 py-2.5 align-top text-ink-secondary">{{ a.osCaption || '—' }}</td>
+                <td class="px-3 py-2.5 align-top">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-mono tabular-nums text-ink-secondary">{{ a.agentVersion || '—' }}</span>
+                    <span
+                      v-if="a.managerChannelStatus"
+                      class="inline-flex h-2 w-2 shrink-0 rounded-full bg-info"
+                      :title="`Novi (nezavisni) Manager kanal registrovan - ${a.managerChannelStatus}`"
+                    ></span>
+                  </div>
+                </td>
+                <td class="px-3 py-2.5 align-top text-ink-secondary">
+                  {{ fmtRelative(a.lastHeartbeatAt) }}
+                  <span class="mt-0.5 block font-mono text-xs text-ink-muted">{{ fmtDate(a.lastHeartbeatAt) }}</span>
+                </td>
+                <td class="px-3 py-2.5 align-top font-mono text-ink-secondary">{{ a.lastIp || '—' }}</td>
+                <td class="px-3 py-2.5 align-top font-mono text-xs text-ink-muted">{{ fmtDate(a.enrolledAt) }}</td>
+                <td class="px-3 py-2.5 align-top">
+                  <div v-if="agentDeploymentGroups(a).length" class="flex flex-wrap gap-1">
+                    <TagChip v-for="g in agentDeploymentGroups(a)" :key="g" :label="g" />
+                  </div>
+                  <span v-else class="text-ink-muted">—</span>
+                  <RouterLink v-if="a.ipEntryId" :to="`/ip/${a.ipEntryId}/meta`" class="mt-1 block text-xs text-accent hover:underline">
+                    Otvori računar
+                  </RouterLink>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <div
+                    v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
+                    class="flex flex-wrap gap-1"
+                  >
+                    <span v-if="a.antivirusStatus !== 'enabled'" title="Antivirus nije potvrđen kao aktivan">
+                      <StatusPill status="bad" label="Antivirus" :dot="false" />
+                    </span>
+                    <span v-if="a.firewallStatus !== 'enabled'" title="Firewall nije potvrđen kao aktivan">
+                      <StatusPill status="bad" label="Firewall" :dot="false" />
+                    </span>
+                    <span v-if="a.windowsUpdateStatus !== 'Running'" title="Windows Update servis nije potvrđen kao pokrenut">
+                      <StatusPill status="bad" label="WU" :dot="false" />
+                    </span>
+                    <span v-if="isAgentMismatch(a)" title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
+                      <StatusPill status="warn" label="Moguć kvar" :dot="false" />
+                    </span>
+                    <span
+                      v-if="a.serviceFilesMismatch"
+                      :title="a.serviceFilesMismatchDetails || 'Instalirani fajlovi u Service folderu ne odgovaraju release-u za prijavljenu verziju'"
+                    >
+                      <StatusPill status="warn" label="Fajlovi" :dot="false" />
+                    </span>
+                  </div>
+                  <span v-else class="text-ink-muted">—</span>
+                </td>
+                <td class="px-3 py-2.5 align-top text-right">
+                  <div class="table-row-actions">
+                    <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Povuci pristup">
+                      <NavIcon name="ban" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -526,12 +537,18 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import { parseError } from '@/utils/api.js'
 import { COMMAND_TYPES, COMMAND_LABELS, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
 import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
+import { agentStatusTone, agentStatusLabel, connectivityTone, connectivityLabel } from '@/utils/statusTones.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import GroupSelect from '@/components/GroupSelect.vue'
 import MultiSelect from '@/components/MultiSelect.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TagChip from '@/components/TagChip.vue'
+import StatTile from '@/components/StatTile.vue'
+import NavIcon from '@/components/NavIcon.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const router = useRouter()
@@ -703,7 +720,10 @@ watch(
     secureDnsDisabled,
     site,
   ],
-  fetchData,
+  () => {
+    fetchData()
+    fetchStatTiles()
+  },
 )
 
 watch(site, () => {
@@ -724,6 +744,13 @@ watch(site, () => {
 const items = ref([])
 const total = ref(0)
 const totalPages = ref(0)
+// Stat tile brojevi - stvarni upiti (isti /agents/ids endpoint kao
+// selectAllMatching(), samo sa jednim filterom prepisanim po pločici), ne
+// izvedeno samo iz trenutne (paginirane) strane - videti napomenu u
+// fetchStatTiles().
+const statOnline = ref(0)
+const statOffline = ref(0)
+const statManagerCoverage = ref(0)
 const searchInput = ref(search.value)
 const loading = ref(false)
 const osOptions = ref([])
@@ -764,6 +791,76 @@ const activeDetailedFilterCount = computed(() => {
   if (secureDnsDisabled.value) n++
   return n
 })
+
+// Vizuelni prikaz "šta trenutno filtrira" kao chip-ovi - ne uvodi novo
+// stanje, samo čita/piše iste refs kao detaljni filter panel iznad. Svaki
+// chip nosi svoju clear() funkciju (za nizovne filtere briše SAMO tu jednu
+// vrednost, ne ceo filter).
+const STATUS_LABELS = { active: 'Aktivni', revoked: 'Povučeni' }
+const CONNECTIVITY_FILTER_LABELS = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
+
+const activeFilterChips = computed(() => {
+  const chips = []
+
+  if (search.value) {
+    chips.push({ key: 'search', label: `Pretraga: "${search.value}"`, clear: () => clearSearch() })
+  }
+  if (status.value !== 'all') {
+    chips.push({ key: 'status', label: STATUS_LABELS[status.value] || status.value, clear: () => (status.value = 'all') })
+  }
+  if (connectivityStatus.value) {
+    chips.push({
+      key: 'connectivity',
+      label: CONNECTIVITY_FILTER_LABELS[connectivityStatus.value] || connectivityStatus.value,
+      clear: () => (connectivityStatus.value = ''),
+    })
+  }
+  if (hasManagerChannel.value) {
+    chips.push({
+      key: 'manager',
+      label: hasManagerChannel.value === 'true' ? 'Ima novi Manager' : 'Nema novi Manager',
+      clear: () => (hasManagerChannel.value = ''),
+    })
+  }
+  for (const g of deploymentGroup.value) {
+    chips.push({ key: `dg-${g}`, label: `Grupa: ${g}`, clear: () => (deploymentGroup.value = deploymentGroup.value.filter((v) => v !== g)) })
+  }
+  for (const o of os.value) {
+    chips.push({ key: `os-${o}`, label: `OS: ${o}`, clear: () => (os.value = os.value.filter((v) => v !== o)) })
+  }
+  for (const v of version.value) {
+    chips.push({ key: `ver-${v}`, label: `Verzija: ${v}`, clear: () => (version.value = version.value.filter((x) => x !== v)) })
+  }
+  for (const d of department.value) {
+    chips.push({ key: `dep-${d}`, label: `Odeljenje: ${d}`, clear: () => (department.value = department.value.filter((v) => v !== d)) })
+  }
+
+  const boolFlags = [
+    ['antivirusInactive', antivirusInactive, 'Bez antivirusa'],
+    ['firewallInactive', firewallInactive, 'Bez firewall-a'],
+    ['windowsUpdateInactive', windowsUpdateInactive, 'WU isključen'],
+    ['agentOfflineIpOnline', agentOfflineIpOnline, 'Moguć kvar agenta'],
+    ['serviceFilesMismatch', serviceFilesMismatch, 'Neusklađeni fajlovi'],
+    ['processKillExempt', processKillExempt, 'Izuzet od ubijanja procesa'],
+    ['deploymentGroupOsOverlap', deploymentGroupOsOverlap, 'Preklapanje OS grupa'],
+    ['noDeploymentGroup', noDeploymentGroup, 'Bez deployment grupe'],
+    ['trustedRootCertInstalled', trustedRootCertInstalled, 'Trusted Root sertifikat'],
+    ['intermediateCertInstalled', intermediateCertInstalled, 'Intermediate sertifikat'],
+    ['secureDnsDisabled', secureDnsDisabled, 'Secure DNS isključen'],
+  ]
+  for (const [key, ref_, label] of boolFlags) {
+    if (ref_.value) chips.push({ key, label, clear: () => (ref_.value = '') })
+  }
+
+  return chips
+})
+
+function clearAllFilters() {
+  search.value = ''
+  searchInput.value = ''
+  status.value = 'all'
+  clearDetailedFilters()
+}
 
 let searchT = null
 
@@ -855,18 +952,10 @@ function isAgentMismatch(a) {
   return a.connectivityStatus !== 'online' && Number(a.ipIsOnline) === 1
 }
 
-// Isti mapiranje/klase kao connectivityLabel/connectivityBadgeClass u
-// AgentDetailView.vue - držati u sinhronizaciji.
-const CONNECTIVITY_LABELS = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
-function connectivityLabel(a) {
-  return CONNECTIVITY_LABELS[a.connectivityStatus] || 'Nepoznato'
-}
-function connectivityBadgeClass(a) {
-  const s = a.connectivityStatus
-  if (s === 'online') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-  if (s === 'stale') return 'bg-amber-50 text-amber-700 border-amber-200'
-  if (s === 'offline') return 'bg-red-50 text-red-700 border-red-200'
-  return 'bg-slate-100 text-slate-500 border-slate-200'
+// deploymentGroups dolazi kao GROUP_CONCAT string sa backend-a
+// (agents.repo.js), ne niz - videti napomenu tamo.
+function agentDeploymentGroups(a) {
+  return a.deploymentGroups ? a.deploymentGroups.split(', ').filter(Boolean) : []
 }
 
 async function fetchData() {
@@ -893,6 +982,42 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+// Tri lagana poziva na /agents/ids (isti endpoint kao selectAllMatching(),
+// samo id-jevi bez page/limit) sa po jednim filterom prepisanim - daje
+// TAČAN broj po celom filtriranom skupu, ne samo trenutnu stranicu. Ista
+// cena kao selectAllMatching(), pucanje jednog poziva ne sme da obori
+// ostale (Promise.allSettled).
+async function fetchStatTiles() {
+  const onlineParams = buildFilterParams()
+  onlineParams.set('connectivityStatus', 'online')
+  const offlineParams = buildFilterParams()
+  offlineParams.set('connectivityStatus', 'offline')
+  const managerParams = buildFilterParams()
+  managerParams.set('hasManagerChannel', 'true')
+
+  const [onlineRes, offlineRes, managerRes] = await Promise.allSettled([
+    fetchWithAuth(`/api/protected/agents/ids?${onlineParams.toString()}`),
+    fetchWithAuth(`/api/protected/agents/ids?${offlineParams.toString()}`),
+    fetchWithAuth(`/api/protected/agents/ids?${managerParams.toString()}`),
+  ])
+
+  async function countFrom(settled) {
+    if (settled.status !== 'fulfilled' || !settled.value.ok) return null
+    const data = await settled.value.json()
+    return (data.ids || []).length
+  }
+
+  const [onlineCount, offlineCount, managerCount] = await Promise.all([
+    countFrom(onlineRes),
+    countFrom(offlineRes),
+    countFrom(managerRes),
+  ])
+
+  if (onlineCount !== null) statOnline.value = onlineCount
+  if (offlineCount !== null) statOffline.value = offlineCount
+  if (managerCount !== null) statManagerCoverage.value = managerCount
 }
 
 watch(search, (value) => {
@@ -927,7 +1052,7 @@ async function confirmRevoke(a) {
     showToast('Agent povučen')
   } catch (e) {
     console.error(e)
-    showToast('Greška pri povlačenju agenta', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri povlačenju agenta', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -969,7 +1094,7 @@ async function selectAllMatching() {
     selectedIds.value = new Set(data.ids || [])
   } catch (e) {
     console.error('Neuspešno dohvatanje id-jeva po filteru', e)
-    showToast('Greška pri selekciji svih agenata', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri selekciji svih agenata', { kind: 'error', duration: 3000 })
   } finally {
     selectingAllMatching.value = false
   }
@@ -990,14 +1115,14 @@ async function sendBatchJob() {
   const payload = {}
   if (isBatchServiceCommand.value) {
     if (!batchForm.value.serviceName.trim()) {
-      showToast('Naziv servisa je obavezan', { prefix: '❌ ', duration: 3000 })
+      showToast('Naziv servisa je obavezan', { kind: 'error', duration: 3000 })
       return
     }
     payload.serviceName = batchForm.value.serviceName.trim()
   }
   if (batchForm.value.commandType === 'run_powershell_script') {
     if (!batchForm.value.script.trim()) {
-      showToast('Skripta je obavezna', { prefix: '❌ ', duration: 3000 })
+      showToast('Skripta je obavezna', { kind: 'error', duration: 3000 })
       return
     }
     payload.script = batchForm.value.script.trim()
@@ -1034,7 +1159,7 @@ async function sendBatchJob() {
     }
   } catch (e) {
     console.error(e)
-    showToast(e?.message || 'Greška pri slanju batch komande', { prefix: '❌ ', duration: 3000 })
+    showToast(e?.message || 'Greška pri slanju batch komande', { kind: 'error', duration: 3000 })
   } finally {
     sendingBatch.value = false
   }
@@ -1075,7 +1200,7 @@ async function assignDeploymentGroupToSelected() {
     fetchData()
   } catch (e) {
     console.error(e)
-    showToast(e?.message || 'Greška pri dodeli deployment grupe', { prefix: '❌ ', duration: 3000 })
+    showToast(e?.message || 'Greška pri dodeli deployment grupe', { kind: 'error', duration: 3000 })
   } finally {
     assigningDeploymentGroup.value = false
   }
@@ -1110,7 +1235,7 @@ async function loadRepeatBatch(batchId) {
     showToast(`Selektovano ${selectedIds.value.size} agenata iz prethodnog batch-a - izmeni komandu po potrebi pre slanja.`)
   } catch (e) {
     console.error('Neuspešno učitavanje batch-a za ponavljanje', e)
-    showToast('Greška pri učitavanju agenata iz batch-a', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri učitavanju agenata iz batch-a', { kind: 'error', duration: 3000 })
   } finally {
     const { repeatBatchId, ...restQuery } = route.query
     router.replace({ query: restQuery })
@@ -1139,6 +1264,7 @@ function loadPreselectedAgentIds(raw) {
 onMounted(() => {
   fetchFilterOptions()
   fetchData()
+  fetchStatTiles()
   if (route.query.repeatBatchId) {
     loadRepeatBatch(route.query.repeatBatchId)
   } else if (route.query.agentIds) {

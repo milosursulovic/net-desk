@@ -1,21 +1,21 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Slobodne IP adrese</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Slobodne IP adrese</h1>
+        <p class="text-sm text-ink-muted mt-1">
           {{ labelForSite(site) }} — opseg {{ rangeLabel }}
         </p>
       </div>
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
-    <div v-if="!loading" class="flex flex-wrap gap-4 text-sm text-slate-600">
-      <span>Ukupno u opsegu: <strong>{{ total }}</strong></span>
-      <span>Zauzeto: <strong>{{ occupiedCount }}</strong></span>
-      <span>Slobodno: <strong class="text-emerald-700">{{ freeIps.length }}</strong></span>
+    <div v-if="!loading" class="flex flex-wrap gap-4 text-sm text-ink-secondary">
+      <span>Ukupno u opsegu: <strong class="font-mono text-ink">{{ total }}</strong></span>
+      <span>Zauzeto: <strong class="font-mono text-ink">{{ occupiedCount }}</strong></span>
+      <span>Slobodno: <strong class="font-mono text-good">{{ freeIps.length }}</strong></span>
       <span v-if="rangedIps.size" class="flex items-center gap-1.5">
-        <span class="inline-block h-3 w-3 rounded-sm bg-emerald-50 border border-emerald-200"></span>
+        <span class="inline-block h-3 w-3 rounded-sm bg-good-subtle border border-good/40"></span>
         deo niza od bar 2 uzastopne adrese
       </span>
     </div>
@@ -28,30 +28,30 @@
       aria-label="Pretraga slobodnih IP adresa"
     />
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="loadError" class="text-red-600">{{ loadError }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="loadError" class="text-bad">{{ loadError }}</div>
     <div v-else-if="!filteredIps.length"
-      class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
       Nema slobodnih adresa za zadatu pretragu.
     </div>
 
     <template v-else>
-      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+      <div class="table-shell overflow-x-auto">
         <table class="w-full text-sm border-collapse">
           <thead>
-            <tr class="text-left text-slate-500 border-b border-slate-200 bg-slate-50">
-              <th class="py-2 px-4">IP adresa</th>
+            <tr class="table-head-row">
+              <th class="py-2 px-4 text-left">IP adresa</th>
               <th class="py-2 px-4"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="ip in pagedIps" :key="ip" class="border-b border-slate-100 hover:bg-slate-100"
-              :class="rangedIps.has(ip) ? 'bg-emerald-50' : ''"
+            <tr v-for="ip in pagedIps" :key="ip" class="border-b border-line last:border-0 hover:bg-surface-sunken"
+              :class="rangedIps.has(ip) ? 'bg-good-subtle' : ''"
               :title="rangedIps.has(ip) ? 'Deo niza od bar 2 uzastopne slobodne adrese' : ''"
             >
-              <td class="py-2 px-4 font-mono">{{ ip }}</td>
+              <td class="py-2 px-4 font-mono text-ink">{{ ip }}</td>
               <td class="py-2 px-4 text-right">
-                <RouterLink :to="{ path: '/add', query: { site, ip } }" class="text-blue-600 hover:underline text-xs">
+                <RouterLink :to="{ path: '/add', query: { site, ip } }" class="text-accent hover:underline text-xs">
                   Dodaj
                 </RouterLink>
               </td>
@@ -62,13 +62,13 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <button @click="page = Math.max(1, page - 1)" :disabled="page === 1"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Prethodna strana">
+          <NavIcon name="chevron-left" />
         </button>
-        <span class="text-sm text-slate-600">Strana {{ page }} / {{ totalPages }}</span>
+        <span class="text-sm text-ink-secondary font-mono">Strana {{ page }} / {{ totalPages }}</span>
         <button @click="page = Math.min(totalPages, page + 1)" :disabled="page >= totalPages"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Sledeća strana">
+          <NavIcon name="chevron-right" />
         </button>
       </div>
     </template>
@@ -82,6 +82,7 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { labelForSite } from '@/constants/sites.js'
 import AppButton from '@/components/AppButton.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 // Samo za prikaz - stvarni opseg (mrežna+1 do broadcast-1) se računa na
 // serveru (ipAddresses.service.js).

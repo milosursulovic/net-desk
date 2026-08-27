@@ -4,25 +4,25 @@
     class="space-y-2"
   >
     <!-- Legend - status color never carries meaning alone, always paired with a label -->
-    <div class="flex items-center gap-4 text-xs text-slate-600">
+    <div class="flex items-center gap-4 text-xs text-ink-secondary">
       <span class="inline-flex items-center gap-1.5">
-        <span class="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        <span class="h-2.5 w-2.5 rounded-full bg-good" />
         Online
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span class="h-2.5 w-2.5 rounded-full bg-rose-500" />
+        <span class="h-2.5 w-2.5 rounded-full bg-bad" />
         Offline
       </span>
-      <span class="ml-auto text-slate-400">{{ rangeLabel }}</span>
+      <span class="ml-auto text-ink-muted">{{ rangeLabel }}</span>
     </div>
 
     <!-- Proportional segmented timeline bar -->
-    <div class="relative flex h-8 w-full overflow-hidden rounded-md bg-slate-100">
+    <div class="relative flex h-8 w-full overflow-hidden rounded-md bg-surface-sunken">
       <div
         v-for="(seg, idx) in segments"
         :key="idx"
         class="relative h-full first:rounded-l-md last:rounded-r-md"
-        :class="seg.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'"
+        :class="seg.status === 'online' ? 'bg-good' : 'bg-bad'"
         :style="{ flexGrow: seg.durationMs, flexBasis: 0, marginLeft: idx > 0 ? '2px' : 0 }"
         @mouseenter="hovered = seg"
         @mouseleave="hovered = null"
@@ -32,14 +32,14 @@
     <!-- Hover tooltip - per-mark, appears on hover, not a permanent label -->
     <div
       v-if="hovered"
-      class="rounded-lg border bg-white px-3 py-2 text-xs shadow-sm inline-flex items-center gap-2"
+      class="rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink shadow-sm inline-flex items-center gap-2"
     >
       <span
         class="h-2 w-2 rounded-full"
-        :class="hovered.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'"
+        :class="hovered.status === 'online' ? 'bg-good' : 'bg-bad'"
       />
       <span class="font-medium">{{ hovered.status === 'online' ? 'Online' : 'Offline' }}</span>
-      <span class="text-slate-500">
+      <span class="text-ink-muted">
         {{ fmtDate(hovered.from) }} — {{ hovered.to ? fmtDate(hovered.to) : 'u toku' }}
         ({{ formatDuration(hovered.from, hovered.to) }})
       </span>

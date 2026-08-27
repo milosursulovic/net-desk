@@ -29,13 +29,13 @@ describe('stateLabel', () => {
 
 describe('stateBadgeClass', () => {
   it('returns the right color class per known state', () => {
-    expect(stateBadgeClass('Running')).toContain('bg-green-600')
-    expect(stateBadgeClass('Stopped')).toContain('bg-red-600')
-    expect(stateBadgeClass('Paused')).toContain('bg-amber-500')
+    expect(stateBadgeClass('Running')).toContain('bg-good')
+    expect(stateBadgeClass('Stopped')).toContain('bg-bad')
+    expect(stateBadgeClass('Paused')).toContain('bg-warn')
   })
 
-  it('returns a neutral slate class for an unknown state', () => {
-    expect(stateBadgeClass('whatever')).toContain('bg-slate-500')
+  it('returns a neutral class for an unknown state', () => {
+    expect(stateBadgeClass('whatever')).toContain('bg-ink-muted')
   })
 })
 
@@ -68,12 +68,12 @@ describe('startModeLabel - bilingual (EN raw WMI value or SR already-translated 
 
 describe('startModeBadgeClass', () => {
   it('returns the right color class per known mode (EN or SR)', () => {
-    expect(startModeBadgeClass('auto')).toContain('bg-blue-600')
-    expect(startModeBadgeClass('rucno')).toContain('bg-amber-500')
-    expect(startModeBadgeClass('iskljucen')).toContain('bg-slate-500')
+    expect(startModeBadgeClass('auto')).toContain('bg-accent')
+    expect(startModeBadgeClass('rucno')).toContain('bg-warn')
+    expect(startModeBadgeClass('iskljucen')).toContain('bg-ink-muted')
   })
 
   it('returns a neutral outlined class for an unknown mode', () => {
-    expect(startModeBadgeClass('whatever')).toContain('border-slate-200')
+    expect(startModeBadgeClass('whatever')).toContain('border-line')
   })
 })

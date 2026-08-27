@@ -1,50 +1,41 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">
           {{ batch ? (COMMAND_LABELS[batch.commandType] || batch.commandType) : 'Batch komanda' }}
         </h1>
-        <p v-if="batch" class="text-sm text-slate-500 mt-1">
+        <p v-if="batch" class="text-sm text-ink-muted mt-1">
           Poslato: {{ fmtDate(batch.createdAt) }} · {{ items.length }} agenata
-          <span v-if="polling" class="text-blue-600">· automatski se osvežava…</span>
+          <span v-if="polling" class="text-accent">· automatski se osvežava…</span>
         </p>
       </div>
       <div class="flex gap-2 shrink-0">
         <AppButton v-if="cancellableCount" variant="danger" :disabled="cancelling" @click="cancelBatch">
-          {{ cancelling ? 'Otkazujem…' : `✖️ Otkaži (${cancellableCount})` }}
+          <span v-if="cancelling">Otkazujem…</span>
+          <span v-else class="inline-flex items-center gap-1"><NavIcon name="x" />Otkaži ({{ cancellableCount }})</span>
         </AppButton>
         <AppButton v-if="items.length" variant="secondary" @click="repeatWithNewCommand">
-          🔁 Ponovi sa novom komandom
+          <NavIcon name="refresh" /> Ponovi sa novom komandom
         </AppButton>
         <AppButton variant="neutral" to="/agent-batches">Nazad na istoriju</AppButton>
       </div>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <div v-else class="space-y-4">
-      <div class="flex flex-wrap gap-2">
-        <span class="rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-600 border-slate-200">
-          Na čekanju: {{ counts.pending }}
-        </span>
-        <span class="rounded-full border px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border-blue-200">
-          Poslato: {{ counts.sent }}
-        </span>
-        <span class="rounded-full border px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-          Završeno: {{ counts.completed }}
-        </span>
-        <span class="rounded-full border px-2 py-0.5 text-xs bg-red-50 text-red-700 border-red-200">
-          Neuspešno: {{ counts.failed }}
-        </span>
-        <span v-if="counts.cancelled" class="rounded-full border px-2 py-0.5 text-xs bg-slate-100 text-slate-500 border-slate-200">
-          Otkazano: {{ counts.cancelled }}
-        </span>
+      <div class="flex flex-wrap gap-1.5">
+        <StatusPill status="neutral" :label="`Na čekanju: ${counts.pending}`" :dot="false" />
+        <StatusPill status="info" :label="`Poslato: ${counts.sent}`" :dot="false" />
+        <StatusPill status="good" :label="`Završeno: ${counts.completed}`" :dot="false" />
+        <StatusPill status="bad" :label="`Neuspešno: ${counts.failed}`" :dot="false" />
+        <StatusPill v-if="counts.cancelled" status="neutral" :label="`Otkazano: ${counts.cancelled}`" :dot="false" />
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <label class="text-xs text-slate-500">Status:</label>
+        <label class="text-xs text-ink-muted">Status:</label>
         <select v-model="statusFilter" class="app-input text-sm py-1 w-auto">
           <option value="">Svi ({{ items.length }})</option>
           <option value="pending">Na čekanju ({{ counts.pending }})</option>
@@ -54,7 +45,7 @@
           <option v-if="counts.cancelled" value="cancelled">Otkazano ({{ counts.cancelled }})</option>
         </select>
 
-        <label class="text-xs text-slate-500 ml-2">Dostupnost:</label>
+        <label class="text-xs text-ink-muted ml-2">Dostupnost:</label>
         <select v-model="connectivityFilter" class="app-input text-sm py-1 w-auto">
           <option value="">Sve</option>
           <option value="online">Online</option>
@@ -66,7 +57,7 @@
         <button
           v-if="statusFilter || connectivityFilter"
           type="button"
-          class="text-xs text-blue-600 hover:underline ml-1"
+          class="text-xs text-accent hover:underline ml-1"
           @click="statusFilter = ''; connectivityFilter = ''"
         >
           Poništi filter
@@ -74,48 +65,47 @@
       </div>
 
       <div class="space-y-2">
-        <div v-if="items.length && !filteredItems.length" class="text-sm text-slate-500 py-4 text-center">
+        <div v-if="items.length && !filteredItems.length" class="text-sm text-ink-muted py-4 text-center">
           Nema stavki koje odgovaraju filteru.
         </div>
-        <div v-for="item in filteredItems" :key="item.id" class="rounded-lg border bg-white p-3 text-sm">
+        <div v-for="item in filteredItems" :key="item.id" class="rounded-lg border border-line bg-surface p-3 text-sm">
           <div class="flex items-start justify-between gap-3">
-            <RouterLink :to="`/agents/${item.agentId}`" class="font-medium text-blue-600 hover:underline">
+            <RouterLink :to="`/agents/${item.agentId}`" class="font-medium text-accent hover:underline">
               {{ item.hostname || item.agentUid }}
             </RouterLink>
             <div class="flex items-center gap-1.5 shrink-0">
-              <span v-if="item.status === 'pending'"
-                class="rounded-full border px-2 py-0.5 text-xs"
-                :class="connectivityBadgeClass(item.connectivityStatus)"
-                title="Da li je agent online dok komanda čeka">
-                {{ connectivityLabel(item.connectivityStatus) }}
-              </span>
-              <span class="rounded-full border px-2 py-0.5 text-xs" :class="jobStatusClass(item.status)">
-                {{ item.status }}
-              </span>
+              <StatusPill
+                v-if="item.status === 'pending'"
+                :status="connectivityTone(item.connectivityStatus)"
+                :label="connectivityLabel(item.connectivityStatus)"
+                :dot="false"
+                title="Da li je agent online dok komanda čeka"
+              />
+              <StatusPill :status="jobStatusTone(item.status)" :label="item.status" :dot="false" />
               <button
                 v-if="item.status === 'pending' || item.status === 'sent'"
                 :disabled="cancellingItemId === item.id"
                 @click="cancelSingleJob(item)"
-                class="text-red-600 hover:underline text-xs whitespace-nowrap"
+                class="text-bad hover:underline text-xs whitespace-nowrap"
               >
                 {{ cancellingItemId === item.id ? 'Otkazujem…' : 'Otkaži' }}
               </button>
             </div>
           </div>
-          <div class="text-xs text-slate-500 mt-1">
+          <div class="text-xs text-ink-muted mt-1 font-mono">
             <span v-if="item.sentAt">Poslato: {{ fmtDate(item.sentAt) }}</span>
             <span v-if="item.completedAt"> · Završeno: {{ fmtDate(item.completedAt) }}</span>
             <span v-if="item.exitCode !== null"> · Exit code: {{ item.exitCode }}</span>
           </div>
           <div v-if="item.output" class="relative mt-1">
             <button @click="copyToClipboard(item.output, 'Izlaz kopiran!')"
-              class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz">📋</button>
-            <div class="text-xs bg-slate-50 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.output }}</div>
+              class="absolute top-1 right-1 text-xs text-accent hover:underline" title="Kopiraj izlaz"><NavIcon name="copy" /></button>
+            <div class="text-xs font-mono bg-surface-sunken rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.output }}</div>
           </div>
           <div v-if="item.errorOutput" class="relative mt-1">
             <button @click="copyToClipboard(item.errorOutput, 'Izlaz greške kopiran!')"
-              class="absolute top-1 right-1 text-xs text-blue-600 hover:underline" title="Kopiraj izlaz greške">📋</button>
-            <div class="text-xs bg-red-50 text-red-700 rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.errorOutput }}</div>
+              class="absolute top-1 right-1 text-xs text-accent hover:underline" title="Kopiraj izlaz greške"><NavIcon name="copy" /></button>
+            <div class="text-xs font-mono bg-bad-subtle text-bad rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ item.errorOutput }}</div>
           </div>
         </div>
       </div>
@@ -143,9 +133,12 @@ import { fmtDate as formatDate } from '@/utils/format.js'
 import { COMMAND_LABELS } from '@/constants/agentCommands.js'
 import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
+import { connectivityTone, connectivityLabel, jobStatusTone } from '@/utils/statusTones.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const route = useRoute()
@@ -196,14 +189,6 @@ const filteredItems = computed(() => {
   })
 })
 
-function jobStatusClass(status) {
-  if (status === 'completed') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-  if (status === 'failed') return 'bg-red-50 text-red-700 border-red-200'
-  if (status === 'sent') return 'bg-blue-50 text-blue-700 border-blue-200'
-  if (status === 'cancelled') return 'bg-slate-100 text-slate-500 border-slate-200'
-  return 'bg-slate-50 text-slate-600 border-slate-200'
-}
-
 // Otkazuje sve stavke koje nisu Završeno/Neuspešno (pending + sent) - vidi
 // komentar uz cancellableCount.
 async function cancelBatch() {
@@ -224,7 +209,7 @@ async function cancelBatch() {
     await loadStatus()
   } catch (err) {
     console.error('Greška pri otkazivanju batch-a:', err)
-    showToast(err?.message || 'Greška pri otkazivanju batch-a', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri otkazivanju batch-a', { kind: 'error', duration: 3000 })
   } finally {
     cancelling.value = false
   }
@@ -245,25 +230,10 @@ async function cancelSingleJob(item) {
     await loadStatus()
   } catch (err) {
     console.error('Greška pri otkazivanju komande:', err)
-    showToast(err?.message || 'Greška pri otkazivanju komande', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri otkazivanju komande', { kind: 'error', duration: 3000 })
   } finally {
     cancellingItemId.value = null
   }
-}
-
-// Isto mapiranje/boje kao connectivityLabel/connectivityBadgeClass na
-// AgentDetailView.vue, samo po stavci (ovde ima više agenata na jednoj
-// strani) - da se na "na čekanju" komandama vidi da li agent uopšte
-// odgovara, ne samo da čeka na sledeći poll ciklus.
-function connectivityLabel(status) {
-  const map = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
-  return map[status] || 'Nepoznato'
-}
-function connectivityBadgeClass(status) {
-  if (status === 'online') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-  if (status === 'stale') return 'bg-amber-50 text-amber-700 border-amber-200'
-  if (status === 'offline') return 'bg-red-50 text-red-700 border-red-200'
-  return 'bg-slate-100 text-slate-500 border-slate-200'
 }
 
 async function loadStatus() {

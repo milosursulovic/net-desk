@@ -1,10 +1,10 @@
 <template>
-  <div class="glass-container w-full max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6 text-slate-800">Izmeni IP Unos</h1>
+  <div class="w-full max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6 text-ink" style="font-family: var(--font-display)">Izmeni IP Unos</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
       <div>
-        <label for="entryType" class="block text-sm font-medium text-slate-700 mb-1">Tip</label>
+        <label for="entryType" class="block text-sm font-medium text-ink mb-1">Tip</label>
         <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
           <option value="">— Nije određeno —</option>
           <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -14,7 +14,7 @@
       </div>
 
       <div>
-        <label for="site" class="block text-sm font-medium text-slate-700 mb-1">Lokacija *</label>
+        <label for="site" class="block text-sm font-medium text-ink mb-1">Lokacija *</label>
         <select id="site" v-model="form.site" class="app-input w-full" required>
           <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
@@ -23,7 +23,7 @@
       </div>
 
       <div>
-        <label for="department" class="block text-sm font-medium text-slate-700 mb-1">Odeljenje</label>
+        <label for="department" class="block text-sm font-medium text-ink mb-1">Odeljenje</label>
         <GroupSelect
           v-model="form.department"
           :options="groupOptions"
@@ -34,7 +34,7 @@
       </div>
 
       <div v-for="field in fields" :key="field.name">
-        <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
+        <label :for="field.name" class="block text-sm font-medium text-ink mb-1">
           {{ field.label }} <span v-if="field.name === 'ip'">*</span>
         </label>
 
@@ -54,10 +54,10 @@
           type="text"
           class="app-input w-full"
           :required="field.name === 'ip'"
-          :class="field.name === 'ip' && ipError ? 'border-red-400' : ''"
+          :class="field.name === 'ip' && ipError ? 'border-bad' : ''"
         />
 
-        <p v-if="field.name === 'ip' && ipError" class="text-xs text-red-600 mt-1">
+        <p v-if="field.name === 'ip' && ipError" class="text-xs text-bad mt-1">
           {{ ipError }}
         </p>
       </div>
@@ -71,7 +71,7 @@
         <AppButton type="submit" variant="primary">Sačuvaj izmene</AppButton>
       </div>
 
-      <p v-if="error" class="text-red-500 mt-4 text-center">{{ error }}</p>
+      <p v-if="error" class="text-bad mt-4 text-center">{{ error }}</p>
     </form>
 
     <ConfirmDialog

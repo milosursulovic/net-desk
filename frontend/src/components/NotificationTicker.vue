@@ -2,20 +2,21 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
+import NavIcon from '@/components/NavIcon.vue'
 
 const notifications = ref([])
 const POLL_MS = 60000
 
 const levelClass = {
-  critical: 'bg-red-600 text-white',
-  warning: 'bg-amber-500 text-amber-950',
-  info: 'bg-blue-600 text-white',
+  critical: 'bg-bad text-white',
+  warning: 'bg-warn text-white',
+  info: 'bg-info text-white',
 }
 
 const levelIcon = {
-  critical: '⛔',
-  warning: '⚠️',
-  info: 'ℹ️',
+  critical: 'ban',
+  warning: 'alert-triangle',
+  info: 'info',
 }
 
 // Duplirano radi bešavne petlje animacije (drugi set je duplikat prvog).
@@ -52,7 +53,7 @@ onBeforeUnmount(() => {
         class="notification-chip"
         :class="levelClass[n.level] || levelClass.info"
       >
-        <span>{{ levelIcon[n.level] || levelIcon.info }}</span>
+        <NavIcon :name="levelIcon[n.level] || levelIcon.info" />
         <span>{{ n.message }}</span>
       </RouterLink>
     </div>
@@ -64,7 +65,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   width: 100%;
   border-radius: 999px;
-  background-color: #f1f5f9;
+  background-color: var(--surface-sunken);
   mask-image: linear-gradient(
     to right,
     transparent 0,
@@ -72,10 +73,6 @@ onBeforeUnmount(() => {
     black calc(100% - 1.5rem),
     transparent 100%
   );
-}
-
-.dark .notification-ticker {
-  background-color: #1e293b;
 }
 
 .notification-ticker-track {

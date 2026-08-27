@@ -1,11 +1,11 @@
 <template>
-  <div class="glass-container space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">
           Metapodaci — Analitika
         </h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <p class="text-sm text-ink-muted mt-1">
           Prikazani su samo računari (Aparati su isključeni iz analitike).
         </p>
       </div>
@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <div class="rounded-xl border bg-white p-3 shadow-sm flex items-center gap-2">
+    <div class="rounded-xl border border-line bg-surface p-3 shadow-sm flex items-center gap-2">
       <input
         v-model="search"
         type="text"
@@ -37,11 +37,11 @@
       <button
         v-if="search"
         type="button"
-        class="shrink-0 text-slate-400 hover:text-slate-600"
+        class="shrink-0 text-ink-muted hover:text-ink"
         title="Obriši pretragu"
         @click="search = ''"
       >
-        ✕
+        <NavIcon name="x" />
       </button>
     </div>
 
@@ -49,25 +49,25 @@
     <template v-if="search.trim()">
       <div
         v-if="searchLoading"
-        class="rounded-xl border bg-white p-8 text-center text-slate-500 shadow-sm"
+        class="rounded-xl border border-line bg-surface p-8 text-center text-ink-muted shadow-sm"
       >
         Pretražujem…
       </div>
       <div
         v-else-if="!searchResults.length"
-        class="rounded-xl border bg-white p-8 text-center text-slate-500 shadow-sm"
+        class="rounded-xl border border-line bg-surface p-8 text-center text-ink-muted shadow-sm"
       >
         Ništa ne odgovara pojmu "{{ search.trim() }}".
       </div>
       <div
         v-else
-        class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto"
+        class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto"
       >
-        <div class="text-sm text-slate-500 mb-3">
+        <div class="text-sm text-ink-muted mb-3">
           {{ searchResults.length }}{{ searchResults.length >= 100 ? '+' : '' }} rezultata
         </div>
         <table class="min-w-full text-left text-sm">
-          <thead class="bg-slate-100 text-slate-700">
+          <thead class="table-head-row">
             <tr>
               <th class="px-3 py-2 font-medium whitespace-nowrap">
                 Računar
@@ -96,28 +96,28 @@
             <tr
               v-for="row in searchResults"
               :key="row.ipEntry"
-              class="border-b hover:bg-slate-50 cursor-pointer"
+              class="border-b border-line last:border-0 hover:bg-surface-sunken cursor-pointer"
               @click="router.push(`/ip/${row.ipEntry}/meta`)"
             >
-              <td class="px-3 py-2 whitespace-nowrap font-medium text-blue-700">
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-accent">
                 {{ row.computerName || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs">
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs text-ink-secondary">
                 {{ row.ip || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.department || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.userName || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.osCaption || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ [row.systemManufacturer, row.systemModel].filter(Boolean).join(' / ') || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.cpuName || '—' }}
               </td>
             </tr>
@@ -194,9 +194,9 @@
 
       <!-- ================= BEZ METAPODATAKA ================= -->
       <SectionHeader title="Bez metapodataka" />
-      <div class="rounded-xl border bg-white p-4 shadow-sm overflow-x-auto">
+      <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="font-semibold text-slate-800">
+          <h2 class="font-semibold text-ink">
             Računari bez prikupljenih metapodataka ({{ missingMetadata.length }})
           </h2>
           <AppButton
@@ -209,7 +209,7 @@
         </div>
         <div
           v-if="!missingMetadata.length"
-          class="text-sm text-slate-500"
+          class="text-sm text-ink-muted"
         >
           Svi računari imaju prikupljene metapodatke.
         </div>
@@ -217,7 +217,7 @@
           v-else
           class="min-w-full text-left text-sm"
         >
-          <thead class="bg-slate-100 text-slate-700">
+          <thead class="table-head-row">
             <tr>
               <th class="px-3 py-2 font-medium whitespace-nowrap">Računar</th>
               <th class="px-3 py-2 font-medium whitespace-nowrap">IP</th>
@@ -229,19 +229,19 @@
             <tr
               v-for="row in missingMetadata"
               :key="row.id"
-              class="border-b hover:bg-slate-50 cursor-pointer"
+              class="border-b border-line last:border-0 hover:bg-surface-sunken cursor-pointer"
               @click="router.push(`/ip/${row.id}/meta`)"
             >
-              <td class="px-3 py-2 whitespace-nowrap font-medium text-blue-700">
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-accent">
                 {{ row.computerName || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs">
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs text-ink-secondary">
                 {{ row.ip || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.department || '—' }}
               </td>
-              <td class="px-3 py-2 whitespace-nowrap">
+              <td class="px-3 py-2 whitespace-nowrap text-ink-secondary">
                 {{ row.os || '—' }}
               </td>
             </tr>
@@ -252,8 +252,8 @@
       <!-- ================= PREGLED ================= -->
       <SectionHeader title="Pregled" />
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Pokrivenost metapodacima
           </h2>
           <MeterBar
@@ -262,11 +262,11 @@
           />
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Svežina prikupljanja
           </h2>
-          <div class="text-sm text-slate-600 mb-2">
+          <div class="text-sm text-ink-secondary mb-2">
             Broj mašina po danu (poslednjih 14 dana)
           </div>
           <TrendArea
@@ -275,13 +275,13 @@
           />
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold text-slate-800">
+            <h2 class="font-semibold text-ink">
               Distribucija OS verzija (Top 5)
             </h2>
             <span
-              class="text-xs text-slate-400"
+              class="text-xs text-ink-muted"
               title="Klik na red prikazuje mašine"
             >🔎 klik = detalji</span>
           </div>
@@ -299,13 +299,13 @@
               />
               <div
                 v-if="osDrilldownKey === row.key"
-                class="rounded-lg bg-slate-50 p-2 space-y-1"
+                class="rounded-lg bg-surface-sunken p-2 space-y-1"
               >
                 <RouterLink
                   v-for="m in osDrilldownMachines"
                   :key="m.ipEntry"
                   :to="`/ip/${m.ipEntry}/meta`"
-                  class="block truncate text-xs text-blue-600 hover:underline px-1 py-0.5"
+                  class="block truncate text-xs text-accent hover:underline px-1 py-0.5"
                 >
                   {{ m.ComputerName || '—' }}
                 </RouterLink>
@@ -318,8 +318,8 @@
       <!-- ================= HARDVER ================= -->
       <SectionHeader title="Hardver" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Proizvođači sistema (Top 6)
           </h2>
           <div class="space-y-2.5">
@@ -333,14 +333,14 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             GPU prisutnost
           </h2>
           <SplitBar
             :segments="[
-              { label: 'Sa dedikovanom GPU', value: stats.withGpu, colorClass: 'bg-blue-600' },
-              { label: 'Bez GPU / iGPU samo', value: stats.withoutGpu, colorClass: 'bg-slate-300' },
+              { label: 'Sa dedikovanom GPU', value: stats.withGpu, colorClass: 'bg-accent' },
+              { label: 'Bez GPU / iGPU samo', value: stats.withoutGpu, colorClass: 'bg-line-strong' },
             ]"
           />
           <div class="grid grid-cols-2 gap-3 mt-3">
@@ -355,15 +355,15 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             RAM raspodela
           </h2>
           <SplitBar
             :segments="[
-              { label: '≤ 8 GB', value: bucketRam.le8, colorClass: 'bg-blue-200' },
-              { label: '16 GB', value: bucketRam.eq16, colorClass: 'bg-blue-500' },
-              { label: '> 16 GB', value: bucketRam.gt16, colorClass: 'bg-blue-800' },
+              { label: '≤ 8 GB', value: bucketRam.le8, colorClass: 'bg-accent-subtle' },
+              { label: '16 GB', value: bucketRam.eq16, colorClass: 'bg-accent' },
+              { label: '> 16 GB', value: bucketRam.gt16, colorClass: 'bg-accent-emphasis' },
             ]"
           />
           <div class="grid grid-cols-1 gap-3 mt-3">
@@ -374,8 +374,8 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Brzine mreže (Top 5)
           </h2>
           <div class="space-y-2.5">
@@ -393,8 +393,8 @@
       <!-- ================= PROCESOR I SKLADIŠTE ================= -->
       <SectionHeader title="Procesor i skladište" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             CPU modeli (Top 5)
           </h2>
           <div class="space-y-2.5">
@@ -422,15 +422,15 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Broj diskova po mašini
           </h2>
           <SplitBar
             :segments="[
-              { label: '1 disk', value: diskBuckets.eq1, colorClass: 'bg-blue-200' },
-              { label: '2 diska', value: diskBuckets.eq2, colorClass: 'bg-blue-500' },
-              { label: '3+ diska', value: diskBuckets.ge3, colorClass: 'bg-blue-800' },
+              { label: '1 disk', value: diskBuckets.eq1, colorClass: 'bg-accent-subtle' },
+              { label: '2 diska', value: diskBuckets.eq2, colorClass: 'bg-accent' },
+              { label: '3+ diska', value: diskBuckets.ge3, colorClass: 'bg-accent-emphasis' },
             ]"
           />
         </div>
@@ -439,8 +439,8 @@
       <!-- ================= MATIČNA PLOČA / BIOS / WINDOWS UPDATE ================= -->
       <SectionHeader title="Matična ploča, BIOS, Windows Update" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Proizvođači matične ploče (Top 5)
           </h2>
           <div class="space-y-2.5">
@@ -454,8 +454,8 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             BIOS proizvođači (Top 5)
           </h2>
           <div class="space-y-2.5">
@@ -469,18 +469,18 @@
           </div>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm lg:col-span-2">
+          <h2 class="font-semibold text-ink mb-3">
             Windows Update servis (wuauserv)
           </h2>
           <SplitBar
             :segments="[
-              { label: 'Running', value: wuStatusDist.running, colorClass: 'bg-emerald-500' },
-              { label: 'Stopped', value: wuStatusDist.stopped, colorClass: 'bg-rose-500' },
-              { label: 'Nepoznato', value: wuStatusDist.unknown, colorClass: 'bg-slate-300' },
+              { label: 'Running', value: wuStatusDist.running, colorClass: 'bg-good' },
+              { label: 'Stopped', value: wuStatusDist.stopped, colorClass: 'bg-bad' },
+              { label: 'Nepoznato', value: wuStatusDist.unknown, colorClass: 'bg-line-strong' },
             ]"
           />
-          <p class="text-xs text-slate-500 mt-2">
+          <p class="text-xs text-ink-muted mt-2">
             "Stopped" mašine su rizik — pokriveno postojećim alerting pravilom (WU servis nije "Running").
           </p>
         </div>
@@ -489,8 +489,8 @@
       <!-- ================= TOP LISTE ================= -->
       <SectionHeader title="Top liste" />
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-ink mb-3">
             Najmanje RAM-a (Top 10)
           </h2>
           <DataTable
@@ -500,8 +500,8 @@
           />
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-ink mb-3">
             Najstarija instalacija OS-a (Top 10)
           </h2>
           <DataTable
@@ -511,8 +511,8 @@
           />
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm overflow-hidden xl:col-span-2">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-hidden xl:col-span-2">
+          <h2 class="font-semibold text-ink mb-3">
             Najveći ukupni storage (Top 10)
           </h2>
           <DataTable
@@ -526,11 +526,11 @@
       <!-- ================= RED-FLAGS ================= -->
       <SectionHeader title="Red-flags" />
       <div class="grid grid-cols-1">
-        <div class="rounded-xl border border-red-200 bg-white p-4 shadow-sm overflow-hidden">
-          <h2 class="font-semibold text-red-700 mb-1">
+        <div class="rounded-xl border border-bad/40 bg-surface p-4 shadow-sm overflow-hidden">
+          <h2 class="font-semibold text-bad mb-1">
             🚩 Lexar SSD detektovani
           </h2>
-          <p class="text-sm text-slate-600 mb-3">
+          <p class="text-sm text-ink-secondary mb-3">
             Diskovi sa modelom koji sadrži "Lexar" (SSD) — skloni restartima i lošem radu.
           </p>
 
@@ -579,6 +579,7 @@ import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
+import NavIcon from '@/components/NavIcon.vue'
 import * as XLSX from 'xlsx'
 
 const router = useRouter()
@@ -589,7 +590,7 @@ const SectionHeader = defineComponent({
   props: { title: String },
   setup(props) {
     return () =>
-      h('h2', { class: 'text-sm font-semibold uppercase tracking-wide text-slate-400 pt-2' }, props.title)
+      h('h2', { class: 'text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2', style: 'font-family: var(--font-display)' }, props.title)
   },
 })
 
@@ -598,11 +599,11 @@ const KpiCard = defineComponent({
   props: { title: String, value: [String, Number], sub: String, icon: String },
   setup(props) {
     return () =>
-      h('div', { class: 'rounded-xl border bg-white p-4 shadow-sm' }, [
+      h('div', { class: 'rounded-xl border border-line bg-surface p-4 shadow-sm' }, [
         h('div', { class: 'text-2xl' }, props.icon),
-        h('div', { class: 'text-slate-600 text-sm mt-1' }, props.title),
-        h('div', { class: 'text-3xl font-semibold tracking-tight' }, props.value ?? '—'),
-        h('div', { class: 'text-slate-500 text-sm' }, props.sub),
+        h('div', { class: 'text-ink-secondary text-sm mt-1' }, props.title),
+        h('div', { class: 'text-3xl font-semibold tracking-tight font-mono text-ink' }, props.value ?? '—'),
+        h('div', { class: 'text-ink-muted text-sm' }, props.sub),
       ])
   },
 })
@@ -612,9 +613,9 @@ const InfoPill = defineComponent({
   props: { label: String, value: [String, Number] },
   setup(props) {
     return () =>
-      h('div', { class: 'rounded-xl border bg-slate-50 px-3 py-2' }, [
-        h('div', { class: 'text-xs text-slate-500' }, props.label),
-        h('div', { class: 'text-lg font-semibold' }, props.value ?? '—'),
+      h('div', { class: 'rounded-xl border border-line bg-surface-sunken px-3 py-2' }, [
+        h('div', { class: 'text-xs text-ink-muted' }, props.label),
+        h('div', { class: 'text-lg font-semibold font-mono text-ink' }, props.value ?? '—'),
       ])
   },
 })
@@ -626,10 +627,10 @@ const MeterBar = defineComponent({
   setup(props) {
     return () =>
       h('div', { class: 'space-y-2' }, [
-        h('div', { class: 'text-sm text-slate-600' }, props.label),
-        h('div', { class: 'w-full h-3 bg-blue-100 rounded-full overflow-hidden' }, [
+        h('div', { class: 'text-sm text-ink-secondary' }, props.label),
+        h('div', { class: 'w-full h-3 bg-accent-subtle rounded-full overflow-hidden' }, [
           h('div', {
-            class: 'h-full bg-blue-600 rounded-full transition-all',
+            class: 'h-full bg-accent rounded-full transition-all',
             style: { width: `${Math.min(100, Math.max(0, props.pct))}%` },
           }),
         ]),
@@ -669,20 +670,20 @@ const HBarChart = defineComponent({
               {
                 class: [
                   'truncate pr-2',
-                  props.clickable ? 'group-hover:underline group-hover:text-blue-700' : '',
+                  props.clickable ? 'group-hover:underline group-hover:text-accent-emphasis' : '',
                 ],
               },
               props.label,
             ),
             h(
               'span',
-              { class: 'tabular-nums text-slate-500 text-xs shrink-0' },
+              { class: 'tabular-nums text-ink-muted text-xs shrink-0 font-mono' },
               hovered.value ? `${props.value} (${pct.value}%)` : String(props.value ?? 0),
             ),
           ]),
-          h('div', { class: 'w-full h-2.5 bg-slate-100 rounded-full overflow-hidden' }, [
+          h('div', { class: 'w-full h-2.5 bg-surface-sunken rounded-full overflow-hidden' }, [
             h('div', {
-              class: ['h-full rounded-full transition-all', hovered.value ? 'bg-blue-700' : 'bg-blue-600'],
+              class: ['h-full rounded-full transition-all', hovered.value ? 'bg-accent-emphasis' : 'bg-accent'],
               style: { width: `${pct.value}%` },
             }),
           ]),
@@ -704,7 +705,7 @@ const SplitBar = defineComponent({
       h('div', { class: 'space-y-2' }, [
         h(
           'div',
-          { class: 'flex h-6 w-full overflow-hidden rounded-md bg-slate-100' },
+          { class: 'flex h-6 w-full overflow-hidden rounded-md bg-surface-sunken' },
           visible.value.map((s, idx) =>
             h('div', {
               key: idx,
@@ -718,7 +719,7 @@ const SplitBar = defineComponent({
         ),
         h(
           'div',
-          { class: 'flex flex-wrap items-center gap-3 text-xs text-slate-600' },
+          { class: 'flex flex-wrap items-center gap-3 text-xs text-ink-secondary' },
           props.segments.map((s, idx) =>
             h('span', { key: idx, class: 'inline-flex items-center gap-1.5' }, [
               h('span', { class: ['h-2 w-2 rounded-full shrink-0', s.colorClass] }),
@@ -760,16 +761,16 @@ const TrendArea = defineComponent({
           'svg',
           { width, height, viewBox: `0 0 ${width} ${height}`, class: 'w-full', preserveAspectRatio: 'none' },
           [
-            h('polygon', { points: areaPoints, class: 'fill-blue-100' }),
+            h('polygon', { points: areaPoints, class: 'fill-accent-subtle' }),
             h('polyline', {
               points: linePoints,
               fill: 'none',
               stroke: 'currentColor',
               'stroke-width': 2,
-              class: 'text-blue-600',
+              class: 'text-accent',
             }),
             activePt
-              ? h('circle', { cx: activePt[0], cy: activePt[1], r: 4, class: 'fill-blue-600' })
+              ? h('circle', { cx: activePt[0], cy: activePt[1], r: 4, class: 'fill-accent' })
               : null,
             ...pts.map(([x], i) =>
               h('rect', {
@@ -790,13 +791,13 @@ const TrendArea = defineComponent({
             'div',
             {
               class:
-                'absolute top-0 -translate-y-full rounded-lg border bg-white px-2 py-1 text-xs shadow-sm pointer-events-none whitespace-nowrap',
+                'absolute top-0 -translate-y-full rounded-lg border border-line bg-surface px-2 py-1 text-xs shadow-sm pointer-events-none whitespace-nowrap',
               style: { left: `${(activePt[0] / width) * 100}%`, transform: 'translate(-50%, -100%)' },
             },
             [
-              h('div', { class: 'font-medium' }, `${props.series[hoverIdx.value]} mašina`),
+              h('div', { class: 'font-medium text-ink font-mono' }, `${props.series[hoverIdx.value]} mašina`),
               props.labels[hoverIdx.value]
-                ? h('div', { class: 'text-slate-500' }, props.labels[hoverIdx.value])
+                ? h('div', { class: 'text-ink-muted font-mono' }, props.labels[hoverIdx.value])
                 : null,
             ],
           )
@@ -821,11 +822,11 @@ const DataTable = defineComponent({
     return () =>
       h('div', { class: 'overflow-x-auto' }, [
         h('table', { class: 'min-w-full text-left text-sm' }, [
-          h('thead', { class: 'bg-slate-100 text-slate-700' }, [
+          h('thead', { class: 'table-head-row' }, [
             h(
               'tr',
               {},
-              props.cols.map((c) => h('th', { class: 'px-3 py-2 font-medium whitespace-nowrap' }, c)),
+              props.cols.map((c) => h('th', { class: 'px-3 py-2 whitespace-nowrap' }, c)),
             ),
           ]),
           h(
@@ -838,14 +839,14 @@ const DataTable = defineComponent({
                 {
                   key: i,
                   class: [
-                    'border-b hover:bg-slate-50',
+                    'border-b border-line last:border-0 hover:bg-surface-sunken',
                     targetId ? 'cursor-pointer' : '',
                   ],
                   title: targetId ? 'Otvori metapodatke ovog računara' : undefined,
                   onClick: targetId ? () => routerLocal.push(`/ip/${targetId}/meta`) : undefined,
                 },
                 props.cols.map((c) =>
-                  h('td', { class: 'px-3 py-2 whitespace-nowrap' }, formatCell(get(r, c))),
+                  h('td', { class: 'px-3 py-2 whitespace-nowrap text-ink-secondary font-mono' }, formatCell(get(r, c))),
                 ),
               )
             }),

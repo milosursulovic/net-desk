@@ -2,7 +2,7 @@
   <div :class="wrapperClass">
     <div>
       &copy; {{ year }} {{ copyright }}
-      <span v-if="showVersion" class="text-slate-400"> · v{{ version }}</span>
+      <span v-if="showVersion" class="text-ink-muted"> · v{{ version }}</span>
     </div>
   </div>
 </template>

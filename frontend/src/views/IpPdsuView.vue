@@ -1,14 +1,14 @@
 <template>
-  <div class="glass-container w-full max-w-3xl mx-auto">
+  <div class="w-full max-w-3xl mx-auto">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-      <h1 class="text-2xl font-bold text-slate-800 break-words">
+      <h1 class="text-2xl font-bold text-ink wrap-break-word" style="font-family: var(--font-display)">
         Inventar — {{ entry?.computer_name || entry?.ip || 'Nepoznato' }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
         <RouterLink
           v-if="entry?.ip && entry?.site"
           :to="{ path: '/', query: { search: entry.ip, site: entry.site } }"
-          class="text-sm text-blue-600 hover:underline"
+          class="text-sm text-accent hover:underline"
         >
           Na početnoj
         </RouterLink>
@@ -38,60 +38,60 @@
       </div>
     </div>
 
-    <div v-if="entryLoading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="entryError" class="text-red-600">{{ entryError }}</div>
+    <div v-if="entryLoading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="entryError" class="text-bad">{{ entryError }}</div>
 
     <div v-else class="space-y-4">
-      <div v-if="exceptionsOpen && exceptionsTotal" class="rounded-lg border border-blue-200 bg-blue-50/40 p-3 space-y-2">
-        <div class="text-sm font-medium text-slate-800">
+      <div v-if="exceptionsOpen && exceptionsTotal" class="rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
+        <div class="text-sm font-medium text-ink">
           Izuzeci od crne liste za ovaj računar
         </div>
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-ink-muted">
           Ove stavke su globalno na crnoj listi, ali su namerno označene kao "nije neželjeno" na ovom računaru.
         </p>
         <div class="space-y-1">
           <div
             v-for="item in exceptions.software"
             :key="`software-${item.id}`"
-            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+            class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
             <span>Softver: {{ item.displayName }}</span>
-            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('software', item.id)">
+            <button type="button" class="text-xs text-bad hover:underline" @click="removeException('software', item.id)">
               Ukloni izuzetak
             </button>
           </div>
           <div
             v-for="item in exceptions.services"
             :key="`services-${item.id}`"
-            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+            class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
             <span>Servis: {{ item.displayName || item.name }}</span>
-            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('services', item.id)">
+            <button type="button" class="text-xs text-bad hover:underline" @click="removeException('services', item.id)">
               Ukloni izuzetak
             </button>
           </div>
           <div
             v-for="item in exceptions.drivers"
             :key="`drivers-${item.id}`"
-            class="flex items-center justify-between gap-2 text-sm bg-white rounded px-2 py-1"
+            class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
             <span>Drajver: {{ item.deviceName }}</span>
-            <button type="button" class="text-xs text-red-600 hover:underline" @click="removeException('drivers', item.id)">
+            <button type="button" class="text-xs text-bad hover:underline" @click="removeException('drivers', item.id)">
               Ukloni izuzetak
             </button>
           </div>
         </div>
       </div>
 
-      <div class="flex flex-nowrap gap-2 overflow-x-auto border-b pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
+      <div class="flex flex-nowrap gap-2 overflow-x-auto border-b border-line pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
           type="button"
           @click="selectTab('software')"
           class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'software'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent text-white'
+              : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
           Softver
@@ -104,8 +104,8 @@
           class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'drivers'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent text-white'
+              : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
           Drajveri
@@ -118,8 +118,8 @@
           class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'services'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent text-white'
+              : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
           Servisi
@@ -132,8 +132,8 @@
           class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'updates'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent text-white'
+              : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
           Ažuriranja
@@ -146,8 +146,8 @@
           class="shrink-0 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="
             tab === 'printers'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent text-white'
+              : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
           Štampači
@@ -170,29 +170,29 @@
               ? 'Pretraži KB, opis ili korisnika...'
               : 'Pretraži štampač, drajver ili port...'
           "
-          class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+          class="app-input w-full pr-10"
         />
 
         <button
           v-if="search"
           type="button"
           @click="search = ''"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
           title="Obriši pretragu"
         >
-          ✕
+          <NavIcon name="x" />
         </button>
       </div>
 
       <label
         v-if="tab === 'software' || tab === 'drivers' || tab === 'services'"
-        class="inline-flex items-center gap-1.5 text-sm text-slate-600"
+        class="inline-flex items-center gap-1.5 text-sm text-ink-secondary"
       >
         <input type="checkbox" :checked="onlyFlagged === 'true'" @change="onlyFlagged = onlyFlagged === 'true' ? '' : 'true'" />
         Samo neželjeni
       </label>
 
-      <div v-if="search" class="text-xs text-slate-500">
+      <div v-if="search" class="text-xs text-ink-muted">
         Pronađeno:
         <template v-if="tab === 'software'">
           {{ filteredSoftware.length }} od {{ software.length }}
@@ -213,18 +213,18 @@
         <template v-else> {{ filteredPrinters.length }} od {{ printers.length }} </template>
       </div>
 
-      <div v-if="tabLoading[tab]" class="text-slate-600">Učitavanje inventara…</div>
+      <div v-if="tabLoading[tab]" class="text-ink-secondary">Učitavanje inventara…</div>
 
       <div
         v-else-if="tabError[tab]"
-        class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+        class="rounded-lg border border-bad/40 bg-bad-subtle px-4 py-3 text-bad"
       >
         {{ tabError[tab] }}
       </div>
 
       <div v-else>
         <div v-if="tab === 'software'">
-          <div v-if="filteredSoftware.length === 0" class="text-slate-500">
+          <div v-if="filteredSoftware.length === 0" class="text-ink-muted">
             Nema podataka o instaliranom softveru.
           </div>
 
@@ -232,42 +232,42 @@
             <div
               v-for="item in filteredSoftware"
               :key="item.id"
-              class="rounded-lg border bg-white p-3"
-              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+              class="rounded-lg border border-line bg-surface p-3"
+              :class="item.is_flagged ? 'border-bad/30 bg-bad-subtle' : ''"
             >
               <div class="flex items-center gap-2">
-                <div class="font-medium text-slate-800">
+                <div class="font-medium text-ink">
                   {{ item.display_name || 'Nepoznat program' }}
                 </div>
                 <span
                   v-if="item.is_flagged"
-                  class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                  class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                 >
-                  ⚠ Neželjen
+                  <NavIcon name="alert-triangle" /> Neželjen
                 </span>
                 <button
                   v-if="item.is_flagged"
                   type="button"
                   @click="addException('software', item.matchedFlaggedId)"
-                  class="text-xs text-blue-600 hover:underline"
+                  class="text-xs text-accent hover:underline"
                 >
                   Nije neželjen na ovom računaru
                 </button>
               </div>
 
-              <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.display_version || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">Verzija: {{ item.display_version || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Izdavač: {{ item.publisher || '—' }}</div>
+              <div class="text-sm text-ink-secondary">Izdavač: {{ item.publisher || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Instalirano: {{ fmtDate(item.install_date) }}</div>
+              <div class="text-sm text-ink-secondary">Instalirano: {{ fmtDate(item.install_date) }}</div>
 
-              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'drivers'">
-          <div v-if="filteredDrivers.length === 0" class="text-slate-500">
+          <div v-if="filteredDrivers.length === 0" class="text-ink-muted">
             Nema podataka o drajverima.
           </div>
 
@@ -275,42 +275,42 @@
             <div
               v-for="item in filteredDrivers"
               :key="item.id"
-              class="rounded-lg border bg-white p-3"
-              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+              class="rounded-lg border border-line bg-surface p-3"
+              :class="item.is_flagged ? 'border-bad/30 bg-bad-subtle' : ''"
             >
               <div class="flex items-center gap-2">
-                <div class="font-medium text-slate-800">{{ item.device_name || 'Nepoznat uređaj' }}</div>
+                <div class="font-medium text-ink">{{ item.device_name || 'Nepoznat uređaj' }}</div>
                 <span
                   v-if="item.is_flagged"
-                  class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                  class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                 >
-                  ⚠ Neželjen
+                  <NavIcon name="alert-triangle" /> Neželjen
                 </span>
                 <button
                   v-if="item.is_flagged"
                   type="button"
                   @click="addException('drivers', item.matchedFlaggedId)"
-                  class="text-xs text-blue-600 hover:underline"
+                  class="text-xs text-accent hover:underline"
                 >
                   Nije neželjen na ovom računaru
                 </button>
               </div>
 
-              <div class="mt-1 text-sm text-slate-600">Verzija: {{ item.driver_version || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">Verzija: {{ item.driver_version || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Datum drajvera: {{ fmtDate(item.driver_date) }}</div>
+              <div class="text-sm text-ink-secondary">Datum drajvera: {{ fmtDate(item.driver_date) }}</div>
 
-              <div class="text-sm text-slate-600">Proizvođač: {{ item.manufacturer || '—' }}</div>
+              <div class="text-sm text-ink-secondary">Proizvođač: {{ item.manufacturer || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Provider: {{ item.driver_provider_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">Provider: {{ item.driver_provider_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'services'">
-          <div v-if="filteredServices.length === 0" class="text-slate-500">
+          <div v-if="filteredServices.length === 0" class="text-ink-muted">
             Nema podataka o servisima.
           </div>
 
@@ -318,92 +318,92 @@
             <div
               v-for="item in filteredServices"
               :key="item.id"
-              class="rounded-lg border bg-white p-3"
-              :class="item.is_flagged ? 'border-red-200 bg-red-50/40' : ''"
+              class="rounded-lg border border-line bg-surface p-3"
+              :class="item.is_flagged ? 'border-bad/30 bg-bad-subtle' : ''"
             >
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    <div class="font-medium text-slate-800">
+                    <div class="font-medium text-ink">
                       {{ item.display_name || item.name || 'Nepoznat servis' }}
                     </div>
                     <span
                       v-if="item.is_flagged"
-                      class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700"
+                      class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                     >
-                      ⚠ Neželjen
+                      <NavIcon name="alert-triangle" /> Neželjen
                     </span>
                     <button
                       v-if="item.is_flagged"
                       type="button"
                       @click="addException('services', item.matchedFlaggedId)"
-                      class="text-xs text-blue-600 hover:underline"
+                      class="text-xs text-accent hover:underline"
                     >
                       Nije neželjen na ovom računaru
                     </button>
                   </div>
 
-                  <div class="text-xs text-slate-500">{{ item.name || '—' }}</div>
+                  <div class="text-xs text-ink-muted">{{ item.name || '—' }}</div>
                 </div>
 
                 <span
                   class="rounded-full border px-2 py-0.5 text-xs"
                   :class="
                     item.state === 'Running'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 bg-slate-50 text-slate-600'
+                      ? 'border-good/40 bg-good-subtle text-good'
+                      : 'border-line bg-surface-sunken text-ink-secondary'
                   "
                 >
                   {{ item.state || 'Nepoznato' }}
                 </span>
               </div>
 
-              <div class="mt-2 text-sm text-slate-600">Start mode: {{ item.start_mode || '—' }}</div>
+              <div class="mt-2 text-sm text-ink-secondary">Start mode: {{ item.start_mode || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Korisnik: {{ item.start_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">Korisnik: {{ item.start_name || '—' }}</div>
 
-              <div class="mt-1 break-all text-xs text-slate-500">{{ item.path_name || '—' }}</div>
+              <div class="mt-1 break-all text-xs text-ink-muted font-mono">{{ item.path_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'updates'">
-          <div v-if="filteredUpdates.length === 0" class="text-slate-500">
+          <div v-if="filteredUpdates.length === 0" class="text-ink-muted">
             Nema podataka o Windows ažuriranjima.
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="item in filteredUpdates" :key="item.id" class="rounded-lg border bg-white p-3">
+            <div v-for="item in filteredUpdates" :key="item.id" class="rounded-lg border border-line bg-surface p-3">
               <div class="flex items-start justify-between gap-3">
-                <div class="font-medium text-slate-800">{{ item.hotfix_id || 'Nepoznat KB' }}</div>
+                <div class="font-medium text-ink">{{ item.hotfix_id || 'Nepoznat KB' }}</div>
 
-                <div class="text-xs text-slate-500">{{ fmtDate(item.installed_on) }}</div>
+                <div class="text-xs text-ink-muted">{{ fmtDate(item.installed_on) }}</div>
               </div>
 
-              <div class="mt-1 text-sm text-slate-600">{{ item.description || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">{{ item.description || '—' }}</div>
 
-              <div class="mt-1 text-sm text-slate-600">Instalirao: {{ item.installed_by || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">Instalirao: {{ item.installed_by || '—' }}</div>
 
-              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'printers'">
-          <div v-if="filteredPrinters.length === 0" class="text-slate-500">
+          <div v-if="filteredPrinters.length === 0" class="text-ink-muted">
             Nema podataka o štampačima.
           </div>
 
           <div v-else class="space-y-2">
-            <div v-for="item in filteredPrinters" :key="item.id" class="rounded-lg border bg-white p-3">
+            <div v-for="item in filteredPrinters" :key="item.id" class="rounded-lg border border-line bg-surface p-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-2">
-                  <div class="font-medium text-slate-800">{{ item.name || 'Nepoznat štampač' }}</div>
+                  <div class="font-medium text-ink">{{ item.name || 'Nepoznat štampač' }}</div>
                   <span
                     v-if="item.is_default"
-                    class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                    class="rounded-full border border-info/40 bg-info-subtle px-2 py-0.5 text-xs text-info"
                   >
                     Podrazumevani
                   </span>
@@ -413,19 +413,19 @@
                   class="rounded-full border px-2 py-0.5 text-xs"
                   :class="
                     item.status === 'OK' || item.status === 'Idle' || item.status === 'Unknown'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-red-200 bg-red-50 text-red-700'
+                      ? 'border-good/40 bg-good-subtle text-good'
+                      : 'border-bad/40 bg-bad-subtle text-bad'
                   "
                 >
                   {{ item.status || 'Nepoznato' }}
                 </span>
               </div>
 
-              <div class="mt-1 text-sm text-slate-600">Drajver: {{ item.driver_name || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">Drajver: {{ item.driver_name || '—' }}</div>
 
-              <div class="text-sm text-slate-600">Port: {{ item.port_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">Port: {{ item.port_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-slate-400">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
@@ -458,6 +458,7 @@ import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -513,7 +514,7 @@ async function exportPdf() {
     )
   } catch (err) {
     console.error('Greška pri izvozu PDF-a:', err)
-    showToast('Greška pri izvozu PDF-a.', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri izvozu PDF-a.', { kind: 'error', duration: 3000 })
   } finally {
     exportingPdf.value = false
   }
@@ -537,7 +538,7 @@ async function clearPdsu() {
     showToast('PDSU podaci obrisani.')
   } catch (err) {
     console.error('Greška pri brisanju PDSU podataka:', err)
-    showToast('Greška pri brisanju PDSU podataka.', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri brisanju PDSU podataka.', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -561,7 +562,7 @@ async function addException(kind, flaggedId) {
     await loadExceptions()
   } catch (err) {
     console.error('Greška pri dodavanju izuzetka:', err)
-    showToast(err?.message || 'Greška pri dodavanju izuzetka', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri dodavanju izuzetka', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -591,7 +592,7 @@ async function removeException(kind, flaggedId) {
     if (tab.value === kind) await loadTabData(kind)
   } catch (err) {
     console.error('Greška pri uklanjanju izuzetka:', err)
-    showToast(err?.message || 'Greška pri uklanjanju izuzetka', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri uklanjanju izuzetka', { kind: 'error', duration: 3000 })
   }
 }
 

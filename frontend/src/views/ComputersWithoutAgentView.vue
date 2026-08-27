@@ -1,7 +1,7 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-slate-800">Računari bez agenta</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Računari bez agenta</h1>
       <div class="flex flex-wrap items-center gap-2">
         <AppButton
           variant="secondary"
@@ -22,83 +22,65 @@
           class="app-input w-full pr-10"
           aria-label="Pretraga računara bez agenta" />
         <button v-if="searchInput" @click="clearSearch"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
           aria-label="Obriši pretragu">
-          ✖️
+          <NavIcon name="x" />
         </button>
       </div>
 
-      <!-- Po strani i paginacija -->
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="text-sm text-slate-600" for="pp">Po strani</label>
-        <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-        </select>
+      <PaginationBar
+        :page="page"
+        :limit="limit"
+        :total="total"
+        :total-pages="totalPages"
+        :loading="loading"
+        @prev="prevPage"
+        @next="nextPage({ total })"
+        @update:limit="(v) => (limit = v)"
+      />
 
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <button @click="prevPage" :disabled="page === 1 || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
-        </button>
-        <span class="text-sm text-slate-600">
-          Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
-        </span>
-        <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
-        </button>
-      </div>
-
-      <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} računara</p>
+      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} računara</p>
     </div>
 
-    <div class="min-h-50 overflow-x-auto">
-      <div v-if="loading" class="space-y-2">
-        <div v-for="n in 6" :key="n" class="animate-pulse h-12 bg-white border border-slate-200 rounded-lg"></div>
+    <div class="table-shell">
+      <div v-if="loading" class="space-y-2 p-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse h-8 bg-surface-sunken rounded-lg"></div>
       </div>
 
-      <div v-else-if="!items.length"
-        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
         Svi računari imaju aktivnog agenta.
       </div>
 
-      <table v-else class="w-full text-sm border-collapse">
-        <thead>
-          <tr class="text-left text-slate-500 border-b border-slate-200">
-            <th class="py-2 pr-3">IP</th>
-            <th class="py-2 pr-3">Naziv računara</th>
-            <th class="py-2 pr-3">Odeljenje</th>
-            <th class="py-2 pr-3">OS</th>
-            <th class="py-2 pr-3">Online</th>
-            <th class="py-2 pr-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="e in items" :key="e.id" class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="py-2 pr-3 font-mono">{{ e.ip }}</td>
-            <td class="py-2 pr-3">{{ e.computerName || '—' }}</td>
-            <td class="py-2 pr-3">{{ e.department || '—' }}</td>
-            <td class="py-2 pr-3">{{ e.os || '—' }}</td>
-            <td class="py-2 pr-3">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
-                :class="e.isOnline
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-500 border-slate-200'">
-                {{ e.isOnline ? 'Online' : 'Offline' }}
-              </span>
-            </td>
-            <td class="py-2 pr-3 text-right">
-              <RouterLink :to="`/ip/${e.id}/meta`" class="text-blue-600 hover:underline">
-                Otvori
-              </RouterLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="table-head-row">
+              <th class="py-2 px-3 text-left">IP</th>
+              <th class="py-2 px-3 text-left">Naziv računara</th>
+              <th class="py-2 px-3 text-left">Odeljenje</th>
+              <th class="py-2 px-3 text-left">OS</th>
+              <th class="py-2 px-3 text-left">Online</th>
+              <th class="py-2 px-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="e in items" :key="e.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+              <td class="py-2 px-3 font-mono text-ink">{{ e.ip }}</td>
+              <td class="py-2 px-3 text-ink-secondary">{{ e.computerName || '—' }}</td>
+              <td class="py-2 px-3 text-ink-secondary">{{ e.department || '—' }}</td>
+              <td class="py-2 px-3 text-ink-secondary">{{ e.os || '—' }}</td>
+              <td class="py-2 px-3">
+                <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? 'Online' : 'Offline'" />
+              </td>
+              <td class="py-2 px-3 text-right">
+                <RouterLink :to="`/ip/${e.id}/meta`" class="text-accent hover:underline">
+                  Otvori
+                </RouterLink>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -112,6 +94,9 @@ import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import AppButton from '@/components/AppButton.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const { getSignal, abort } = useAbortableFetch()
 const site = useCurrentSite()

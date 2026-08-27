@@ -1,9 +1,9 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Preporuke za pakovanje</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Preporuke za pakovanje</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Računari na Windows 10/11 sa slabim procesorom (Celeron/Pentium/Athlon i sl.), manje od 8GB RAM-a, običnim HDD-om umesto SSD-a, i/ili Lexar SSD-om (poznat red flag).
         </p>
       </div>
@@ -19,7 +19,7 @@
     />
 
     <div class="flex flex-wrap items-center gap-4">
-      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
         Procesor:
         <select v-model="cpuTierFilter" class="app-input w-auto py-1 text-sm">
           <option value="">Svi</option>
@@ -29,93 +29,86 @@
         </select>
       </label>
 
-      <span class="hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+      <span class="hidden h-5 w-px bg-line sm:inline-block"></span>
 
-      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
         <input type="checkbox" v-model="reasonFilters" value="weak_cpu" />
         Slab procesor
       </label>
-      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
         <input type="checkbox" v-model="reasonFilters" value="low_ram" />
         Malo RAM-a
       </label>
-      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
         <input type="checkbox" v-model="reasonFilters" value="has_hdd" />
         Obični HDD
       </label>
-      <label class="inline-flex items-center gap-1.5 text-sm text-slate-600">
+      <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
         <input type="checkbox" v-model="reasonFilters" value="lexar_ssd" />
         Lexar SSD
       </label>
       <button v-if="reasonFilters.length || cpuTierFilter" type="button"
         @click="reasonFilters = []; cpuTierFilter = ''"
-        class="text-xs text-blue-600 hover:underline">
+        class="text-xs text-accent hover:underline">
         Poništi filter
       </button>
     </div>
 
-    <p v-if="!loading" class="text-sm text-slate-500">Preporučeno: {{ filteredItems.length }}</p>
+    <p v-if="!loading" class="text-sm text-ink-muted">Preporučeno: {{ filteredItems.length }}</p>
 
     <div v-if="loading" class="space-y-2">
-      <div v-for="n in 6" :key="n" class="animate-pulse h-12 bg-white border border-slate-200 rounded-lg"></div>
+      <div v-for="n in 6" :key="n" class="animate-pulse h-12 bg-surface-sunken border border-line rounded-lg"></div>
     </div>
-    <div v-else-if="loadError" class="text-red-600">{{ loadError }}</div>
+    <div v-else-if="loadError" class="text-bad">{{ loadError }}</div>
     <div v-else-if="!filteredItems.length"
-      class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
       Nema preporuka za pakovanje za zadatu pretragu.
     </div>
 
-    <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+    <div v-else class="table-shell overflow-x-auto">
       <table class="w-full text-sm border-collapse">
         <thead>
-          <tr class="text-left text-slate-500 border-b border-slate-200 bg-slate-50">
-            <th class="py-2 px-4">IP</th>
-            <th class="py-2 px-4">Naziv računara</th>
-            <th class="py-2 px-4">Odeljenje</th>
-            <th class="py-2 px-4">OS</th>
-            <th class="py-2 px-4">Procesor</th>
-            <th class="py-2 px-4">RAM</th>
-            <th class="py-2 px-4">Disk</th>
-            <th class="py-2 px-4">Razlog</th>
+          <tr class="table-head-row">
+            <th class="py-2 px-4 text-left">IP</th>
+            <th class="py-2 px-4 text-left">Naziv računara</th>
+            <th class="py-2 px-4 text-left">Odeljenje</th>
+            <th class="py-2 px-4 text-left">OS</th>
+            <th class="py-2 px-4 text-left">Procesor</th>
+            <th class="py-2 px-4 text-left">RAM</th>
+            <th class="py-2 px-4 text-left">Disk</th>
+            <th class="py-2 px-4 text-left">Razlog</th>
             <th class="py-2 px-4"></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in filteredItems" :key="e.id" class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="py-2 px-4 font-mono">{{ e.ip }}</td>
-            <td class="py-2 px-4">{{ e.computerName || '—' }}</td>
-            <td class="py-2 px-4">{{ e.department || '—' }}</td>
-            <td class="py-2 px-4">{{ e.os || '—' }}</td>
-            <td class="py-2 px-4">{{ e.cpuName || '—' }}</td>
-            <td class="py-2 px-4">{{ e.ramGb != null ? `${e.ramGb} GB` : '—' }}</td>
-            <td class="py-2 px-4">{{ diskLabel(e) }}</td>
+          <tr v-for="e in filteredItems" :key="e.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+            <td class="py-2 px-4 font-mono text-ink">{{ e.ip }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ e.computerName || '—' }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ e.department || '—' }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ e.os || '—' }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ e.cpuName || '—' }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ e.ramGb != null ? `${e.ramGb} GB` : '—' }}</td>
+            <td class="py-2 px-4 text-ink-secondary">{{ diskLabel(e) }}</td>
             <td class="py-2 px-4">
               <div class="flex flex-wrap gap-1">
-                <span v-if="e.reasons.includes('weak_cpu')"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
-                  Slab procesor
-                </span>
-                <span v-if="e.reasons.includes('low_ram')"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
-                  Malo RAM-a
-                </span>
-                <span v-if="e.reasons.includes('has_hdd')"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">
-                  Obični HDD
-                </span>
-                <span v-if="e.reasons.includes('lexar_ssd')"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-red-50 text-red-700 border-red-200"
-                  title="Lexar SSD - poznat red flag (pouzdanost/otkazivanje)">
-                  Lexar SSD
-                </span>
+                <StatusPill v-if="e.reasons.includes('weak_cpu')" status="warn" label="Slab procesor" :dot="false" />
+                <StatusPill v-if="e.reasons.includes('low_ram')" status="warn" label="Malo RAM-a" :dot="false" />
+                <StatusPill v-if="e.reasons.includes('has_hdd')" status="warn" label="Obični HDD" :dot="false" />
+                <StatusPill
+                  v-if="e.reasons.includes('lexar_ssd')"
+                  status="bad"
+                  label="Lexar SSD"
+                  :dot="false"
+                  title="Lexar SSD - poznat red flag (pouzdanost/otkazivanje)"
+                />
               </div>
             </td>
             <td class="py-2 px-4 text-right whitespace-nowrap space-x-3">
-              <RouterLink :to="`/ip/${e.id}/meta`" class="text-blue-600 hover:underline">
+              <RouterLink :to="`/ip/${e.id}/meta`" class="text-accent hover:underline">
                 Otvori
               </RouterLink>
-              <span v-if="e.pendingRepack" class="text-slate-400">Već označeno</span>
-              <button v-else type="button" class="text-emerald-700 hover:underline" @click="markForRepack(e)">
+              <span v-if="e.pendingRepack" class="text-ink-muted">Već označeno</span>
+              <button v-else type="button" class="text-good hover:underline" @click="markForRepack(e)">
                 Označi za pakovanje
               </button>
             </td>
@@ -137,6 +130,7 @@ import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import StatusPill from '@/components/StatusPill.vue'
 
 const site = useCurrentSite()
 const { toast, showToast } = useToast()
@@ -209,7 +203,7 @@ async function markForRepack(entry) {
     showToast('Računar označen za pakovanje')
   } catch (err) {
     console.error('Neuspešno označavanje za pakovanje', err)
-    showToast(err?.message || 'Greška pri označavanju za pakovanje', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri označavanju za pakovanje', { kind: 'error', duration: 3000 })
   }
 }
 

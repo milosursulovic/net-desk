@@ -1,57 +1,57 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Deljeni fajlovi</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Deljeni fajlovi</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Fajlovi ovde su javno dostupni bez prijave (agenti ih preuzimaju preko HTTPS-a) - npr. rootCA.pem, UltraVNC paketi.
         </p>
       </div>
       <AppButton variant="neutral" to="/agents">Nazad na agente</AppButton>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
-      <label class="text-sm font-medium text-slate-700">Otpremi fajl</label>
+    <div class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
+      <label class="text-sm font-medium text-ink">Otpremi fajl</label>
       <div class="flex flex-col sm:flex-row gap-2">
         <input ref="fileInputRef" type="file" @change="onFileChange" class="app-input w-full" />
         <AppButton :disabled="!selectedFile || uploading" @click="upload">
           {{ uploading ? 'Otpremam…' : 'Otpremi' }}
         </AppButton>
       </div>
-      <p v-if="selectedFile" class="text-xs text-slate-500">
+      <p v-if="selectedFile" class="text-xs text-ink-muted">
         Ako fajl sa istim imenom već postoji, biće prepisan.
       </p>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="!items.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="!items.length" class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
       Folder je prazan.
     </div>
 
-    <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+    <div v-else class="table-shell overflow-x-auto">
       <table class="w-full min-w-max text-sm">
-        <thead class="bg-slate-50 text-slate-600 text-left">
+        <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-2 font-medium">Naziv</th>
-            <th class="px-4 py-2 font-medium">Veličina</th>
-            <th class="px-4 py-2 font-medium">Izmenjeno</th>
-            <th class="px-4 py-2 font-medium"></th>
+            <th class="px-4 py-2 text-left">Naziv</th>
+            <th class="px-4 py-2 text-left">Veličina</th>
+            <th class="px-4 py-2 text-left">Izmenjeno</th>
+            <th class="px-4 py-2"></th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="item in items" :key="item.name">
+        <tbody>
+          <tr v-for="item in items" :key="item.name" class="border-b border-line last:border-0 hover:bg-surface-sunken">
             <td class="px-4 py-2">
-              <a :href="publicUrl(item.name)" target="_blank" rel="noopener" class="text-blue-600 hover:underline whitespace-nowrap">
+              <a :href="publicUrl(item.name)" target="_blank" rel="noopener" class="text-accent hover:underline whitespace-nowrap">
                 {{ item.name }}
               </a>
             </td>
-            <td class="px-4 py-2 whitespace-nowrap">{{ formatBytes(item.size) }}</td>
-            <td class="px-4 py-2 whitespace-nowrap">{{ fmtDate(item.modifiedAt) }}</td>
+            <td class="px-4 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ formatBytes(item.size) }}</td>
+            <td class="px-4 py-2 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(item.modifiedAt) }}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap space-x-3">
-              <button type="button" class="text-blue-600 hover:underline text-xs" @click="copyLink(item.name)">
+              <button type="button" class="text-accent hover:underline text-xs" @click="copyLink(item.name)">
                 Kopiraj link
               </button>
-              <button type="button" class="text-red-600 hover:underline text-xs" @click="remove(item.name)">
+              <button type="button" class="text-bad hover:underline text-xs" @click="remove(item.name)">
                 Obriši
               </button>
             </td>
@@ -115,7 +115,7 @@ async function copyLink(name) {
     showToast('Link kopiran')
   } catch (err) {
     console.error('Neuspešno kopiranje linka', err)
-    showToast('Greška pri kopiranju linka', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri kopiranju linka', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -128,7 +128,7 @@ async function fetchData() {
     items.value = data.items || []
   } catch (err) {
     console.error('Neuspešno učitavanje liste fajlova', err)
-    showToast(err?.message || 'Greška pri učitavanju liste fajlova', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri učitavanju liste fajlova', { kind: 'error', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -154,7 +154,7 @@ async function upload() {
     showToast('Fajl otpremljen')
   } catch (err) {
     console.error('Neuspešno otpremanje fajla', err)
-    showToast(err?.message || 'Greška pri otpremanju fajla', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri otpremanju fajla', { kind: 'error', duration: 3000 })
   } finally {
     uploading.value = false
   }
@@ -173,7 +173,7 @@ async function remove(name) {
     showToast('Fajl obrisan')
   } catch (err) {
     console.error('Neuspešno brisanje fajla', err)
-    showToast(err?.message || 'Greška pri brisanju fajla', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri brisanju fajla', { kind: 'error', duration: 3000 })
   }
 }
 

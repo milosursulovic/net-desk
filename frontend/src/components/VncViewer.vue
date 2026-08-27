@@ -1,9 +1,9 @@
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
+  <div class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
     <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2 font-medium">
+      <div class="flex items-center gap-2 font-medium text-ink">
         Ekran
-        <span class="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-700">
+        <span class="rounded-full border border-warn/40 bg-warn-subtle px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warn">
           BETA
         </span>
       </div>
@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <p class="text-sm text-slate-500">
+    <p class="text-sm text-ink-muted">
       Otvara se u posebnom prozoru, bez obaveštenja korisniku za tim
       računarom. "Samo pregled" ne šalje miš/tastaturu ka mašini. Zahteva
       UltraVNC instaliran i pokrenut na ciljnoj mašini.

@@ -4,8 +4,8 @@ export function useToast() {
   const toast = ref(null)
   let timer = null
 
-  const showToast = (msg, { prefix = '✅ ', duration = 2000 } = {}) => {
-    toast.value = `${prefix}${msg}`
+  const showToast = (text, { kind = 'success', duration = 2000 } = {}) => {
+    toast.value = { text, kind }
     clearTimeout(timer)
     timer = setTimeout(() => {
       toast.value = null
@@ -17,7 +17,7 @@ export function useToast() {
       await navigator.clipboard.writeText(text)
       showToast(label)
     } catch {
-      showToast('Neuspešno kopiranje', { prefix: '❌ ' })
+      showToast('Neuspešno kopiranje', { kind: 'error' })
     }
   }
 

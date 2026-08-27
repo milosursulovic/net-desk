@@ -1,26 +1,26 @@
 <template>
-  <div class="glass-container">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-      <h1 class="text-2xl font-bold text-slate-800">Korisnici</h1>
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Korisnici</h1>
       <AppButton variant="success" @click="openAddModal">Dodaj korisnika</AppButton>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="error" class="text-bad">{{ error }}</div>
 
-    <div v-else class="overflow-x-auto rounded-xl border bg-white shadow-sm">
+    <div v-else class="table-shell overflow-x-auto">
       <table class="min-w-full text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-3">Korisničko ime</th>
-            <th class="px-4 py-3">Rola</th>
-            <th class="px-4 py-3">Kreiran</th>
+            <th class="px-4 py-3 text-left">Korisničko ime</th>
+            <th class="px-4 py-3 text-left">Rola</th>
+            <th class="px-4 py-3 text-left">Kreiran</th>
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
-        <tbody class="divide-y">
-          <tr v-for="u in users" :key="u.id">
-            <td class="px-4 py-3 font-medium">{{ u.username }}</td>
+        <tbody>
+          <tr v-for="u in users" :key="u.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+            <td class="px-4 py-3 font-medium text-ink">{{ u.username }}</td>
             <td class="px-4 py-3">
               <select
                 class="app-input w-auto py-1.5 text-sm"
@@ -32,11 +32,11 @@
                 <option value="viewer">viewer</option>
               </select>
             </td>
-            <td class="px-4 py-3 text-slate-500">{{ fmtDate(u.createdAt) }}</td>
+            <td class="px-4 py-3 font-mono text-ink-muted">{{ fmtDate(u.createdAt) }}</td>
             <td class="px-4 py-3 text-right">
               <button
                 v-if="u.id !== currentUser?.userId"
-                class="text-red-600 hover:underline"
+                class="text-bad hover:underline"
                 @click="confirmDelete(u)"
               >
                 Obriši
@@ -44,7 +44,7 @@
             </td>
           </tr>
           <tr v-if="!users.length">
-            <td colspan="4" class="px-4 py-8 text-center text-slate-500">Nema korisnika.</td>
+            <td colspan="4" class="px-4 py-8 text-center text-ink-muted">Nema korisnika.</td>
           </tr>
         </tbody>
       </table>
@@ -63,15 +63,15 @@
     <SlideOverPanel :open="showForm" title="Dodaj korisnika" @close="closeForm">
       <div class="space-y-4">
         <div>
-          <label class="block text-xs text-slate-500 mb-1">Korisničko ime</label>
+          <label class="block text-xs text-ink-muted mb-1">Korisničko ime</label>
           <input v-model.trim="form.username" class="app-input w-full text-sm" placeholder="npr. pera" />
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">Lozinka</label>
+          <label class="block text-xs text-ink-muted mb-1">Lozinka</label>
           <input v-model="form.password" type="password" class="app-input w-full text-sm" placeholder="Minimum 8 karaktera" />
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">Rola</label>
+          <label class="block text-xs text-ink-muted mb-1">Rola</label>
           <select v-model="form.role" class="app-input w-full text-sm">
             <option value="viewer">viewer — samo čitanje</option>
             <option value="operator">operator — akcije nad agentima/IP-jevima</option>
@@ -79,7 +79,7 @@
           </select>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3 border-t">
+        <div class="flex justify-end gap-2 pt-3 border-t border-line">
           <AppButton type="button" variant="neutral" @click="closeForm">Odustani</AppButton>
           <AppButton type="button" variant="success" @click="createUser">Sačuvaj</AppButton>
         </div>
@@ -140,11 +140,11 @@ function closeForm() {
 
 async function createUser() {
   if (!form.value.username || form.value.username.length < 3) {
-    showToast('Korisničko ime mora imati bar 3 karaktera.', { prefix: '❌ ', duration: 3000 })
+    showToast('Korisničko ime mora imati bar 3 karaktera.', { kind: 'error', duration: 3000 })
     return
   }
   if (!form.value.password || form.value.password.length < 8) {
-    showToast('Lozinka mora imati bar 8 karaktera.', { prefix: '❌ ', duration: 3000 })
+    showToast('Lozinka mora imati bar 8 karaktera.', { kind: 'error', duration: 3000 })
     return
   }
 
@@ -161,7 +161,7 @@ async function createUser() {
     await fetchData()
   } catch (e) {
     console.error('Greška pri kreiranju korisnika:', e)
-    showToast(e.message || 'Greška pri kreiranju korisnika.', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri kreiranju korisnika.', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -178,7 +178,7 @@ async function changeRole(user, role) {
     await fetchData()
   } catch (e) {
     console.error('Greška pri izmeni role:', e)
-    showToast(e.message || 'Greška pri izmeni role.', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri izmeni role.', { kind: 'error', duration: 3000 })
     await fetchData()
   }
 }
@@ -195,7 +195,7 @@ async function confirmDelete(user) {
     await fetchData()
   } catch (e) {
     console.error('Greška pri brisanju korisnika:', e)
-    showToast(e.message || 'Greška pri brisanju korisnika.', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri brisanju korisnika.', { kind: 'error', duration: 3000 })
   }
 }
 

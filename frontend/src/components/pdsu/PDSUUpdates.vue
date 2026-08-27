@@ -128,22 +128,22 @@ function ageBadgeClass(value) {
   const days = daysSince(value)
 
   if (days === null) {
-    return 'bg-slate-500 text-white'
+    return 'bg-ink-muted text-white'
   }
 
   if (days <= 30) {
-    return 'bg-green-600 text-white'
+    return 'bg-good text-white'
   }
 
   if (days <= 60) {
-    return 'bg-blue-600 text-white'
+    return 'bg-accent text-white'
   }
 
   if (days <= 90) {
-    return 'bg-amber-500 text-amber-950'
+    return 'bg-warn text-white'
   }
 
-  return 'bg-red-600 text-white'
+  return 'bg-bad text-white'
 }
 
 function ageLabel(value) {
@@ -221,13 +221,13 @@ function freshnessClass(value) {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Ukupno update zapisa</div>
+          <div class="text-xs text-ink-muted mb-1">Ukupno update zapisa</div>
 
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalUpdates) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">
+          <div class="text-xs text-ink-muted mt-2">
             Na
             {{ formatNumber(stats.computersWithUpdates) }}
             računara
@@ -237,55 +237,55 @@ function freshnessClass(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Jedinstveni hotfix paketi</div>
+          <div class="text-xs text-ink-muted mb-1">Jedinstveni hotfix paketi</div>
 
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniqueHotfixes) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Različitih KB oznaka</div>
+          <div class="text-xs text-ink-muted mt-2">Različitih KB oznaka</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Poslednjih 30 dana</div>
+          <div class="text-xs text-ink-muted mb-1">Poslednjih 30 dana</div>
 
-          <div class="text-2xl font-bold tracking-tight text-green-600">
+          <div class="text-2xl font-bold tracking-tight text-good">
             {{ formatNumber(stats.installationsLast30Days ?? freshness.last30Days) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Svežih update zapisa</div>
+          <div class="text-xs text-ink-muted mt-2">Svežih update zapisa</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Starije od 90 dana</div>
+          <div class="text-xs text-ink-muted mb-1">Starije od 90 dana</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
-            :class="Number(freshness.olderThan90Days) > 0 ? 'text-red-600' : 'text-green-600'"
+            :class="Number(freshness.olderThan90Days) > 0 ? 'text-bad' : 'text-good'"
           >
             {{ formatNumber(freshness.olderThan90Days) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Računara koji zahtevaju proveru</div>
+          <div class="text-xs text-ink-muted mt-2">Računara koji zahtevaju proveru</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez update podataka</div>
+          <div class="text-xs text-ink-muted mb-1">Bez update podataka</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
-            :class="Number(freshness.withoutData) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(freshness.withoutData) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(freshness.withoutData) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Računara bez inventara update-a</div>
+          <div class="text-xs text-ink-muted mt-2">Računara bez inventara update-a</div>
         </div>
       </div>
     </div>
@@ -294,9 +294,9 @@ function freshnessClass(value) {
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Prosek po računaru</div>
+          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
 
-          <div class="text-lg font-bold text-slate-900">
+          <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.avgPerComputer, 1) }}
           </div>
         </div>
@@ -304,11 +304,11 @@ function freshnessClass(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez KB oznake</div>
+          <div class="text-xs text-ink-muted mb-1">Bez KB oznake</div>
 
           <div
             class="text-lg font-bold"
-            :class="Number(stats.withoutHotfixId) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(stats.withoutHotfixId) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(stats.withoutHotfixId) }}
           </div>
@@ -317,11 +317,11 @@ function freshnessClass(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez datuma instalacije</div>
+          <div class="text-xs text-ink-muted mb-1">Bez datuma instalacije</div>
 
           <div
             class="text-lg font-bold"
-            :class="Number(stats.withoutInstalledOn) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(stats.withoutInstalledOn) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(stats.withoutInstalledOn) }}
           </div>
@@ -334,7 +334,7 @@ function freshnessClass(value) {
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">Svežina poslednjeg update-a</h5>
 
-        <div class="text-xs text-slate-500">
+        <div class="text-xs text-ink-muted">
           Raspodela računara prema datumu poslednjeg instaliranog update-a
         </div>
       </div>
@@ -342,7 +342,7 @@ function freshnessClass(value) {
       <div class="p-4">
         <div v-for="item in normalizedFreshnessBuckets" :key="item.key" class="mb-4 last:mb-0">
           <div class="flex items-center justify-between mb-2">
-            <span class="font-semibold text-slate-900">
+            <span class="font-semibold text-ink">
               {{ item.label }}
             </span>
 
@@ -371,25 +371,25 @@ function freshnessClass(value) {
       <div class="p-4">
         <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <div class="text-xs text-slate-500">Najstariji instalirani update</div>
+            <div class="text-xs text-ink-muted">Najstariji instalirani update</div>
 
-            <div class="font-semibold text-slate-900">
+            <div class="font-semibold text-ink">
               {{ formatDate(stats.oldestInstalledOn) }}
             </div>
           </div>
 
           <div class="md:text-center">
-            <div class="text-xs text-slate-500">Najnoviji instalirani update</div>
+            <div class="text-xs text-ink-muted">Najnoviji instalirani update</div>
 
-            <div class="font-semibold text-slate-900">
+            <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInstalledOn) }}
             </div>
           </div>
 
           <div class="md:text-right">
-            <div class="text-xs text-slate-500">Najnoviji PDSU inventar</div>
+            <div class="text-xs text-ink-muted">Najnoviji PDSU inventar</div>
 
-            <div class="font-semibold text-slate-900">
+            <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInventoryDate, true) }}
             </div>
           </div>
@@ -402,13 +402,13 @@ function freshnessClass(value) {
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">Najzastupljeniji hotfix paketi</h5>
 
-        <div class="text-xs text-slate-500">
+        <div class="text-xs text-ink-muted">
           Rangirano prema broju računara na kojima je paket pronađen
         </div>
       </div>
 
       <div class="p-4">
-        <div v-if="topHotfixes.length === 0" class="text-slate-500 text-center py-4">
+        <div v-if="topHotfixes.length === 0" class="text-ink-muted text-center py-4">
           Nema podataka o hotfix paketima.
         </div>
 
@@ -420,15 +420,15 @@ function freshnessClass(value) {
         >
           <div class="flex items-start justify-between gap-3 mb-1">
             <div class="truncate">
-              <span class="text-slate-500 mr-2"> {{ index + 1 }}. </span>
+              <span class="text-ink-muted mr-2"> {{ index + 1 }}. </span>
 
-              <span class="font-semibold text-slate-900" :title="item.hotfixId">
+              <span class="font-semibold text-ink" :title="item.hotfixId">
                 {{ item.hotfixId || 'Bez KB oznake' }}
               </span>
 
               <div
                 v-if="item.description"
-                class="text-xs text-slate-500 truncate"
+                class="text-xs text-ink-muted truncate"
                 :title="item.description"
               >
                 {{ item.description }}
@@ -436,24 +436,24 @@ function freshnessClass(value) {
             </div>
 
             <div class="whitespace-nowrap text-right">
-              <span class="font-semibold text-slate-900">
+              <span class="font-semibold text-ink">
                 {{ formatNumber(item.computers) }}
               </span>
 
-              <span class="text-slate-500 text-xs"> računara </span>
+              <span class="text-ink-muted text-xs"> računara </span>
             </div>
           </div>
 
           <div class="pdsu-progress">
             <div
-              class="pdsu-progress-bar bg-blue-600"
+              class="pdsu-progress-bar bg-accent"
               :style="{
                 width: `${barWidth(item.computers, maxHotfixComputers)}%`,
               }"
             />
           </div>
 
-          <div class="flex items-center justify-between mt-1 text-xs text-slate-500">
+          <div class="flex items-center justify-between mt-1 text-xs text-ink-muted">
             <span>
               {{ formatNumber(item.installations) }}
               instalacija
@@ -474,10 +474,10 @@ function freshnessClass(value) {
         <div>
           <h5 class="pdsu-card-title">Poslednji update po računaru</h5>
 
-          <div class="text-xs text-slate-500">Najnoviji pronađeni hotfix za svaki računar</div>
+          <div class="text-xs text-ink-muted">Najnoviji pronađeni hotfix za svaki računar</div>
         </div>
 
-        <span class="pdsu-badge bg-blue-600 text-white">
+        <span class="pdsu-badge bg-accent text-white">
           {{ formatNumber(latestUpdateByComputer.length) }}
         </span>
       </div>
@@ -502,7 +502,7 @@ function freshnessClass(value) {
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
               <td>
-                <div class="font-semibold text-slate-900">
+                <div class="font-semibold text-ink">
                   {{ item.computerName || 'Nepoznat računar' }}
                 </div>
 
@@ -516,7 +516,7 @@ function freshnessClass(value) {
               </td>
 
               <td>
-                <span class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200">
+                <span class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line">
                   {{ item.hotfixId || 'Bez KB oznake' }}
                 </span>
               </td>
@@ -543,7 +543,7 @@ function freshnessClass(value) {
             </tr>
 
             <tr v-if="latestUpdateByComputer.length === 0">
-              <td colspan="7" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="7" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -556,14 +556,14 @@ function freshnessClass(value) {
         <div>
           <h5 class="pdsu-card-title">Računari sa zastarelim update podacima</h5>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Računari čiji je poslednji pronađeni update stariji od 90 dana ili nedostaje datum
           </div>
         </div>
 
         <span
           class="pdsu-badge"
-          :class="staleUpdateComputers.length > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white'"
+          :class="staleUpdateComputers.length > 0 ? 'bg-bad text-white' : 'bg-good text-white'"
         >
           {{ formatNumber(staleUpdateComputers.length) }}
         </span>
@@ -588,7 +588,7 @@ function freshnessClass(value) {
               v-for="(item, index) in staleUpdateComputers"
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
-              <td class="font-semibold text-slate-900">
+              <td class="font-semibold text-ink">
                 {{ item.computerName || 'Nepoznat računar' }}
               </td>
 
@@ -601,11 +601,11 @@ function freshnessClass(value) {
               </td>
 
               <td>
-                <span class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200">
+                <span class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line">
                   {{ item.hotfixId || 'Bez KB oznake' }}
                 </span>
 
-                <div v-if="item.description" class="text-xs text-slate-500 mt-1">
+                <div v-if="item.description" class="text-xs text-ink-muted mt-1">
                   {{ item.description }}
                 </div>
               </td>
@@ -626,7 +626,7 @@ function freshnessClass(value) {
             </tr>
 
             <tr v-if="staleUpdateComputers.length === 0">
-              <td colspan="7" class="text-center text-slate-500 py-4">
+              <td colspan="7" class="text-center text-ink-muted py-4">
                 Nema računara sa zastarelim update podacima.
               </td>
             </tr>

@@ -1,9 +1,9 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Sumnjivi procesi</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Sumnjivi procesi</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Procesi sa watchlist-e (npr. portable AnyDesk/TeamViewer) detektovani na
           računarima - za bezbednosnu vidljivost neovlašćenog remote-access pristupa.
         </p>
@@ -18,13 +18,13 @@
           class="app-input w-full pr-10"
           aria-label="Pretraga sumnjivih procesa" />
         <button v-if="searchInput" @click="clearSearch"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
           aria-label="Obriši pretragu">
-          ✖️
+          <NavIcon name="x" />
         </button>
       </div>
 
-      <!-- Sortiranje, po strani i paginacija -->
+      <!-- Sortiranje -->
       <div class="flex flex-wrap items-center gap-2">
         <select v-model="sortBy" class="app-input w-auto py-1.5 text-sm">
           <option value="lastSeen">Poslednji put viđen</option>
@@ -35,82 +35,72 @@
           <option value="computerName">Računar</option>
         </select>
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-2.5 py-1.5 border rounded-lg text-sm hover:bg-slate-50"
+          class="px-2.5 py-1.5 border border-line rounded-lg text-sm hover:bg-surface-sunken"
           :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
           aria-label="Promeni redosled sortiranja">
-          {{ sortOrder === 'asc' ? '↑' : '↓' }}
-        </button>
-
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <label class="text-sm text-slate-600" for="pp">Po strani</label>
-        <select id="pp" v-model.number="limit" class="app-input w-auto py-1.5 text-sm">
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-        </select>
-
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
-
-        <button @click="prevPage" :disabled="page === 1 || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Prethodna strana">
-          ⬅️
-        </button>
-        <span class="text-sm text-slate-600">
-          Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}
-        </span>
-        <button @click="nextPage({ total })" :disabled="page * limit >= total || loading"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100" aria-label="Sledeća strana">
-          ➡️
+          <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
       </div>
 
-      <p class="text-sm text-slate-500">Prikazano {{ items.length }} od {{ total }} unosa</p>
+      <PaginationBar
+        :page="page"
+        :limit="limit"
+        :total="total"
+        :total-pages="totalPages"
+        :loading="loading"
+        :limit-options="[20, 50, 100]"
+        @prev="prevPage"
+        @next="nextPage({ total })"
+        @update:limit="(v) => (limit = v)"
+      />
+
+      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} unosa</p>
     </div>
 
-    <div class="min-h-50 overflow-x-auto">
-      <div v-if="loading" class="space-y-2">
-        <div v-for="n in 6" :key="n" class="animate-pulse h-12 bg-white border border-slate-200 rounded-lg"></div>
+    <div class="table-shell">
+      <div v-if="loading" class="space-y-2 p-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse h-8 bg-surface-sunken rounded-lg"></div>
       </div>
 
-      <div v-else-if="!items.length"
-        class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+      <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
         Nema detekcija za zadate filtere.
       </div>
 
-      <table v-else class="w-full text-sm border-collapse">
-        <thead>
-          <tr class="text-left text-slate-500 border-b border-slate-200">
-            <th class="py-2 pr-3">Proces</th>
-            <th class="py-2 pr-3">Računar</th>
-            <th class="py-2 pr-3">IP</th>
-            <th class="py-2 pr-3">Odeljenje</th>
-            <th class="py-2 pr-3">Prvi put viđen</th>
-            <th class="py-2 pr-3">Poslednji put viđen</th>
-            <th class="py-2 pr-3 text-right">Broj detekcija</th>
-            <th class="py-2 pr-3 text-right">Broj ubijanja</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in items" :key="row.id" class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="py-2 pr-3 font-mono whitespace-nowrap">{{ row.processName }}</td>
-            <td class="py-2 pr-3">
-              <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-blue-600 hover:underline">
-                {{ row.computerName || '—' }}
-              </RouterLink>
-            </td>
-            <td class="py-2 pr-3 font-mono">{{ row.ip }}</td>
-            <td class="py-2 pr-3">{{ row.department || '—' }}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.firstSeen) }}</td>
-            <td class="py-2 pr-3 whitespace-nowrap">{{ fmtDate(row.lastSeen) }}</td>
-            <td class="py-2 pr-3 text-right tabular-nums">{{ row.detectionCount }}</td>
-            <td class="py-2 pr-3 text-right tabular-nums">
-              <span v-if="row.killCount" class="text-red-600 font-medium">{{ row.killCount }}</span>
-              <span v-else class="text-slate-400">0</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="table-head-row">
+              <th class="py-2 px-3 text-left">Proces</th>
+              <th class="py-2 px-3 text-left">Računar</th>
+              <th class="py-2 px-3 text-left">IP</th>
+              <th class="py-2 px-3 text-left">Odeljenje</th>
+              <th class="py-2 px-3 text-left">Prvi put viđen</th>
+              <th class="py-2 px-3 text-left">Poslednji put viđen</th>
+              <th class="py-2 px-3 text-right">Broj detekcija</th>
+              <th class="py-2 px-3 text-right">Broj ubijanja</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in items" :key="row.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+              <td class="py-2 px-3 font-mono whitespace-nowrap text-ink">{{ row.processName }}</td>
+              <td class="py-2 px-3">
+                <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-accent hover:underline">
+                  {{ row.computerName || '—' }}
+                </RouterLink>
+              </td>
+              <td class="py-2 px-3 font-mono text-ink-secondary">{{ row.ip }}</td>
+              <td class="py-2 px-3 text-ink-secondary">{{ row.department || '—' }}</td>
+              <td class="py-2 px-3 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(row.firstSeen) }}</td>
+              <td class="py-2 px-3 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(row.lastSeen) }}</td>
+              <td class="py-2 px-3 text-right font-mono tabular-nums text-ink">{{ row.detectionCount }}</td>
+              <td class="py-2 px-3 text-right font-mono tabular-nums">
+                <span v-if="row.killCount" class="text-bad font-medium">{{ row.killCount }}</span>
+                <span v-else class="text-ink-muted">0</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -123,6 +113,8 @@ import { fmtDate as formatDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
+import PaginationBar from '@/components/PaginationBar.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const site = useCurrentSite()

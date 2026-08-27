@@ -28,13 +28,13 @@ const maxManufacturerDrivers = computed(() => {
 
 function driverAgeClass(value) {
   if (!value) {
-    return 'bg-slate-500 text-white'
+    return 'bg-ink-muted text-white'
   }
 
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return 'bg-slate-500 text-white'
+    return 'bg-ink-muted text-white'
   }
 
   const ageInDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
@@ -43,14 +43,14 @@ function driverAgeClass(value) {
   // pre-dating the current OS install, flagging them as a support risk
   // rather than tied to any vendor-specific EOL schedule.
   if (ageInDays >= 3650) {
-    return 'bg-red-600 text-white'
+    return 'bg-bad text-white'
   }
 
   if (ageInDays >= 1825) {
-    return 'bg-amber-500 text-amber-950'
+    return 'bg-warn text-white'
   }
 
-  return 'bg-green-600 text-white'
+  return 'bg-good text-white'
 }
 
 function driverAgeLabel(value) {
@@ -80,13 +80,13 @@ function driverAgeLabel(value) {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Ukupno drajvera</div>
+          <div class="text-xs text-ink-muted mb-1">Ukupno drajvera</div>
 
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalDrivers) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">
+          <div class="text-xs text-ink-muted mt-2">
             Na
             {{ formatNumber(stats.computersWithDrivers) }}
             računara
@@ -96,55 +96,55 @@ function driverAgeLabel(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Jedinstveni uređaji</div>
+          <div class="text-xs text-ink-muted mb-1">Jedinstveni uređaji</div>
 
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniqueDevices) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Različitih naziva uređaja</div>
+          <div class="text-xs text-ink-muted mt-2">Različitih naziva uređaja</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Prosek po računaru</div>
+          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
 
-          <div class="text-2xl font-bold tracking-tight text-slate-900">
+          <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.avgPerComputer, 1) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Drajvera po računaru</div>
+          <div class="text-xs text-ink-muted mt-2">Drajvera po računaru</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez proizvođača</div>
+          <div class="text-xs text-ink-muted mb-1">Bez proizvođača</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
-            :class="Number(stats.withoutManufacturer) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(stats.withoutManufacturer) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(stats.withoutManufacturer) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Zapisa bez proizvođača</div>
+          <div class="text-xs text-ink-muted mt-2">Zapisa bez proizvođača</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez datuma</div>
+          <div class="text-xs text-ink-muted mb-1">Bez datuma</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
-            :class="Number(stats.withoutDate) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(stats.withoutDate) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(stats.withoutDate) }}
           </div>
 
-          <div class="text-xs text-slate-500 mt-2">Drajvera bez datuma</div>
+          <div class="text-xs text-ink-muted mt-2">Drajvera bez datuma</div>
         </div>
       </div>
     </div>
@@ -153,9 +153,9 @@ function driverAgeLabel(value) {
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Jedinstveni proizvođači</div>
+          <div class="text-xs text-ink-muted mb-1">Jedinstveni proizvođači</div>
 
-          <div class="text-lg font-bold text-slate-900">
+          <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.uniqueManufacturers) }}
           </div>
         </div>
@@ -163,11 +163,11 @@ function driverAgeLabel(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Bez verzije</div>
+          <div class="text-xs text-ink-muted mb-1">Bez verzije</div>
 
           <div
             class="text-lg font-bold"
-            :class="Number(stats.withoutVersion) > 0 ? 'text-amber-600' : 'text-slate-900'"
+            :class="Number(stats.withoutVersion) > 0 ? 'text-warn' : 'text-ink'"
           >
             {{ formatNumber(stats.withoutVersion) }}
           </div>
@@ -176,9 +176,9 @@ function driverAgeLabel(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-slate-500 mb-1">Raspon datuma drajvera</div>
+          <div class="text-xs text-ink-muted mb-1">Raspon datuma drajvera</div>
 
-          <div class="font-semibold text-slate-900">
+          <div class="font-semibold text-ink">
             {{ formatDate(stats.oldestDriverDate) }}
             –
             {{ formatDate(stats.newestDriverDate) }}
@@ -192,17 +192,17 @@ function driverAgeLabel(value) {
       <div class="p-4">
         <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-xs text-slate-500">Najstariji PDSU zapis drajvera</div>
+            <div class="text-xs text-ink-muted">Najstariji PDSU zapis drajvera</div>
 
-            <div class="font-semibold text-slate-900">
+            <div class="font-semibold text-ink">
               {{ formatDate(stats.oldestInventoryDate, true) }}
             </div>
           </div>
 
           <div class="md:text-right">
-            <div class="text-xs text-slate-500">Najnoviji PDSU zapis drajvera</div>
+            <div class="text-xs text-ink-muted">Najnoviji PDSU zapis drajvera</div>
 
-            <div class="font-semibold text-slate-900">
+            <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInventoryDate, true) }}
             </div>
           </div>
@@ -215,11 +215,11 @@ function driverAgeLabel(value) {
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">Najzastupljeniji proizvođači drajvera</h5>
 
-        <div class="text-xs text-slate-500">Prema ukupnom broju pronađenih drajvera</div>
+        <div class="text-xs text-ink-muted">Prema ukupnom broju pronađenih drajvera</div>
       </div>
 
       <div class="p-4">
-        <div v-if="topManufacturers.length === 0" class="text-slate-500 text-center py-4">
+        <div v-if="topManufacturers.length === 0" class="text-ink-muted text-center py-4">
           Nema podataka o proizvođačima.
         </div>
 
@@ -231,28 +231,28 @@ function driverAgeLabel(value) {
         >
           <div class="flex items-start justify-between gap-3 mb-1">
             <div class="truncate">
-              <span class="text-slate-500 mr-2"> {{ index + 1 }}. </span>
+              <span class="text-ink-muted mr-2"> {{ index + 1 }}. </span>
 
-              <span class="font-semibold text-slate-900" :title="item.manufacturer">
+              <span class="font-semibold text-ink" :title="item.manufacturer">
                 {{ item.manufacturer }}
               </span>
             </div>
 
-            <div class="whitespace-nowrap font-semibold text-slate-900">
+            <div class="whitespace-nowrap font-semibold text-ink">
               {{ formatNumber(item.drivers) }}
             </div>
           </div>
 
           <div class="pdsu-progress">
             <div
-              class="pdsu-progress-bar bg-green-600"
+              class="pdsu-progress-bar bg-good"
               :style="{
                 width: `${barWidth(item.drivers, maxManufacturerDrivers)}%`,
               }"
             />
           </div>
 
-          <div class="flex items-center justify-between mt-1 text-xs text-slate-500">
+          <div class="flex items-center justify-between mt-1 text-xs text-ink-muted">
             <span>
               {{ formatNumber(item.computers) }}
               računara
@@ -273,10 +273,10 @@ function driverAgeLabel(value) {
         <div>
           <h5 class="pdsu-card-title">Najstariji drajveri</h5>
 
-          <div class="text-xs text-slate-500">Drajveri sortirani prema datumu od najstarijeg</div>
+          <div class="text-xs text-ink-muted">Drajveri sortirani prema datumu od najstarijeg</div>
         </div>
 
-        <span class="pdsu-badge bg-red-600 text-white">
+        <span class="pdsu-badge bg-bad text-white">
           {{ formatNumber(oldestDrivers.length) }}
         </span>
       </div>
@@ -304,17 +304,17 @@ function driverAgeLabel(value) {
               "
             >
               <td>
-                <div class="font-semibold text-slate-900">
+                <div class="font-semibold text-ink">
                   {{ item.deviceName || 'Nepoznat uređaj' }}
                 </div>
 
-                <div class="text-xs text-slate-500">
+                <div class="text-xs text-ink-muted">
                   {{ item.driverProviderName || 'Nepoznat provider' }}
                 </div>
               </td>
 
               <td>
-                <div class="font-semibold text-slate-900">
+                <div class="font-semibold text-ink">
                   {{ item.computerName || 'Nepoznat računar' }}
                 </div>
 
@@ -322,7 +322,7 @@ function driverAgeLabel(value) {
                   <code class="pdsu-code">{{ item.ip || '—' }}</code>
                 </div>
 
-                <div class="text-xs text-slate-500">
+                <div class="text-xs text-ink-muted">
                   {{ item.department || '—' }}
                 </div>
               </td>
@@ -347,7 +347,7 @@ function driverAgeLabel(value) {
             </tr>
 
             <tr v-if="oldestDrivers.length === 0">
-              <td colspan="6" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -360,12 +360,12 @@ function driverAgeLabel(value) {
         <div>
           <h5 class="pdsu-card-title">Uređaji sa više verzija drajvera</h5>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Isti uređaj je pronađen sa različitim verzijama drajvera
           </div>
         </div>
 
-        <span class="pdsu-badge bg-amber-500 text-amber-950">
+        <span class="pdsu-badge bg-warn text-white">
           {{ formatNumber(multipleVersions.length) }}
         </span>
       </div>
@@ -387,7 +387,7 @@ function driverAgeLabel(value) {
               v-for="(item, index) in multipleVersions"
               :key="`${item.deviceName}-${index}`"
             >
-              <td class="font-semibold text-slate-900">
+              <td class="font-semibold text-ink">
                 {{ item.deviceName }}
               </td>
 
@@ -396,7 +396,7 @@ function driverAgeLabel(value) {
               </td>
 
               <td class="text-center">
-                <span class="pdsu-badge bg-amber-500 text-amber-950">
+                <span class="pdsu-badge bg-warn text-white">
                   {{ formatNumber(item.versionCount) }}
                 </span>
               </td>
@@ -410,12 +410,12 @@ function driverAgeLabel(value) {
                   <span
                     v-for="version in splitValues(item.versions)"
                     :key="version"
-                    class="pdsu-badge bg-slate-100 text-slate-700 border border-slate-200"
+                    class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line"
                   >
                     {{ version }}
                   </span>
 
-                  <span v-if="splitValues(item.versions).length === 0" class="text-slate-500">
+                  <span v-if="splitValues(item.versions).length === 0" class="text-ink-muted">
                     Nema podatka
                   </span>
                 </div>
@@ -423,7 +423,7 @@ function driverAgeLabel(value) {
             </tr>
 
             <tr v-if="multipleVersions.length === 0">
-              <td colspan="5" class="text-center text-slate-500 py-4">Nema rezultata.</td>
+              <td colspan="5" class="text-center text-ink-muted py-4">Nema rezultata.</td>
             </tr>
           </tbody>
         </table>
@@ -436,10 +436,10 @@ function driverAgeLabel(value) {
         <div>
           <h5 class="pdsu-card-title">Računari sa najviše drajvera</h5>
 
-          <div class="text-xs text-slate-500">Rangirano prema ukupnom broju drajvera</div>
+          <div class="text-xs text-ink-muted">Rangirano prema ukupnom broju drajvera</div>
         </div>
 
-        <span class="pdsu-badge bg-slate-900 text-white">
+        <span class="pdsu-badge bg-ink text-white">
           Top
           {{ formatNumber(computersWithMostDrivers.length) }}
         </span>
@@ -463,11 +463,11 @@ function driverAgeLabel(value) {
               v-for="(item, index) in computersWithMostDrivers"
               :key="item.ipEntryId ?? `${item.ip}-${index}`"
             >
-              <td class="text-slate-500">
+              <td class="text-ink-muted">
                 {{ index + 1 }}
               </td>
 
-              <td class="font-semibold text-slate-900">
+              <td class="font-semibold text-ink">
                 {{ item.computerName || 'Nepoznat računar' }}
               </td>
 
@@ -480,7 +480,7 @@ function driverAgeLabel(value) {
               </td>
 
               <td class="text-center">
-                <span class="pdsu-badge bg-green-600 text-white">
+                <span class="pdsu-badge bg-good text-white">
                   {{ formatNumber(item.driverCount) }}
                 </span>
               </td>
@@ -491,7 +491,7 @@ function driverAgeLabel(value) {
             </tr>
 
             <tr v-if="computersWithMostDrivers.length === 0">
-              <td colspan="6" class="text-center text-slate-500 py-4">Nema podataka.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">Nema podataka.</td>
             </tr>
           </tbody>
         </table>

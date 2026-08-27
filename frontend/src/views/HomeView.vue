@@ -1,15 +1,16 @@
 <template>
-  <div class="glass-container">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-      <h1 class="text-2xl font-bold text-slate-800">IP Adrese</h1>
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">IP Adrese</h1>
 
       <div class="flex flex-wrap items-center gap-2">
         <AppButton variant="success" @click="addEntry">Dodaj</AppButton>
 
         <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
 
-        <AppButton variant="secondary" to="/computers-for-repack">
-          📦 Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
+        <AppButton variant="secondary" to="/computers-for-repack" class="inline-flex items-center gap-1.5">
+          <NavIcon name="package" />
+          Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
         </AppButton>
 
         <AppButton variant="secondary" to="/free-ip-addresses">Slobodne IP adrese</AppButton>
@@ -18,7 +19,7 @@
       </div>
     </div>
 
-    <div class="mb-4 space-y-3">
+    <div class="space-y-3">
       <!-- Pretraga -->
       <input
         v-model="search"
@@ -32,15 +33,15 @@
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 sm:hidden"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-sunken sm:hidden"
           @click="filtersOpen = !filtersOpen"
         >
           Filteri
           <span
             v-if="activeFilterCount"
-            class="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white"
+            class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white"
           >{{ activeFilterCount }}</span>
-          <span class="text-xs">{{ filtersOpen ? '▲' : '▼' }}</span>
+          <NavIcon :name="filtersOpen ? 'chevron-up' : 'chevron-down'" class="text-xs" />
         </button>
       </div>
 
@@ -87,7 +88,7 @@
           title="Filter RDP/remote-access alata"
         />
 
-        <label class="inline-flex items-center gap-1.5 text-sm text-slate-600 shrink-0" title="Folder C:\Izvolte NIJE pronađen na računaru">
+        <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary shrink-0" title="Folder C:\Izvolte NIJE pronađen na računaru">
           <input
             type="checkbox"
             :checked="missingIzvolteFolder === 'true'"
@@ -102,53 +103,39 @@
 
         <button
           @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
-          class="px-2.5 py-2 border rounded-lg text-sm hover:bg-slate-50"
+          class="px-2.5 py-2 border border-line rounded-lg text-sm hover:bg-surface-sunken"
           :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
           aria-label="Promeni redosled sortiranja"
         >
-          {{ sortOrder === 'asc' ? '↑' : '↓' }}
+          <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
       </div>
 
       <!-- Statistika i paginacija - uvek vidljivo, nije deo filter panela -->
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
-        >
-          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online:
-          {{ counts.online }}
-        </span>
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs bg-rose-50 text-rose-700 border-rose-200"
-        >
-          <span class="h-2 w-2 rounded-full bg-rose-500"></span> Offline: {{ counts.offline }}
-        </span>
+      <div class="flex flex-wrap items-center gap-3">
+        <StatusPill status="good" :label="`Online: ${counts.online}`" />
+        <StatusPill status="bad" :label="`Offline: ${counts.offline}`" />
 
-        <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:inline-block"></span>
+        <span class="mx-1 hidden h-5 w-px bg-line sm:inline-block"></span>
 
-        <button
-          @click="prevPage"
-          :disabled="page === 1"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100"
-        >
-          ⬅️
-        </button>
-        <span class="text-sm text-slate-600">Strana {{ currentPageDisplay }} / {{ totalPages }}</span>
-        <button
-          @click="nextPage({ total })"
-          :disabled="page * limit >= total"
-          class="px-2 py-1 bg-white border rounded-lg disabled:opacity-50 hover:bg-slate-100"
-        >
-          ➡️
-        </button>
+        <PaginationBar
+          :page="page"
+          :limit="limit"
+          :total="total"
+          :total-pages="totalPages"
+          :limit-options="[10, 20, 50, 100]"
+          @prev="prevPage"
+          @next="nextPage({ total })"
+          @update:limit="(v) => (limit = v)"
+        />
       </div>
 
-      <p class="text-sm text-slate-500">Prikazano {{ entries.length }} od {{ total }} unosa</p>
+      <p class="text-sm text-ink-muted">Prikazano {{ entries.length }} od {{ total }} unosa</p>
     </div>
 
     <div
       v-if="duplicateTotalGroups > 0"
-      class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 flex items-start justify-between gap-3"
+      class="rounded-lg border border-warn/40 bg-warn-subtle px-3 py-2 text-warn flex items-start justify-between gap-3"
       role="alert"
     >
       <div class="text-sm">
@@ -159,185 +146,133 @@
       <div class="shrink-0">
         <router-link
           to="/duplicates"
-          class="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
+          class="text-sm bg-warn text-white px-3 py-1 rounded hover:brightness-95"
         >
           Pogledaj detalje
         </router-link>
       </div>
     </div>
 
-    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      <article
-        v-for="entry in entries"
-        :key="entry.id"
-        class="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition p-4 flex flex-col"
-      >
-        <div class="flex items-start justify-between gap-3 flex-wrap">
-          <div class="min-w-0">
-            <div class="text-sm text-slate-500">IP adresa</div>
-            <div class="text-lg font-semibold tracking-tight">
-              {{ entry.ip }}
-            </div>
+    <div v-if="!entries.length" class="table-shell p-8 text-center text-ink-muted">
+      Nema rezultata za zadate filtere.
+    </div>
 
-            <div class="mt-1 text-xs text-slate-500 break-words">
-              {{ entry.computerName || '—' }}
-            </div>
-          </div>
+    <div v-else class="table-shell">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-300 border-collapse text-sm">
+          <thead>
+            <tr class="table-head-row">
+              <th class="px-3 py-2 text-left">IP / Računar</th>
+              <th class="px-3 py-2 text-left">Tip</th>
+              <th class="px-3 py-2 text-left">Status</th>
+              <th class="px-3 py-2 text-left">Sistem</th>
+              <th class="px-3 py-2 text-left">RDP App</th>
+              <th class="px-3 py-2 text-left">Zastavice</th>
+              <th class="px-3 py-2 text-left">Opis</th>
+              <th class="px-3 py-2 text-left">Poslednja provera</th>
+              <th class="px-3 py-2 text-right"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in entries" :key="entry.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
+              <td class="px-3 py-2.5 align-top">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono font-semibold text-ink">{{ entry.ip }}</span>
+                  <button
+                    @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
+                    class="shrink-0 text-ink-muted hover:text-ink"
+                    title="Kopiraj IP"
+                  >
+                    <NavIcon name="copy" />
+                  </button>
+                </div>
+                <div class="mt-0.5 text-xs text-ink-muted wrap-break-word">{{ entry.computerName || '—' }}</div>
+                <div v-if="entry.department" class="mt-1"><TagChip :label="entry.department" class="max-w-40 truncate" /></div>
+              </td>
+              <td class="px-3 py-2.5 align-top"><TagChip :label="labelForEntryType(entry.entryType)" title="Tip unosa" /></td>
+              <td class="px-3 py-2.5 align-top">
+                <StatusPill
+                  :status="entry.isOnline ? 'good' : 'bad'"
+                  :label="entry.isOnline ? 'Online' : 'Offline'"
+                  :title="statusTooltip(entry)"
+                />
+              </td>
+              <td class="px-3 py-2.5 align-top text-ink-secondary">
+                <div>{{ entry.os || '—' }}</div>
+                <div class="text-xs text-ink-muted">{{ entry.osArchitecture || '—' }}</div>
+              </td>
+              <td class="px-3 py-2.5 align-top text-ink-secondary">{{ entry.rdpApp || '—' }}</td>
+              <td class="px-3 py-2.5 align-top">
+                <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.pendingRepack || entry.hasIzvolteFolder" class="flex flex-wrap gap-1">
+                  <router-link
+                    v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
+                    :to="`/ip/${entry.id}/pdsu`"
+                    :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa, ${entry.flaggedDriverCount || 0} drajvera`"
+                  >
+                    <StatusPill status="bad" label="Neželjeni" icon="alert-triangle" />
+                  </router-link>
 
-          <div class="flex flex-wrap items-center justify-end gap-2 min-w-0">
-            <span
-              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-              :class="
-                entry.entryType
-                  ? 'bg-slate-50 text-slate-700 border-slate-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
-              "
-              title="Tip unosa"
-            >
-              {{ labelForEntryType(entry.entryType) }}
-            </span>
+                  <router-link v-if="entry.pendingRepack" to="/computers-for-repack" title="Markiran za pakovanje/zamenu komponenti">
+                    <StatusPill status="warn" label="Pakovanje" icon="package" />
+                  </router-link>
 
-            <span
-              v-if="entry.department"
-              class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-slate-50 text-slate-700 max-w-40 truncate"
-              :title="entry.department"
-            >
-              {{ entry.department }}
-            </span>
-
-            <span
-              class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
-              :class="
-                entry.isOnline
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border-rose-200'
-              "
-              :title="statusTooltip(entry)"
-            >
-              <span
-                class="h-2 w-2 rounded-full"
-                :class="entry.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"
-              ></span>
-              {{ entry.isOnline ? 'Online' : 'Offline' }}
-            </span>
-
-            <button
-              @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
-              class="text-blue-600 text-sm hover:underline"
-              title="Kopiraj IP"
-            >
-              📋
-            </button>
-          </div>
-        </div>
-
-        <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.pendingRepack || entry.hasIzvolteFolder" class="mt-2 flex flex-wrap gap-2">
-          <router-link
-            v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
-            :to="`/ip/${entry.id}/pdsu`"
-            class="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 hover:bg-red-100"
-            :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa, ${entry.flaggedDriverCount || 0} drajvera`"
-          >
-            ⚠ Neželjeni programi/servisi/drajveri
-          </router-link>
-
-          <router-link
-            v-if="entry.pendingRepack"
-            to="/computers-for-repack"
-            class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-100"
-            title="Markiran za pakovanje/zamenu komponenti"
-          >
-            📦 Za pakovanje
-          </router-link>
-
-          <button
-            v-if="entry.hasIzvolteFolder"
-            type="button"
-            @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, 'Putanja do Izvolte foldera kopirana - nalepi je u Explorer-u')"
-            class="appearance-none inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs leading-none text-sky-700 hover:bg-sky-100"
-            :title="`Kopiraj putanju \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) - browser ne sme da otvori file:// linkove direktno`"
-          >
-            📁 Izvolte folder
-          </button>
-        </div>
-
-        <div class="mt-3 space-y-1.5 text-sm">
-          <div class="grid grid-cols-3 gap-2 pt-2">
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">RDP App</div>
-              <div class="text-sm font-medium break-all">{{ entry.rdpApp || '—' }}</div>
-            </div>
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">Sistem</div>
-              <div class="text-sm font-medium break-all">{{ entry.os || '—' }}</div>
-            </div>
-            <div class="rounded-lg bg-slate-50 px-2 py-1.5">
-              <div class="text-xs text-slate-500">Arhitektura</div>
-              <div class="text-sm font-medium break-all">{{ entry.osArchitecture || '—' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ✅ OPIS / DESCRIPTION -->
-        <div v-if="entry.description" class="mt-3 rounded-lg bg-slate-50 px-3 py-2">
-          <div class="text-xs text-slate-500 mb-1">Opis</div>
-
-          <p
-            class="text-sm text-slate-800 whitespace-pre-wrap break-words"
-            :class="expandedDesc[entry.id] ? '' : 'line-clamp-3'"
-          >
-            {{ entry.description }}
-          </p>
-
-          <button
-            v-if="entry.description.length > 140"
-            @click="toggleDesc(entry.id)"
-            class="mt-1 text-xs text-blue-600 hover:underline"
-            type="button"
-          >
-            {{ expandedDesc[entry.id] ? 'Sakrij' : 'Prikaži više' }}
-          </button>
-        </div>
-
-        <div class="mt-2 text-[11px] text-slate-500">
-          Poslednja provera: {{ fmtRelative(entry.lastChecked) }} • Promena statusa:
-          {{ fmtRelative(entry.lastStatusChange) }}
-        </div>
-
-        <div class="mt-4 pt-3 border-t flex flex-wrap items-center gap-3">
-          <button @click="editEntry(entry)" class="text-blue-600 hover:underline text-sm">
-            Izmeni
-          </button>
-          <button
-            @click="togglePendingRepack(entry)"
-            class="text-sm hover:underline"
-            :class="entry.pendingRepack ? 'text-amber-700' : 'text-slate-600'"
-            :title="entry.pendingRepack ? 'Ukloni oznaku za pakovanje' : 'Markiraj za pakovanje'"
-          >
-            {{ entry.pendingRepack ? '📦 Ukloni oznaku' : '📦 Za pakovanje' }}
-          </button>
-          <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="text-red-600 hover:underline text-sm">
-            Obriši
-          </button>
-          <router-link :to="`/ip/${entry.id}/meta`" class="text-slate-600 hover:underline text-sm">
-            Meta
-          </router-link>
-          <router-link :to="`/ip/${entry.id}/pdsu`" class="text-slate-600 hover:underline text-sm">
-            PDSU
-          </router-link>
-          <router-link :to="`/ip/${entry.id}/port-scan`" class="text-slate-600 hover:underline text-sm">
-            Port scan
-          </router-link>
-          <router-link
-            v-if="entry.agentId"
-            :to="`/agents/${entry.agentId}`"
-            class="text-emerald-600 hover:underline text-sm"
-            title="Otvori Netdesk Agent za ovaj računar"
-          >
-            🖥️ Agent
-          </router-link>
-        </div>
-      </article>
+                  <button
+                    v-if="entry.hasIzvolteFolder"
+                    type="button"
+                    @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, 'Putanja do Izvolte foldera kopirana - nalepi je u Explorer-u')"
+                    class="appearance-none"
+                    :title="`Kopiraj putanju \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) - browser ne sme da otvori file:// linkove direktno`"
+                  >
+                    <StatusPill status="info" label="Izvolte" icon="folder" />
+                  </button>
+                </div>
+                <span v-else class="text-ink-muted">—</span>
+              </td>
+              <td class="px-3 py-2.5 align-top max-w-70 truncate text-xs text-ink-secondary" :title="entry.description">
+                {{ entry.description || '—' }}
+              </td>
+              <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono" :title="`Promena statusa: ${fmtRelative(entry.lastStatusChange)}`">
+                {{ fmtRelative(entry.lastChecked) }}
+              </td>
+              <td class="px-3 py-2.5 align-top text-right">
+                <div class="table-row-actions flex-wrap justify-end">
+                  <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" title="Izmeni">
+                    <NavIcon name="edit" />
+                  </button>
+                  <button
+                    @click="togglePendingRepack(entry)"
+                    class="rounded p-1 hover:bg-surface-sunken"
+                    :class="entry.pendingRepack ? 'text-warn' : 'text-ink-secondary'"
+                    :title="entry.pendingRepack ? 'Ukloni oznaku za pakovanje' : 'Markiraj za pakovanje'"
+                  >
+                    <NavIcon name="package" />
+                  </button>
+                  <router-link :to="`/ip/${entry.id}/meta`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="Metapodaci">
+                    <NavIcon name="metadata" />
+                  </router-link>
+                  <router-link :to="`/ip/${entry.id}/pdsu`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="PDSU inventar">
+                    <NavIcon name="pdsu" />
+                  </router-link>
+                  <router-link :to="`/ip/${entry.id}/port-scan`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="Port scan">
+                    <NavIcon name="port" />
+                  </router-link>
+                  <router-link
+                    v-if="entry.agentId"
+                    :to="`/agents/${entry.agentId}`"
+                    class="rounded p-1 text-good hover:bg-surface-sunken inline-flex"
+                    title="Otvori Netdesk Agent za ovaj računar"
+                  >
+                    <NavIcon name="agents" />
+                  </router-link>
+                  <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Obriši">
+                    <NavIcon name="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <ToastNotification :message="toast" />
@@ -369,6 +304,10 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppButton from '@/components/AppButton.vue'
 import MultiSelect from '@/components/MultiSelect.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TagChip from '@/components/TagChip.vue'
+import PaginationBar from '@/components/PaginationBar.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const router = useRouter()
 const site = useCurrentSite()
@@ -468,7 +407,6 @@ const entries = ref([])
 const total = ref(0)
 const totalPages = ref(0)
 const counts = ref({ online: 0, offline: 0, pendingRepack: 0 })
-const currentPageDisplay = computed(() => (totalPages.value === 0 ? '0' : page.value))
 
 // Filter panel je na mobilnom skupljen po difoltu (ispod sm) - broj na dugmetu
 // je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i dok je
@@ -486,8 +424,6 @@ const activeFilterCount = computed(() => {
   return n
 })
 
-const expandedDesc = ref({}) // ✅ novo: state za expand opisa
-
 const sortOptions = [
   { value: 'ip', label: 'IP adresa' },
   { value: 'computerName', label: 'Ime računara' },
@@ -498,10 +434,6 @@ const sortOptions = [
 
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry.id}`)
-
-const toggleDesc = (id) => {
-  expandedDesc.value[id] = !expandedDesc.value[id]
-}
 
 async function fetchData() {
   const params = new URLSearchParams({
@@ -528,11 +460,6 @@ async function fetchData() {
     total.value = data.total
     totalPages.value = data.totalPages
     counts.value = data.counts || { online: 0, offline: 0, pendingRepack: 0 }
-
-    // ✅ opcionalno: očisti expand state za obrisane/skrivene entry-je
-    const next = {}
-    for (const e of entries.value) next[e.id] = !!expandedDesc.value[e.id]
-    expandedDesc.value = next
   } catch (err) {
     console.error('Neuspešno dohvatanje podataka')
   }
@@ -551,7 +478,7 @@ const togglePendingRepack = async (entry) => {
     counts.value.pendingRepack += nextValue ? 1 : -1
   } catch (err) {
     console.error('Neuspešna izmena oznake za pakovanje', err)
-    showToast('Greška pri izmeni oznake', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri izmeni oznake', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -565,7 +492,7 @@ const deleteEntry = async (id) => {
   if (res.ok) {
     fetchData()
   } else {
-    showToast('Greška pri brisanju unosa', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri brisanju unosa', { kind: 'error', duration: 3000 })
   }
 }
 
@@ -633,13 +560,3 @@ watch(site, () => {
   fetchFilterOptions()
 })
 </script>
-
-<style scoped>
-/* fallback ako nemaš tailwind line-clamp plugin */
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

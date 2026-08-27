@@ -1,10 +1,10 @@
 <template>
-  <div class="glass-container w-full max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Dodaj novu IP adresu</h1>
+  <div class="w-full max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-ink mb-6" style="font-family: var(--font-display)">Dodaj novu IP adresu</h1>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
       <div>
-        <label for="ip" class="block text-sm font-medium text-slate-700 mb-1">IP Adresa *</label>
+        <label for="ip" class="block text-sm font-medium text-ink mb-1">IP Adresa *</label>
         <input
           id="ip"
           v-model.trim="form.ip"
@@ -12,13 +12,13 @@
           placeholder="Unesite IP adresu"
           class="app-input w-full"
           required
-          :class="ipError ? 'border-red-400' : ''"
+          :class="ipError ? 'border-bad' : ''"
         />
-        <p v-if="ipError" class="text-xs text-red-600 mt-1">{{ ipError }}</p>
+        <p v-if="ipError" class="text-xs text-bad mt-1">{{ ipError }}</p>
       </div>
 
       <div>
-        <label for="entryType" class="block text-sm font-medium text-slate-700 mb-1">Tip</label>
+        <label for="entryType" class="block text-sm font-medium text-ink mb-1">Tip</label>
         <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
           <option value="">— Nije određeno —</option>
           <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -28,7 +28,7 @@
       </div>
 
       <div>
-        <label for="site" class="block text-sm font-medium text-slate-700 mb-1">Lokacija *</label>
+        <label for="site" class="block text-sm font-medium text-ink mb-1">Lokacija *</label>
         <select id="site" v-model="form.site" class="app-input w-full" required>
           <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
@@ -37,7 +37,7 @@
       </div>
 
       <div>
-        <label for="department" class="block text-sm font-medium text-slate-700 mb-1">Odeljenje</label>
+        <label for="department" class="block text-sm font-medium text-ink mb-1">Odeljenje</label>
         <GroupSelect
           v-model="form.department"
           :options="groupOptions"
@@ -48,7 +48,7 @@
       </div>
 
       <div v-for="field in optionalFields" :key="field.name">
-        <label :for="field.name" class="block text-sm font-medium text-slate-700 mb-1">
+        <label :for="field.name" class="block text-sm font-medium text-ink mb-1">
           {{ field.label }}
         </label>
 
@@ -77,7 +77,7 @@
       </div>
     </form>
 
-    <p v-if="error" class="text-red-500 mt-4 text-center animate-pulse">{{ error }}</p>
+    <p v-if="error" class="text-bad mt-4 text-center animate-pulse">{{ error }}</p>
   </div>
 </template>
 

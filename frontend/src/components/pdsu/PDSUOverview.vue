@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const router = useRouter()
 const site = useCurrentSite()
@@ -162,7 +163,7 @@ const alertItems = computed(() => [
     label: 'Automatski servisi koji ne rade',
     value: Number(serviceStats.value?.automaticStopped) || 0,
     badgeClass:
-      Number(serviceStats.value?.automaticStopped) > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white',
+      Number(serviceStats.value?.automaticStopped) > 0 ? 'bg-bad text-white' : 'bg-good text-white',
   },
   {
     key: 'oldUpdates',
@@ -170,39 +171,39 @@ const alertItems = computed(() => [
     value: Number(updateFreshness.value?.olderThan90Days) || 0,
     badgeClass:
       Number(updateFreshness.value?.olderThan90Days) > 0
-        ? 'bg-amber-500 text-amber-950'
-        : 'bg-green-600 text-white',
+        ? 'bg-warn text-white'
+        : 'bg-good text-white',
   },
   {
     key: 'missingUpdates',
     label: 'Računari bez update podataka',
     value: Number(updateFreshness.value?.withoutData) || 0,
     badgeClass:
-      Number(updateFreshness.value?.withoutData) > 0 ? 'bg-slate-500 text-white' : 'bg-green-600 text-white',
+      Number(updateFreshness.value?.withoutData) > 0 ? 'bg-ink-muted text-white' : 'bg-good text-white',
   },
   {
     key: 'missingDriverDates',
     label: 'Drajveri bez datuma',
     value: Number(driverStats.value?.withoutDate) || 0,
     badgeClass:
-      Number(driverStats.value?.withoutDate) > 0 ? 'bg-amber-500 text-amber-950' : 'bg-green-600 text-white',
+      Number(driverStats.value?.withoutDate) > 0 ? 'bg-warn text-white' : 'bg-good text-white',
   },
   {
     key: 'printerProblemStatus',
     label: 'Štampači sa problematičnim statusom',
     value: Number(printerStats.value?.problemStatus) || 0,
     badgeClass:
-      Number(printerStats.value?.problemStatus) > 0 ? 'bg-red-600 text-white' : 'bg-green-600 text-white',
+      Number(printerStats.value?.problemStatus) > 0 ? 'bg-bad text-white' : 'bg-good text-white',
   },
 ])
 
 function percentageClass(percent) {
   const value = Number(percent) || 0
 
-  if (value >= 90) return 'text-green-600'
-  if (value >= 70) return 'text-amber-600'
+  if (value >= 90) return 'text-good'
+  if (value >= 70) return 'text-warn'
 
-  return 'text-red-600'
+  return 'text-bad'
 }
 </script>
 
@@ -214,22 +215,22 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-slate-500 mb-1">Instalirani programi</div>
+              <div class="text-xs text-ink-muted mb-1">Instalirani programi</div>
 
-              <div class="text-3xl font-bold tracking-tight text-slate-900">
+              <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(softwareStats.totalInstallations) }}
               </div>
             </div>
 
-            <span class="pdsu-icon-badge bg-blue-600">P</span>
+            <span class="pdsu-icon-badge bg-accent">P</span>
           </div>
 
-          <div class="text-xs text-slate-500 mt-3">
+          <div class="text-xs text-ink-muted mt-3">
             {{ formatNumber(softwareStats.uniqueSoftware) }}
             jedinstvenih programa
           </div>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Prosek:
             {{ formatNumber(softwareStats.avgPerComputer) }}
             po računaru
@@ -241,22 +242,22 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-slate-500 mb-1">Drajveri</div>
+              <div class="text-xs text-ink-muted mb-1">Drajveri</div>
 
-              <div class="text-3xl font-bold tracking-tight text-slate-900">
+              <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(driverStats.totalDrivers) }}
               </div>
             </div>
 
-            <span class="pdsu-icon-badge bg-green-600">D</span>
+            <span class="pdsu-icon-badge bg-good">D</span>
           </div>
 
-          <div class="text-xs text-slate-500 mt-3">
+          <div class="text-xs text-ink-muted mt-3">
             {{ formatNumber(driverStats.uniqueDevices) }}
             jedinstvenih uređaja
           </div>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Prosek:
             {{ formatNumber(driverStats.avgPerComputer) }}
             po računaru
@@ -268,22 +269,22 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-slate-500 mb-1">Servisi</div>
+              <div class="text-xs text-ink-muted mb-1">Servisi</div>
 
-              <div class="text-3xl font-bold tracking-tight text-slate-900">
+              <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(serviceStats.totalServices) }}
               </div>
             </div>
 
-            <span class="pdsu-icon-badge bg-amber-500">S</span>
+            <span class="pdsu-icon-badge bg-warn">S</span>
           </div>
 
-          <div class="text-xs text-slate-500 mt-3">
+          <div class="text-xs text-ink-muted mt-3">
             {{ formatNumber(serviceStats.running) }}
             pokrenutih
           </div>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             {{ formatNumber(serviceStats.stopped) }}
             zaustavljenih
           </div>
@@ -294,22 +295,22 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-slate-500 mb-1">Updates</div>
+              <div class="text-xs text-ink-muted mb-1">Updates</div>
 
-              <div class="text-3xl font-bold tracking-tight text-slate-900">
+              <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(updateStats.totalUpdates) }}
               </div>
             </div>
 
-            <span class="pdsu-icon-badge bg-red-600">U</span>
+            <span class="pdsu-icon-badge bg-bad">U</span>
           </div>
 
-          <div class="text-xs text-slate-500 mt-3">
+          <div class="text-xs text-ink-muted mt-3">
             {{ formatNumber(updateStats.uniqueHotfixes) }}
             jedinstvenih KB paketa
           </div>
 
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             {{ formatNumber(updateStats.installationsLast30Days) }}
             instalacija u poslednjih 30 dana
           </div>
@@ -323,10 +324,10 @@ function percentageClass(percent) {
         <div>
           <h5 class="pdsu-card-title">Pokrivenost PDSU podacima</h5>
 
-          <div class="text-xs text-slate-500">U odnosu na ukupan broj računara u sistemu</div>
+          <div class="text-xs text-ink-muted">U odnosu na ukupan broj računara u sistemu</div>
         </div>
 
-        <span class="pdsu-badge bg-slate-900 text-white"> {{ formatNumber(totalComputers) }} računara </span>
+        <span class="pdsu-badge bg-ink text-white"> {{ formatNumber(totalComputers) }} računara </span>
       </div>
 
       <div class="p-4">
@@ -334,11 +335,11 @@ function percentageClass(percent) {
           <div v-for="item in coverageItems" :key="item.key">
             <div class="flex items-center justify-between mb-2">
               <div>
-                <div class="font-semibold text-slate-900">
+                <div class="font-semibold text-ink">
                   {{ item.label }}
                 </div>
 
-                <div class="text-xs text-slate-500">
+                <div class="text-xs text-ink-muted">
                   {{ item.description }}
                 </div>
               </div>
@@ -373,8 +374,8 @@ function percentageClass(percent) {
 
               <span
                 :class="{
-                  'text-red-600': item.missing > 0,
-                  'text-green-600': item.missing === 0,
+                  'text-bad': item.missing > 0,
+                  'text-good': item.missing === 0,
                 }"
               >
                 Bez podataka:
@@ -393,7 +394,7 @@ function percentageClass(percent) {
           <h5 class="pdsu-card-title">
             Računari bez PDSU podataka ({{ missingComputers.length }})
           </h5>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Nema nijedan zapis (ni programi, ni drajveri, ni servisi, ni update-i)
           </div>
         </div>
@@ -408,7 +409,7 @@ function percentageClass(percent) {
 
       <div
         v-if="!missingComputers.length"
-        class="p-4 text-sm text-slate-500"
+        class="p-4 text-sm text-ink-muted"
       >
         Svi računari imaju bar neki PDSU podatak.
       </div>
@@ -427,8 +428,8 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in missingComputers" :key="row.id">
-              <td class="font-semibold text-slate-900">
-                <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
+              <td class="font-semibold text-ink">
+                <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}
                 </RouterLink>
               </td>
@@ -448,7 +449,7 @@ function percentageClass(percent) {
           <h5 class="pdsu-card-title">
             Računari bez UltraVNC ({{ withoutUltravnc.length }})
           </h5>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Nema servis nalik UltraVNC (uvnc_service) u servis inventaru - kandidati za
             (ponovno) pokretanje deploy skripte
           </div>
@@ -464,7 +465,7 @@ function percentageClass(percent) {
 
       <div
         v-if="!withoutUltravnc.length"
-        class="p-4 text-sm text-slate-500"
+        class="p-4 text-sm text-ink-muted"
       >
         Svi računari imaju UltraVNC servis.
       </div>
@@ -486,8 +487,8 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in withoutUltravnc" :key="row.id">
-              <td class="font-semibold text-slate-900">
-                <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
+              <td class="font-semibold text-ink">
+                <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}
                 </RouterLink>
               </td>
@@ -497,7 +498,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'"
+                  :class="row.isOnline ? 'bg-good text-white' : 'bg-ink-muted text-white'"
                 >
                   {{ row.isOnline ? 'Online' : 'Offline' }}
                 </span>
@@ -505,7 +506,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.hasServiceData ? 'bg-red-600 text-white' : 'bg-slate-400 text-white'"
+                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-slate-400 text-white'"
                 >
                   {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
                 </span>
@@ -514,11 +515,11 @@ function percentageClass(percent) {
                 <RouterLink
                   v-if="row.agentId"
                   :to="`/agents/${row.agentId}`"
-                  class="text-emerald-600 hover:underline"
+                  class="text-good hover:underline"
                 >
                   Otvori agenta
                 </RouterLink>
-                <span v-else class="text-slate-400">Nema agenta</span>
+                <span v-else class="text-ink-muted">Nema agenta</span>
               </td>
             </tr>
           </tbody>
@@ -533,7 +534,7 @@ function percentageClass(percent) {
           <h5 class="pdsu-card-title">
             Računari bez NetdeskAgentManager-a ({{ withoutNetdeskAgentManager.length }})
           </h5>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs text-ink-muted">
             Nema NetdeskAgentManager servis u servis inventaru - kandidati za instalaciju
             preko "Instaliraj/ažuriraj NetdeskAgent Manager servis" preseta
           </div>
@@ -542,10 +543,10 @@ function percentageClass(percent) {
           <button
             v-if="managerAgentRows.length"
             type="button"
-            class="text-blue-600 hover:underline text-sm"
+            class="inline-flex items-center gap-1 text-accent hover:underline text-sm"
             @click="selectAgentsFor"
           >
-            🎯 Selektuj agente ({{ managerAgentRows.length }})
+            <NavIcon name="target" /> Selektuj agente ({{ managerAgentRows.length }})
           </button>
           <AppButton
             variant="secondary"
@@ -559,7 +560,7 @@ function percentageClass(percent) {
 
       <div
         v-if="!withoutNetdeskAgentManager.length"
-        class="p-4 text-sm text-slate-500"
+        class="p-4 text-sm text-ink-muted"
       >
         Svi računari imaju NetdeskAgentManager servis.
       </div>
@@ -581,8 +582,8 @@ function percentageClass(percent) {
           </thead>
           <tbody>
             <tr v-for="row in withoutNetdeskAgentManager" :key="row.id">
-              <td class="font-semibold text-slate-900">
-                <RouterLink :to="`/ip/${row.id}/meta`" class="text-blue-600 hover:underline">
+              <td class="font-semibold text-ink">
+                <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
                   {{ row.computerName || 'Nepoznat računar' }}
                 </RouterLink>
               </td>
@@ -592,7 +593,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.isOnline ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'"
+                  :class="row.isOnline ? 'bg-good text-white' : 'bg-ink-muted text-white'"
                 >
                   {{ row.isOnline ? 'Online' : 'Offline' }}
                 </span>
@@ -600,7 +601,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.hasServiceData ? 'bg-red-600 text-white' : 'bg-slate-400 text-white'"
+                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-slate-400 text-white'"
                 >
                   {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
                 </span>
@@ -609,11 +610,11 @@ function percentageClass(percent) {
                 <RouterLink
                   v-if="row.agentId"
                   :to="`/agents/${row.agentId}`"
-                  class="text-emerald-600 hover:underline"
+                  class="text-good hover:underline"
                 >
                   Otvori agenta
                 </RouterLink>
-                <span v-else class="text-slate-400">Nema agenta</span>
+                <span v-else class="text-ink-muted">Nema agenta</span>
               </td>
             </tr>
           </tbody>
@@ -628,17 +629,17 @@ function percentageClass(percent) {
           <div class="pdsu-card-header">
             <h5 class="pdsu-card-title">Stanje koje zahteva pažnju</h5>
 
-            <div class="text-xs text-slate-500">Najvažniji indikatori iz prikupljenih podataka</div>
+            <div class="text-xs text-ink-muted">Najvažniji indikatori iz prikupljenih podataka</div>
           </div>
 
           <div class="p-4">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div v-for="item in alertItems" :key="item.key">
                 <div
-                  class="flex h-full items-center justify-between rounded-lg border border-slate-200 p-3"
+                  class="flex h-full items-center justify-between rounded-lg border border-line p-3"
                 >
                   <div class="pr-3">
-                    <div class="font-semibold text-slate-900">
+                    <div class="font-semibold text-ink">
                       {{ item.label }}
                     </div>
                   </div>
@@ -658,38 +659,38 @@ function percentageClass(percent) {
           <div class="pdsu-card-header">
             <h5 class="pdsu-card-title">Poslednje prikupljanje</h5>
 
-            <div class="text-xs text-slate-500">Najnoviji datum inventara po kategoriji</div>
+            <div class="text-xs text-ink-muted">Najnoviji datum inventara po kategoriji</div>
           </div>
 
           <div class="p-4">
-            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
-              <span class="font-semibold text-slate-900"> Programi </span>
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
+              <span class="font-semibold text-ink"> Programi </span>
 
-              <span class="text-slate-500 text-right">
+              <span class="text-ink-muted text-right">
                 {{ formatDate(softwareStats.newestInventoryDate) }}
               </span>
             </div>
 
-            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
-              <span class="font-semibold text-slate-900"> Drajveri </span>
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
+              <span class="font-semibold text-ink"> Drajveri </span>
 
-              <span class="text-slate-500 text-right">
+              <span class="text-ink-muted text-right">
                 {{ formatDate(driverStats.newestInventoryDate) }}
               </span>
             </div>
 
-            <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">
-              <span class="font-semibold text-slate-900"> Servisi </span>
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
+              <span class="font-semibold text-ink"> Servisi </span>
 
-              <span class="text-slate-500 text-right">
+              <span class="text-ink-muted text-right">
                 {{ formatDate(serviceStats.newestInventoryDate) }}
               </span>
             </div>
 
             <div class="flex items-center justify-between gap-3 pt-2">
-              <span class="font-semibold text-slate-900"> Updates </span>
+              <span class="font-semibold text-ink"> Updates </span>
 
-              <span class="text-slate-500 text-right">
+              <span class="text-ink-muted text-right">
                 {{ formatDate(updateStats.newestInventoryDate) }}
               </span>
             </div>

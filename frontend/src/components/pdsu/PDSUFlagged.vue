@@ -7,6 +7,7 @@ import { parseError } from '@/utils/api.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
+import NavIcon from '@/components/NavIcon.vue'
 
 const { isAdmin } = useCurrentUser()
 const router = useRouter()
@@ -75,7 +76,7 @@ async function selectAgentsFor(kind, id) {
     const ids = data.agentIds || []
     if (!ids.length) {
       showToast('Nijedan agent na ovom sajtu trenutno nema ovo instalirano/prisutno.', {
-        prefix: 'ℹ️ ',
+        kind: 'info',
         duration: 3000,
       })
       return
@@ -83,7 +84,7 @@ async function selectAgentsFor(kind, id) {
     router.push({ path: '/agents', query: { site: site.value, agentIds: ids.join(',') } })
   } catch (e) {
     console.error('Neuspešna selekcija agenata za flagged stavku', e)
-    showToast('Greška pri traženju agenata', { prefix: '❌ ', duration: 3000 })
+    showToast('Greška pri traženju agenata', { kind: 'error', duration: 3000 })
   } finally {
     selectingAgentsFor.value = null
   }
@@ -95,12 +96,12 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">⚠ Neželjeni programi</h5>
-          <div class="text-xs text-slate-500">
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni programi</h5>
+          <div class="text-xs text-ink-muted">
             Programi koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
           </div>
         </div>
-        <span class="pdsu-badge bg-red-600 text-white">{{ flaggedSoftware.length }}</span>
+        <span class="pdsu-badge bg-bad text-white">{{ flaggedSoftware.length }}</span>
       </div>
 
       <div class="p-4 pb-0">
@@ -125,22 +126,22 @@ async function selectAgentsFor(kind, id) {
           </thead>
           <tbody>
             <tr v-for="item in filteredSoftware" :key="item.id">
-              <td class="font-semibold text-slate-900">{{ item.displayName }}</td>
+              <td class="font-semibold text-ink">{{ item.displayName }}</td>
               <td>{{ item.publisher || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
                   :disabled="selectingAgentsFor === `software-${item.id}`"
                   @click="selectAgentsFor('software', item.id)"
                 >
-                  🎯 Selektuj agente
+                  <NavIcon name="target" /> Selektuj agente
                 </button>
                 <button
                   type="button"
-                  class="text-red-600 hover:underline text-sm"
+                  class="text-bad hover:underline text-sm"
                   @click="emit('remove-software', item.id)"
                 >
                   Ukloni
@@ -148,7 +149,7 @@ async function selectAgentsFor(kind, id) {
               </td>
             </tr>
             <tr v-if="filteredSoftware.length === 0">
-              <td colspan="5" class="text-center text-slate-500 py-4">
+              <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedSoftware.length === 0
                     ? 'Još uvek nema označenih neželjenih programa. Pretraži programe iznad i klikni "Označi kao neželjen".'
@@ -164,12 +165,12 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">⚠ Neželjeni servisi</h5>
-          <div class="text-xs text-slate-500">
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni servisi</h5>
+          <div class="text-xs text-ink-muted">
             Servisi koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
           </div>
         </div>
-        <span class="pdsu-badge bg-red-600 text-white">{{ flaggedServices.length }}</span>
+        <span class="pdsu-badge bg-bad text-white">{{ flaggedServices.length }}</span>
       </div>
 
       <div class="p-4 pb-0">
@@ -194,22 +195,22 @@ async function selectAgentsFor(kind, id) {
           </thead>
           <tbody>
             <tr v-for="item in filteredServices" :key="item.id">
-              <td class="font-semibold text-slate-900">{{ item.name }}</td>
+              <td class="font-semibold text-ink">{{ item.name }}</td>
               <td>{{ item.displayName || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
                   :disabled="selectingAgentsFor === `services-${item.id}`"
                   @click="selectAgentsFor('services', item.id)"
                 >
-                  🎯 Selektuj agente
+                  <NavIcon name="target" /> Selektuj agente
                 </button>
                 <button
                   type="button"
-                  class="text-red-600 hover:underline text-sm"
+                  class="text-bad hover:underline text-sm"
                   @click="emit('remove-service', item.id)"
                 >
                   Ukloni
@@ -217,7 +218,7 @@ async function selectAgentsFor(kind, id) {
               </td>
             </tr>
             <tr v-if="filteredServices.length === 0">
-              <td colspan="5" class="text-center text-slate-500 py-4">
+              <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedServices.length === 0
                     ? 'Još uvek nema označenih neželjenih servisa. Pretraži servise iznad i klikni "Označi kao neželjen".'
@@ -233,12 +234,12 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">⚠ Neželjeni drajveri</h5>
-          <div class="text-xs text-slate-500">
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni drajveri</h5>
+          <div class="text-xs text-ink-muted">
             Drajveri koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
           </div>
         </div>
-        <span class="pdsu-badge bg-red-600 text-white">{{ flaggedDrivers.length }}</span>
+        <span class="pdsu-badge bg-bad text-white">{{ flaggedDrivers.length }}</span>
       </div>
 
       <div class="p-4 pb-0">
@@ -263,22 +264,22 @@ async function selectAgentsFor(kind, id) {
           </thead>
           <tbody>
             <tr v-for="item in filteredDrivers" :key="item.id">
-              <td class="font-semibold text-slate-900">{{ item.deviceName }}</td>
+              <td class="font-semibold text-ink">{{ item.deviceName }}</td>
               <td>{{ item.driverProviderName || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
               <td>{{ fmtDateSr(item.createdAt) }}</td>
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
                   :disabled="selectingAgentsFor === `drivers-${item.id}`"
                   @click="selectAgentsFor('drivers', item.id)"
                 >
-                  🎯 Selektuj agente
+                  <NavIcon name="target" /> Selektuj agente
                 </button>
                 <button
                   type="button"
-                  class="text-red-600 hover:underline text-sm"
+                  class="text-bad hover:underline text-sm"
                   @click="emit('remove-driver', item.id)"
                 >
                   Ukloni
@@ -286,7 +287,7 @@ async function selectAgentsFor(kind, id) {
               </td>
             </tr>
             <tr v-if="filteredDrivers.length === 0">
-              <td colspan="5" class="text-center text-slate-500 py-4">
+              <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedDrivers.length === 0
                     ? 'Još uvek nema označenih neželjenih drajvera. Pretraži drajvere iznad i klikni "Označi kao neželjen".'

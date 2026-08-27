@@ -1,22 +1,22 @@
 <template>
-  <div class="glass-container">
-    <h1 class="text-2xl font-bold text-slate-800 mb-4">Konfiguracija</h1>
+  <div class="space-y-4">
+    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Konfiguracija</h1>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <div v-else class="space-y-3">
       <div
         v-for="setting in settings"
         :key="setting.key"
-        class="rounded-xl border bg-white p-4 shadow-sm flex items-start justify-between gap-4"
+        class="rounded-xl border border-line bg-surface p-4 shadow-sm flex items-start justify-between gap-4"
       >
         <div class="min-w-0">
-          <div class="font-medium">{{ setting.label }}</div>
-          <p v-if="setting.description" class="text-sm text-slate-500 mt-0.5">
+          <div class="font-medium text-ink">{{ setting.label }}</div>
+          <p v-if="setting.description" class="text-sm text-ink-muted mt-0.5">
             {{ setting.description }}
           </p>
-          <p v-if="setting.updatedAt" class="text-xs text-slate-400 mt-1">
+          <p v-if="setting.updatedAt" class="text-xs text-ink-muted mt-1 font-mono">
             Poslednja izmena: {{ fmtDate(setting.updatedAt) }}
           </p>
         </div>
@@ -30,12 +30,12 @@
             @change="toggle(setting)"
           />
           <div
-            class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-blue-600 transition-colors relative after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5"
+            class="h-6 w-11 rounded-full bg-surface-sunken peer-checked:bg-accent transition-colors relative after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5"
           ></div>
         </label>
       </div>
 
-      <div v-if="!settings.length" class="text-sm text-slate-500">Nema podešavanja.</div>
+      <div v-if="!settings.length" class="text-sm text-ink-muted">Nema podešavanja.</div>
     </div>
 
     <ToastNotification :message="toast" />
@@ -87,7 +87,7 @@ async function toggle(setting) {
     showToast('Podešavanje sačuvano')
   } catch (e) {
     console.error('Greška pri izmeni podešavanja:', e)
-    showToast(e.message || 'Greška pri izmeni podešavanja.', { prefix: '❌ ', duration: 3000 })
+    showToast(e.message || 'Greška pri izmeni podešavanja.', { kind: 'error', duration: 3000 })
   } finally {
     saving.value = ''
   }

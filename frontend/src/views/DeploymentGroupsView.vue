@@ -1,9 +1,9 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">Deployment grupe</h1>
-        <p class="text-sm text-slate-500 mt-1">
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Deployment grupe</h1>
+        <p class="text-sm text-ink-muted mt-1">
           Predefinisana lista deployment grupa za agente - odvojena od "Odeljenje" liste na Home-u.
           Agent može biti u više njih odjednom, i one određuju koji release/verziju agent dobija.
         </p>
@@ -11,8 +11,8 @@
       <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
     </div>
 
-    <div v-if="isAdmin" class="rounded-xl border border-slate-200 bg-white shadow-sm p-4 space-y-2">
-      <label class="text-sm font-medium text-slate-700">Dodaj novu deployment grupu</label>
+    <div v-if="isAdmin" class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-2">
+      <label class="text-sm font-medium text-ink">Dodaj novu deployment grupu</label>
       <div class="flex flex-col sm:flex-row gap-2">
         <input
           v-model.trim="newGroupName"
@@ -27,31 +27,31 @@
       </div>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="!items.length" class="rounded-xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-500">
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="!items.length" class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
       Nema definisanih deployment grupa.
     </div>
 
-    <div v-else class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
+    <div v-else class="table-shell overflow-x-auto">
       <table class="w-full min-w-max text-sm">
-        <thead class="bg-slate-50 text-slate-600 text-left">
+        <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-2 font-medium">Naziv</th>
-            <th class="px-4 py-2 font-medium">Agenti</th>
-            <th class="px-4 py-2 font-medium">Release-i</th>
-            <th v-if="isAdmin" class="px-4 py-2 font-medium"></th>
+            <th class="px-4 py-2 text-left">Naziv</th>
+            <th class="px-4 py-2 text-left">Agenti</th>
+            <th class="px-4 py-2 text-left">Release-i</th>
+            <th v-if="isAdmin" class="px-4 py-2"></th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="item in items" :key="item.name">
-            <td class="px-4 py-2 font-medium">{{ item.name }}</td>
-            <td class="px-4 py-2">{{ item.agentCount }}</td>
-            <td class="px-4 py-2">{{ item.releaseCount }}</td>
+        <tbody>
+          <tr v-for="item in items" :key="item.name" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+            <td class="px-4 py-2 font-medium text-ink">{{ item.name }}</td>
+            <td class="px-4 py-2 font-mono tabular-nums text-ink-secondary">{{ item.agentCount }}</td>
+            <td class="px-4 py-2 font-mono tabular-nums text-ink-secondary">{{ item.releaseCount }}</td>
             <td v-if="isAdmin" class="px-4 py-2 text-right whitespace-nowrap">
               <button
                 type="button"
                 :disabled="item.agentCount + item.releaseCount > 0"
-                class="text-red-600 hover:underline text-xs disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed"
+                class="text-bad hover:underline text-xs disabled:text-ink-muted disabled:no-underline disabled:cursor-not-allowed"
                 :title="item.agentCount + item.releaseCount > 0 ? 'Grupa je u upotrebi - ne može se obrisati' : ''"
                 @click="remove(item.name)"
               >
@@ -107,7 +107,7 @@ async function fetchData() {
     items.value = await res.json()
   } catch (err) {
     console.error('Neuspešno učitavanje deployment grupa', err)
-    showToast(err?.message || 'Greška pri učitavanju deployment grupa', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri učitavanju deployment grupa', { kind: 'error', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -130,7 +130,7 @@ async function addGroup() {
     showToast('Deployment grupa dodata')
   } catch (err) {
     console.error('Neuspešno dodavanje deployment grupe', err)
-    showToast(err?.message || 'Greška pri dodavanju grupe', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri dodavanju grupe', { kind: 'error', duration: 3000 })
   } finally {
     adding.value = false
   }
@@ -149,7 +149,7 @@ async function remove(name) {
     showToast('Deployment grupa obrisana')
   } catch (err) {
     console.error('Neuspešno brisanje deployment grupe', err)
-    showToast(err?.message || 'Greška pri brisanju grupe', { prefix: '❌ ', duration: 3000 })
+    showToast(err?.message || 'Greška pri brisanju grupe', { kind: 'error', duration: 3000 })
   }
 }
 

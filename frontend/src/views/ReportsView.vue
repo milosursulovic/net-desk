@@ -1,65 +1,58 @@
 <template>
-  <div class="glass-container space-y-4">
+  <div class="space-y-4">
     <ToastNotification :message="toast" />
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-2xl font-bold text-slate-800">Dnevni izveštaj</h1>
-          <span
-            v-if="report"
-            class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-            :class="report.openedAt
-              ? 'bg-slate-100 text-slate-500 border-slate-200'
-              : 'bg-blue-50 text-blue-700 border-blue-200'"
-          >
-            {{ report.openedAt ? `Pročitano ${fmtDate(report.openedAt)}` : 'Nepročitano' }}
-          </span>
+          <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Dnevni izveštaj</h1>
+          <StatusPill v-if="report" :status="report.openedAt ? 'neutral' : 'info'" :label="report.openedAt ? `Pročitano ${fmtDate(report.openedAt)}` : 'Nepročitano'" :dot="false" />
         </div>
-        <p v-if="report" class="text-sm text-slate-500 mt-1">
+        <p v-if="report" class="text-sm text-ink-muted mt-1">
           Period: {{ fmtDate(report.periodStart) }} — {{ fmtDate(report.periodEnd) }}
         </p>
       </div>
       <div class="flex gap-2 no-print">
         <AppButton v-if="report" variant="neutral" :disabled="downloadingPdf" @click="downloadPdf">
-          {{ downloadingPdf ? 'Pripremam…' : '📄 Preuzmi PDF' }}
+          <span v-if="downloadingPdf">Pripremam…</span>
+          <span v-else class="inline-flex items-center gap-1"><NavIcon name="file" />Preuzmi PDF</span>
         </AppButton>
       </div>
     </div>
 
-    <div v-if="loading" class="text-slate-600">Učitavanje…</div>
-    <div v-else-if="error" class="text-red-600">{{ error }}</div>
+    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <template v-else-if="report">
       <!-- Fleet snapshot -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <div class="text-slate-500 text-sm">Agenata ukupno</div>
-          <div class="text-3xl font-semibold tracking-tight">{{ report.content.fleet.totalAgents }}</div>
-          <div class="text-slate-500 text-sm mt-1">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <div class="text-ink-muted text-sm">Agenata ukupno</div>
+          <div class="text-3xl font-semibold tracking-tight font-mono text-ink">{{ report.content.fleet.totalAgents }}</div>
+          <div class="text-ink-muted text-sm mt-1">
             {{ report.content.fleet.onlineAgents }} online / {{ report.content.fleet.staleAgents }}
             neaktivno / {{ report.content.fleet.offlineAgents }} offline
           </div>
         </div>
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <div class="text-slate-500 text-sm">IP unosa ukupno</div>
-          <div class="text-3xl font-semibold tracking-tight">{{ report.content.fleet.totalIpEntries }}</div>
-          <div class="text-slate-500 text-sm mt-1">{{ report.content.fleet.offlineIpEntries }} offline</div>
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <div class="text-ink-muted text-sm">IP unosa ukupno</div>
+          <div class="text-3xl font-semibold tracking-tight font-mono text-ink">{{ report.content.fleet.totalIpEntries }}</div>
+          <div class="text-ink-muted text-sm mt-1">{{ report.content.fleet.offlineIpEntries }} offline</div>
         </div>
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <div class="text-slate-500 text-sm">Status promene (period)</div>
-          <div class="text-3xl font-semibold tracking-tight">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <div class="text-ink-muted text-sm">Status promene (period)</div>
+          <div class="text-3xl font-semibold tracking-tight font-mono text-ink">
             {{ report.content.sinceLastReport.statusTransitions.wentOffline
               + report.content.sinceLastReport.statusTransitions.cameOnline }}
           </div>
-          <div class="text-slate-500 text-sm mt-1">
+          <div class="text-ink-muted text-sm mt-1">
             {{ report.content.sinceLastReport.statusTransitions.wentOffline }} otišlo offline /
             {{ report.content.sinceLastReport.statusTransitions.cameOnline }} vratilo se online
           </div>
         </div>
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <div class="text-slate-500 text-sm">Aktivnih upozorenja</div>
-          <div class="text-3xl font-semibold tracking-tight">{{ report.content.alerts.length }}</div>
-          <div class="text-slate-500 text-sm mt-1">videti listu ispod</div>
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <div class="text-ink-muted text-sm">Aktivnih upozorenja</div>
+          <div class="text-3xl font-semibold tracking-tight font-mono text-ink">{{ report.content.alerts.length }}</div>
+          <div class="text-ink-muted text-sm mt-1">videti listu ispod</div>
         </div>
       </div>
 
@@ -68,18 +61,18 @@
       <div
         v-for="group in trendGroups"
         :key="group.key"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm"
+        class="rounded-xl border border-warn/40 bg-warn-subtle p-4 shadow-sm"
       >
-        <h2 class="font-semibold text-amber-900 mb-1">📈 {{ group.label }}</h2>
-        <p class="text-sm text-amber-800 mb-3">
+        <h2 class="font-semibold text-warn mb-1 inline-flex items-center gap-1.5"><NavIcon name="trending-up" /> {{ group.label }}</h2>
+        <p class="text-sm text-ink-secondary mb-3">
           Na osnovu poslednjih {{ TREND_WINDOW_DAYS }} dana - ne znači da će se trend nastaviti
           istom brzinom, samo da vredi proveriti.
         </p>
-        <ul class="space-y-1 text-sm">
+        <ul class="space-y-1 text-sm text-ink-secondary">
           <li v-for="(t, idx) in group.items" :key="idx">
-            <span class="font-medium">{{ t.hostname || '—' }}</span>
+            <span class="font-medium text-ink">{{ t.hostname || '—' }}</span>
             — trenutno {{ t.currentPct.toFixed(1) }}%, raste ~{{ t.slopePctPerDay.toFixed(2) }}%/dan,
-            stiže do {{ group.threshold }}% za <span class="font-semibold">~{{ t.daysUntilThreshold }} dana</span>
+            stiže do {{ group.threshold }}% za <span class="font-semibold text-ink">~{{ t.daysUntilThreshold }} dana</span>
           </li>
         </ul>
       </div>
@@ -87,34 +80,34 @@
       <!-- Posete crnolistiranim domenima -->
       <div
         v-if="blacklistedDomainHits.length"
-        class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm"
+        class="rounded-xl border border-bad/40 bg-bad-subtle p-4 shadow-sm"
       >
-        <h2 class="font-semibold text-red-900 mb-1">🚫 Posete domenima sa crne liste (24h)</h2>
-        <p class="text-sm text-red-800 mb-3">
+        <h2 class="font-semibold text-bad mb-1 inline-flex items-center gap-1.5"><NavIcon name="ban" /> Posete domenima sa crne liste (24h)</h2>
+        <p class="text-sm text-ink-secondary mb-3">
           Računari koji su u poslednjih 24h upitivali domen sa crne liste (uključujući poddomene).
         </p>
-        <ul class="space-y-1 text-sm">
+        <ul class="space-y-1 text-sm text-ink-secondary">
           <li v-for="(d, idx) in blacklistedDomainHits" :key="idx">
-            <span class="font-medium">{{ d.computerName || d.ip || '—' }}</span>
-            <span v-if="d.department" class="text-slate-500"> ({{ d.department }})</span>
+            <span class="font-medium text-ink">{{ d.computerName || d.ip || '—' }}</span>
+            <span v-if="d.department" class="text-ink-muted"> ({{ d.department }})</span>
             — <code class="font-mono">{{ d.domain }}</code>
-            <span class="text-slate-400"> (poslednji put {{ fmtDate(d.lastSeen) }}, {{ d.queryCount }}× upit)</span>
+            <span class="text-ink-muted"> (poslednji put {{ fmtDate(d.lastSeen) }}, {{ d.queryCount }}× upit)</span>
           </li>
         </ul>
       </div>
 
       <!-- Alerts -->
-      <div v-if="report.content.alerts.length" class="rounded-xl border bg-white p-4 shadow-sm">
-        <h2 class="font-semibold text-slate-800 mb-3">Aktivna upozorenja</h2>
+      <div v-if="report.content.alerts.length" class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h2 class="font-semibold text-ink mb-3">Aktivna upozorenja</h2>
         <div class="space-y-2">
           <RouterLink
             v-for="a in report.content.alerts"
             :key="a.id"
             :to="a.to || '/'"
-            class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-slate-50"
+            class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:brightness-95"
             :class="levelClass[a.level] || levelClass.info"
           >
-            <span>{{ levelIcon[a.level] || levelIcon.info }}</span>
+            <NavIcon :name="levelIcon[a.level] || levelIcon.info" />
             <span>{{ a.message }}</span>
           </RouterLink>
         </div>
@@ -122,102 +115,102 @@
 
       <!-- Since last report -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Novi agenti ({{ report.content.sinceLastReport.newAgentsCount }})
           </h2>
-          <div v-if="!report.content.sinceLastReport.newAgents.length" class="text-sm text-slate-500">
+          <div v-if="!report.content.sinceLastReport.newAgents.length" class="text-sm text-ink-muted">
             Nema novih agenata u ovom periodu.
           </div>
-          <ul v-else class="space-y-1 text-sm">
+          <ul v-else class="space-y-1 text-sm text-ink-secondary">
             <li v-for="a in report.content.sinceLastReport.newAgents" :key="a.agentUid">
-              {{ a.hostname || '—' }} <span class="text-slate-400">({{ fmtDate(a.enrolledAt) }})</span>
+              {{ a.hostname || '—' }} <span class="text-ink-muted">({{ fmtDate(a.enrolledAt) }})</span>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Nove IP adrese ({{ report.content.sinceLastReport.newIpEntriesCount }})
           </h2>
-          <div v-if="!report.content.sinceLastReport.newIpEntries.length" class="text-sm text-slate-500">
+          <div v-if="!report.content.sinceLastReport.newIpEntries.length" class="text-sm text-ink-muted">
             Nema novih unosa u ovom periodu.
           </div>
-          <ul v-else class="space-y-1 text-sm">
+          <ul v-else class="space-y-1 text-sm text-ink-secondary">
             <li v-for="e in report.content.sinceLastReport.newIpEntries" :key="e.id">
               {{ e.ip }} — {{ e.computerName || '—' }}
-              <span class="text-slate-400">({{ fmtDate(e.createdAt) }})</span>
+              <span class="text-ink-muted">({{ fmtDate(e.createdAt) }})</span>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Novi štampači ({{ report.content.sinceLastReport.newPrintersCount }})
           </h2>
-          <div v-if="!report.content.sinceLastReport.newPrinters.length" class="text-sm text-slate-500">
+          <div v-if="!report.content.sinceLastReport.newPrinters.length" class="text-sm text-ink-muted">
             Nema novih štampača u ovom periodu.
           </div>
-          <ul v-else class="space-y-1 text-sm">
+          <ul v-else class="space-y-1 text-sm text-ink-secondary">
             <li v-for="p in report.content.sinceLastReport.newPrinters" :key="p.id">
-              {{ p.name || '—' }} <span class="text-slate-400">({{ p.ip || '—' }})</span>
+              {{ p.name || '—' }} <span class="text-ink-muted">({{ p.ip || '—' }})</span>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 class="font-semibold text-ink mb-3">
             Neuspešne komande ({{ report.content.sinceLastReport.failedJobsCount }})
           </h2>
-          <div v-if="!report.content.sinceLastReport.failedJobs.length" class="text-sm text-slate-500">
+          <div v-if="!report.content.sinceLastReport.failedJobs.length" class="text-sm text-ink-muted">
             Nema neuspešnih komandi u ovom periodu.
           </div>
-          <ul v-else class="space-y-1 text-sm">
+          <ul v-else class="space-y-1 text-sm text-ink-secondary">
             <li v-for="(j, idx) in report.content.sinceLastReport.failedJobs" :key="idx">
               {{ j.hostname || '—' }} — {{ j.commandType }}
-              <span class="text-slate-400">({{ fmtDate(j.completedAt) }})</span>
+              <span class="text-ink-muted">({{ fmtDate(j.completedAt) }})</span>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-xl border bg-white p-4 shadow-sm lg:col-span-2">
-          <h2 class="font-semibold text-slate-800 mb-3">
+        <div class="rounded-xl border border-line bg-surface p-4 shadow-sm lg:col-span-2">
+          <h2 class="font-semibold text-ink mb-3">
             Neuspešna ažuriranja agenta ({{ report.content.sinceLastReport.failedUpdatesCount }})
           </h2>
-          <div v-if="!report.content.sinceLastReport.failedUpdates.length" class="text-sm text-slate-500">
+          <div v-if="!report.content.sinceLastReport.failedUpdates.length" class="text-sm text-ink-muted">
             Nema neuspešnih ažuriranja u ovom periodu.
           </div>
-          <ul v-else class="space-y-1 text-sm">
-            <li v-for="(u, idx) in report.content.sinceLastReport.failedUpdates" :key="idx" class="break-words">
+          <ul v-else class="space-y-1 text-sm text-ink-secondary">
+            <li v-for="(u, idx) in report.content.sinceLastReport.failedUpdates" :key="idx" class="wrap-break-word">
               {{ u.hostname || '—' }} — {{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}
-              <span v-if="u.reason" class="text-slate-400">({{ u.reason }})</span>
+              <span v-if="u.reason" class="text-ink-muted">({{ u.reason }})</span>
             </li>
           </ul>
         </div>
       </div>
     </template>
 
-    <div v-else class="text-slate-600">Još nema generisanih izveštaja.</div>
+    <div v-else class="text-ink-secondary">Još nema generisanih izveštaja.</div>
 
     <!-- Istorija -->
-    <div class="rounded-xl border bg-white p-4 shadow-sm no-print">
-      <h2 class="font-semibold text-slate-800 mb-3">Istorija izveštaja</h2>
-      <div v-if="!history.length" class="text-sm text-slate-500">Nema prethodnih izveštaja.</div>
+    <div class="rounded-xl border border-line bg-surface p-4 shadow-sm no-print">
+      <h2 class="font-semibold text-ink mb-3">Istorija izveštaja</h2>
+      <div v-if="!history.length" class="text-sm text-ink-muted">Nema prethodnih izveštaja.</div>
       <div v-else class="space-y-1">
         <RouterLink
           v-for="h in history"
           :key="h.id"
           :to="`/reports/${h.id}`"
-          class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"
-          :class="report && report.id === h.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700'"
+          class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-surface-sunken"
+          :class="report && report.id === h.id ? 'bg-accent-subtle text-accent-emphasis' : 'text-ink-secondary'"
         >
           <span
             class="h-2 w-2 shrink-0 rounded-full"
-            :class="h.openedAt ? 'bg-transparent' : 'bg-blue-600'"
+            :class="h.openedAt ? 'bg-transparent' : 'bg-accent'"
             :title="h.openedAt ? 'Pročitano' : 'Nepročitano'"
           />
           {{ fmtDate(h.periodStart) }} — {{ fmtDate(h.periodEnd) }}
-          <span class="text-slate-400">(generisano {{ fmtDate(h.generatedAt) }})</span>
+          <span class="text-ink-muted font-mono">(generisano {{ fmtDate(h.generatedAt) }})</span>
         </RouterLink>
       </div>
     </div>
@@ -234,6 +227,8 @@ import { useToast } from '@/composables/useToast.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import StatusPill from '@/components/StatusPill.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const route = useRoute()
 const site = useCurrentSite()
@@ -244,14 +239,14 @@ const TREND_WINDOW_DAYS = 90
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 
 const levelClass = {
-  critical: 'bg-red-50 text-red-700 border-red-200',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200',
-  info: 'bg-blue-50 text-blue-700 border-blue-200',
+  critical: 'bg-bad-subtle text-bad border-bad/40',
+  warning: 'bg-warn-subtle text-warn border-warn/40',
+  info: 'bg-info-subtle text-info border-info/40',
 }
 const levelIcon = {
-  critical: '⛔',
-  warning: '⚠️',
-  info: 'ℹ️',
+  critical: 'ban',
+  warning: 'alert-triangle',
+  info: 'info',
 }
 const report = ref(null)
 const history = ref([])
@@ -320,7 +315,7 @@ async function downloadPdf() {
     )
   } catch (err) {
     console.error('Neuspešno preuzimanje PDF-a:', err)
-    showToast('Neuspešno preuzimanje PDF-a', { prefix: '❌ ', duration: 3000 })
+    showToast('Neuspešno preuzimanje PDF-a', { kind: 'error', duration: 3000 })
   } finally {
     downloadingPdf.value = false
   }

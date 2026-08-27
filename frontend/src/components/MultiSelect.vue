@@ -5,13 +5,13 @@
       @click="open = !open"
       class="app-input w-full flex items-center justify-between gap-2 text-left py-2 text-sm truncate"
     >
-      <span class="truncate" :class="modelValue.length ? '' : 'text-slate-400'">{{ summaryLabel }}</span>
-      <span class="text-slate-400 shrink-0">▾</span>
+      <span class="truncate" :class="modelValue.length ? '' : 'text-ink-muted'">{{ summaryLabel }}</span>
+      <NavIcon name="chevron-down" class="text-ink-muted shrink-0" />
     </button>
 
     <div
       v-if="open"
-      class="absolute z-20 mt-1 w-64 max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg p-2 space-y-0.5"
+      class="absolute z-20 mt-1 w-64 max-h-72 overflow-y-auto rounded-lg border border-line bg-surface shadow-lg p-2 space-y-0.5"
     >
       <input
         v-if="options.length > 8"
@@ -21,12 +21,12 @@
         class="app-input w-full text-sm mb-1"
       />
 
-      <p v-if="!filteredOptions.length" class="px-1.5 py-1 text-sm text-slate-400">Nema opcija.</p>
+      <p v-if="!filteredOptions.length" class="px-1.5 py-1 text-sm text-ink-muted">Nema opcija.</p>
 
       <label
         v-for="opt in filteredOptions"
         :key="opt"
-        class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-50 text-sm cursor-pointer"
+        class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-surface-sunken text-sm cursor-pointer"
       >
         <input type="checkbox" :checked="modelValue.includes(opt)" @change="toggle(opt)" />
         <span class="truncate">{{ opt }}</span>
@@ -36,7 +36,7 @@
         v-if="modelValue.length"
         type="button"
         @click="emit('update:modelValue', [])"
-        class="w-full text-left text-xs text-blue-600 hover:underline px-1.5 pt-1 border-t border-slate-100 mt-1"
+        class="w-full text-left text-xs text-accent hover:underline px-1.5 pt-1 border-t border-line mt-1"
       >
         Poništi ({{ modelValue.length }})
       </button>
@@ -46,6 +46,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 // Zajednička multiselect kontrola za filter dropdown-ove (Home/Agenti) -
 // standardni <select multiple> zahteva ctrl/cmd-klik za višestruki izbor

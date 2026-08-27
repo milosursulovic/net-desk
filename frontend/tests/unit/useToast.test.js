@@ -11,24 +11,24 @@ describe('useToast', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows a message with the default success prefix', () => {
+  it('shows a message with the default "success" kind', () => {
     const { toast, showToast } = useToast()
     showToast('Sačuvano')
-    expect(toast.value).toBe('✅ Sačuvano')
+    expect(toast.value).toEqual({ text: 'Sačuvano', kind: 'success' })
   })
 
-  it('supports a custom prefix (e.g. error)', () => {
+  it('supports a custom kind (e.g. error)', () => {
     const { toast, showToast } = useToast()
-    showToast('Greška', { prefix: '❌ ' })
-    expect(toast.value).toBe('❌ Greška')
+    showToast('Greška', { kind: 'error' })
+    expect(toast.value).toEqual({ text: 'Greška', kind: 'error' })
   })
 
   it('auto-clears after the given duration', () => {
     const { toast, showToast } = useToast()
     showToast('Sačuvano', { duration: 1000 })
-    expect(toast.value).toBe('✅ Sačuvano')
+    expect(toast.value).toEqual({ text: 'Sačuvano', kind: 'success' })
     vi.advanceTimersByTime(999)
-    expect(toast.value).toBe('✅ Sačuvano')
+    expect(toast.value).toEqual({ text: 'Sačuvano', kind: 'success' })
     vi.advanceTimersByTime(1)
     expect(toast.value).toBeNull()
   })
@@ -41,7 +41,7 @@ describe('useToast', () => {
     vi.advanceTimersByTime(900)
     // 1800ms since the first call, but the timer was reset at 900ms, so the
     // first call's original 1000ms deadline should NOT have fired.
-    expect(toast.value).toBe('✅ Second')
+    expect(toast.value).toEqual({ text: 'Second', kind: 'success' })
     vi.advanceTimersByTime(100)
     expect(toast.value).toBeNull()
   })
@@ -57,7 +57,7 @@ describe('useToast', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue() } })
     const { toast, copyToClipboard } = useToast()
     await copyToClipboard('10.230.62.81', 'IP kopiran')
-    expect(toast.value).toBe('✅ IP kopiran')
+    expect(toast.value).toEqual({ text: 'IP kopiran', kind: 'success' })
     vi.unstubAllGlobals()
   })
 
@@ -67,7 +67,7 @@ describe('useToast', () => {
     })
     const { toast, copyToClipboard } = useToast()
     await copyToClipboard('10.230.62.81')
-    expect(toast.value).toBe('❌ Neuspešno kopiranje')
+    expect(toast.value).toEqual({ text: 'Neuspešno kopiranje', kind: 'error' })
     vi.unstubAllGlobals()
   })
 })
