@@ -1,9 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
-/* Class-based dark mode (manual toggle, not just OS preference) - putting
-   `.dark` on <html> activates every `dark:` variant used anywhere below,
-   including inside nested descendants. */
+/* Light mode is retired - dark is the only theme now (public/theme-init.js
+   adds `.dark` to <html> unconditionally, before first paint, and nothing
+   ever removes it - the old light/dark/system toggle and useTheme.js are
+   gone). `.dark` is kept as the mechanism rather than merging its values
+   into :root, since the ~150-line legacy "DARK MODE - semantic overrides"
+   block further below is keyed on the `.dark` selector too - removing the
+   class-based approach would mean rewriting that block as well for no
+   behavioral gain. The plain :root block right below is consequently dead
+   (always overridden by .dark) - left in place rather than deleted, in case
+   light mode is ever reintroduced. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =========================================================
@@ -20,12 +27,16 @@
   --surface-canvas: #F3F6F5;
   --surface-card: #FFFFFF;
   --surface-sunken: #EAF0EE;
-  --line-default: #DBE3E0;
-  --line-strong: #C1CCC8;
+  /* Darkened from the original #DBE3E0/#C1CCC8 - against a white card those
+     read at ~1.3:1 contrast, near-invisible (reported live: borders/muted
+     text too faint on the light theme). Dark mode's tokens are unaffected -
+     the complaint was light-only. */
+  --line-default: #C7D0CB;
+  --line-strong: #A6B4AD;
 
   --ink-primary: #10201D;
   --ink-secondary: #4A5A56;
-  --ink-muted: #7B8D88;
+  --ink-muted: #5C6D68;
 
   --accent-default: #0B6E63;
   --accent-emphasis: #08544B;

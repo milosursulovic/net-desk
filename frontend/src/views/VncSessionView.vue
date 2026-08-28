@@ -4,9 +4,6 @@
       <div class="flex items-center gap-2 text-slate-200 font-medium truncate">
         {{ viewOnly ? 'Pregled ekrana' : 'Udaljena kontrola ekrana' }}
         <span class="text-slate-500 text-sm truncate">{{ agent?.hostname || agent?.agentUid || '' }}</span>
-        <span class="rounded-full border border-amber-200/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-amber-400">
-          BETA
-        </span>
         <span
           v-if="viewOnly"
           class="rounded-full border border-sky-200/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-sky-400"

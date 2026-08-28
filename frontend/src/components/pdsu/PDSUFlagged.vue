@@ -133,18 +133,20 @@ async function selectAgentsFor(kind, id) {
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
+                  class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
+                  title="Selektuj agente"
                   :disabled="selectingAgentsFor === `software-${item.id}`"
                   @click="selectAgentsFor('software', item.id)"
                 >
-                  <NavIcon name="target" /> Selektuj agente
+                  <NavIcon name="target" />
                 </button>
                 <button
                   type="button"
-                  class="text-bad hover:underline text-sm"
+                  class="rounded p-1 text-bad hover:bg-surface-sunken"
+                  title="Ukloni"
                   @click="emit('remove-software', item.id)"
                 >
-                  Ukloni
+                  <NavIcon name="trash" />
                 </button>
               </td>
             </tr>
@@ -202,18 +204,20 @@ async function selectAgentsFor(kind, id) {
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
+                  class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
+                  title="Selektuj agente"
                   :disabled="selectingAgentsFor === `services-${item.id}`"
                   @click="selectAgentsFor('services', item.id)"
                 >
-                  <NavIcon name="target" /> Selektuj agente
+                  <NavIcon name="target" />
                 </button>
                 <button
                   type="button"
-                  class="text-bad hover:underline text-sm"
+                  class="rounded p-1 text-bad hover:bg-surface-sunken"
+                  title="Ukloni"
                   @click="emit('remove-service', item.id)"
                 >
-                  Ukloni
+                  <NavIcon name="trash" />
                 </button>
               </td>
             </tr>
@@ -271,18 +275,20 @@ async function selectAgentsFor(kind, id) {
               <td class="text-right space-x-3 whitespace-nowrap">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 text-accent hover:underline text-sm disabled:opacity-50"
+                  class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
+                  title="Selektuj agente"
                   :disabled="selectingAgentsFor === `drivers-${item.id}`"
                   @click="selectAgentsFor('drivers', item.id)"
                 >
-                  <NavIcon name="target" /> Selektuj agente
+                  <NavIcon name="target" />
                 </button>
                 <button
                   type="button"
-                  class="text-bad hover:underline text-sm"
+                  class="rounded p-1 text-bad hover:bg-surface-sunken"
+                  title="Ukloni"
                   @click="emit('remove-driver', item.id)"
                 >
-                  Ukloni
+                  <NavIcon name="trash" />
                 </button>
               </td>
             </tr>

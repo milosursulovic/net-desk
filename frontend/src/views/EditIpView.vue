@@ -63,7 +63,10 @@
       </div>
 
       <div class="mt-6">
-        <AppButton type="button" variant="danger" @click="clearComputerData">Očisti podatke</AppButton>
+        <AppButton type="button" variant="danger" class="inline-flex items-center gap-1.5" @click="clearComputerData">
+          <NavIcon name="trash" />
+          Očisti podatke
+        </AppButton>
       </div>
 
       <div class="flex justify-between mt-6">
@@ -90,6 +93,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchWithAuth } from '@/utils/fetchWithAuth'
 import { parseError } from '@/utils/api.js'
 import AppButton from '@/components/AppButton.vue'
+import NavIcon from '@/components/NavIcon.vue'
 import {
   createIpEntryForm,
   IP_ENTRY_FIELDS,

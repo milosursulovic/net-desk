@@ -65,8 +65,8 @@ export default defineConfig({
         description: 'Interni IT alat i RMM sistem za mrežnu/hardversku infrastrukturu',
         start_url: '/',
         display: 'standalone',
-        background_color: '#0f172a',
-        theme_color: '#2563eb',
+        background_color: '#0D1615',
+        theme_color: '#3FBDA8',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

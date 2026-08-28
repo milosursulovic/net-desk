@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from '@/composables/useTheme.js'
 import { usePushNotifications } from '@/composables/usePushNotifications.js'
 import { useCurrentUser, resetCurrentUser } from '@/composables/useCurrentUser.js'
 import NavIcon from '@/components/NavIcon.vue'
@@ -9,7 +8,6 @@ import ChangePasswordButton from '@/components/ChangePasswordButton.vue'
 
 const router = useRouter()
 const { currentUser } = useCurrentUser()
-const { theme, setTheme } = useTheme()
 const { isSupported, isSubscribed, loading, error, checkSubscription, subscribe, unsubscribe } =
   usePushNotifications()
 
@@ -23,15 +21,6 @@ const userInitial = computed(() => {
   const name = currentUser.value?.username || ''
   return name ? name.charAt(0).toUpperCase() : '?'
 })
-
-const THEME_ORDER = ['light', 'dark', 'system']
-const THEME_ICON = { light: 'sun', dark: 'moon', system: 'monitor' }
-const THEME_LABEL = { light: 'Svetla', dark: 'Tamna', system: 'Prati sistem' }
-
-function cycleTheme() {
-  const next = THEME_ORDER[(THEME_ORDER.indexOf(theme.value) + 1) % THEME_ORDER.length]
-  setTheme(next)
-}
 
 async function toggleNotifications() {
   if (isSubscribed.value) {
@@ -126,16 +115,6 @@ onBeforeUnmount(() => {
         :style="menuStyle"
         class="z-9998 w-64 rounded-lg border border-line bg-surface p-1.5 shadow-lg"
       >
-        <button
-          type="button"
-          class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-ink hover:bg-surface-sunken"
-          @click="cycleTheme"
-        >
-          <NavIcon :name="THEME_ICON[theme]" class="text-ink-muted" />
-          <span class="flex-1 text-left">Tema</span>
-          <span class="text-xs text-ink-muted">{{ THEME_LABEL[theme] }}</span>
-        </button>
-
         <button
           v-if="isSupported"
           type="button"

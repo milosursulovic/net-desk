@@ -1,8 +1,15 @@
 <template>
-  <div class="w-full max-w-4xl mx-auto space-y-4">
-    <div class="flex items-center justify-between gap-3">
+  <div class="agent-hud w-full max-w-4xl mx-auto">
+    <div class="hud-scanlines" aria-hidden="true"></div>
+    <div class="hud-shell space-y-4">
+    <div class="flex items-center justify-between gap-3 hud-header">
       <div class="min-w-0">
-        <h1 class="text-2xl font-bold text-ink truncate" style="font-family: var(--font-display)">
+        <div class="hud-eyebrow">
+          <span class="hud-live-dot" aria-hidden="true"></span>
+          UPLINK // AGENT TERMINAL
+          <span class="hud-cursor" aria-hidden="true">_</span>
+        </div>
+        <h1 class="text-2xl font-bold text-ink truncate hud-glow-text" style="font-family: var(--font-display)">
           {{ agent?.hostname || agent?.agentUid || 'Agent' }}
         </h1>
         <p v-if="agent?.department" class="mt-0.5 text-sm text-ink-muted">{{ agent.department }}</p>
@@ -15,7 +22,7 @@
 
     <div v-else-if="agent" class="space-y-4">
       <!-- Info kartica -->
-      <div class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
+      <div class="hud-panel rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
         <div class="flex flex-wrap items-center gap-2">
           <StatusPill :status="agentStatusTone(agent.status)" :label="agentStatusLabel(agent.status)" />
           <StatusPill :status="connectivityTone(agent.connectivityStatus)" :label="connectivityLabel(agent.connectivityStatus)" />
@@ -106,30 +113,36 @@
       </div>
 
       <!-- Monitoring -->
-      <div v-if="agent.monitoring" class="rounded-xl border border-line bg-surface shadow-sm p-4">
-        <div class="font-medium text-ink mb-2">Monitoring</div>
+      <div v-if="agent.monitoring" class="hud-panel rounded-xl border border-line bg-surface shadow-sm p-4">
+        <div class="font-medium text-ink mb-2 hud-section-title">Monitoring</div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
-            <div class="text-xs text-ink-muted">CPU</div>
-            <div class="font-mono font-semibold tabular-nums text-ink">{{ fmtPct(agent.monitoring.cpuLoadPct) }}</div>
+          <div class="hud-tile hud-gauge-tile rounded-lg bg-surface-sunken border border-line p-2">
+            <div class="text-xs text-ink-muted mb-1">CPU</div>
+            <div class="hud-gauge" :style="{ '--gauge-deg': gaugeDeg(agent.monitoring.cpuLoadPct), '--gauge-color': gaugeColor(agent.monitoring.cpuLoadPct) }">
+              <span class="hud-gauge-value">{{ fmtPct(agent.monitoring.cpuLoadPct) }}</span>
+            </div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
-            <div class="text-xs text-ink-muted">RAM</div>
-            <div class="font-mono font-semibold tabular-nums text-ink">{{ fmtPct(agent.monitoring.ramLoadPct) }}</div>
+          <div class="hud-tile hud-gauge-tile rounded-lg bg-surface-sunken border border-line p-2">
+            <div class="text-xs text-ink-muted mb-1">RAM</div>
+            <div class="hud-gauge" :style="{ '--gauge-deg': gaugeDeg(agent.monitoring.ramLoadPct), '--gauge-color': gaugeColor(agent.monitoring.ramLoadPct) }">
+              <span class="hud-gauge-value">{{ fmtPct(agent.monitoring.ramLoadPct) }}</span>
+            </div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
-            <div class="text-xs text-ink-muted">Disk</div>
-            <div class="font-mono font-semibold tabular-nums text-ink">{{ fmtPct(agent.monitoring.diskUsedPct) }}</div>
+          <div class="hud-tile hud-gauge-tile rounded-lg bg-surface-sunken border border-line p-2">
+            <div class="text-xs text-ink-muted mb-1">Disk</div>
+            <div class="hud-gauge" :style="{ '--gauge-deg': gaugeDeg(agent.monitoring.diskUsedPct), '--gauge-color': gaugeColor(agent.monitoring.diskUsedPct) }">
+              <span class="hud-gauge-value">{{ fmtPct(agent.monitoring.diskUsedPct) }}</span>
+            </div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Slobodno (disk)</div>
-            <div class="font-mono font-semibold tabular-nums text-ink">{{ fmtGb(agent.monitoring.diskFreeGb) }}</div>
+            <div class="hud-metric font-mono font-semibold tabular-nums text-ink">{{ fmtGb(agent.monitoring.diskFreeGb) }}</div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Mreža</div>
             <div class="font-semibold text-ink">{{ agent.monitoring.networkConnected ? 'Povezan' : 'Nepovezan' }}</div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Antivirus</div>
             <div class="font-semibold text-ink">{{ agent.monitoring.antivirusStatus || '—' }}</div>
             <button
@@ -142,7 +155,7 @@
               <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />Popravi</span>
             </button>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Firewall</div>
             <div class="font-semibold text-ink">{{ agent.monitoring.firewallStatus || '—' }}</div>
             <button
@@ -155,11 +168,11 @@
               <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />Popravi</span>
             </button>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">BitLocker</div>
             <div class="font-semibold text-ink">{{ agent.monitoring.bitlockerStatus || '—' }}</div>
           </div>
-          <div class="rounded-lg bg-surface-sunken border border-line p-2">
+          <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Windows Update</div>
             <div class="font-semibold text-ink">{{ agent.windowsUpdateStatus || '—' }}</div>
             <button
@@ -177,13 +190,13 @@
       </div>
 
       <!-- Tabovi -->
-      <div class="flex flex-nowrap gap-2 overflow-x-auto border-b border-line pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
+      <div class="hud-tabs flex flex-nowrap gap-2 overflow-x-auto border-b border-line pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
           v-for="t in TAB_NAMES"
           :key="t"
           type="button"
           @click="selectTab(t)"
-          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
+          class="hud-tab shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
           :class="tabButtonClass(t)"
           style="font-family: var(--font-display)"
         >
@@ -198,8 +211,8 @@
 
       <!-- Komande -->
       <div v-else-if="tab === 'jobs'" class="space-y-4">
-        <div class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
-          <div class="font-medium text-ink">Nova komanda</div>
+        <div class="hud-panel rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
+          <div class="font-medium text-ink hud-section-title">Nova komanda</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="text-sm text-ink-secondary">Tip komande</label>
@@ -241,7 +254,7 @@
           </div>
           <div v-if="jobsLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
           <div v-else-if="!jobs.length" class="text-ink-muted text-sm">Nema poslatih komandi.</div>
-          <div v-for="j in jobs" :key="j.id" class="rounded-lg border border-line bg-surface p-3 text-sm">
+          <div v-for="j in jobs" :key="j.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-start justify-between gap-3">
               <div class="font-medium text-ink">{{ COMMAND_LABELS[j.commandType] || j.commandType }}</div>
               <div class="flex items-center gap-2 shrink-0">
@@ -285,7 +298,7 @@
 
         <div v-if="updateLogLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
         <div v-else-if="!updateLog.length" class="text-ink-muted text-sm">Nema pokušaja ažuriranja.</div>
-        <div v-for="u in updateLog" :key="u.id" class="rounded-lg border border-line bg-surface p-3 text-sm">
+        <div v-for="u in updateLog" :key="u.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="font-mono text-ink-secondary">{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</span>
@@ -300,7 +313,7 @@
 
       <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
       <div v-else-if="tab === 'manager'" class="space-y-3">
-        <div class="rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
+        <div class="hud-panel rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
           <div class="text-sm font-medium text-info">Netdesk Agent Manager (nezavisni kanal)</div>
           <p class="text-xs text-ink-secondary">
             Radi nezavisno od NetdeskAgent servisa - dostupno čak i kad je on ugašen ili onemogućen.
@@ -368,7 +381,7 @@
           <div class="text-sm font-medium text-ink">Istorija Manager poslova</div>
           <div v-if="managerJobHistoryLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
           <div v-else-if="!managerJobHistory.length" class="text-ink-muted text-sm">Nema poslova za ovaj Manager.</div>
-          <div v-for="j in managerJobHistory" :key="j.id" class="rounded-lg border border-line bg-surface p-3 text-sm">
+          <div v-for="j in managerJobHistory" :key="j.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-center justify-between gap-2">
               <div class="text-ink">{{ MANAGER_COMMAND_LABELS[j.commandType] || j.commandType }}</div>
               <StatusPill :status="jobStatusTone(j.status)" :label="MANAGER_JOB_STATUS_LABELS[j.status] || j.status" :dot="false" />
@@ -387,7 +400,7 @@
         <template v-else>
           <div v-if="eventLogsLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
           <div v-else-if="!eventLogs.length" class="text-ink-muted text-sm">Nema event log unosa.</div>
-          <div v-for="e in eventLogs" :key="e.id" class="rounded-lg border border-line bg-surface p-3 text-sm">
+          <div v-for="e in eventLogs" :key="e.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-center justify-between gap-2">
               <div class="font-medium text-ink">{{ e.source || '—' }} <span class="text-xs text-ink-muted">({{ e.log_name }})</span></div>
               <StatusPill :status="eventLevelTone(e.level)" :label="e.level || '—'" :dot="false" />
@@ -414,7 +427,7 @@
             {{ dnsBlacklistedOnly ? 'Nema DNS upita ka domenima sa crne liste.' : 'Nema DNS upita.' }}
           </div>
           <div v-for="d in dnsLogs" :key="d.id"
-            class="rounded-lg border bg-surface p-3 text-sm"
+            class="hud-row rounded-lg border bg-surface p-3 text-sm"
             :class="d.isBlacklisted ? 'border-bad/40 bg-bad-subtle' : 'border-line'">
             <div class="flex items-center justify-between gap-2">
               <div class="font-medium font-mono text-ink">
@@ -439,6 +452,7 @@
       @confirm="resolveConfirm(true)"
       @cancel="resolveConfirm(false)"
     />
+    </div>
   </div>
 </template>
 
@@ -475,6 +489,20 @@ import TagChip from '@/components/TagChip.vue'
 const fmtDate = (d) => formatDate(d, 'sr-RS')
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`)
 const fmtGb = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)} GB`)
+
+// HUD monitoring prstenovi (CPU/RAM/Disk) - conic-gradient krug čiji je
+// popunjen luk procenat opterećenja, boja po pragu (isti prag kao StatusPill
+// bi koristio za "upozorenje"), samo vizuelno - ništa se ne šalje/menja.
+function gaugeDeg(pct) {
+  const v = Math.max(0, Math.min(100, Number(pct) || 0))
+  return `${v * 3.6}deg`
+}
+function gaugeColor(pct) {
+  const v = Number(pct) || 0
+  if (v >= 90) return 'var(--status-bad)'
+  if (v >= 70) return 'var(--status-warn)'
+  return 'var(--status-good)'
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -1107,3 +1135,266 @@ onBeforeUnmount(() => {
   stopJobsPolling()
 })
 </script>
+
+<style scoped>
+/* Sci-fi HUD skin - samo za ovu stranu (agent single view), po eksplicitnom
+   zahtevu. Trik: cela paleta app-a je već izgrađena kao CSS custom
+   properties (main.css :root/.dark) koje token-utility klase (bg-surface,
+   text-ink, bg-accent, StatusPill-ovi bg-good/bad/warn/info...) čitaju
+   direktno preko var(--surface-card) itd. Redefinisanjem tih ISTIH
+   promenljivih na .agent-hud koren-u, ceo child stablo (uključujući
+   StatusPill/TagChip/AppButton/GroupSelect/.app-input, sve deljene
+   komponente) se automatski re-teksturira u neon-HUD paletu preko obične
+   CSS kaskade - bez ijedne izmene u tim deljenim fajlovima i bez rizika da
+   se nešto propusti. Fiksna tamna paleta bez obzira na app-ov svetla/tamna
+   prekidač - sci-fi HUD na beloj pozadini ne postoji kao koncept.
+*/
+.agent-hud {
+  --surface-canvas: #050b0d;
+  --surface-card: #0a1619;
+  --surface-sunken: #0e1f22;
+  --line-default: #164047;
+  --line-strong: #1f5c63;
+
+  --ink-primary: #d7fff8;
+  --ink-secondary: #86e6d9;
+  --ink-muted: #4f7d79;
+
+  --accent-default: #00e6c8;
+  --accent-emphasis: #7dfff0;
+  --accent-subtle: #0b2e2b;
+
+  --status-good: #39ff88;
+  --status-good-subtle: #0b2a1b;
+  --status-bad: #ff3d68;
+  --status-bad-subtle: #2a0b15;
+  --status-warn: #ffd23f;
+  --status-warn-subtle: #2e2408;
+  --status-info: #4fc3ff;
+  --status-info-subtle: #0b2030;
+
+  position: relative;
+  isolation: isolate;
+  color: var(--ink-primary);
+}
+
+.hud-shell {
+  position: relative;
+  z-index: 1;
+  background-color: var(--surface-canvas);
+  /* Fin grid ispod skenirajućih linija - klasična HUD/blueprint podloga,
+     statična (skenline sloj preko nje se pomera, ovaj ne). */
+  background-image:
+    linear-gradient(rgba(0, 230, 200, 0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgba(0, 230, 200, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  border: 1px solid var(--line-default);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 230, 200, 0.08),
+    0 0 40px rgba(0, 230, 200, 0.06),
+    inset 0 0 60px rgba(0, 230, 200, 0.03);
+  /* Jednokratan "power-on" blesak pri ulasku na stranu - ne ponavlja se. */
+  animation: hud-boot 0.7s ease-out;
+}
+
+@keyframes hud-boot {
+  0% { opacity: 0; filter: brightness(2.2); }
+  60% { opacity: 1; filter: brightness(1.3); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+/* Fina skenirajuća linija preko cele konzole - klasičan HUD/CRT motiv,
+   dovoljno suptilna da ne smeta čitljivosti teksta ispod. */
+.hud-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 1rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 230, 200, 0.05) 0,
+    rgba(0, 230, 200, 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: hud-scan-drift 9s linear infinite;
+}
+
+@keyframes hud-scan-drift {
+  from { background-position: 0 0; }
+  to { background-position: 0 60px; }
+}
+
+.hud-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-default);
+  margin-bottom: 0.25rem;
+}
+
+.hud-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--status-good);
+  box-shadow: 0 0 6px 1px var(--status-good);
+  animation: hud-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hud-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+.hud-glow-text {
+  text-shadow: 0 0 10px rgba(0, 230, 200, 0.45), 0 0 2px rgba(0, 230, 200, 0.6);
+}
+
+.hud-section-title {
+  font-family: 'IBM Plex Sans Condensed', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+/* Ugaone "bracket" konzole - 8 solid-color gradient slojeva (2 po uglu, L
+   oblik), bez dodatnog markup-a po panelu. */
+.hud-panel {
+  position: relative;
+  /* Manji radijus od Tailwind-ovog rounded-xl (12px) - uglovi na 8px krivini
+     su dovoljno blagi da bracket-i ispod ne moraju daleko od ivice, a
+     dovoljno oštri da ne seku pravougaoni bracket oblik (kod 12px krivine,
+     bracket postavljen blizu ivice fizički probija zaobljenje i "štrči" kao
+     fluorescentna linija van konture - to je bio bug). */
+  border-radius: 0.5rem;
+  background-image:
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default));
+  background-repeat: no-repeat;
+  background-size:
+    12px 2px, 2px 12px,
+    12px 2px, 2px 12px,
+    12px 2px, 2px 12px,
+    12px 2px, 2px 12px;
+  background-position:
+    top 3px left 3px, top 3px left 3px,
+    top 3px right 3px, top 3px right 3px,
+    bottom 3px right 3px, bottom 3px right 3px,
+    bottom 3px left 3px, bottom 3px left 3px;
+  box-shadow: 0 0 24px -4px rgba(0, 230, 200, 0.25);
+}
+
+.hud-cursor {
+  animation: hud-blink 1s step-end infinite;
+}
+
+@keyframes hud-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.hud-tile {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.hud-tile:hover {
+  border-color: var(--accent-default);
+  box-shadow: 0 0 12px -2px rgba(0, 230, 200, 0.5);
+}
+
+.hud-metric {
+  font-size: 1.05rem;
+  text-shadow: 0 0 8px rgba(0, 230, 200, 0.5);
+}
+
+/* Radijalni gauge prsten (CPU/RAM/Disk) - conic-gradient popunjen do
+   procenta opterećenja preko --gauge-deg/--gauge-color inline promenljivih
+   (postavljenih iz gaugeDeg()/gaugeColor() u skripti), ostatak kruga u
+   liniji boji. ::before seče sredinu da ostane samo prsten (donut), broj
+   ide preko toga. */
+.hud-gauge-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hud-gauge {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--gauge-color, var(--accent-default)) var(--gauge-deg, 0deg), var(--line-default) 0deg);
+  box-shadow: 0 0 10px -2px var(--gauge-color, var(--accent-default));
+  transition: box-shadow 0.2s ease;
+}
+
+.hud-gauge::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+}
+
+.hud-gauge-value {
+  position: relative;
+  z-index: 1;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.hud-tabs {
+  position: relative;
+}
+
+.hud-tab {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+
+.hud-tab.bg-accent {
+  box-shadow: 0 0 14px -2px var(--accent-default);
+}
+
+.hud-tab.bg-info {
+  box-shadow: 0 0 14px -2px var(--status-info);
+}
+
+.hud-row {
+  position: relative;
+  border-left: 2px solid var(--line-strong);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hud-row:hover {
+  border-left-color: var(--accent-default);
+  box-shadow: -2px 0 12px -4px rgba(0, 230, 200, 0.4);
+}
+
+.agent-hud :deep(input[type='checkbox']) {
+  accent-color: var(--accent-default);
+}
+</style>

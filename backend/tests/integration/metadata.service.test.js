@@ -2,9 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   upsertMetadataForIpEntry,
   patchMetadataForIpEntry,
+  searchMetadataService,
 } from "../../services/metadata.service.js";
 import { createService } from "../../services/ipAddresses.service.js";
-import { deleteTestIpEntry, testIp } from "../helpers/testDb.js";
+import { deleteTestIpEntry, testIp, testHostname } from "../helpers/testDb.js";
 
 describe("metadata.service (integration, real DB)", () => {
   let ipEntryId;
@@ -103,5 +104,35 @@ describe("metadata.service (integration, real DB)", () => {
     });
 
     expect(patched.RAMModules).toHaveLength(1);
+  });
+
+  it(
+    "searchMetadataService finds a computer by disk model/serial " +
+      "(regression: search never joined the storage table, so disk terms never matched)",
+    async () => {
+      const uniqueSerial = testHostname("-DISK");
+      await upsertMetadataForIpEntry(ipEntryId, {
+        Storage: [{ Model: "Generic SSD", Serial: uniqueSerial }],
+      });
+
+      const { items } = await searchMetadataService(uniqueSerial);
+
+      expect(items.some((i) => i.ipEntry === ipEntryId)).toBe(true);
+    },
+  );
+
+  it("searchMetadataService returns one row per computer even when multiple disks match (DISTINCT)", async () => {
+    const uniqueModel = testHostname("-MODEL");
+    await upsertMetadataForIpEntry(ipEntryId, {
+      Storage: [
+        { Model: uniqueModel, Serial: "S1" },
+        { Model: uniqueModel, Serial: "S2" },
+      ],
+    });
+
+    const { items } = await searchMetadataService(uniqueModel);
+    const matches = items.filter((i) => i.ipEntry === ipEntryId);
+
+    expect(matches).toHaveLength(1);
   });
 });

@@ -1,6 +1,6 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-canvas">
-    <header class="no-print sticky top-0 z-50 border-b border-line bg-surface shadow-sm">
+  <div class="flex h-screen flex-col overflow-hidden bg-canvas">
+    <header class="no-print shrink-0 border-b border-line bg-surface shadow-sm">
       <div class="flex w-full items-center gap-4 overflow-x-auto px-4 py-2.5 no-scrollbar">
         <button
           type="button"
@@ -22,18 +22,24 @@
       </div>
     </header>
 
+    <!-- Sidebar i header ostaju uvek na ekranu (fiksna visina shell-a, samo
+         <main> skroluje) - ranije je ceo shell rastao sa sadržajem
+         (min-h-screen), pa je sidebar (nema svoj sticky/fixed) odlazio van
+         ekrana zajedno sa ostatkom stranice čim je sadržaj bio duži od
+         viewport-a, ostavljajući samo tanak header bez jasnog "gde sam"
+         indikatora - Sidebar.vue je već imao overflow-y-auto pripremljen za
+         ovo, samo mu roditelj nikad nije davao ograničenu visinu. -->
     <div class="flex min-h-0 flex-1">
       <Sidebar class="hidden md:flex" />
 
-      <main class="w-full min-w-0 flex-1 px-4 py-6">
+      <main class="w-full min-w-0 flex-1 overflow-y-auto px-4 py-6">
         <Breadcrumbs class="no-print" />
         <router-view />
+        <footer class="no-print mt-10 border-t border-line pt-4 text-center text-sm text-ink-muted">
+          <AppFooter />
+        </footer>
       </main>
     </div>
-
-    <footer class="no-print w-full border-t border-line py-4 text-center text-sm text-ink-muted">
-      <AppFooter />
-    </footer>
 
     <!-- Sidebar kao off-canvas panel ispod md - isti SlideOverPanel koji app
          već koristi za druge overlay-e, umesto izmišljanja drugog obrasca. -->

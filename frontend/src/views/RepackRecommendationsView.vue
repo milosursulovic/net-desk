@@ -81,7 +81,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in filteredItems" :key="e.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+          <tr v-for="e in filteredItems" :key="e.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
             <td class="py-2 px-4 font-mono text-ink">{{ e.ip }}</td>
             <td class="py-2 px-4 text-ink-secondary">{{ e.computerName || '—' }}</td>
             <td class="py-2 px-4 text-ink-secondary">{{ e.department || '—' }}</td>
@@ -103,14 +103,18 @@
                 />
               </div>
             </td>
-            <td class="py-2 px-4 text-right whitespace-nowrap space-x-3">
-              <RouterLink :to="`/ip/${e.id}/meta`" class="text-accent hover:underline">
-                Otvori
-              </RouterLink>
-              <span v-if="e.pendingRepack" class="text-ink-muted">Već označeno</span>
-              <button v-else type="button" class="text-good hover:underline" @click="markForRepack(e)">
-                Označi za pakovanje
-              </button>
+            <td class="py-2 px-4 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-2">
+                <span v-if="e.pendingRepack" class="text-xs text-ink-muted">Već označeno</span>
+                <div class="table-row-actions">
+                  <button v-if="!e.pendingRepack" type="button" class="rounded p-1 text-good hover:bg-surface-sunken" title="Označi za pakovanje" @click="markForRepack(e)">
+                    <NavIcon name="package" />
+                  </button>
+                  <RouterLink :to="`/ip/${e.id}/meta`" class="rounded p-1 text-accent hover:bg-surface-sunken inline-flex" title="Otvori metapodatke">
+                    <NavIcon name="metadata" />
+                  </RouterLink>
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -131,6 +135,7 @@ import { useToast } from '@/composables/useToast.js'
 import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import NavIcon from '@/components/NavIcon.vue'
 
 const site = useCurrentSite()
 const { toast, showToast } = useToast()

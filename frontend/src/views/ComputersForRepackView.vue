@@ -63,7 +63,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="e in items" :key="e.id" class="border-b border-line last:border-0 hover:bg-surface-sunken">
+            <tr v-for="e in items" :key="e.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
               <td class="py-2 px-3 font-mono text-ink">{{ e.ip }}</td>
               <td class="py-2 px-3 text-ink-secondary">{{ e.computerName || '—' }}</td>
               <td class="py-2 px-3 text-ink-secondary">{{ e.department || '—' }}</td>
@@ -71,13 +71,15 @@
               <td class="py-2 px-3">
                 <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? 'Online' : 'Offline'" />
               </td>
-              <td class="py-2 px-3 text-right whitespace-nowrap space-x-3">
-                <RouterLink :to="`/ip/${e.id}/meta`" class="text-accent hover:underline">
-                  Otvori
-                </RouterLink>
-                <button type="button" class="text-bad hover:underline" @click="unmark(e)">
-                  Ukloni oznaku
-                </button>
+              <td class="py-2 px-3 text-right whitespace-nowrap">
+                <div class="table-row-actions">
+                  <RouterLink :to="`/ip/${e.id}/meta`" class="rounded p-1 text-accent hover:bg-surface-sunken inline-flex" title="Otvori metapodatke">
+                    <NavIcon name="metadata" />
+                  </RouterLink>
+                  <button type="button" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Ukloni oznaku za pakovanje" @click="unmark(e)">
+                    <NavIcon name="x" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>

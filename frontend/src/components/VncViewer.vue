@@ -3,9 +3,6 @@
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2 font-medium text-ink">
         Ekran
-        <span class="rounded-full border border-warn/40 bg-warn-subtle px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warn">
-          BETA
-        </span>
       </div>
       <div class="flex gap-2">
         <AppButton variant="neutral" @click="openSession(true)">Samo pregled</AppButton>

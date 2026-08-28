@@ -142,6 +142,8 @@ export async function searchMetadataRows(term, limit = 100, site) {
       "cm.mb_manufacturer",
       "cm.mb_product",
       "cm.bios_vendor",
+      "s.model",
+      "s.serial",
     ],
     term,
   );
@@ -149,7 +151,7 @@ export async function searchMetadataRows(term, limit = 100, site) {
 
   const [rows] = await pool.execute(
     `
-    SELECT
+    SELECT DISTINCT
       ie.id AS ipEntry,
       ie.computer_name AS computerName,
       ie.ip,
@@ -163,6 +165,7 @@ export async function searchMetadataRows(term, limit = 100, site) {
       cm.collected_at AS collectedAt
     FROM computer_metadata cm
     JOIN ip_entries ie ON ie.id = cm.ip_entry_id
+    LEFT JOIN computer_metadata_storage s ON s.metadata_id = cm.id
     WHERE ie.entry_type = 'computer' ${site ? "AND ie.site = ?" : ""} AND ${where}
     ORDER BY ie.computer_name ASC
     LIMIT ?
