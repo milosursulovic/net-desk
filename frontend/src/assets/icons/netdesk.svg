@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="NetDesk">
+  <defs>
+    <linearGradient id="nd-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F8072"/>
+      <stop offset="1" stop-color="#07473F"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="190" fill="url(#nd-bg)"/>
+
+  <g fill="#FFFFFF">
+    <circle cx="512" cy="330" r="92"/>
+    <rect x="489" y="412" width="46" height="194" rx="23"/>
+    <rect x="317" y="560" width="390" height="46" rx="23"/>
+    <rect x="317" y="600" width="46" height="102" rx="23"/>
+    <rect x="489" y="600" width="46" height="102" rx="23"/>
+    <rect x="661" y="600" width="46" height="102" rx="23"/>
+    <rect x="275" y="696" width="130" height="130" rx="28"/>
+    <rect x="447" y="696" width="130" height="130" rx="28"/>
+    <rect x="619" y="696" width="130" height="130" rx="28"/>
+  </g>
+</svg>

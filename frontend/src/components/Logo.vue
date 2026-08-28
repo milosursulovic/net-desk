@@ -10,5 +10,5 @@
 </template>
 
 <script setup>
-import Icon from '@/assets/icons/netdesk.png'
+import Icon from '@/assets/icons/netdesk.svg'
 </script>

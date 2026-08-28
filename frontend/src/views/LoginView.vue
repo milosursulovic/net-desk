@@ -100,7 +100,7 @@ import { useRouter, useRoute } from 'vue-router'
 import Logo from '@/components/Logo.vue'
 import AppButton from '@/components/AppButton.vue'
 import { useAppInfo } from '@/composables/useAppInfo.js'
-import Icon from '@/assets/icons/netdesk.png'
+import Icon from '@/assets/icons/netdesk.svg'
 
 const { year, copyright } = useAppInfo()
 

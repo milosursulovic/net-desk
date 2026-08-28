@@ -32,7 +32,7 @@
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
 import { SITE_OPTIONS } from '@/constants/sites.js'
-import Icon from '@/assets/icons/netdesk.png'
+import Icon from '@/assets/icons/netdesk.svg'
 
 const router = useRouter()
 const route = useRoute()
