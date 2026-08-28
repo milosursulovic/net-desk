@@ -30,13 +30,13 @@ const trail = computed(() => {
       <RouterLink
         v-if="idx < trail.length - 1"
         :to="crumb.to"
-        class="text-slate-500 hover:text-blue-600 hover:underline"
+        class="text-ink-muted hover:text-accent hover:underline"
       >
         {{ crumb.label }}
       </RouterLink>
-      <span v-else class="font-medium text-slate-700">{{ crumb.label }}</span>
+      <span v-else class="font-medium text-ink">{{ crumb.label }}</span>
 
-      <span v-if="idx < trail.length - 1" class="text-slate-300">/</span>
+      <span v-if="idx < trail.length - 1" class="text-line-strong">/</span>
     </template>
   </nav>
 </template>

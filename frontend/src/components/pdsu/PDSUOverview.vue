@@ -506,7 +506,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-slate-400 text-white'"
+                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-ink-muted text-white'"
                 >
                   {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
                 </span>
@@ -601,7 +601,7 @@ function percentageClass(percent) {
               <td>
                 <span
                   class="pdsu-badge"
-                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-slate-400 text-white'"
+                  :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-ink-muted text-white'"
                 >
                   {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
                 </span>

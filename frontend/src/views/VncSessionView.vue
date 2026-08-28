@@ -1,18 +1,19 @@
 <template>
-  <div ref="rootEl" class="min-h-screen bg-slate-950 flex flex-col">
-    <div class="flex items-center justify-between gap-3 px-4 py-2 bg-slate-900 border-b border-slate-800">
-      <div class="flex items-center gap-2 text-slate-200 font-medium truncate">
-        {{ viewOnly ? 'Pregled ekrana' : 'Udaljena kontrola ekrana' }}
-        <span class="text-slate-500 text-sm truncate">{{ agent?.hostname || agent?.agentUid || '' }}</span>
+  <div ref="rootEl" class="vnc-hud min-h-screen bg-canvas flex flex-col">
+    <div class="vnc-toolbar flex items-center justify-between gap-3 px-4 py-2.5 bg-surface border-b border-line">
+      <div class="flex items-center gap-2.5 text-ink font-medium truncate">
+        <span class="vnc-dot" :class="connected ? 'vnc-dot-good' : 'vnc-dot-idle'" aria-hidden="true"></span>
+        <span class="hud-mono">{{ viewOnly ? 'PREGLED EKRANA' : 'UDALJENA KONTROLA' }}</span>
+        <span class="text-ink-muted text-sm truncate font-mono">{{ agent?.hostname || agent?.agentUid || '' }}</span>
         <span
           v-if="viewOnly"
-          class="rounded-full border border-sky-200/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-sky-400"
+          class="rounded-full border border-info/40 bg-info-subtle px-1.5 py-0.5 text-[10px] font-semibold leading-none text-info uppercase tracking-wide"
         >
-          SAMO PREGLED
+          Samo pregled
         </span>
       </div>
       <div class="flex items-center gap-3">
-        <span v-if="isFullscreen" class="text-xs text-slate-500 hidden sm:inline">
+        <span v-if="isFullscreen" class="text-xs text-ink-muted hidden sm:inline">
           Drži Esc da izađeš iz punog ekrana
         </span>
         <AppButton v-if="!viewOnly" variant="neutral" :disabled="!connected" @click="openFilePanel">
@@ -34,10 +35,17 @@
       problem baš u trenutku kad noVNC meri veličinu ovog kontejnera da
       izračuna scaleViewport skaliranje (kontejner čeka sadržaj, sadržaj čeka
       kontejner -> izmereno 0, canvas ostaje "sa scale 0" tj. nevidljiv).
+      Sci-fi dekoracija je namerno SAMO na ovom kontejneru (border/box-shadow,
+      ne menja box model) i unutar "!connected" overlay-a (poseban sibling,
+      ne utiče na screenEl-ovo merenje) - screenEl sam ostaje netaknut.
     -->
-    <div class="relative flex-1 min-h-0 overflow-auto bg-black">
-      <div v-if="!connected" class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
-        {{ starting ? 'Povezujem…' : 'Nije povezano' }}
+    <div class="relative flex-1 min-h-0 overflow-auto bg-black vnc-frame">
+      <div v-if="!connected" class="absolute inset-0 flex flex-col items-center justify-center gap-4 text-sm overflow-hidden">
+        <div class="vnc-connect-grid" aria-hidden="true"></div>
+        <div class="vnc-radar" aria-hidden="true"></div>
+        <span class="relative z-10 hud-mono text-accent text-xs">
+          {{ starting ? 'USPOSTAVLJANJE VEZE' : 'SIGNAL PREKINUT' }}<span class="hud-cursor">_</span>
+        </span>
       </div>
       <div ref="screenEl" class="w-full h-full"></div>
     </div>
@@ -571,3 +579,166 @@ onBeforeUnmount(() => {
   fileWs?.close()
 })
 </script>
+
+<style scoped>
+/* Sci-fi HUD skin, isti trik kao AgentDetailView.vue - redefiniše app-ove
+   token CSS promenljive samo na ovom korenu, pa se ceo child stablo
+   (StatusPill, AppButton, SlideOverPanel, .app-input...) automatski
+   re-teksturira preko obične CSS kaskade. Fiksna tamna paleta bez obzira na
+   app-ov svetla/tamna prekidač (isti razlog kao tamo - i ovde nema koncepta
+   "sci-fi HUD na beloj pozadini").
+   VAŽNO: sva dekoracija ispod je ograničena na .vnc-toolbar i na sadržaj
+   ".vnc-frame ::before" / "!connected" overlay-a - NIKAD na screenEl samom
+   ili na njegov roditeljev box model (border/box-shadow ne menjaju layout,
+   overlay je poseban absolute sibling) - noVNC-ovo merenje kontejnera
+   (vidi komentar u template-u) ostaje netaknuto. */
+.vnc-hud {
+  --surface-canvas: #050b0d;
+  --surface-card: #0a1619;
+  --surface-sunken: #0e1f22;
+  --line-default: #164047;
+  --line-strong: #1f5c63;
+
+  --ink-primary: #d7fff8;
+  --ink-secondary: #86e6d9;
+  --ink-muted: #4f7d79;
+
+  --accent-default: #00e6c8;
+  --accent-emphasis: #7dfff0;
+  --accent-subtle: #0b2e2b;
+
+  --status-good: #39ff88;
+  --status-good-subtle: #0b2a1b;
+  --status-bad: #ff3d68;
+  --status-bad-subtle: #2a0b15;
+  --status-warn: #ffd23f;
+  --status-warn-subtle: #2e2408;
+  --status-info: #4fc3ff;
+  --status-info-subtle: #0b2030;
+
+  color: var(--ink-primary);
+}
+
+.vnc-toolbar {
+  box-shadow: 0 1px 0 0 rgba(0, 230, 200, 0.15), 0 4px 24px -8px rgba(0, 230, 200, 0.2);
+}
+
+.hud-mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hud-cursor {
+  animation: vnc-blink 1s step-end infinite;
+}
+
+@keyframes vnc-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.vnc-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.vnc-dot-good {
+  background: var(--status-good);
+  box-shadow: 0 0 8px 1px var(--status-good);
+  animation: vnc-pulse 1.6s ease-in-out infinite;
+}
+
+.vnc-dot-idle {
+  background: var(--status-warn);
+  box-shadow: 0 0 8px 1px var(--status-warn);
+  animation: vnc-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes vnc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* Ugaoni "viewport frame" oko video kontejnera - border/box-shadow na
+   samom kontejneru + pseudo-element za bracket uglove, pointer-events:none
+   tako da nikad ne blokira klik na udaljeni ekran ispod. */
+.vnc-frame {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 230, 200, 0.18),
+    0 0 40px rgba(0, 230, 200, 0.08);
+}
+
+.vnc-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background-image:
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default)),
+    linear-gradient(var(--accent-default), var(--accent-default));
+  background-repeat: no-repeat;
+  background-size:
+    22px 3px, 3px 22px,
+    22px 3px, 3px 22px,
+    22px 3px, 3px 22px,
+    22px 3px, 3px 22px;
+  background-position:
+    top 6px left 6px, top 6px left 6px,
+    top 6px right 6px, top 6px right 6px,
+    bottom 6px right 6px, bottom 6px right 6px,
+    bottom 6px left 6px, bottom 6px left 6px;
+  opacity: 0.8;
+}
+
+.vnc-connect-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 230, 200, 0.07) 1px, transparent 1px),
+    linear-gradient(to right, rgba(0, 230, 200, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.vnc-radar {
+  position: relative;
+  z-index: 1;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 230, 200, 0.35);
+}
+
+.vnc-radar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: conic-gradient(from 0deg, rgba(0, 230, 200, 0.6), transparent 70%);
+  animation: vnc-radar-spin 1.6s linear infinite;
+}
+
+.vnc-radar::after {
+  content: '';
+  position: absolute;
+  inset: 26px;
+  border-radius: 999px;
+  background: #000;
+}
+
+@keyframes vnc-radar-spin {
+  to { transform: rotate(360deg); }
+}
+</style>

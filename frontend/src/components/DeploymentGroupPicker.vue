@@ -45,12 +45,12 @@ function addCustom() {
 
 <template>
   <div class="space-y-2">
-    <div class="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
-      <label v-for="g in allOptions" :key="g" class="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" :checked="isChecked(g)" @change="toggle(g)" class="rounded" />
+    <div class="max-h-40 overflow-y-auto border border-line rounded-lg p-2 space-y-1">
+      <label v-for="g in allOptions" :key="g" class="flex items-center gap-2 text-sm text-ink cursor-pointer">
+        <input type="checkbox" :checked="isChecked(g)" @change="toggle(g)" class="rounded accent-accent" />
         {{ g }}
       </label>
-      <p v-if="!allOptions.length" class="text-xs text-slate-500 p-1">Nema predloženih grupa - dodaj novu ispod.</p>
+      <p v-if="!allOptions.length" class="text-xs text-ink-muted p-1">Nema predloženih grupa - dodaj novu ispod.</p>
     </div>
     <div class="flex gap-2">
       <input
@@ -60,7 +60,7 @@ function addCustom() {
         placeholder="Dodaj novu grupu..."
         @keydown.enter.prevent="addCustom"
       />
-      <button type="button" @click="addCustom" class="px-3 py-1.5 border rounded-lg text-sm hover:bg-slate-50">
+      <button type="button" @click="addCustom" class="px-3 py-1.5 border border-line rounded-lg text-sm text-ink-secondary hover:bg-surface-sunken">
         Dodaj
       </button>
     </div>
