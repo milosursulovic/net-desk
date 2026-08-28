@@ -56,12 +56,15 @@
               <span class="truncate font-mono text-xs">{{ shortHash(r.sha256) }}</span>
               <button @click="copy(r.sha256)" class="shrink-0 text-xs text-ink-muted hover:text-ink"><NavIcon name="copy" /></button>
             </div>
-            <div v-if="r.releaseNotes" class="text-ink-secondary">{{ r.releaseNotes }}</div>
+            <div v-if="r.releaseNotes" class="text-ink-secondary whitespace-pre-wrap wrap-break-word">{{ r.releaseNotes }}</div>
           </div>
 
           <div class="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs text-ink-muted">
             <span class="font-mono">{{ fmtDate(r.createdAt) }}</span>
             <div class="flex items-center gap-3">
+              <button @click="openEditNotes(r)" class="text-sm text-accent hover:underline">
+                Uredi napomene
+              </button>
               <button @click="openEditGroups(r)" class="text-sm text-accent hover:underline">
                 Uredi grupe
               </button>
@@ -140,6 +143,26 @@
           <AppButton variant="neutral" @click="closeUpload">Otkaži</AppButton>
           <AppButton variant="success" :disabled="uploading" @click="upload">
             {{ uploading ? 'Otpremam…' : 'Otpremi' }}
+          </AppButton>
+        </div>
+      </div>
+    </SlideOverPanel>
+
+    <SlideOverPanel :open="showEditNotes" title="Uredi napomene" @close="closeEditNotes">
+      <div class="space-y-4">
+        <p class="text-sm text-ink-secondary">
+          Verzija <span class="font-semibold text-ink">{{ editNotesForm.version }}</span>
+        </p>
+        <textarea
+          v-model="editNotesForm.releaseNotes"
+          rows="6"
+          class="app-input w-full"
+          placeholder="Šta je novo u ovoj verziji..."
+        ></textarea>
+        <div class="flex gap-2 justify-end">
+          <AppButton variant="neutral" @click="closeEditNotes">Otkaži</AppButton>
+          <AppButton variant="success" :disabled="savingNotes" @click="saveNotes">
+            {{ savingNotes ? 'Čuvam…' : 'Sačuvaj' }}
           </AppButton>
         </div>
       </div>
@@ -228,6 +251,10 @@ const selectedFile = ref(null)
 const showEditGroups = ref(false)
 const savingGroups = ref(false)
 const editForm = ref({ releaseId: null, version: '', deploymentGroups: [] })
+
+const showEditNotes = ref(false)
+const savingNotes = ref(false)
+const editNotesForm = ref({ releaseId: null, version: '', releaseNotes: '' })
 
 function fmtBytes(n) {
   if (n === null || n === undefined) return '—'
@@ -409,6 +436,41 @@ async function saveGroups() {
     showToast(err?.message || 'Greška pri čuvanju grupa', { kind: 'error', duration: 3000 })
   } finally {
     savingGroups.value = false
+  }
+}
+
+// Napomene su, za razliku od verzije/fajla, editabilne i posle upload-a -
+// korisnik ih dopunjuje kasnije bez potrebe da ponovo otprema paket.
+function openEditNotes(release) {
+  editNotesForm.value = {
+    releaseId: release.id,
+    version: release.version,
+    releaseNotes: release.releaseNotes || '',
+  }
+  showEditNotes.value = true
+}
+
+function closeEditNotes() {
+  showEditNotes.value = false
+}
+
+async function saveNotes() {
+  savingNotes.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/agent-releases/${editNotesForm.value.releaseId}/notes`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseNotes: editNotesForm.value.releaseNotes.trim() || null }),
+    })
+    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju napomena'))
+    showEditNotes.value = false
+    await fetchData()
+    showToast('Napomene sačuvane')
+  } catch (err) {
+    console.error(err)
+    showToast(err?.message || 'Greška pri čuvanju napomena', { kind: 'error', duration: 3000 })
+  } finally {
+    savingNotes.value = false
   }
 }
 

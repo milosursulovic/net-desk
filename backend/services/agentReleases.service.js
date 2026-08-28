@@ -11,6 +11,7 @@ import {
   findActiveReleasesForGroups,
   listReleases,
   setReleaseActive,
+  updateReleaseNotes,
   deleteRelease,
   insertReleaseFiles,
   findReleaseFiles,
@@ -123,6 +124,17 @@ export async function listReleasesService({ page, limit }) {
 
 export async function setReleaseActiveService(id, isActive) {
   const affected = await setReleaseActive(id, isActive);
+  if (!affected) {
+    throw notFound("Verzija nije pronađena");
+  }
+  return await findReleaseById(id);
+}
+
+// Napomene se, za razliku od ostalih polja upload-a (verzija, fajl, sha256),
+// mogu naknadno dopuniti/ispraviti - nema poslovnog razloga da ostanu
+// zaključane posle upload-a kao ostatak reda (koji je vezan za sam fajl).
+export async function updateReleaseNotesService(id, releaseNotes) {
+  const affected = await updateReleaseNotes(id, releaseNotes ?? null);
   if (!affected) {
     throw notFound("Verzija nije pronađena");
   }

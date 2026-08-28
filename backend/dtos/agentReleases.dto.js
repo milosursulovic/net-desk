@@ -32,3 +32,10 @@ export const UpdateReportSchema = z.object({
 export const UpdateReleaseGroupsSchema = z.object({
   deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
 });
+
+// Napomene su editabilne i posle upload-a (za razliku od verzije/fajla) -
+// null je validna vrednost (brisanje napomene), prazan string se normalizuje
+// na null u servisu.
+export const UpdateReleaseNotesSchema = z.object({
+  releaseNotes: z.string().max(4000).nullable(),
+});

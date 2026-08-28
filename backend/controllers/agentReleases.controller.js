@@ -3,11 +3,13 @@ import {
   CreateReleaseSchema,
   UpdateReportSchema,
   UpdateReleaseGroupsSchema,
+  UpdateReleaseNotesSchema,
 } from "../dtos/agentReleases.dto.js";
 import {
   uploadReleaseService,
   listReleasesService,
   setReleaseActiveService,
+  updateReleaseNotesService,
   deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
@@ -80,6 +82,16 @@ export async function deleteReleaseController(req, res) {
 
   await deleteReleaseService(id);
   res.status(204).send();
+}
+
+export async function updateReleaseNotesController(req, res) {
+  const id = parseIdParam(req, "id", "ID verzije");
+
+  const parsed = UpdateReleaseNotesSchema.safeParse(req.body || {});
+  if (!parsed.success) throw badRequest("Neispravan format podataka");
+
+  const release = await updateReleaseNotesService(id, parsed.data.releaseNotes?.trim() || null);
+  res.json(release);
 }
 
 export async function updateReleaseGroupsController(req, res) {

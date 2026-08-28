@@ -4,6 +4,7 @@ import path from "path";
 import {
   uploadReleaseService,
   setReleaseActiveService,
+  updateReleaseNotesService,
   deleteReleaseService,
   checkForUpdateService,
   downloadReleaseService,
@@ -366,6 +367,45 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
 
   it("updateReleaseGroupsService rejects an unknown release id", async () => {
     await expect(updateReleaseGroupsService(999999999, ["rest"])).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("updateReleaseNotesService edits notes on an already-uploaded release", async () => {
+    const release = await uploadReleaseService(
+      {
+        buffer: Buffer.from("v1"),
+        originalName: "a.zip",
+        version: "4.2.0",
+        deploymentGroups: [uniqueGroup()],
+        releaseNotes: "prvobitna napomena",
+      },
+      null,
+    );
+    createdReleases.push(release);
+    expect(release.releaseNotes).toBe("prvobitna napomena");
+
+    const updated = await updateReleaseNotesService(release.id, "dopunjena napomena");
+    expect(updated.releaseNotes).toBe("dopunjena napomena");
+  });
+
+  it("updateReleaseNotesService can clear notes back to null", async () => {
+    const release = await uploadReleaseService(
+      {
+        buffer: Buffer.from("v1"),
+        originalName: "a.zip",
+        version: "4.3.0",
+        deploymentGroups: [uniqueGroup()],
+        releaseNotes: "biće obrisano",
+      },
+      null,
+    );
+    createdReleases.push(release);
+
+    const cleared = await updateReleaseNotesService(release.id, null);
+    expect(cleared.releaseNotes).toBeNull();
+  });
+
+  it("updateReleaseNotesService rejects an unknown release id", async () => {
+    await expect(updateReleaseNotesService(999999999, "x")).rejects.toMatchObject({ status: 404 });
   });
 
   it("deleteReleaseService rejects an ACTIVE release", async () => {

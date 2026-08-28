@@ -7,6 +7,7 @@ import {
   createReleaseController,
   listReleasesController,
   setReleaseActiveController,
+  updateReleaseNotesController,
   deleteReleaseController,
   updateReleaseGroupsController,
   listReleaseFilesController,
@@ -29,6 +30,9 @@ router.post(
   asyncHandler(createReleaseController),
 );
 router.patch("/:id", requireRole("admin"), asyncHandler(setReleaseActiveController));
+// Isti admin-only nivo - napomene su editabilne i posle upload-a (za razliku
+// od verzije/fajla), isti obrazac kao /:id/deployment-groups ispod.
+router.patch("/:id/notes", requireRole("admin"), asyncHandler(updateReleaseNotesController));
 // Isti admin-only nivo - namerno samo za VEĆ deaktivirane verzije
 // (deleteReleaseService odbija aktivnu), vidi napomenu tamo.
 router.delete("/:id", requireRole("admin"), asyncHandler(deleteReleaseController));

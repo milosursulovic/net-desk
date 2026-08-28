@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { CreateReleaseSchema, UpdateReleaseGroupsSchema } from "../../dtos/agentReleases.dto.js";
+import {
+  CreateReleaseSchema,
+  UpdateReleaseGroupsSchema,
+  UpdateReleaseNotesSchema,
+} from "../../dtos/agentReleases.dto.js";
 
 describe("UpdateReleaseGroupsSchema", () => {
   it("accepts a release targeting more than 20 groups (department-aligned groups, not the old fixed 4-value list)", () => {
@@ -26,5 +30,23 @@ describe("CreateReleaseSchema", () => {
     const groups = Array.from({ length: 30 }, (_, i) => `Odeljenje ${i}`);
     const result = CreateReleaseSchema.safeParse({ version: "1.6.0", deploymentGroups: groups });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("UpdateReleaseNotesSchema", () => {
+  it("accepts a plain string", () => {
+    expect(UpdateReleaseNotesSchema.safeParse({ releaseNotes: "dodatna napomena" }).success).toBe(true);
+  });
+
+  it("accepts null (clearing the notes)", () => {
+    expect(UpdateReleaseNotesSchema.safeParse({ releaseNotes: null }).success).toBe(true);
+  });
+
+  it("rejects a missing releaseNotes field (undefined is not the same as null)", () => {
+    expect(UpdateReleaseNotesSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("rejects an absurdly long note (sanity ceiling)", () => {
+    expect(UpdateReleaseNotesSchema.safeParse({ releaseNotes: "x".repeat(4001) }).success).toBe(false);
   });
 });

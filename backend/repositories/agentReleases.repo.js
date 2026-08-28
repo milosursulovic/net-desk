@@ -195,6 +195,15 @@ export async function setReleaseActive(id, isActive) {
   return result.affectedRows;
 }
 
+// Napomene su namerno editabilne i POSLE upload-a - vidi UpdateReleaseNotesSchema.
+export async function updateReleaseNotes(id, releaseNotes) {
+  const [result] = await pool.execute(
+    `UPDATE agent_releases SET release_notes = ? WHERE id = ?`,
+    [releaseNotes, id],
+  );
+  return result.affectedRows;
+}
+
 // agent_release_groups/agent_release_files imaju ON DELETE CASCADE na
 // release_id - brišu se sami, ne treba posebna DELETE ovde.
 export async function deleteRelease(id) {
