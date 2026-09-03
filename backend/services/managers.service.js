@@ -8,6 +8,7 @@ import {
   findManagerByIpEntryId,
   updateHeartbeat,
   linkManagerToIpEntry,
+  revokeOtherActiveManagers,
 } from "../repositories/managers.repo.js";
 import { findIpEntryIdByIp, insertIpEntry } from "../repositories/ipEntries.repo.js";
 import { computeConnectivityStatus, inferSiteFromIp } from "./agents.service.js";
@@ -51,7 +52,12 @@ export async function enrollManager(dto) {
     managerVersion: emptyToNull(dto.managerVersion),
   });
 
-  await resolveManagerIpEntryId(id, { ip: dto.ip, hostname: dto.hostname });
+  const ipEntryId = await resolveManagerIpEntryId(id, { ip: dto.ip, hostname: dto.hostname });
+
+  // Enroll se ponovo poziva svaki put kad Manager servis izgubi svoje
+  // kredencijale (reinstall/reprovizovanje) - nova registracija za ISTI
+  // ip_entry_id zamenjuje staru, ne dodaje se pored nje.
+  await revokeOtherActiveManagers(ipEntryId, id);
 
   const manager = await findManagerById(id);
 

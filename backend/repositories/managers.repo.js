@@ -48,10 +48,14 @@ export async function findManagerById(id) {
 // isti ip_entry_id (oboje ga razrešavaju nezavisno, svaki svojim putem), pa
 // je ovo jedini spoj koji postoji između njih (nema direktnog agent_id/
 // manager_id para bilo gde).
+// ORDER BY id DESC je odbrana u dubinu, ne oslanja se samo na
+// revokeOtherActiveManagers (enrollManager) da nikad ne dozvoli da 2+ reda
+// budu 'active' istovremeno za isti ip_entry_id - da ODJE i dalje bira
+// najnoviji ako se to ikad desi.
 export async function findManagerByIpEntryId(ipEntryId) {
   if (!ipEntryId) return null;
   const [rows] = await pool.execute(
-    `SELECT ${SELECT_FIELDS} FROM managers WHERE ip_entry_id = ? AND status = 'active' LIMIT 1`,
+    `SELECT ${SELECT_FIELDS} FROM managers WHERE ip_entry_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1`,
     [ipEntryId],
   );
   return rows?.[0] || null;
@@ -93,5 +97,20 @@ export async function linkManagerToIpEntry(managerId, ipEntryId) {
 
 export async function revokeManagerById(id) {
   const [result] = await pool.execute(`UPDATE managers SET status = 'revoked' WHERE id = ?`, [id]);
+  return result.affectedRows;
+}
+
+// Poziva se odmah posle enroll-a (vidi enrollManager) da NIKAD ne ostanu 2+
+// 'active' redova za isti ip_entry_id - Manager servis se ponovo enroll-uje
+// kad god je reinstaliran/reprovizovan (ne može da obnovi stari, samo-hash
+// sačuvan API key), pa nova registracija zamenjuje staru umesto da joj se
+// pridoda. Bez ovoga listAgents-ov LEFT JOIN na managers duplira red agenta
+// u listi (uživo potvrđeno - viđeno na najnovije upisanim agentima).
+export async function revokeOtherActiveManagers(ipEntryId, exceptManagerId) {
+  if (!ipEntryId) return 0;
+  const [result] = await pool.execute(
+    `UPDATE managers SET status = 'revoked' WHERE ip_entry_id = ? AND status = 'active' AND id != ?`,
+    [ipEntryId, exceptManagerId],
+  );
   return result.affectedRows;
 }

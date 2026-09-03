@@ -342,8 +342,20 @@ const AGENTS_METADATA_JOIN = "LEFT JOIN computer_metadata cm ON cm.ip_entry_id =
 // namerno ne pribavljaju ovo, AgentDetailView.vue zove poseban
 // /manager-status endpoint (getAgentManagerStatusController) umesto da se
 // ovaj JOIN širi na svaki poziv.
-const AGENTS_MANAGER_JOIN =
-  "LEFT JOIN managers mgr ON mgr.ip_entry_id = agents.ip_entry_id AND mgr.status = 'active'";
+// Uslov "mgr.id = najnoviji active red za ovaj ip_entry_id" je odbrana u
+// dubinu (ne samo oslanjanje na revokeOtherActiveManagers u
+// enrollManager) - regresija: bez ovoga, svaki 'active' red za isti
+// ip_entry_id dupllira red agenta u rezultatu (LEFT JOIN 1:N), uživo
+// potvrđeno na novo enrollovanim agentima.
+const AGENTS_MANAGER_JOIN = `
+  LEFT JOIN managers mgr
+    ON mgr.ip_entry_id = agents.ip_entry_id
+    AND mgr.status = 'active'
+    AND mgr.id = (
+      SELECT MAX(m2.id) FROM managers m2
+      WHERE m2.ip_entry_id = agents.ip_entry_id AND m2.status = 'active'
+    )
+`;
 
 // Isti pragovi kao CONNECTIVITY_STATUS_SQL - NULL (ne 'unknown') kad
 // nijedan managers red uopšte ne postoji za ovaj ip_entry_id (LEFT JOIN nije

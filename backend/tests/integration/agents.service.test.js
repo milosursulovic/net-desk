@@ -521,6 +521,48 @@ describe("agents.service (integration, real DB)", () => {
       expect(matched.items.map((a) => a.id)).toContain(agentId);
     });
 
+    it(
+      "returns the agent only ONCE even if its ip_entry_id somehow ended up with 2 'active' " +
+        "managers rows (regression: the LEFT JOIN to managers in listAgents duplicated the " +
+        "agent's row 1-per-match - fixed at the query level as defense-in-depth, independent " +
+        "of enrollManager's own dedup, which is covered separately in managers.service.test.js)",
+      async () => {
+        const hostname = testHostname();
+        const enrolled = await enrollAgent({ hostname });
+        const { findAgentByUid } = await import("../../repositories/agents.repo.js");
+        const found = await findAgentByUid(enrolled.agentId);
+        agentId = found.id;
+        ipEntryId = found.ipEntryId;
+
+        const [firstResult] = await pool.execute(
+          `INSERT INTO managers (manager_uid, api_key_hash, ip_entry_id, status, enrolled_at)
+           VALUES (?, 'x', ?, 'active', NOW())`,
+          [`vt-${Date.now()}-a`, ipEntryId],
+        );
+        const [secondResult] = await pool.execute(
+          `INSERT INTO managers (manager_uid, api_key_hash, ip_entry_id, status, enrolled_at)
+           VALUES (?, 'x', ?, 'active', NOW())`,
+          [`vt-${Date.now()}-b`, ipEntryId],
+        );
+
+        try {
+          const result = await listAgentsService({
+            page: 1,
+            limit: 50,
+            search: hostname,
+            status: "all",
+          });
+          const matches = result.items.filter((a) => a.id === agentId);
+          expect(matches).toHaveLength(1);
+        } finally {
+          await pool.execute("DELETE FROM managers WHERE id IN (?, ?)", [
+            firstResult.insertId,
+            secondResult.insertId,
+          ]);
+        }
+      },
+    );
+
     it("filters by MULTIPLE selected deploymentGroup values (union/OR, not intersection)", async () => {
       // Sintetička imena grupa (ne stvarna "pilot"/"test") namerno - bez
       // search filtera koji bi suzio na jednog agenta (pa bi test morao da

@@ -68,6 +68,41 @@ describe("managers.service (integration, real DB)", () => {
     ipEntryId = secondRow.ipEntryId;
   });
 
+  it(
+    "enrollManager revokes the PRIOR active manager for the same ip_entry_id " +
+      "(regression: re-enrolling the same machine left both rows 'active', which " +
+      "duplicated that agent's row in the Agenti list via listAgents' LEFT JOIN)",
+    async () => {
+      const ip = testIp();
+
+      const first = await enrollManager({ hostname: testHostname(), managerVersion: "1.0.0", ip });
+      const [[firstRow]] = await pool.query(
+        "SELECT id, ip_entry_id AS ipEntryId, status FROM managers WHERE manager_uid = ?",
+        [first.managerId],
+      );
+
+      const second = await enrollManager({ hostname: testHostname(), managerVersion: "1.1.0", ip });
+      const [[secondRow]] = await pool.query(
+        "SELECT id, ip_entry_id AS ipEntryId, status FROM managers WHERE manager_uid = ?",
+        [second.managerId],
+      );
+
+      const [[refetchedFirst]] = await pool.query("SELECT status FROM managers WHERE id = ?", [firstRow.id]);
+      expect(refetchedFirst.status).toBe("revoked");
+      expect(secondRow.status).toBe("active");
+
+      const [[{ activeCount }]] = await pool.query(
+        "SELECT COUNT(*) AS activeCount FROM managers WHERE ip_entry_id = ? AND status = 'active'",
+        [secondRow.ipEntryId],
+      );
+      expect(Number(activeCount)).toBe(1);
+
+      await deleteTestManager(firstRow.id);
+      managerId = secondRow.id;
+      ipEntryId = secondRow.ipEntryId;
+    },
+  );
+
   it("heartbeatManager persists netdeskAgentServiceStatus/netdeskAgentStartMode and bumps lastHeartbeatAt", async () => {
     const enrolled = await enrollManager({ hostname: testHostname(), managerVersion: "1.0.0", ip: testIp() });
     const [[row]] = await pool.query("SELECT id, ip_entry_id AS ipEntryId FROM managers WHERE manager_uid = ?", [
