@@ -2,24 +2,24 @@
   <div class="space-y-5">
     <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Agenti</h1>
-        <p class="mt-0.5 text-sm text-ink-muted">Pregled i upravljanje registrovanim agentima</p>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('nav.agents') }}</h1>
+        <p class="mt-0.5 text-sm text-ink-muted">{{ t('agents.subtitle') }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <AppButton variant="secondary" to="/computers-without-agent">Računari bez agenta</AppButton>
-        <AppButton variant="secondary" to="/agent-releases">Verzije agenta</AppButton>
-        <AppButton variant="secondary" to="/agent-batches">Batch komande</AppButton>
-        <AppButton variant="secondary" to="/deployment-groups">Deployment grupe</AppButton>
-        <AppButton v-if="isAdmin" variant="secondary" to="/downloads-folder">Deljeni fajlovi</AppButton>
+        <AppButton variant="secondary" to="/computers-without-agent">{{ t('withoutAgent.title') }}</AppButton>
+        <AppButton variant="secondary" to="/agent-releases">{{ t('releases.title') }}</AppButton>
+        <AppButton variant="secondary" to="/agent-batches">{{ t('agents.batchCommands') }}</AppButton>
+        <AppButton variant="secondary" to="/deployment-groups">{{ t('deploymentGroups.title') }}</AppButton>
+        <AppButton v-if="isAdmin" variant="secondary" to="/downloads-folder">{{ t('downloads.title') }}</AppButton>
       </div>
     </div>
 
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <StatTile label="Ukupno (filtrirano)" :value="total" tone="accent" />
-      <StatTile label="Online" :value="statOnline" tone="good" :proportion="total ? statOnline / total : 0" />
-      <StatTile label="Offline" :value="statOffline" tone="bad" :proportion="total ? statOffline / total : 0" />
+      <StatTile :label="t('agents.totalFiltered')" :value="total" tone="accent" />
+      <StatTile :label="t('common.online')" :value="statOnline" tone="good" :proportion="total ? statOnline / total : 0" />
+      <StatTile :label="t('common.offline')" :value="statOffline" tone="bad" :proportion="total ? statOffline / total : 0" />
       <StatTile
-        label="Manager pokrivenost"
+        :label="t('agents.managerCoverage')"
         :value="total ? `${Math.round((statManagerCoverage / total) * 100)}%` : '—'"
         tone="info"
         :proportion="total ? statManagerCoverage / total : 0"
@@ -31,20 +31,20 @@
       <div class="flex flex-col sm:flex-row gap-2">
         <div class="relative flex-1">
           <input v-model="searchInput" @input="onSearchInput" type="text"
-            placeholder="Pretraga po hostname-u ili agent id-u..."
+            :placeholder="t('agents.searchPlaceholder')"
             class="app-input w-full pr-10"
-            aria-label="Pretraga agenata" />
+            :aria-label="t('agents.searchAriaLabel')" />
           <button v-if="searchInput" @click="clearSearch"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-            aria-label="Obriši pretragu">
+            :aria-label="t('printers.clearSearchAriaLabel')">
             <NavIcon name="x" />
           </button>
         </div>
 
-        <select v-model="status" class="app-input w-full sm:w-48" aria-label="Filter po statusu">
-          <option value="all">Svi statusi</option>
-          <option value="active">Aktivni</option>
-          <option value="revoked">Povučeni</option>
+        <select v-model="status" class="app-input w-full sm:w-48" :aria-label="t('agents.statusFilterAriaLabel')">
+          <option value="all">{{ t('home.statusAll') }}</option>
+          <option value="active">{{ t('agents.statusActive') }}</option>
+          <option value="revoked">{{ t('agents.statusRevoked') }}</option>
         </select>
 
         <button
@@ -52,7 +52,7 @@
           class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-sunken sm:hidden"
           @click="detailedFiltersOpen = !detailedFiltersOpen"
         >
-          Detaljni filteri
+          {{ t('agents.detailedFilters') }}
           <span
             v-if="activeDetailedFilterCount"
             class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white"
@@ -66,88 +66,88 @@
       <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-1.5">
         <TagChip v-for="chip in activeFilterChips" :key="chip.key" :label="chip.label" removable @remove="chip.clear" />
         <button type="button" class="text-xs text-ink-muted hover:text-ink hover:underline" @click="clearAllFilters">
-          Obriši sve
+          {{ t('agents.clearAll') }}
         </button>
       </div>
 
       <!-- Detaljni filteri - skupljeno na mobilnom po difoltu -->
       <div :class="detailedFiltersOpen ? 'block' : 'hidden sm:block'">
         <div class="flex flex-wrap items-center gap-2">
-          <select v-model="connectivityStatus" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter po konekciji">
-            <option value="">Sve konekcije</option>
-            <option value="online">Online</option>
-            <option value="stale">Neaktivan</option>
-            <option value="offline">Offline</option>
-            <option value="unknown">Nepoznato</option>
+          <select v-model="connectivityStatus" class="app-input w-auto max-w-full min-w-0 truncate" :aria-label="t('agents.connectivityFilterAriaLabel')">
+            <option value="">{{ t('agents.allConnections') }}</option>
+            <option value="online">{{ t('common.online') }}</option>
+            <option value="stale">{{ t('agents.stale') }}</option>
+            <option value="offline">{{ t('common.offline') }}</option>
+            <option value="unknown">{{ t('home.typeUnknown') }}</option>
           </select>
 
           <select
             v-model="hasManagerChannel"
             class="app-input w-auto max-w-full min-w-0 truncate"
-            aria-label="Filter po Manager kanalu"
-            title="Da li je novi (nezavisni HTTP) Netdesk Agent Manager kanal registrovan na ovoj mašini"
+            :aria-label="t('agents.managerFilterAriaLabel')"
+            :title="t('agents.managerFilterTitle')"
           >
-            <option value="">Svi (Manager kanal)</option>
-            <option value="true">Ima novi Manager</option>
-            <option value="false">Nema novi Manager</option>
+            <option value="">{{ t('agents.allManager') }}</option>
+            <option value="true">{{ t('agents.hasManager') }}</option>
+            <option value="false">{{ t('agents.noManager') }}</option>
           </select>
 
           <select
             v-model="trustedRootCertInstalled"
             class="app-input w-auto max-w-full min-w-0 truncate"
-            aria-label="Filter po Trusted Root sertifikatu"
-            title="cert_CA_SSL_DECRIPT_BOR.crt u Local Machine Trusted Root store-u"
+            :aria-label="t('agents.trustedRootFilterAriaLabel')"
+            title="cert_CA_SSL_DECRIPT_BOR.crt in Local Machine Trusted Root store"
           >
-            <option value="">Svi (Trusted Root sertifikat)</option>
-            <option value="true">Ima Trusted Root sertifikat</option>
-            <option value="false">Nema Trusted Root sertifikat</option>
+            <option value="">{{ t('agents.allTrustedRoot') }}</option>
+            <option value="true">{{ t('agents.hasTrustedRoot') }}</option>
+            <option value="false">{{ t('agents.noTrustedRoot') }}</option>
           </select>
 
           <select
             v-model="intermediateCertInstalled"
             class="app-input w-auto max-w-full min-w-0 truncate"
-            aria-label="Filter po Intermediate sertifikatu"
-            title="cert_SSL_TRUST.crt u Local Machine Intermediate store-u"
+            :aria-label="t('agents.intermediateFilterAriaLabel')"
+            title="cert_SSL_TRUST.crt in Local Machine Intermediate store"
           >
-            <option value="">Svi (Intermediate sertifikat)</option>
-            <option value="true">Ima Intermediate sertifikat</option>
-            <option value="false">Nema Intermediate sertifikat</option>
+            <option value="">{{ t('agents.allIntermediate') }}</option>
+            <option value="true">{{ t('agents.hasIntermediate') }}</option>
+            <option value="false">{{ t('agents.noIntermediate') }}</option>
           </select>
 
           <select
             v-model="secureDnsDisabled"
             class="app-input w-auto max-w-full min-w-0 truncate"
-            aria-label="Filter po Secure DNS stanju"
-            title="Da li je Secure DNS (DoH) isključen preko registry politike na Chrome/Edge/Brave/Firefox"
+            :aria-label="t('agents.secureDnsFilterAriaLabel')"
+            :title="t('agents.secureDnsFilterTitle')"
           >
-            <option value="">Svi (Secure DNS)</option>
-            <option value="true">Secure DNS isključen</option>
-            <option value="false">Secure DNS uključen/nepoznat</option>
+            <option value="">{{ t('agents.allSecureDns') }}</option>
+            <option value="true">{{ t('agents.secureDnsDisabledOpt') }}</option>
+            <option value="false">{{ t('agents.secureDnsEnabledOpt') }}</option>
           </select>
 
           <MultiSelect
             v-model="deploymentGroup"
             :options="deploymentGroupOptions"
-            placeholder="Sve deployment grupe"
+            :placeholder="t('agents.allDeploymentGroups')"
             class="w-auto max-w-48 min-w-0"
           />
 
           <MultiSelect
             v-model="os"
             :options="osOptions"
-            placeholder="Svi OS"
+            :placeholder="t('home.allOs')"
             class="w-auto max-w-40 min-w-0"
           />
 
-          <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate" aria-label="Filter arhitekture procesora">
-            <option value="">Sve arhitekture</option>
+          <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate" :aria-label="t('home.archFilterTitle')">
+            <option value="">{{ t('home.allArchitectures') }}</option>
             <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
           </select>
 
           <MultiSelect
             v-model="version"
             :options="versionOptions"
-            placeholder="Sve verzije"
+            :placeholder="t('agents.allVersions')"
             class="w-auto max-w-40 min-w-0"
           />
 
@@ -157,15 +157,15 @@
               :checked="versionMode === 'neq'"
               @change="versionMode = versionMode === 'neq' ? 'eq' : 'neq'"
             />
-            Isključi (prikaži zaostale)
+            {{ t('agents.excludeShowOutdated') }}
           </label>
 
           <MultiSelect
             v-model="managerVersion"
             :options="managerVersionOptions"
-            placeholder="Sve Manager verzije"
+            :placeholder="t('agents.allManagerVersions')"
             class="w-auto max-w-40 min-w-0"
-            title="Verzija Netdesk Agent Manager-a (nezavisni HTTP kanal), ne agentova verzija"
+            :title="t('agents.managerVersionTitle')"
           />
 
           <label v-if="managerVersion.length" class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
@@ -174,13 +174,13 @@
               :checked="managerVersionMode === 'neq'"
               @change="managerVersionMode = managerVersionMode === 'neq' ? 'eq' : 'neq'"
             />
-            Isključi (prikaži zaostale)
+            {{ t('agents.excludeShowOutdated') }}
           </label>
 
           <MultiSelect
             v-model="department"
             :options="departmentOptions"
-            placeholder="Sva odeljenja"
+            :placeholder="t('home.allDepartments')"
             class="w-auto max-w-40 min-w-0"
           />
 
@@ -190,7 +190,7 @@
               :checked="antivirusInactive === 'true'"
               @change="antivirusInactive = antivirusInactive === 'true' ? '' : 'true'"
             />
-            Bez aktivnog antivirusa
+            {{ t('agents.noActiveAntivirus') }}
           </label>
 
           <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
@@ -199,7 +199,7 @@
               :checked="firewallInactive === 'true'"
               @change="firewallInactive = firewallInactive === 'true' ? '' : 'true'"
             />
-            Bez aktivnog firewall-a
+            {{ t('agents.noActiveFirewall') }}
           </label>
 
           <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
@@ -208,43 +208,43 @@
               :checked="windowsUpdateInactive === 'true'"
               @change="windowsUpdateInactive = windowsUpdateInactive === 'true' ? '' : 'true'"
             />
-            Isključen Windows Update
+            {{ t('agents.windowsUpdateDisabled') }}
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" :title="t('agents.agentMismatchTitle')">
             <input
               type="checkbox"
               :checked="agentOfflineIpOnline === 'true'"
               @change="agentOfflineIpOnline = agentOfflineIpOnline === 'true' ? '' : 'true'"
             />
-            Agent offline, računar online (moguć kvar)
+            {{ t('agents.agentOfflineIpOnline') }}
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Instalirani fajlovi u Service folderu se ne poklapaju sa release-om za prijavljenu verziju agenta">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" :title="t('agents.serviceFilesMismatchTitle')">
             <input
               type="checkbox"
               :checked="serviceFilesMismatch === 'true'"
               @change="serviceFilesMismatch = serviceFilesMismatch === 'true' ? '' : 'true'"
             />
-            Neusklađeni fajlovi agenta
+            {{ t('agents.serviceFilesMismatch') }}
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Agent i dalje detektuje/loguje procese sa watchlist-e, ali ih nikad ne ubija čak i kad je globalno uključeno">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" :title="t('agents.processKillExemptTitle')">
             <input
               type="checkbox"
               :checked="processKillExempt === 'true'"
               @change="processKillExempt = processKillExempt === 'true' ? '' : 'true'"
             />
-            Izuzet od ubijanja procesa
+            {{ t('agents.processKillExempt') }}
           </label>
 
-          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" title="Agent je istovremeno u dve ili više OS deployment grupa (win7/win10/win11/winsrv) - obično greška u unosu">
+          <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary" :title="t('agents.osOverlapTitle')">
             <input
               type="checkbox"
               :checked="deploymentGroupOsOverlap === 'true'"
               @change="deploymentGroupOsOverlap = deploymentGroupOsOverlap === 'true' ? '' : 'true'"
             />
-            Preklapanje OS grupa (win7/win10/win11/winsrv)
+            {{ t('agents.osOverlap') }}
           </label>
 
           <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
@@ -253,28 +253,28 @@
               :checked="noDeploymentGroup === 'true'"
               @change="noDeploymentGroup = noDeploymentGroup === 'true' ? '' : 'true'"
             />
-            Bez ijedne deployment grupe
+            {{ t('agents.noDeploymentGroup') }}
           </label>
         </div>
 
         <div class="mt-2 flex flex-wrap items-end gap-2">
           <div>
-            <label class="block text-xs text-ink-muted mb-1" for="enrolledFrom">Enroll od</label>
+            <label class="block text-xs text-ink-muted mb-1" for="enrolledFrom">{{ t('agents.enrolledFrom') }}</label>
             <input id="enrolledFrom" v-model="enrolledFrom" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1" for="enrolledTo">Enroll do</label>
+            <label class="block text-xs text-ink-muted mb-1" for="enrolledTo">{{ t('agents.enrolledTo') }}</label>
             <input id="enrolledTo" v-model="enrolledTo" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1" for="heartbeatFrom">Heartbeat od</label>
+            <label class="block text-xs text-ink-muted mb-1" for="heartbeatFrom">{{ t('agents.heartbeatFrom') }}</label>
             <input id="heartbeatFrom" v-model="heartbeatFrom" type="date" class="app-input w-auto text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1" for="heartbeatTo">Heartbeat do</label>
+            <label class="block text-xs text-ink-muted mb-1" for="heartbeatTo">{{ t('agents.heartbeatTo') }}</label>
             <input id="heartbeatTo" v-model="heartbeatTo" type="date" class="app-input w-auto text-sm" />
           </div>
-          <AppButton variant="neutral" @click="clearDetailedFilters">Poništi filtere</AppButton>
+          <AppButton variant="neutral" @click="clearDetailedFilters">{{ t('agents.resetFilters') }}</AppButton>
         </div>
       </div>
 
@@ -289,12 +289,12 @@
         @update:limit="(v) => (limit = v)"
       />
 
-      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} agenata</p>
+      <p class="text-sm text-ink-muted">{{ t('agents.shown', { shown: items.length, total }) }}</p>
 
       <div v-if="items.length" class="flex flex-wrap items-center gap-3">
         <label class="flex items-center gap-2 text-sm text-ink-secondary">
           <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAllVisible" />
-          Selektuj sve prikazane ({{ selectedIds.size }} izabrano)
+          {{ t('agents.selectAllVisible', { count: selectedIds.size }) }}
         </label>
         <button
           type="button"
@@ -302,7 +302,7 @@
           :disabled="selectingAllMatching"
           @click="selectAllMatching"
         >
-          {{ selectingAllMatching ? 'Selektujem…' : `Selektuj sve po filteru (${total})` }}
+          {{ selectingAllMatching ? t('agents.selecting') : t('agents.selectAllMatching', { total }) }}
         </button>
       </div>
     </div>
@@ -310,46 +310,45 @@
     <!-- Batch komanda - vidljivo samo kad je bar 1 agent selektovan -->
     <div v-if="selectedIds.size" class="rounded-xl border border-info/30 bg-info-subtle p-4 space-y-3">
       <div class="font-medium text-info">
-        Pošalji komandu na {{ selectedIds.size }} izabranih agenata
+        {{ t('agents.sendCommandTo', { count: selectedIds.size }) }}
       </div>
       <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-bad">
-        Batch komande podržavaju najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju
-        (npr. suzi filter) pre slanja.
+        {{ t('agents.batchLimitWarning', { max: MAX_BATCH_AGENTS }) }}
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label class="text-sm text-ink-secondary">Tip komande</label>
+          <label class="text-sm text-ink-secondary">{{ t('agents.commandType') }}</label>
           <select v-model="batchForm.commandType" class="app-input w-full">
             <option v-for="c in COMMAND_TYPES" :key="c" :value="c">{{ COMMAND_LABELS[c] }}</option>
           </select>
         </div>
-        <FormInput v-if="isBatchServiceCommand" v-model.trim="batchForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
+        <FormInput v-if="isBatchServiceCommand" v-model.trim="batchForm.serviceName" :label="t('agents.serviceNameLabel')" placeholder="Spooler" />
       </div>
       <label class="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" v-model="batchOnlyOnline" />
-        Pošalji samo online agentima (preskoči offline/neaktivne)
+        {{ t('agents.onlyOnlineAgents') }}
       </label>
       <div v-if="batchForm.commandType === 'run_powershell_script'" class="space-y-2">
         <div>
-          <label class="text-sm text-ink-secondary">Gotova skripta (opciono)</label>
+          <label class="text-sm text-ink-secondary">{{ t('agents.readyScript') }}</label>
           <select v-model="batchSelectedPresetId" class="app-input w-full" @change="applyBatchPreset">
-            <option value="">— Prilagođena skripta —</option>
+            <option value="">{{ t('agents.customScript') }}</option>
             <option v-for="p in POWERSHELL_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
         </div>
         <div>
-          <label class="text-sm text-ink-secondary">PowerShell skripta</label>
+          <label class="text-sm text-ink-secondary">{{ t('agents.powershellScript') }}</label>
           <textarea v-model="batchForm.script" rows="6" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
         </div>
       </div>
       <div class="flex justify-end gap-2">
-        <AppButton variant="neutral" @click="clearSelection">Poništi selekciju</AppButton>
+        <AppButton variant="neutral" @click="clearSelection">{{ t('agents.clearSelection') }}</AppButton>
         <AppButton
           variant="success"
           :disabled="sendingBatch || selectedIds.size > MAX_BATCH_AGENTS"
           @click="sendBatchJob"
         >
-          {{ sendingBatch ? 'Šaljem…' : `Pošalji na ${selectedIds.size} agenata` }}
+          {{ sendingBatch ? t('agents.sending') : t('agents.sendToCount', { count: selectedIds.size }) }}
         </AppButton>
       </div>
     </div>
@@ -358,14 +357,14 @@
          dodela na Agent Detail strani. -->
     <div v-if="selectedIds.size && isAdmin" class="rounded-xl border border-accent/30 bg-accent-subtle p-4 space-y-3">
       <div class="font-medium text-accent-emphasis">
-        Dodeli deployment grupu na {{ selectedIds.size }} izabranih agenata
+        {{ t('agents.assignGroupTo', { count: selectedIds.size }) }}
       </div>
       <div v-if="selectedIds.size > MAX_BATCH_AGENTS" class="text-sm text-bad">
-        Podržava najviše {{ MAX_BATCH_AGENTS }} agenata odjednom - smanji selekciju pre slanja.
+        {{ t('agents.assignBatchLimitWarning', { max: MAX_BATCH_AGENTS }) }}
       </div>
       <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
         <div class="flex-1 min-w-0">
-          <label class="text-sm text-ink-secondary">Deployment grupa</label>
+          <label class="text-sm text-ink-secondary">{{ t('agents.deploymentGroupLabel') }}</label>
           <GroupSelect
             v-model="massDeploymentGroup"
             :options="deploymentGroupOptions"
@@ -381,7 +380,7 @@
           :disabled="assigningDeploymentGroup || !massDeploymentGroup || selectedIds.size > MAX_BATCH_AGENTS"
           @click="assignDeploymentGroupToSelected"
         >
-          {{ assigningDeploymentGroup ? 'Dodeljujem…' : `Dodeli na ${selectedIds.size} agenata` }}
+          {{ assigningDeploymentGroup ? t('agents.assigning') : t('agents.assignToCount', { count: selectedIds.size }) }}
         </AppButton>
       </div>
     </div>
@@ -395,7 +394,7 @@
       </div>
 
       <div v-else-if="!items.length" class="table-shell p-8 text-center text-ink-muted">
-        Nema agenata za zadate filtere.
+        {{ t('agents.noResults') }}
       </div>
 
       <div v-else class="table-shell">
@@ -404,16 +403,16 @@
             <thead>
               <tr class="table-head-row">
                 <th class="px-3 py-2 text-left"></th>
-                <th class="px-3 py-2 text-left">Računar</th>
-                <th class="px-3 py-2 text-left">Status</th>
-                <th class="px-3 py-2 text-left">Konekcija</th>
+                <th class="px-3 py-2 text-left">{{ t('repack.colComputerName') }}</th>
+                <th class="px-3 py-2 text-left">{{ t('home.colStatus') }}</th>
+                <th class="px-3 py-2 text-left">{{ t('printers.colConnection') }}</th>
                 <th class="px-3 py-2 text-left">OS</th>
-                <th class="px-3 py-2 text-left">Verzija</th>
-                <th class="px-3 py-2 text-left">Poslednji heartbeat</th>
+                <th class="px-3 py-2 text-left">{{ t('agents.version') }}</th>
+                <th class="px-3 py-2 text-left">{{ t('agents.lastHeartbeat') }}</th>
                 <th class="px-3 py-2 text-left">IP</th>
-                <th class="px-3 py-2 text-left">Enroll</th>
-                <th class="px-3 py-2 text-left">Deployment</th>
-                <th class="px-3 py-2 text-left">Nalazi</th>
+                <th class="px-3 py-2 text-left">{{ t('agents.enroll') }}</th>
+                <th class="px-3 py-2 text-left">{{ t('agents.deployment') }}</th>
+                <th class="px-3 py-2 text-left">{{ t('agents.findings') }}</th>
                 <th class="px-3 py-2 text-right"></th>
               </tr>
             </thead>
@@ -425,7 +424,7 @@
                     class="mt-1"
                     :checked="selectedIds.has(a.id)"
                     @change="toggleSelect(a.id)"
-                    aria-label="Selektuj agenta"
+                    :aria-label="t('agents.selectAgent')"
                   />
                 </td>
                 <td class="px-3 py-2.5 align-top">
@@ -434,7 +433,7 @@
                   </RouterLink>
                   <div class="mt-0.5 flex items-center gap-1 font-mono text-xs text-ink-muted">
                     <span class="truncate">{{ a.agentUid }}</span>
-                    <button @click="copy(a.agentUid)" class="shrink-0 text-ink-muted hover:text-ink" aria-label="Kopiraj agent id">
+                    <button @click="copy(a.agentUid)" class="shrink-0 text-ink-muted hover:text-ink" :aria-label="t('agents.copyAgentId')">
                       <NavIcon name="copy" />
                     </button>
                   </div>
@@ -452,7 +451,7 @@
                     <span
                       v-if="a.managerChannelStatus"
                       class="inline-flex h-2 w-2 shrink-0 rounded-full bg-info"
-                      :title="`Novi (nezavisni) Manager kanal registrovan - ${a.managerChannelStatus}`"
+                      :title="t('agents.managerChannelRegistered', { status: a.managerChannelStatus })"
                     ></span>
                   </div>
                 </td>
@@ -468,7 +467,7 @@
                   </div>
                   <span v-else class="text-ink-muted">—</span>
                   <RouterLink v-if="a.ipEntryId" :to="`/ip/${a.ipEntryId}/meta`" class="mt-1 block text-xs text-accent hover:underline">
-                    Otvori računar
+                    {{ t('agents.openComputer') }}
                   </RouterLink>
                 </td>
                 <td class="px-3 py-2.5 align-top">
@@ -476,30 +475,30 @@
                     v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
                     class="flex flex-wrap gap-1"
                   >
-                    <span v-if="a.antivirusStatus !== 'enabled'" title="Antivirus nije potvrđen kao aktivan">
+                    <span v-if="a.antivirusStatus !== 'enabled'" :title="t('agents.antivirusNotConfirmed')">
                       <StatusPill status="bad" label="Antivirus" :dot="false" />
                     </span>
-                    <span v-if="a.firewallStatus !== 'enabled'" title="Firewall nije potvrđen kao aktivan">
+                    <span v-if="a.firewallStatus !== 'enabled'" :title="t('agents.firewallNotConfirmed')">
                       <StatusPill status="bad" label="Firewall" :dot="false" />
                     </span>
-                    <span v-if="a.windowsUpdateStatus !== 'Running'" title="Windows Update servis nije potvrđen kao pokrenut">
+                    <span v-if="a.windowsUpdateStatus !== 'Running'" :title="t('agents.wuNotConfirmed')">
                       <StatusPill status="bad" label="WU" :dot="false" />
                     </span>
-                    <span v-if="isAgentMismatch(a)" title="Računar je dostupan na mreži, ali agent se ne javlja online - moguć kvar agenta">
-                      <StatusPill status="warn" label="Moguć kvar" :dot="false" />
+                    <span v-if="isAgentMismatch(a)" :title="t('agents.agentMismatchTitle')">
+                      <StatusPill status="warn" :label="t('agents.possibleFault')" :dot="false" />
                     </span>
                     <span
                       v-if="a.serviceFilesMismatch"
-                      :title="a.serviceFilesMismatchDetails || 'Instalirani fajlovi u Service folderu ne odgovaraju release-u za prijavljenu verziju'"
+                      :title="a.serviceFilesMismatchDetails || t('agents.serviceFilesMismatchDetails')"
                     >
-                      <StatusPill status="warn" label="Fajlovi" :dot="false" />
+                      <StatusPill status="warn" :label="t('agents.files')" :dot="false" />
                     </span>
                   </div>
                   <span v-else class="text-ink-muted">—</span>
                 </td>
                 <td class="px-3 py-2.5 align-top text-right">
                   <div class="table-row-actions">
-                    <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Povuci pristup">
+                    <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('agents.revokeAccess')">
                       <NavIcon name="ban" />
                     </button>
                   </div>
@@ -526,6 +525,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -550,7 +550,8 @@ import StatTile from '@/components/StatTile.vue'
 import NavIcon from '@/components/NavIcon.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const router = useRouter()
 const route = useRoute()
 const site = useCurrentSite()
@@ -796,57 +797,62 @@ const activeDetailedFilterCount = computed(() => {
 // stanje, samo čita/piše iste refs kao detaljni filter panel iznad. Svaki
 // chip nosi svoju clear() funkciju (za nizovne filtere briše SAMO tu jednu
 // vrednost, ne ceo filter).
-const STATUS_LABELS = { active: 'Aktivni', revoked: 'Povučeni' }
-const CONNECTIVITY_FILTER_LABELS = { online: 'Online', stale: 'Neaktivan', offline: 'Offline', unknown: 'Nepoznato' }
+const STATUS_LABELS = computed(() => ({ active: t('agents.statusActive'), revoked: t('agents.statusRevoked') }))
+const CONNECTIVITY_FILTER_LABELS = computed(() => ({
+  online: t('common.online'),
+  stale: t('agents.stale'),
+  offline: t('common.offline'),
+  unknown: t('home.typeUnknown'),
+}))
 
 const activeFilterChips = computed(() => {
   const chips = []
 
   if (search.value) {
-    chips.push({ key: 'search', label: `Pretraga: "${search.value}"`, clear: () => clearSearch() })
+    chips.push({ key: 'search', label: t('agents.chipSearch', { q: search.value }), clear: () => clearSearch() })
   }
   if (status.value !== 'all') {
-    chips.push({ key: 'status', label: STATUS_LABELS[status.value] || status.value, clear: () => (status.value = 'all') })
+    chips.push({ key: 'status', label: STATUS_LABELS.value[status.value] || status.value, clear: () => (status.value = 'all') })
   }
   if (connectivityStatus.value) {
     chips.push({
       key: 'connectivity',
-      label: CONNECTIVITY_FILTER_LABELS[connectivityStatus.value] || connectivityStatus.value,
+      label: CONNECTIVITY_FILTER_LABELS.value[connectivityStatus.value] || connectivityStatus.value,
       clear: () => (connectivityStatus.value = ''),
     })
   }
   if (hasManagerChannel.value) {
     chips.push({
       key: 'manager',
-      label: hasManagerChannel.value === 'true' ? 'Ima novi Manager' : 'Nema novi Manager',
+      label: hasManagerChannel.value === 'true' ? t('agents.hasManager') : t('agents.noManager'),
       clear: () => (hasManagerChannel.value = ''),
     })
   }
   for (const g of deploymentGroup.value) {
-    chips.push({ key: `dg-${g}`, label: `Grupa: ${g}`, clear: () => (deploymentGroup.value = deploymentGroup.value.filter((v) => v !== g)) })
+    chips.push({ key: `dg-${g}`, label: t('agents.chipGroup', { name: g }), clear: () => (deploymentGroup.value = deploymentGroup.value.filter((v) => v !== g)) })
   }
   for (const o of os.value) {
-    chips.push({ key: `os-${o}`, label: `OS: ${o}`, clear: () => (os.value = os.value.filter((v) => v !== o)) })
+    chips.push({ key: `os-${o}`, label: t('agents.chipOs', { name: o }), clear: () => (os.value = os.value.filter((v) => v !== o)) })
   }
   for (const v of version.value) {
-    chips.push({ key: `ver-${v}`, label: `Verzija: ${v}`, clear: () => (version.value = version.value.filter((x) => x !== v)) })
+    chips.push({ key: `ver-${v}`, label: t('agents.chipVersion', { name: v }), clear: () => (version.value = version.value.filter((x) => x !== v)) })
   }
   for (const d of department.value) {
-    chips.push({ key: `dep-${d}`, label: `Odeljenje: ${d}`, clear: () => (department.value = department.value.filter((v) => v !== d)) })
+    chips.push({ key: `dep-${d}`, label: t('agents.chipDepartment', { name: d }), clear: () => (department.value = department.value.filter((v) => v !== d)) })
   }
 
   const boolFlags = [
-    ['antivirusInactive', antivirusInactive, 'Bez antivirusa'],
-    ['firewallInactive', firewallInactive, 'Bez firewall-a'],
-    ['windowsUpdateInactive', windowsUpdateInactive, 'WU isključen'],
-    ['agentOfflineIpOnline', agentOfflineIpOnline, 'Moguć kvar agenta'],
-    ['serviceFilesMismatch', serviceFilesMismatch, 'Neusklađeni fajlovi'],
-    ['processKillExempt', processKillExempt, 'Izuzet od ubijanja procesa'],
-    ['deploymentGroupOsOverlap', deploymentGroupOsOverlap, 'Preklapanje OS grupa'],
-    ['noDeploymentGroup', noDeploymentGroup, 'Bez deployment grupe'],
-    ['trustedRootCertInstalled', trustedRootCertInstalled, 'Trusted Root sertifikat'],
-    ['intermediateCertInstalled', intermediateCertInstalled, 'Intermediate sertifikat'],
-    ['secureDnsDisabled', secureDnsDisabled, 'Secure DNS isključen'],
+    ['antivirusInactive', antivirusInactive, t('agents.chipNoAntivirus')],
+    ['firewallInactive', firewallInactive, t('agents.chipNoFirewall')],
+    ['windowsUpdateInactive', windowsUpdateInactive, t('agents.chipWuDisabled')],
+    ['agentOfflineIpOnline', agentOfflineIpOnline, t('agents.chipPossibleFault')],
+    ['serviceFilesMismatch', serviceFilesMismatch, t('agents.chipMismatchedFiles')],
+    ['processKillExempt', processKillExempt, t('agents.processKillExempt')],
+    ['deploymentGroupOsOverlap', deploymentGroupOsOverlap, t('agents.chipOsOverlap')],
+    ['noDeploymentGroup', noDeploymentGroup, t('agents.noDeploymentGroup')],
+    ['trustedRootCertInstalled', trustedRootCertInstalled, t('agents.hasTrustedRoot')],
+    ['intermediateCertInstalled', intermediateCertInstalled, t('agents.hasIntermediate')],
+    ['secureDnsDisabled', secureDnsDisabled, t('agents.secureDnsDisabledOpt')],
   ]
   for (const [key, ref_, label] of boolFlags) {
     if (ref_.value) chips.push({ key, label, clear: () => (ref_.value = '') })
@@ -1036,12 +1042,12 @@ const clearSearch = () => {
 }
 
 async function copy(text) {
-  await copyToClipboard(text, 'Agent ID kopiran')
+  await copyToClipboard(text, t('agents.agentIdCopied'))
 }
 
 async function confirmRevoke(a) {
-  const ok = await askConfirm(`Povući pristup agentu "${a.hostname || a.agentUid}"?`, {
-    title: 'Povlačenje agenta',
+  const ok = await askConfirm(t('agents.confirmRevokeMessage', { name: a.hostname || a.agentUid }), {
+    title: t('agents.confirmRevokeTitle'),
   })
   if (!ok) return
 
@@ -1049,10 +1055,10 @@ async function confirmRevoke(a) {
     const res = await fetchWithAuth(`/api/protected/agents/${a.id}/revoke`, { method: 'POST' })
     if (!res.ok) throw new Error('HTTP ' + res.status)
     await fetchData()
-    showToast('Agent povučen')
+    showToast(t('agents.revoked'))
   } catch (e) {
     console.error(e)
-    showToast('Greška pri povlačenju agenta', { kind: 'error', duration: 3000 })
+    showToast(t('agents.errorRevoke'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -1094,7 +1100,7 @@ async function selectAllMatching() {
     selectedIds.value = new Set(data.ids || [])
   } catch (e) {
     console.error('Neuspešno dohvatanje id-jeva po filteru', e)
-    showToast('Greška pri selekciji svih agenata', { kind: 'error', duration: 3000 })
+    showToast(t('agents.errorSelectAll'), { kind: 'error', duration: 3000 })
   } finally {
     selectingAllMatching.value = false
   }
@@ -1115,22 +1121,22 @@ async function sendBatchJob() {
   const payload = {}
   if (isBatchServiceCommand.value) {
     if (!batchForm.value.serviceName.trim()) {
-      showToast('Naziv servisa je obavezan', { kind: 'error', duration: 3000 })
+      showToast(t('agents.errorServiceNameRequired'), { kind: 'error', duration: 3000 })
       return
     }
     payload.serviceName = batchForm.value.serviceName.trim()
   }
   if (batchForm.value.commandType === 'run_powershell_script') {
     if (!batchForm.value.script.trim()) {
-      showToast('Skripta je obavezna', { kind: 'error', duration: 3000 })
+      showToast(t('agents.errorScriptRequired'), { kind: 'error', duration: 3000 })
       return
     }
     payload.script = batchForm.value.script.trim()
   }
 
   const ok = await askConfirm(
-    `Poslati "${COMMAND_LABELS[batchForm.value.commandType]}" na ${selectedIds.value.size} agenata?`,
-    { title: 'Batch komanda' },
+    t('agents.confirmSendBatch', { command: COMMAND_LABELS[batchForm.value.commandType], count: selectedIds.value.size }),
+    { title: t('agents.batchCommandTitle') },
   )
   if (!ok) return
 
@@ -1146,11 +1152,11 @@ async function sendBatchJob() {
         onlyOnline: batchOnlyOnline.value,
       }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju batch komande'))
+    if (!res.ok) throw new Error(await parseError(res, t('agents.errorSendBatch')))
     const data = await res.json()
 
-    const parts = [`Poslato na ${data.created.length} agenata`]
-    if (data.skipped.length) parts.push(`preskočeno ${data.skipped.length}`)
+    const parts = [t('agents.sentToCount', { count: data.created.length })]
+    if (data.skipped.length) parts.push(t('agents.skippedCount', { count: data.skipped.length }))
     showToast(parts.join(', '))
 
     clearSelection()
@@ -1159,7 +1165,7 @@ async function sendBatchJob() {
     }
   } catch (e) {
     console.error(e)
-    showToast(e?.message || 'Greška pri slanju batch komande', { kind: 'error', duration: 3000 })
+    showToast(e?.message || t('agents.errorSendBatch'), { kind: 'error', duration: 3000 })
   } finally {
     sendingBatch.value = false
   }
@@ -1173,8 +1179,8 @@ async function assignDeploymentGroupToSelected() {
   if (!groupName) return
 
   const ok = await askConfirm(
-    `Dodeliti deployment grupu "${groupName}" na ${selectedIds.value.size} agenata?`,
-    { title: 'Masovna dodela deployment grupe' },
+    t('agents.confirmAssignGroup', { group: groupName, count: selectedIds.value.size }),
+    { title: t('agents.massAssignTitle') },
   )
   if (!ok) return
 
@@ -1188,11 +1194,11 @@ async function assignDeploymentGroupToSelected() {
         groupName,
       }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodeli deployment grupe'))
+    if (!res.ok) throw new Error(await parseError(res, t('agents.errorAssignGroup')))
     const data = await res.json()
 
-    const parts = [`Dodeljeno na ${data.updated.length} agenata`]
-    if (data.skipped.length) parts.push(`preskočeno ${data.skipped.length}`)
+    const parts = [t('agents.assignedToCount', { count: data.updated.length })]
+    if (data.skipped.length) parts.push(t('agents.skippedCount', { count: data.skipped.length }))
     showToast(parts.join(', '))
 
     massDeploymentGroup.value = ''
@@ -1200,7 +1206,7 @@ async function assignDeploymentGroupToSelected() {
     fetchData()
   } catch (e) {
     console.error(e)
-    showToast(e?.message || 'Greška pri dodeli deployment grupe', { kind: 'error', duration: 3000 })
+    showToast(e?.message || t('agents.errorAssignGroup'), { kind: 'error', duration: 3000 })
   } finally {
     assigningDeploymentGroup.value = false
   }
@@ -1220,7 +1226,7 @@ onBeforeUnmount(() => {
 async function loadRepeatBatch(batchId) {
   try {
     const res = await fetchWithAuth(`/api/protected/agents/jobs/batch/${batchId}`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju batch-a za ponavljanje'))
+    if (!res.ok) throw new Error(await parseError(res, t('agents.errorLoadRepeatBatch')))
     const data = await res.json()
 
     selectedIds.value = new Set((data.items || []).map((i) => i.agentId))
@@ -1232,10 +1238,10 @@ async function loadRepeatBatch(batchId) {
       batchForm.value.serviceName = firstPayload.serviceName || ''
       batchForm.value.script = firstPayload.script || ''
     }
-    showToast(`Selektovano ${selectedIds.value.size} agenata iz prethodnog batch-a - izmeni komandu po potrebi pre slanja.`)
+    showToast(t('agents.selectedFromPreviousBatch', { count: selectedIds.value.size }))
   } catch (e) {
     console.error('Neuspešno učitavanje batch-a za ponavljanje', e)
-    showToast('Greška pri učitavanju agenata iz batch-a', { kind: 'error', duration: 3000 })
+    showToast(t('agents.errorLoadBatchAgents'), { kind: 'error', duration: 3000 })
   } finally {
     const { repeatBatchId, ...restQuery } = route.query
     router.replace({ query: restQuery })
@@ -1255,7 +1261,7 @@ function loadPreselectedAgentIds(raw) {
     .filter((v) => Number.isInteger(v) && v > 0)
   if (ids.length) {
     selectedIds.value = new Set(ids)
-    showToast(`Selektovano ${ids.length} agenata - podesi komandu i pošalji batch.`)
+    showToast(t('agents.selectedFromFlagged', { count: ids.length }))
   }
   const { agentIds, ...restQuery } = route.query
   router.replace({ query: restQuery })

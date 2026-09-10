@@ -2,39 +2,39 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Deljeni fajlovi</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('downloads.title') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          Fajlovi ovde su javno dostupni bez prijave (agenti ih preuzimaju preko HTTPS-a) - npr. rootCA.pem, UltraVNC paketi.
+          {{ t('downloads.subtitle') }}
         </p>
       </div>
-      <AppButton variant="neutral" to="/agents">Nazad na agente</AppButton>
+      <AppButton variant="neutral" to="/agents">{{ t('withoutAgent.backToAgents') }}</AppButton>
     </div>
 
     <div class="rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
-      <label class="text-sm font-medium text-ink">Otpremi fajl</label>
+      <label class="text-sm font-medium text-ink">{{ t('downloads.uploadFile') }}</label>
       <div class="flex flex-col sm:flex-row gap-2">
         <input ref="fileInputRef" type="file" @change="onFileChange" class="app-input w-full" />
         <AppButton :disabled="!selectedFile || uploading" @click="upload">
-          {{ uploading ? 'Otpremam…' : 'Otpremi' }}
+          {{ uploading ? t('downloads.uploading') : t('downloads.upload') }}
         </AppButton>
       </div>
       <p v-if="selectedFile" class="text-xs text-ink-muted">
-        Ako fajl sa istim imenom već postoji, biće prepisan.
+        {{ t('downloads.overwriteNote') }}
       </p>
     </div>
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('common.loading') }}</div>
     <div v-else-if="!items.length" class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
-      Folder je prazan.
+      {{ t('downloads.emptyFolder') }}
     </div>
 
     <div v-else class="table-shell overflow-x-auto">
       <table class="w-full min-w-max text-sm">
         <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-2 text-left">Naziv</th>
-            <th class="px-4 py-2 text-left">Veličina</th>
-            <th class="px-4 py-2 text-left">Izmenjeno</th>
+            <th class="px-4 py-2 text-left">{{ t('groups.colName') }}</th>
+            <th class="px-4 py-2 text-left">{{ t('downloads.colSize') }}</th>
+            <th class="px-4 py-2 text-left">{{ t('downloads.colModified') }}</th>
             <th class="px-4 py-2"></th>
           </tr>
         </thead>
@@ -49,10 +49,10 @@
             <td class="px-4 py-2 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(item.modifiedAt) }}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap space-x-3">
               <button type="button" class="text-accent hover:underline text-xs" @click="copyLink(item.name)">
-                Kopiraj link
+                {{ t('downloads.copyLink') }}
               </button>
               <button type="button" class="text-bad hover:underline text-xs" @click="remove(item.name)">
-                Obriši
+                {{ t('common.delete') }}
               </button>
             </td>
           </tr>
@@ -74,6 +74,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
@@ -83,7 +84,8 @@ import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
@@ -112,10 +114,10 @@ function onFileChange(e) {
 async function copyLink(name) {
   try {
     await navigator.clipboard.writeText(publicUrl(name))
-    showToast('Link kopiran')
+    showToast(t('downloads.linkCopied'))
   } catch (err) {
     console.error('Neuspešno kopiranje linka', err)
-    showToast('Greška pri kopiranju linka', { kind: 'error', duration: 3000 })
+    showToast(t('downloads.errorCopyLink'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -123,12 +125,12 @@ async function fetchData() {
   loading.value = true
   try {
     const res = await fetchWithAuth('/api/protected/downloads-folder')
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju liste fajlova'))
+    if (!res.ok) throw new Error(await parseError(res, t('downloads.errorLoadList')))
     const data = await res.json()
     items.value = data.items || []
   } catch (err) {
     console.error('Neuspešno učitavanje liste fajlova', err)
-    showToast(err?.message || 'Greška pri učitavanju liste fajlova', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('downloads.errorLoadList'), { kind: 'error', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -146,34 +148,34 @@ async function upload() {
       method: 'POST',
       body: formData,
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otpremanju fajla'))
+    if (!res.ok) throw new Error(await parseError(res, t('downloads.errorUpload')))
 
     selectedFile.value = null
     if (fileInputRef.value) fileInputRef.value.value = ''
     await fetchData()
-    showToast('Fajl otpremljen')
+    showToast(t('downloads.fileUploaded'))
   } catch (err) {
     console.error('Neuspešno otpremanje fajla', err)
-    showToast(err?.message || 'Greška pri otpremanju fajla', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('downloads.errorUpload'), { kind: 'error', duration: 3000 })
   } finally {
     uploading.value = false
   }
 }
 
 async function remove(name) {
-  const ok = await askConfirm(`Obrisati fajl "${name}"?`, { title: 'Brisanje fajla' })
+  const ok = await askConfirm(t('downloads.confirmDeleteMessage', { name }), { title: t('downloads.confirmDeleteTitle') })
   if (!ok) return
 
   try {
     const res = await fetchWithAuth(`/api/protected/downloads-folder/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju fajla'))
+    if (!res.ok) throw new Error(await parseError(res, t('downloads.errorDelete')))
     await fetchData()
-    showToast('Fajl obrisan')
+    showToast(t('downloads.fileDeleted'))
   } catch (err) {
     console.error('Neuspešno brisanje fajla', err)
-    showToast(err?.message || 'Greška pri brisanju fajla', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('downloads.errorDelete'), { kind: 'error', duration: 3000 })
   }
 }
 

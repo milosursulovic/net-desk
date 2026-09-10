@@ -2,15 +2,15 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Verzije agenta</h1>
-        <RouterLink to="/agents" class="inline-flex items-center gap-1 text-sm text-accent hover:underline"><NavIcon name="chevron-left" /> Nazad na agente</RouterLink>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('releases.title') }}</h1>
+        <RouterLink to="/agents" class="inline-flex items-center gap-1 text-sm text-accent hover:underline"><NavIcon name="chevron-left" /> {{ t('withoutAgent.backToAgents') }}</RouterLink>
       </div>
-      <AppButton variant="success" @click="openUpload">Otpremi novu verziju</AppButton>
+      <AppButton variant="success" @click="openUpload">{{ t('releases.uploadNew') }}</AppButton>
     </div>
 
     <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
       <input type="checkbox" v-model="onlyActive" />
-      Samo aktivne
+      {{ t('releases.onlyActive') }}
     </label>
 
     <div class="min-h-50">
@@ -24,7 +24,7 @@
 
       <div v-else-if="!visibleItems.length"
         class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
-        {{ onlyActive && items.length ? 'Nema aktivnih verzija (proveri filter).' : 'Nema otpremljenih verzija.' }}
+        {{ onlyActive && items.length ? t('releases.noActive') : t('releases.noneUploaded') }}
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -34,21 +34,21 @@
             <div>
               <div class="text-lg font-semibold text-ink font-mono">{{ r.version }}</div>
               <div class="mt-1 flex flex-wrap items-center gap-1">
-                <RouterLink v-for="g in r.deploymentGroups" :key="g" :to="outdatedAgentsLink(r, g)" :title="`Zaostali agenti u grupi '${g}'`">
+                <RouterLink v-for="g in r.deploymentGroups" :key="g" :to="outdatedAgentsLink(r, g)" :title="t('releases.outdatedInGroup', { group: g })">
                   <TagChip :label="g" />
                 </RouterLink>
               </div>
             </div>
-            <StatusPill :status="r.isActive ? 'good' : 'neutral'" :label="r.isActive ? 'Aktivna' : 'Deaktivirana'" />
+            <StatusPill :status="r.isActive ? 'good' : 'neutral'" :label="r.isActive ? t('releases.active') : t('releases.deactivated')" />
           </div>
 
           <div class="mt-3 space-y-1.5 text-sm text-ink-secondary">
             <div class="flex items-center gap-2">
-              <span class="font-medium text-ink">Fajl:</span>
+              <span class="font-medium text-ink">{{ t('releases.file') }}:</span>
               <span class="truncate font-mono">{{ r.fileName }}</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="font-medium text-ink">Veličina:</span>
+              <span class="font-medium text-ink">{{ t('releases.size') }}:</span>
               <span class="font-mono">{{ fmtBytes(r.fileSize) }}</span>
             </div>
             <div class="flex items-center gap-2 min-w-0">
@@ -63,25 +63,25 @@
             <span class="font-mono">{{ fmtDate(r.createdAt) }}</span>
             <div class="flex items-center gap-3">
               <button @click="openEditNotes(r)" class="text-sm text-accent hover:underline">
-                Uredi napomene
+                {{ t('releases.editNotes') }}
               </button>
               <button @click="openEditGroups(r)" class="text-sm text-accent hover:underline">
-                Uredi grupe
+                {{ t('releases.editGroups') }}
               </button>
               <button @click="forceReinstall(r)" class="text-sm text-warn hover:underline"
-                title="Zameni fajlove na svim agentima u ciljanim grupama, čak i ako su već na ovoj verziji">
-                Forsiraj reinstalaciju
+                :title="t('releases.forceReinstallTitle')">
+                {{ t('releases.forceReinstall') }}
               </button>
               <button @click="toggleActive(r)" class="text-sm hover:underline" :class="r.isActive ? 'text-bad' : 'text-good'">
-                {{ r.isActive ? 'Deaktiviraj' : 'Aktiviraj' }}
+                {{ r.isActive ? t('releases.deactivate') : t('releases.activate') }}
               </button>
               <button
                 v-if="!r.isActive"
                 @click="deleteRelease(r)"
                 class="text-sm text-bad hover:underline"
-                title="Trajno brisanje - samo za deaktivirane verzije"
+                :title="t('releases.deleteTitle')"
               >
-                Obriši
+                {{ t('common.delete') }}
               </button>
             </div>
           </div>
@@ -90,22 +90,22 @@
     </div>
 
     <div class="space-y-2">
-      <h2 class="text-lg font-semibold text-ink" style="font-family: var(--font-display)">Fajlovi na disku (uploads/agent-releases)</h2>
+      <h2 class="text-lg font-semibold text-ink" style="font-family: var(--font-display)">{{ t('releases.diskFilesTitle') }}</h2>
       <p class="text-sm text-ink-muted">
-        Read-only uvid u stvarno stanje foldera - za poređenje sa verzijama iznad, ne za upravljanje.
+        {{ t('releases.diskFilesSubtitle') }}
       </p>
 
-      <div v-if="loadingDiskFiles" class="text-ink-secondary">Učitavanje…</div>
+      <div v-if="loadingDiskFiles" class="text-ink-secondary">{{ t('common.loading') }}</div>
       <div v-else-if="!diskFiles.length" class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
-        Folder je prazan.
+        {{ t('downloads.emptyFolder') }}
       </div>
       <div v-else class="table-shell overflow-x-auto">
         <table class="w-full min-w-max text-sm">
           <thead class="table-head-row">
             <tr>
-              <th class="px-4 py-2 text-left">Naziv</th>
-              <th class="px-4 py-2 text-left">Veličina</th>
-              <th class="px-4 py-2 text-left">Izmenjeno</th>
+              <th class="px-4 py-2 text-left">{{ t('groups.colName') }}</th>
+              <th class="px-4 py-2 text-left">{{ t('downloads.colSize') }}</th>
+              <th class="px-4 py-2 text-left">{{ t('downloads.colModified') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -119,66 +119,65 @@
       </div>
     </div>
 
-    <SlideOverPanel :open="showUpload" title="Otpremi novu verziju" @close="closeUpload">
+    <SlideOverPanel :open="showUpload" :title="t('releases.uploadNew')" @close="closeUpload">
       <div class="space-y-4">
-        <FormInput v-model.trim="form.version" label="Verzija" placeholder="1.1.0" />
+        <FormInput v-model.trim="form.version" :label="t('releases.version')" placeholder="1.1.0" />
 
         <div>
-          <label class="text-sm text-ink-secondary">Deployment grupe (bar jedna)</label>
+          <label class="text-sm text-ink-secondary">{{ t('releases.deploymentGroupsLabel') }}</label>
           <DeploymentGroupPicker v-model="form.deploymentGroups" :options="deploymentGroupOptions" />
         </div>
 
         <div>
-          <label class="text-sm text-ink-secondary">Napomene (opciono)</label>
+          <label class="text-sm text-ink-secondary">{{ t('releases.notesOptional') }}</label>
           <textarea v-model="form.releaseNotes" rows="3" class="app-input w-full"
-            placeholder="Šta je novo u ovoj verziji..."></textarea>
+            :placeholder="t('releases.notesPlaceholder')"></textarea>
         </div>
 
         <div>
-          <label class="text-sm text-ink-secondary">Paket (.zip)</label>
+          <label class="text-sm text-ink-secondary">{{ t('releases.package') }}</label>
           <input type="file" accept=".zip" @change="onFileChange" class="app-input w-full" />
         </div>
 
         <div class="flex gap-2 justify-end">
-          <AppButton variant="neutral" @click="closeUpload">Otkaži</AppButton>
+          <AppButton variant="neutral" @click="closeUpload">{{ t('common.cancel') }}</AppButton>
           <AppButton variant="success" :disabled="uploading" @click="upload">
-            {{ uploading ? 'Otpremam…' : 'Otpremi' }}
+            {{ uploading ? t('releases.uploading') : t('releases.uploadAction') }}
           </AppButton>
         </div>
       </div>
     </SlideOverPanel>
 
-    <SlideOverPanel :open="showEditNotes" title="Uredi napomene" @close="closeEditNotes">
+    <SlideOverPanel :open="showEditNotes" :title="t('releases.editNotes')" @close="closeEditNotes">
       <div class="space-y-4">
         <p class="text-sm text-ink-secondary">
-          Verzija <span class="font-semibold text-ink">{{ editNotesForm.version }}</span>
+          {{ t('releases.version') }} <span class="font-semibold text-ink">{{ editNotesForm.version }}</span>
         </p>
         <textarea
           v-model="editNotesForm.releaseNotes"
           rows="6"
           class="app-input w-full"
-          placeholder="Šta je novo u ovoj verziji..."
+          :placeholder="t('releases.notesPlaceholder')"
         ></textarea>
         <div class="flex gap-2 justify-end">
-          <AppButton variant="neutral" @click="closeEditNotes">Otkaži</AppButton>
+          <AppButton variant="neutral" @click="closeEditNotes">{{ t('common.cancel') }}</AppButton>
           <AppButton variant="success" :disabled="savingNotes" @click="saveNotes">
-            {{ savingNotes ? 'Čuvam…' : 'Sačuvaj' }}
+            {{ savingNotes ? t('common.saving') : t('common.save') }}
           </AppButton>
         </div>
       </div>
     </SlideOverPanel>
 
-    <SlideOverPanel :open="showEditGroups" title="Uredi deployment grupe" @close="closeEditGroups">
+    <SlideOverPanel :open="showEditGroups" :title="t('releases.editDeploymentGroups')" @close="closeEditGroups">
       <div class="space-y-4">
         <p class="text-sm text-ink-secondary">
-          Verzija <span class="font-semibold text-ink">{{ editForm.version }}</span> - dodaj grupe da proširiš rollout,
-          ili ukloni da suziš.
+          {{ t('releases.editGroupsHint', { version: editForm.version }) }}
         </p>
         <DeploymentGroupPicker v-model="editForm.deploymentGroups" :options="deploymentGroupOptions" />
         <div class="flex gap-2 justify-end">
-          <AppButton variant="neutral" @click="closeEditGroups">Otkaži</AppButton>
+          <AppButton variant="neutral" @click="closeEditGroups">{{ t('common.cancel') }}</AppButton>
           <AppButton variant="success" :disabled="savingGroups" @click="saveGroups">
-            {{ savingGroups ? 'Čuvam…' : 'Sačuvaj' }}
+            {{ savingGroups ? t('common.saving') : t('common.save') }}
           </AppButton>
         </div>
       </div>
@@ -198,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
@@ -213,7 +213,8 @@ import StatusPill from '@/components/StatusPill.vue'
 import TagChip from '@/components/TagChip.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
@@ -282,19 +283,19 @@ function shortHash(h) {
 }
 
 async function copy(text) {
-  await copyToClipboard(text, 'SHA-256 kopiran')
+  await copyToClipboard(text, t('releases.sha256Copied'))
 }
 
 async function fetchData() {
   loading.value = true
   try {
     const res = await fetchWithAuth('/api/protected/agent-releases?limit=100')
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju verzija'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorLoad')))
     const data = await res.json()
     items.value = data.items || []
   } catch (err) {
     console.error(err)
-    showToast('Greška pri učitavanju verzija', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorLoad'), { kind: 'error', duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -316,15 +317,15 @@ function onFileChange(e) {
 
 async function upload() {
   if (!form.value.version.trim()) {
-    showToast('Verzija je obavezna', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorVersionRequired'), { kind: 'error', duration: 3000 })
     return
   }
   if (!form.value.deploymentGroups.length) {
-    showToast('Bar jedna deployment grupa je obavezna', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorGroupRequired'), { kind: 'error', duration: 3000 })
     return
   }
   if (!selectedFile.value) {
-    showToast('Paket (.zip) je obavezan', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorPackageRequired'), { kind: 'error', duration: 3000 })
     return
   }
 
@@ -344,14 +345,14 @@ async function upload() {
       method: 'POST',
       body: formData,
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otpremanju'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorUpload')))
 
     showUpload.value = false
     await fetchData()
-    showToast('Verzija otpremljena')
+    showToast(t('releases.uploaded'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri otpremanju verzije', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorUpload'), { kind: 'error', duration: 3000 })
   } finally {
     uploading.value = false
   }
@@ -360,8 +361,11 @@ async function upload() {
 async function toggleActive(release) {
   const nextActive = !release.isActive
   const ok = await askConfirm(
-    `${nextActive ? 'Aktivirati' : 'Deaktivirati'} verziju ${release.version} (${release.deploymentGroups.join(', ')})?`,
-    { title: nextActive ? 'Aktiviranje verzije' : 'Deaktiviranje verzije' }
+    t(nextActive ? 'releases.confirmActivateMessage' : 'releases.confirmDeactivateMessage', {
+      version: release.version,
+      groups: release.deploymentGroups.join(', '),
+    }),
+    { title: nextActive ? t('releases.activatingTitle') : t('releases.deactivatingTitle') }
   )
   if (!ok) return
 
@@ -371,12 +375,12 @@ async function toggleActive(release) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isActive: nextActive }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri izmeni statusa'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorStatusChange')))
     await fetchData()
-    showToast(nextActive ? 'Verzija aktivirana' : 'Verzija deaktivirana')
+    showToast(nextActive ? t('releases.activated') : t('releases.deactivatedToast'))
   } catch (err) {
     console.error(err)
-    showToast('Greška pri izmeni statusa', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorStatusChange'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -385,19 +389,22 @@ async function toggleActive(release) {
 // ne oslanja se samo na skriveno dugme.
 async function deleteRelease(release) {
   const ok = await askConfirm(
-    `Trajno obrisati verziju ${release.version} (${release.deploymentGroups.join(', ') || 'bez grupa'})? Ovo ne može da se poništi.`,
-    { title: 'Brisanje verzije' },
+    t('releases.confirmDeleteMessage', {
+      version: release.version,
+      groups: release.deploymentGroups.join(', ') || t('releases.noGroups'),
+    }),
+    { title: t('releases.confirmDeleteTitle') },
   )
   if (!ok) return
 
   try {
     const res = await fetchWithAuth(`/api/protected/agent-releases/${release.id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju verzije'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorDelete')))
     await fetchData()
-    showToast('Verzija obrisana')
+    showToast(t('releases.deleted'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri brisanju verzije', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorDelete'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -416,7 +423,7 @@ function closeEditGroups() {
 
 async function saveGroups() {
   if (!editForm.value.deploymentGroups.length) {
-    showToast('Bar jedna deployment grupa je obavezna', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorGroupRequired'), { kind: 'error', duration: 3000 })
     return
   }
 
@@ -427,13 +434,13 @@ async function saveGroups() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deploymentGroups: editForm.value.deploymentGroups }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju grupa'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorSaveGroups')))
     showEditGroups.value = false
     await fetchData()
-    showToast('Deployment grupe sačuvane')
+    showToast(t('releases.groupsSaved'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri čuvanju grupa', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorSaveGroups'), { kind: 'error', duration: 3000 })
   } finally {
     savingGroups.value = false
   }
@@ -462,13 +469,13 @@ async function saveNotes() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ releaseNotes: editNotesForm.value.releaseNotes.trim() || null }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju napomena'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorSaveNotes')))
     showEditNotes.value = false
     await fetchData()
-    showToast('Napomene sačuvane')
+    showToast(t('releases.notesSaved'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri čuvanju napomena', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorSaveNotes'), { kind: 'error', duration: 3000 })
   } finally {
     savingNotes.value = false
   }
@@ -487,13 +494,13 @@ const BATCH_CHUNK_SIZE = 500
 // za novim backend endpoint-om.
 async function forceReinstall(release) {
   if (!release.deploymentGroups.length) {
-    showToast('Release ne cilja nijednu grupu', { kind: 'error', duration: 3000 })
+    showToast(t('releases.errorNoGroupTargeted'), { kind: 'error', duration: 3000 })
     return
   }
 
   const ok = await askConfirm(
-    `Forsirati reinstalaciju verzije ${release.version} na SVIM aktivnim agentima u grupama: ${release.deploymentGroups.join(', ')}? Zamenjuje fajlove čak i ako je agent već na ovoj verziji.`,
-    { title: 'Forsirana reinstalacija' },
+    t('releases.confirmForceReinstall', { version: release.version, groups: release.deploymentGroups.join(', ') }),
+    { title: t('releases.forceReinstallTitleDialog') },
   )
   if (!ok) return
 
@@ -502,13 +509,13 @@ async function forceReinstall(release) {
     for (const group of release.deploymentGroups) {
       const params = new URLSearchParams({ status: 'active', deploymentGroup: group })
       const res = await fetchWithAuth(`/api/protected/agents/ids?${params.toString()}`)
-      if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju agenata'))
+      if (!res.ok) throw new Error(await parseError(res, t('releases.errorLoadAgents')))
       const data = await res.json()
       for (const id of data.ids || []) idSet.add(id)
     }
 
     if (!idSet.size) {
-      showToast('Nema aktivnih agenata u ciljanim grupama', { kind: 'warning', duration: 3000 })
+      showToast(t('releases.noActiveAgentsInGroups'), { kind: 'warning', duration: 3000 })
       return
     }
 
@@ -522,13 +529,13 @@ async function forceReinstall(release) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentIds: chunk, commandType: 'force_reinstall_agent', payload }),
       })
-      if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+      if (!res.ok) throw new Error(await parseError(res, t('releases.errorSendCommand')))
     }
 
-    showToast(`Forsirana reinstalacija poslata na ${ids.length} agenata`)
+    showToast(t('releases.forceReinstallSent', { count: ids.length }))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri forsiranoj reinstalaciji', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorForceReinstall'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -544,12 +551,12 @@ async function fetchDiskFiles() {
   loadingDiskFiles.value = true
   try {
     const res = await fetchWithAuth('/api/protected/agent-releases/files')
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju fajlova sa diska'))
+    if (!res.ok) throw new Error(await parseError(res, t('releases.errorLoadDiskFiles')))
     const data = await res.json()
     diskFiles.value = data.items || []
   } catch (err) {
     console.error('Neuspešno učitavanje fajlova sa diska', err)
-    showToast(err?.message || 'Greška pri učitavanju fajlova sa diska', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('releases.errorLoadDiskFiles'), { kind: 'error', duration: 3000 })
   } finally {
     loadingDiskFiles.value = false
   }

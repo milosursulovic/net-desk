@@ -2,10 +2,9 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Sumnjivi procesi</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('processDetections.title') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          Procesi sa watchlist-e (npr. portable AnyDesk/TeamViewer) detektovani na
-          računarima - za bezbednosnu vidljivost neovlašćenog remote-access pristupa.
+          {{ t('processDetections.subtitle') }}
         </p>
       </div>
     </div>
@@ -14,12 +13,12 @@
       <!-- Pretraga -->
       <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
-          placeholder="Pretraga po procesu, računaru, IP-u ili odeljenju..."
+          :placeholder="t('processDetections.searchPlaceholder')"
           class="app-input w-full pr-10"
-          aria-label="Pretraga sumnjivih procesa" />
+          :aria-label="t('processDetections.searchAriaLabel')" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-          aria-label="Obriši pretragu">
+          :aria-label="t('printers.clearSearchAriaLabel')">
           <NavIcon name="x" />
         </button>
       </div>
@@ -27,17 +26,17 @@
       <!-- Sortiranje -->
       <div class="flex flex-wrap items-center gap-2">
         <select v-model="sortBy" class="app-input w-auto py-1.5 text-sm">
-          <option value="lastSeen">Poslednji put viđen</option>
-          <option value="firstSeen">Prvi put viđen</option>
-          <option value="processName">Proces</option>
-          <option value="detectionCount">Broj detekcija</option>
-          <option value="killCount">Broj ubijanja</option>
-          <option value="computerName">Računar</option>
+          <option value="lastSeen">{{ t('processDetections.lastSeen') }}</option>
+          <option value="firstSeen">{{ t('processDetections.firstSeen') }}</option>
+          <option value="processName">{{ t('processDetections.process') }}</option>
+          <option value="detectionCount">{{ t('processDetections.detectionCount') }}</option>
+          <option value="killCount">{{ t('processDetections.killCount') }}</option>
+          <option value="computerName">{{ t('repack.colComputerName') }}</option>
         </select>
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
           class="px-2.5 py-1.5 border border-line rounded-lg text-sm hover:bg-surface-sunken"
-          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
-          aria-label="Promeni redosled sortiranja">
+          :title="sortOrder === 'asc' ? t('home.sortAsc') : t('home.sortDesc')"
+          :aria-label="t('home.changeSortOrder')">
           <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
       </div>
@@ -54,7 +53,7 @@
         @update:limit="(v) => (limit = v)"
       />
 
-      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} unosa</p>
+      <p class="text-sm text-ink-muted">{{ t('home.shown', { shown: items.length, total }) }}</p>
     </div>
 
     <div class="table-shell">
@@ -63,21 +62,21 @@
       </div>
 
       <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
-        Nema detekcija za zadate filtere.
+        {{ t('processDetections.noResults') }}
       </div>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="table-head-row">
-              <th class="py-2 px-3 text-left">Proces</th>
-              <th class="py-2 px-3 text-left">Računar</th>
+              <th class="py-2 px-3 text-left">{{ t('processDetections.process') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('repack.colComputerName') }}</th>
               <th class="py-2 px-3 text-left">IP</th>
-              <th class="py-2 px-3 text-left">Odeljenje</th>
-              <th class="py-2 px-3 text-left">Prvi put viđen</th>
-              <th class="py-2 px-3 text-left">Poslednji put viđen</th>
-              <th class="py-2 px-3 text-right">Broj detekcija</th>
-              <th class="py-2 px-3 text-right">Broj ubijanja</th>
+              <th class="py-2 px-3 text-left">{{ t('common.department') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('processDetections.firstSeen') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('processDetections.lastSeen') }}</th>
+              <th class="py-2 px-3 text-right">{{ t('processDetections.detectionCount') }}</th>
+              <th class="py-2 px-3 text-right">{{ t('processDetections.killCount') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -108,6 +107,7 @@
 <script setup>
 import { ref, watch, onBeforeUnmount, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -116,7 +116,8 @@ import { useAbortableFetch } from '@/composables/useAbortableFetch.js'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const site = useCurrentSite()
 const { getSignal, abort } = useAbortableFetch()
 

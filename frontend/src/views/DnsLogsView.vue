@@ -2,10 +2,9 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">DNS Logovi</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('nav.dnsLogs') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          Domeni koje su računari upitivali (DNS), agregirano po računaru - za bezbednosnu
-          vidljivost i naknadnu forenziku.
+          {{ t('dnsLogs.subtitle') }}
         </p>
       </div>
     </div>
@@ -14,12 +13,12 @@
       <!-- Pretraga -->
       <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
-          placeholder="Pretraga po domenu, računaru, IP-u ili odeljenju..."
+          :placeholder="t('dnsLogs.searchPlaceholder')"
           class="app-input w-full pr-10"
-          aria-label="Pretraga DNS logova" />
+          :aria-label="t('dnsLogs.searchAriaLabel')" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-          aria-label="Obriši pretragu">
+          :aria-label="t('printers.clearSearchAriaLabel')">
           <NavIcon name="x" />
         </button>
       </div>
@@ -27,16 +26,16 @@
       <!-- Sortiranje i filter -->
       <div class="flex flex-wrap items-center gap-2">
         <select v-model="sortBy" class="app-input w-auto py-1.5 text-sm">
-          <option value="lastSeen">Poslednji put viđen</option>
-          <option value="firstSeen">Prvi put viđen</option>
-          <option value="domain">Domen</option>
-          <option value="queryCount">Broj upita</option>
-          <option value="computerName">Računar</option>
+          <option value="lastSeen">{{ t('processDetections.lastSeen') }}</option>
+          <option value="firstSeen">{{ t('processDetections.firstSeen') }}</option>
+          <option value="domain">{{ t('dnsLogs.domain') }}</option>
+          <option value="queryCount">{{ t('dnsLogs.queryCount') }}</option>
+          <option value="computerName">{{ t('repack.colComputerName') }}</option>
         </select>
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
           class="px-2.5 py-1.5 border border-line rounded-lg text-sm hover:bg-surface-sunken"
-          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
-          aria-label="Promeni redosled sortiranja">
+          :title="sortOrder === 'asc' ? t('home.sortAsc') : t('home.sortDesc')"
+          :aria-label="t('home.changeSortOrder')">
           <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
 
@@ -48,7 +47,7 @@
             :checked="blacklistedOnly === 'true'"
             @change="blacklistedOnly = blacklistedOnly === 'true' ? '' : 'true'"
           />
-          Samo domeni sa crne liste
+          {{ t('dnsLogs.blacklistedOnly') }}
         </label>
       </div>
 
@@ -64,7 +63,7 @@
         @update:limit="(v) => (limit = v)"
       />
 
-      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} unosa</p>
+      <p class="text-sm text-ink-muted">{{ t('home.shown', { shown: items.length, total }) }}</p>
     </div>
 
     <div class="table-shell">
@@ -73,20 +72,20 @@
       </div>
 
       <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
-        Nema DNS zapisa za zadate filtere.
+        {{ t('dnsLogs.noResults') }}
       </div>
 
       <div v-else class="table-scroll overflow-x-auto">
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="table-head-row">
-              <th class="py-2 px-3 text-left">Domen</th>
-              <th class="py-2 px-3 text-left">Računar</th>
+              <th class="py-2 px-3 text-left">{{ t('dnsLogs.domain') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('repack.colComputerName') }}</th>
               <th class="py-2 px-3 text-left">IP</th>
-              <th class="py-2 px-3 text-left">Odeljenje</th>
-              <th class="py-2 px-3 text-left">Prvi put viđen</th>
-              <th class="py-2 px-3 text-left">Poslednji put viđen</th>
-              <th class="py-2 px-3 text-right">Broj upita</th>
+              <th class="py-2 px-3 text-left">{{ t('common.department') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('processDetections.firstSeen') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('processDetections.lastSeen') }}</th>
+              <th class="py-2 px-3 text-right">{{ t('dnsLogs.queryCount') }}</th>
               <th class="py-2 px-3"></th>
             </tr>
           </thead>
@@ -96,7 +95,7 @@
               :class="row.isBlacklisted ? 'bg-bad-subtle' : ''">
               <td class="py-2 px-3 font-mono whitespace-nowrap text-ink">
                 {{ row.domain }}
-                <span v-if="row.isBlacklisted" class="ml-1 inline-flex text-bad" title="Domen je na crnoj listi"><NavIcon name="ban" /></span>
+                <span v-if="row.isBlacklisted" class="ml-1 inline-flex text-bad" :title="t('dnsLogs.blacklistedTitle')"><NavIcon name="ban" /></span>
               </td>
               <td class="py-2 px-3">
                 <RouterLink :to="`/ip/${row.ipEntryId}/meta`" class="text-accent hover:underline">
@@ -111,7 +110,7 @@
               <td class="py-2 px-3 text-right">
                 <button v-if="!row.isBlacklisted && isAdmin" @click="blacklistDomain(row.domain)"
                   class="text-bad hover:underline text-xs whitespace-nowrap">
-                  Na crnu listu
+                  {{ t('dnsLogs.addToBlacklist') }}
                 </button>
               </td>
             </tr>
@@ -124,9 +123,9 @@
     <div class="table-shell">
       <div class="flex items-center justify-between gap-3 p-4 border-b border-line">
         <div>
-          <h2 class="font-semibold text-ink" style="font-family: var(--font-display)">Crna lista domena</h2>
+          <h2 class="font-semibold text-ink" style="font-family: var(--font-display)">{{ t('dnsLogs.blacklistTitle') }}</h2>
           <p class="text-xs text-ink-muted mt-0.5">
-            Domeni koji, ako ih bilo koji računar poseti, izazivaju upozorenje (uključujući poddomene).
+            {{ t('dnsLogs.blacklistDescription') }}
           </p>
         </div>
         <span class="rounded-full bg-bad text-white text-xs px-2 py-0.5 font-mono">{{ blacklistTotal }}</span>
@@ -134,15 +133,15 @@
 
       <form v-if="isAdmin" @submit.prevent="addToBlacklist" class="flex flex-wrap items-end gap-2 p-4 border-b border-line">
         <div class="flex-1 min-w-40">
-          <label class="text-xs text-ink-secondary">Domen</label>
-          <input v-model.trim="newBlacklistDomain" type="text" class="app-input w-full" placeholder="npr. malware-c2.example.com" />
+          <label class="text-xs text-ink-secondary">{{ t('dnsLogs.domain') }}</label>
+          <input v-model.trim="newBlacklistDomain" type="text" class="app-input w-full" :placeholder="t('dnsLogs.domainPlaceholder')" />
         </div>
         <div class="flex-1 min-w-40">
-          <label class="text-xs text-ink-secondary">Napomena (opciono)</label>
-          <input v-model.trim="newBlacklistReason" type="text" class="app-input w-full" placeholder="npr. poznat C2 domen" />
+          <label class="text-xs text-ink-secondary">{{ t('dnsLogs.noteOptional') }}</label>
+          <input v-model.trim="newBlacklistReason" type="text" class="app-input w-full" :placeholder="t('dnsLogs.reasonPlaceholder')" />
         </div>
         <AppButton type="submit" variant="danger" :disabled="!newBlacklistDomain || savingBlacklist">
-          {{ savingBlacklist ? 'Dodajem…' : 'Dodaj na crnu listu' }}
+          {{ savingBlacklist ? t('groups.adding') : t('dnsLogs.addToBlacklist') }}
         </AppButton>
       </form>
 
@@ -151,19 +150,19 @@
           v-model="blacklistSearchInput"
           @input="onBlacklistSearchInput"
           type="text"
-          placeholder="Pretraga po domenu..."
+          :placeholder="t('dnsLogs.blacklistSearchPlaceholder')"
           class="app-input flex-1 min-w-40 text-sm"
-          aria-label="Pretraga crne liste domena"
+          :aria-label="t('dnsLogs.blacklistSearchAriaLabel')"
         />
         <button @click="prevBlacklistPage" :disabled="blacklistPage === 1"
-          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Prethodna strana">
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" :aria-label="t('freeIps.prevPage')">
           <NavIcon name="chevron-left" />
         </button>
         <span class="text-sm text-ink-secondary whitespace-nowrap font-mono">
-          Strana {{ blacklistTotalPages === 0 ? '0' : blacklistPage }} / {{ blacklistTotalPages }}
+          {{ t('freeIps.pageOf', { page: blacklistTotalPages === 0 ? '0' : blacklistPage, total: blacklistTotalPages }) }}
         </span>
         <button @click="nextBlacklistPage" :disabled="blacklistPage >= blacklistTotalPages"
-          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Sledeća strana">
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" :aria-label="t('freeIps.nextPage')">
           <NavIcon name="chevron-right" />
         </button>
       </div>
@@ -172,9 +171,9 @@
         <table v-if="blacklist.length" class="w-full text-sm border-collapse">
           <thead>
             <tr class="table-head-row">
-              <th class="py-2 px-4 text-left">Domen</th>
-              <th class="py-2 px-4 text-left">Napomena</th>
-              <th class="py-2 px-4 text-left">Dodato</th>
+              <th class="py-2 px-4 text-left">{{ t('dnsLogs.domain') }}</th>
+              <th class="py-2 px-4 text-left">{{ t('inventory.colNote') }}</th>
+              <th class="py-2 px-4 text-left">{{ t('dnsLogs.added') }}</th>
               <th v-if="isAdmin" class="py-2 px-4"></th>
             </tr>
           </thead>
@@ -185,13 +184,13 @@
               <td class="py-2 px-4 whitespace-nowrap font-mono text-ink-muted">{{ fmtDate(item.createdAt) }}</td>
               <td v-if="isAdmin" class="py-2 px-4 text-right">
                 <button @click="removeFromBlacklist(item.id)" class="text-bad hover:underline text-xs">
-                  Ukloni
+                  {{ t('dnsLogs.remove') }}
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
-        <p v-else class="text-sm text-ink-muted p-4">Nema domena za zadatu pretragu.</p>
+        <p v-else class="text-sm text-ink-muted p-4">{{ t('dnsLogs.noDomainsFound') }}</p>
       </div>
     </div>
   </div>
@@ -200,6 +199,7 @@
 <script setup>
 import { ref, watch, onBeforeUnmount, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
@@ -212,7 +212,8 @@ import AppButton from '@/components/AppButton.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const site = useCurrentSite()
 const { getSignal, abort } = useAbortableFetch()
 const { showToast } = useToast()
@@ -359,14 +360,14 @@ async function addToBlacklist() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ domain: newBlacklistDomain.value, reason: newBlacklistReason.value }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju na crnu listu'))
+    if (!res.ok) throw new Error(await parseError(res, t('dnsLogs.errorAddBlacklist')))
     newBlacklistDomain.value = ''
     newBlacklistReason.value = ''
     await Promise.all([fetchBlacklist(), fetchData()])
-    showToast('Domen dodat na crnu listu')
+    showToast(t('dnsLogs.domainAdded'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri dodavanju na crnu listu', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('dnsLogs.errorAddBlacklist'), { kind: 'error', duration: 3000 })
   } finally {
     savingBlacklist.value = false
   }
@@ -381,17 +382,17 @@ async function blacklistDomain(domain) {
 async function removeFromBlacklist(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/dns-logs/blacklist/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    if (!res.ok) throw new Error(await parseError(res, t('dnsLogs.errorRemove')))
     // Ako je ovo bio poslednji unos na trenutnoj strani (a nije prva), vrati
     // se na prethodnu - inače bi ostala prazna strana posle brisanja.
     if (blacklist.value.length === 1 && blacklistPage.value > 1) {
       blacklistPage.value -= 1
     }
     await Promise.all([fetchBlacklist(), fetchData()])
-    showToast('Uklonjeno sa crne liste')
+    showToast(t('dnsLogs.removedFromBlacklist'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('dnsLogs.errorRemove'), { kind: 'error', duration: 3000 })
   }
 }
 
