@@ -2,14 +2,14 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Računari za pakovanje</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('repack.title') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          Računari markirani za pakovanje/zamenu komponenti.
+          {{ t('repack.subtitle') }}
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <AppButton variant="success" to="/repack-recommendations">Preporuke za pakovanje</AppButton>
-        <AppButton variant="secondary" to="/">Nazad na IP adrese</AppButton>
+        <AppButton variant="success" to="/repack-recommendations">{{ t('repack.recommendations') }}</AppButton>
+        <AppButton variant="secondary" to="/">{{ t('repack.backToIps') }}</AppButton>
       </div>
     </div>
 
@@ -17,12 +17,12 @@
       <!-- Pretraga -->
       <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
-          placeholder="Pretraga po IP-u, imenu računara, odeljenju..."
+          :placeholder="t('home.searchPlaceholder')"
           class="app-input w-full pr-10"
-          aria-label="Pretraga računara za pakovanje" />
+          :aria-label="t('repack.searchAriaLabel')" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-          aria-label="Obriši pretragu">
+          :aria-label="t('printers.clearSearchAriaLabel')">
           <NavIcon name="x" />
         </button>
       </div>
@@ -38,7 +38,7 @@
         @update:limit="(v) => (limit = v)"
       />
 
-      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} računara</p>
+      <p class="text-sm text-ink-muted">{{ t('repack.shown', { shown: items.length, total }) }}</p>
     </div>
 
     <div class="table-shell">
@@ -47,7 +47,7 @@
       </div>
 
       <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
-        Nema markiranih računara za pakovanje.
+        {{ t('repack.noneMarked') }}
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -55,10 +55,10 @@
           <thead>
             <tr class="table-head-row">
               <th class="py-2 px-3 text-left">IP</th>
-              <th class="py-2 px-3 text-left">Naziv računara</th>
-              <th class="py-2 px-3 text-left">Odeljenje</th>
+              <th class="py-2 px-3 text-left">{{ t('repack.colComputerName') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('common.department') }}</th>
               <th class="py-2 px-3 text-left">OS</th>
-              <th class="py-2 px-3 text-left">Online</th>
+              <th class="py-2 px-3 text-left">{{ t('common.online') }}</th>
               <th class="py-2 px-3"></th>
             </tr>
           </thead>
@@ -69,14 +69,14 @@
               <td class="py-2 px-3 text-ink-secondary">{{ e.department || '—' }}</td>
               <td class="py-2 px-3 text-ink-secondary">{{ e.os || '—' }}</td>
               <td class="py-2 px-3">
-                <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? 'Online' : 'Offline'" />
+                <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? t('common.online') : t('common.offline')" />
               </td>
               <td class="py-2 px-3 text-right whitespace-nowrap">
                 <div class="table-row-actions">
-                  <RouterLink :to="`/ip/${e.id}/meta`" class="rounded p-1 text-accent hover:bg-surface-sunken inline-flex" title="Otvori metapodatke">
+                  <RouterLink :to="`/ip/${e.id}/meta`" class="rounded p-1 text-accent hover:bg-surface-sunken inline-flex" :title="t('repack.openMetadataTitle')">
                     <NavIcon name="metadata" />
                   </RouterLink>
-                  <button type="button" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Ukloni oznaku za pakovanje" @click="unmark(e)">
+                  <button type="button" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('home.unmarkRepack')" @click="unmark(e)">
                     <NavIcon name="x" />
                   </button>
                 </div>
@@ -94,6 +94,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -106,6 +107,7 @@ import StatusPill from '@/components/StatusPill.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const { getSignal, abort } = useAbortableFetch()
 const site = useCurrentSite()
 const { toast, showToast } = useToast()
@@ -169,12 +171,12 @@ async function unmark(entry) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pendingRepack: false }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju oznake'))
+    if (!res.ok) throw new Error(await parseError(res, t('repack.errorUnmark')))
     await fetchData()
-    showToast('Oznaka uklonjena')
+    showToast(t('repack.unmarked'))
   } catch (err) {
     console.error('Neuspešno uklanjanje oznake za pakovanje', err)
-    showToast(err?.message || 'Greška pri uklanjanju oznake', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('repack.errorUnmark'), { kind: 'error', duration: 3000 })
   }
 }
 

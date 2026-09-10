@@ -1,16 +1,16 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Računari bez agenta</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('withoutAgent.title') }}</h1>
       <div class="flex flex-wrap items-center gap-2">
         <AppButton
           variant="secondary"
           :disabled="!total || exportingPdf"
           @click="exportPdf"
         >
-          {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+          {{ exportingPdf ? t('withoutAgent.exporting') : t('withoutAgent.exportPdf') }}
         </AppButton>
-        <AppButton variant="secondary" to="/agents">Nazad na agente</AppButton>
+        <AppButton variant="secondary" to="/agents">{{ t('withoutAgent.backToAgents') }}</AppButton>
       </div>
     </div>
 
@@ -18,12 +18,12 @@
       <!-- Pretraga -->
       <div class="relative">
         <input v-model="searchInput" @input="onSearchInput" type="text"
-          placeholder="Pretraga po IP-u ili nazivu računara..."
+          :placeholder="t('withoutAgent.searchPlaceholder')"
           class="app-input w-full pr-10"
-          aria-label="Pretraga računara bez agenta" />
+          :aria-label="t('withoutAgent.searchAriaLabel')" />
         <button v-if="searchInput" @click="clearSearch"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-          aria-label="Obriši pretragu">
+          :aria-label="t('printers.clearSearchAriaLabel')">
           <NavIcon name="x" />
         </button>
       </div>
@@ -39,7 +39,7 @@
         @update:limit="(v) => (limit = v)"
       />
 
-      <p class="text-sm text-ink-muted">Prikazano {{ items.length }} od {{ total }} računara</p>
+      <p class="text-sm text-ink-muted">{{ t('repack.shown', { shown: items.length, total }) }}</p>
     </div>
 
     <div class="table-shell">
@@ -48,7 +48,7 @@
       </div>
 
       <div v-else-if="!items.length" class="p-8 text-center text-ink-muted">
-        Svi računari imaju aktivnog agenta.
+        {{ t('withoutAgent.allHaveAgent') }}
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -56,10 +56,10 @@
           <thead>
             <tr class="table-head-row">
               <th class="py-2 px-3 text-left">IP</th>
-              <th class="py-2 px-3 text-left">Naziv računara</th>
-              <th class="py-2 px-3 text-left">Odeljenje</th>
+              <th class="py-2 px-3 text-left">{{ t('repack.colComputerName') }}</th>
+              <th class="py-2 px-3 text-left">{{ t('common.department') }}</th>
               <th class="py-2 px-3 text-left">OS</th>
-              <th class="py-2 px-3 text-left">Online</th>
+              <th class="py-2 px-3 text-left">{{ t('common.online') }}</th>
               <th class="py-2 px-3"></th>
             </tr>
           </thead>
@@ -70,11 +70,11 @@
               <td class="py-2 px-3 text-ink-secondary">{{ e.department || '—' }}</td>
               <td class="py-2 px-3 text-ink-secondary">{{ e.os || '—' }}</td>
               <td class="py-2 px-3">
-                <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? 'Online' : 'Offline'" />
+                <StatusPill :status="e.isOnline ? 'good' : 'neutral'" :label="e.isOnline ? t('common.online') : t('common.offline')" />
               </td>
               <td class="py-2 px-3 text-right">
                 <RouterLink :to="`/ip/${e.id}/meta`" class="text-accent hover:underline">
-                  Otvori
+                  {{ t('withoutAgent.open') }}
                 </RouterLink>
               </td>
             </tr>
@@ -88,6 +88,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
@@ -98,6 +99,7 @@ import StatusPill from '@/components/StatusPill.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const { getSignal, abort } = useAbortableFetch()
 const site = useCurrentSite()
 

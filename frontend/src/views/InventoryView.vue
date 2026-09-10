@@ -1,18 +1,18 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Inventar hardvera</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('inventory.title') }}</h1>
 
       <div class="flex flex-wrap items-center gap-2">
-        <AppButton variant="success" @click="openAddModal">Dodaj stavku</AppButton>
+        <AppButton variant="success" @click="openAddModal">{{ t('inventory.addItem') }}</AppButton>
 
-        <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
+        <AppButton variant="secondary" @click="exportToXlsx">{{ t('home.exportXlsx') }}</AppButton>
       </div>
     </div>
 
     <div class="space-y-3">
       <!-- Pretraga -->
-      <input v-model="search" type="text" placeholder="Pretraga (model, serijski, proizvođač, lokacija…) "
+      <input v-model="search" type="text" :placeholder="t('inventory.searchPlaceholder')"
         class="app-input w-full" />
 
       <!-- Filteri -->
@@ -20,7 +20,7 @@
         <button type="button"
           class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-sunken sm:hidden"
           @click="filtersOpen = !filtersOpen">
-          Filteri
+          {{ t('home.filters') }}
           <span v-if="activeFilterCount"
             class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white">{{ activeFilterCount }}</span>
           <NavIcon :name="filtersOpen ? 'chevron-up' : 'chevron-down'" class="text-xs" />
@@ -28,25 +28,25 @@
       </div>
 
       <div class="flex-wrap items-center gap-2" :class="filtersOpen ? 'flex' : 'hidden sm:flex'">
-        <select v-model="filterType" class="app-input w-auto py-2 text-sm" :title="'Filter po tipu opreme'">
-          <option value="all">Sve vrste</option>
-          <option v-for="t in typeOptions" :key="t.value" :value="t.value">
-            {{ t.label }}
+        <select v-model="filterType" class="app-input w-auto py-2 text-sm" :title="t('inventory.typeFilterTitle')">
+          <option value="all">{{ t('inventory.allTypes') }}</option>
+          <option v-for="t2 in typeOptions" :key="t2.value" :value="t2.value">
+            {{ t2.label }}
           </option>
         </select>
 
         <select v-model="sortBy" class="app-input w-auto py-2 text-sm">
-          <option value="type">Tip</option>
-          <option value="manufacturer">Proizvođač</option>
+          <option value="type">{{ t('inventory.colType') }}</option>
+          <option value="manufacturer">{{ t('inventory.manufacturer') }}</option>
           <option value="model">Model</option>
-          <option value="location">Lokacija</option>
-          <option value="createdAt">Datum unosa</option>
+          <option value="location">{{ t('inventory.location') }}</option>
+          <option value="createdAt">{{ t('inventory.dateAdded') }}</option>
         </select>
 
         <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
           class="px-2.5 py-2 border border-line rounded-lg text-sm hover:bg-surface-sunken"
-          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
-          aria-label="Promeni redosled sortiranja">
+          :title="sortOrder === 'asc' ? t('home.sortAsc') : t('home.sortDesc')"
+          :aria-label="t('home.changeSortOrder')">
           <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
       </div>
@@ -63,17 +63,18 @@
       />
 
       <p class="text-sm text-ink-muted">
-        Prikazano {{ entries.length }} od {{ total }} stavki
+        {{ t('inventory.shown', { shown: entries.length, total }) }}
       </p>
     </div>
 
     <div v-if="!entries.length && total === 0" class="table-shell p-8 text-center text-ink-muted text-sm">
-      Nema stavki u inventaru. Dodaj prvu stavku klikom na
-      <span class="font-semibold text-ink">"Dodaj stavku"</span>.
+      <i18n-t keypath="inventory.emptyState" tag="span">
+        <template #button><span class="font-semibold text-ink">"{{ t('inventory.addItem') }}"</span></template>
+      </i18n-t>
     </div>
 
     <div v-else-if="!entries.length && total > 0" class="table-shell p-8 text-center text-ink-muted text-sm">
-      Nema rezultata za zadate filtere/pretragu.
+      {{ t('inventory.noResults') }}
     </div>
 
     <div v-else class="table-shell">
@@ -81,14 +82,14 @@
         <table class="w-full min-w-250 border-collapse text-sm">
           <thead>
             <tr class="table-head-row">
-              <th class="px-3 py-2 text-left">Tip</th>
-              <th class="px-3 py-2 text-left">Proizvođač / Model</th>
-              <th class="px-3 py-2 text-left">Serijski</th>
-              <th class="px-3 py-2 text-right">Količina</th>
-              <th class="px-3 py-2 text-left">Specifikacija</th>
-              <th class="px-3 py-2 text-left">Lokacija</th>
-              <th class="px-3 py-2 text-left">Napomena</th>
-              <th class="px-3 py-2 text-left">Uneto</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colType') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colManufacturerModel') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colSerial') }}</th>
+              <th class="px-3 py-2 text-right">{{ t('inventory.colQuantity') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colSpec') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.location') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colNote') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('inventory.colAdded') }}</th>
               <th class="px-3 py-2 text-right"></th>
             </tr>
           </thead>
@@ -98,40 +99,40 @@
                 {{ labelForType(item.type) }}
               </td>
               <td class="px-3 py-2.5 align-top">
-                <div class="font-semibold text-ink">{{ item.model || 'Nepoznat model' }}</div>
-                <div class="text-xs text-ink-muted">{{ item.manufacturer || 'Nepoznat proizvođač' }}</div>
+                <div class="font-semibold text-ink">{{ item.model || t('inventory.unknownModel') }}</div>
+                <div class="text-xs text-ink-muted">{{ item.manufacturer || t('inventory.unknownManufacturer') }}</div>
               </td>
               <td class="px-3 py-2.5 align-top">
-                <button v-if="item.serialNumber" @click="copyToClipboard(item.serialNumber, 'Serijski broj kopiran!')"
-                  class="font-mono text-xs text-accent hover:underline" title="Kopiraj serijski broj">
+                <button v-if="item.serialNumber" @click="copyToClipboard(item.serialNumber, t('inventory.serialCopied'))"
+                  class="font-mono text-xs text-accent hover:underline" :title="t('inventory.copySerialTitle')">
                   <NavIcon name="copy" class="inline-block align-text-bottom" /> {{ shortSerial(item.serialNumber) }}
                 </button>
                 <span v-else class="text-ink-muted">—</span>
               </td>
               <td class="px-3 py-2.5 align-top text-right font-mono font-semibold text-ink">{{ item.quantity }}</td>
               <td class="px-3 py-2.5 align-top text-xs text-ink-secondary">
-                <div v-if="item.capacity">Kapacitet: {{ item.capacity }}</div>
-                <div v-if="item.speed">Brzina: {{ item.speed }}</div>
-                <div v-if="item.socket">Socket/FF: {{ item.socket }}</div>
+                <div v-if="item.capacity">{{ t('inventory.capacity') }}: {{ item.capacity }}</div>
+                <div v-if="item.speed">{{ t('inventory.speed') }}: {{ item.speed }}</div>
+                <div v-if="item.socket">{{ t('inventory.socket') }}: {{ item.socket }}</div>
                 <span v-if="!item.capacity && !item.speed && !item.socket" class="text-ink-muted">—</span>
               </td>
               <td class="px-3 py-2.5 align-top text-ink-secondary">
                 <div>{{ labelForSite(item.site) }}</div>
-                <div class="text-xs text-ink-muted">{{ item.location || 'Magacin' }}</div>
+                <div class="text-xs text-ink-muted">{{ item.location || t('inventory.warehouse') }}</div>
               </td>
               <td class="px-3 py-2.5 align-top max-w-40 truncate text-ink-secondary" :title="item.notes">
                 {{ item.notes || '—' }}
               </td>
               <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono">
                 {{ fmtDate(item.createdAt) }}
-                <span v-if="item.updatedAt" class="block">Izm: {{ fmtDate(item.updatedAt) }}</span>
+                <span v-if="item.updatedAt" class="block">{{ t('inventory.updatedShort') }}: {{ fmtDate(item.updatedAt) }}</span>
               </td>
               <td class="px-3 py-2.5 align-top text-right">
                 <div class="table-row-actions">
-                  <button @click="openEditModal(item)" class="rounded p-1 text-accent hover:bg-surface-sunken" title="Izmeni">
+                  <button @click="openEditModal(item)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
                     <NavIcon name="edit" />
                   </button>
-                  <button v-if="isAdmin" @click="confirmDelete(item)" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Obriši">
+                  <button v-if="isAdmin" @click="confirmDelete(item)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
                     <NavIcon name="trash" />
                   </button>
                 </div>
@@ -152,66 +153,66 @@
       @cancel="resolveConfirm(false)"
     />
 
-    <SlideOverPanel :open="showForm" :title="formMode === 'create' ? 'Dodaj stavku u inventar' : 'Izmeni stavku'"
+    <SlideOverPanel :open="showForm" :title="formMode === 'create' ? t('inventory.addToInventory') : t('inventory.editItem')"
       @close="closeForm">
       <div class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Tip opreme</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.equipmentType') }}</label>
             <select v-model="form.type" class="app-input w-full text-sm">
-              <option disabled value="">Odaberi tip</option>
-              <option v-for="t in typeOptions" :key="t.value" :value="t.value">
-                {{ t.label }}
+              <option disabled value="">{{ t('inventory.chooseType') }}</option>
+              <option v-for="t2 in typeOptions" :key="t2.value" :value="t2.value">
+                {{ t2.label }}
               </option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Proizvođač</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.manufacturer') }}</label>
             <input v-model="form.manufacturer" class="app-input w-full text-sm"
-              placeholder="npr. Dell, HP, Seagate…" />
+              :placeholder="t('inventory.manufacturerPlaceholder')" />
           </div>
           <div>
             <label class="block text-xs text-ink-muted mb-1">Model</label>
             <input v-model="form.model" class="app-input w-full text-sm"
-              placeholder="npr. ProLiant DL380 G9…" />
+              :placeholder="t('inventory.modelPlaceholder')" />
           </div>
 
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Serijski broj</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.serialNumber') }}</label>
             <input v-model="form.serialNumber" class="app-input w-full text-sm font-mono"
-              placeholder="Serijski broj" />
+              :placeholder="t('inventory.serialNumber')" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Količina</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.colQuantity') }}</label>
             <input v-model.number="form.quantity" type="number" min="1" class="app-input w-full text-sm" />
           </div>
 
           <div>
             <label class="block text-xs text-ink-muted mb-1">
-              Kapacitet (HDD/SSD/RAM) / veličina
+              {{ t('inventory.capacityLabel') }}
             </label>
             <input v-model="form.capacity" class="app-input w-full text-sm"
-              placeholder="npr. 500 GB, 16 GB…" />
+              :placeholder="t('inventory.capacityPlaceholder')" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Brzina</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.speed') }}</label>
             <input v-model="form.speed" class="app-input w-full text-sm"
-              placeholder="npr. 7200 rpm, 3200 MHz, 3.4 GHz…" />
+              :placeholder="t('inventory.speedPlaceholder')" />
           </div>
 
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Socket / Form factor</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.socketLabel') }}</label>
             <input v-model="form.socket" class="app-input w-full text-sm"
-              placeholder="npr. LGA1151, SODIMM, ATX…" />
+              :placeholder="t('inventory.socketPlaceholder')" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Lokacija</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.location') }}</label>
             <input v-model="form.location" class="app-input w-full text-sm"
-              placeholder="npr. Magacin 2, Orman 3, IT kancelarija…" />
+              :placeholder="t('inventory.locationPlaceholder')" />
           </div>
           <div>
-            <label class="block text-xs text-ink-muted mb-1">Objekat</label>
+            <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.site') }}</label>
             <select v-model="form.site" class="app-input w-full text-sm">
               <option v-for="o in SITE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
@@ -219,15 +220,15 @@
         </div>
 
         <div>
-          <label class="block text-xs text-ink-muted mb-1">Napomena</label>
+          <label class="block text-xs text-ink-muted mb-1">{{ t('inventory.colNote') }}</label>
           <textarea v-model="form.notes" rows="3" class="app-input w-full text-sm"
-            placeholder="Dodatne informacije, stanje, istorija, kompatibilnost…"></textarea>
+            :placeholder="t('inventory.notesPlaceholder')"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-line">
-          <AppButton type="button" variant="neutral" @click="closeForm">Odustani</AppButton>
+          <AppButton type="button" variant="neutral" @click="closeForm">{{ t('inventory.discard') }}</AppButton>
           <AppButton type="button" variant="success" @click="saveItem">
-            {{ formMode === 'create' ? 'Sačuvaj' : 'Sačuvaj izmene' }}
+            {{ formMode === 'create' ? t('common.save') : t('editIp.save') }}
           </AppButton>
         </div>
       </div>
@@ -237,6 +238,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDateOnly, shortSerial } from '@/utils/format.js'
@@ -281,6 +283,7 @@ const {
   useReplace: true,
 })
 
+const { t } = useI18n()
 const site = useCurrentSite()
 
 watch(
@@ -396,7 +399,7 @@ const closeForm = () => {
 
 const saveItem = async () => {
   if (!form.value.type || !form.value.model) {
-    showToast('Bar tip opreme i model su obavezni.', { kind: 'error', duration: 3000 })
+    showToast(t('inventory.errorRequired'), { kind: 'error', duration: 3000 })
     return
   }
 
@@ -438,13 +441,13 @@ const saveItem = async () => {
     await fetchData()
   } catch (e) {
     console.error('Greška pri čuvanju stavke:', e)
-    showToast('Greška pri čuvanju stavke inventara.', { kind: 'error', duration: 3000 })
+    showToast(t('inventory.errorSave'), { kind: 'error', duration: 3000 })
   }
 }
 
 const confirmDelete = async (item) => {
-  const ok = await askConfirm(`Da li želiš da obrišeš ${item.model || 'ovu stavku'} iz inventara?`, {
-    title: 'Brisanje stavke',
+  const ok = await askConfirm(t('inventory.confirmDeleteMessage', { name: item.model || t('inventory.thisItem') }), {
+    title: t('inventory.confirmDeleteTitle'),
   })
   if (!ok) return
 
@@ -456,7 +459,7 @@ const confirmDelete = async (item) => {
     await fetchData()
   } catch (e) {
     console.error('Greška pri brisanju stavke:', e)
-    showToast('Greška pri brisanju stavke.', { kind: 'error', duration: 3000 })
+    showToast(t('inventory.errorDelete'), { kind: 'error', duration: 3000 })
   }
 }
 

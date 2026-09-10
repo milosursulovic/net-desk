@@ -1,37 +1,37 @@
 <template>
   <div class="w-full max-w-2xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Duplirana imena računara</h1>
-      <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('duplicates.title') }}</h1>
+      <AppButton variant="neutral" @click="goBack">{{ t('common.back') }}</AppButton>
     </div>
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <template v-else>
       <div v-if="duplicateGroups.length === 0" class="text-ink-secondary">
-        Nema duplih imena računara.
+        {{ t('duplicates.noneFound') }}
       </div>
 
       <div v-else class="space-y-3">
         <div v-for="g in duplicateGroups" :key="g.key || g.name" class="rounded-lg border border-line bg-surface-sunken p-3">
           <div class="flex items-center justify-between">
             <div class="font-medium text-ink">
-              {{ g.name }} <span class="text-xs text-ink-muted">({{ g.count }} kom)</span>
+              {{ g.name }} <span class="text-xs text-ink-muted">{{ t('duplicates.count', { count: g.count }) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <button
                 class="text-xs px-2 py-1 rounded bg-accent text-white hover:bg-accent-emphasis"
                 @click="filterOn(g.name)"
-                title="Filtriraj na ovo ime (search)"
+                :title="t('duplicates.filterTitle')"
               >
-                Filtriraj
+                {{ t('duplicates.filter') }}
               </button>
               <button
                 class="text-xs px-2 py-1 rounded border border-line text-ink-secondary hover:bg-surface"
-                @click="copyToClipboard(g.name, `Ime '${g.name}' kopirano!`)"
+                @click="copyToClipboard(g.name, t('duplicates.nameCopied', { name: g.name }))"
               >
-                Kopiraj ime
+                {{ t('duplicates.copyName') }}
               </button>
             </div>
           </div>
@@ -50,14 +50,14 @@
                 <button
                   class="text-xs text-accent hover:underline"
                   @click="router.push(`/edit/${it.id}`)"
-                  title="Otvori za izmenu"
+                  :title="t('duplicates.openToEdit')"
                 >
-                  Izmeni
+                  {{ t('common.edit') }}
                 </button>
                 <button
                   class="text-xs"
-                  @click="copyToClipboard(it.ip, `IP ${it.ip} kopiran!`)"
-                  title="Kopiraj IP"
+                  @click="copyToClipboard(it.ip, t('home.copyIpToast', { ip: it.ip }))"
+                  :title="t('home.copyIpTitle')"
                 >
                   <NavIcon name="copy" />
                 </button>
@@ -68,8 +68,7 @@
       </div>
 
       <div v-if="duplicateGroups.length" class="mt-3 text-xs text-ink-muted">
-        Savet: U idealnom slučaju svaka mašina ima jedinstveno ime (npr. standardizovan prefiks i
-        inventarski broj). Ove grupe pomažu da brzo uočite konfliktne nazive.
+        {{ t('duplicates.tip') }}
       </div>
     </template>
 
@@ -80,6 +79,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useToast } from '@/composables/useToast.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
@@ -87,6 +87,7 @@ import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const site = useCurrentSite()
 const { toast, copyToClipboard } = useToast()
@@ -114,7 +115,7 @@ async function loadDuplicates() {
     duplicateGroups.value = Array.isArray(data.groups) ? data.groups : []
   } catch (err) {
     console.error('Neuspešno dohvatanje duplikata:', err)
-    error.value = 'Neuspešno dohvatanje duplikata.'
+    error.value = t('duplicates.errorLoad')
   } finally {
     loading.value = false
   }

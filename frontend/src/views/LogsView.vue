@@ -1,18 +1,18 @@
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Logovi</h1>
+    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('nav.logs') }}</h1>
 
     <div class="flex flex-wrap gap-2">
       <input
         v-model="username"
         type="text"
-        placeholder="Filter po korisničkom imenu…"
+        :placeholder="t('logs.usernameFilterPlaceholder')"
         class="app-input w-auto text-sm"
       />
       <input
         v-model="action"
         type="text"
-        placeholder="Filter po akciji (npr. login, DELETE, /printers…)"
+        :placeholder="t('logs.actionFilterPlaceholder')"
         class="app-input w-auto text-sm"
       />
     </div>
@@ -21,11 +21,11 @@
       <table class="min-w-full text-sm">
         <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-3 text-left">Vreme</th>
-            <th class="px-4 py-3 text-left">Korisnik</th>
-            <th class="px-4 py-3 text-left">Akcija</th>
-            <th class="px-4 py-3 text-left">IP adresa</th>
-            <th class="px-4 py-3 text-left">Status</th>
+            <th class="px-4 py-3 text-left">{{ t('logs.colTime') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('logs.colUser') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('logs.colAction') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('logs.colIp') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('home.colStatus') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +48,7 @@
             </td>
           </tr>
           <tr v-if="!loading && !entries.length">
-            <td colspan="5" class="px-4 py-8 text-center text-ink-muted">Nema zapisa.</td>
+            <td colspan="5" class="px-4 py-8 text-center text-ink-muted">{{ t('logs.noEntries') }}</td>
           </tr>
         </tbody>
       </table>
@@ -59,7 +59,7 @@
         class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken">
         <NavIcon name="chevron-left" />
       </button>
-      <span class="text-sm text-ink-secondary font-mono">Strana {{ page }} / {{ totalPages || 1 }} ({{ total }} ukupno)</span>
+      <span class="text-sm text-ink-secondary font-mono">{{ t('logs.pageOfTotal', { page, total: totalPages || 1, count: total }) }}</span>
       <button @click="nextPage({ totalPages })" :disabled="page >= totalPages"
         class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken">
         <NavIcon name="chevron-right" />
@@ -70,12 +70,14 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import StatusPill from '@/components/StatusPill.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t, locale } = useI18n()
 const { page, limit, nextPage, prevPage, applyServerPagination } = usePaginatedRoute({
   fields: {
     page: { type: 'int', default: 1 },
@@ -84,7 +86,7 @@ const { page, limit, nextPage, prevPage, applyServerPagination } = usePaginatedR
   useReplace: true,
 })
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 
 const username = ref('')
 const action = ref('')
