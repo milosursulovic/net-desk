@@ -2,7 +2,7 @@
   <div class="w-full max-w-3xl mx-auto">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
       <h1 class="text-2xl font-bold text-ink wrap-break-word" style="font-family: var(--font-display)">
-        Inventar — {{ entry?.computer_name || entry?.ip || 'Nepoznato' }}
+        {{ t('ipPdsu.title', { name: entry?.computer_name || entry?.ip || t('ipPdsu.unknown') }) }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
         <RouterLink
@@ -10,14 +10,14 @@
           :to="{ path: '/', query: { search: entry.ip, site: entry.site } }"
           class="text-sm text-accent hover:underline"
         >
-          Na početnoj
+          {{ t('ipPdsu.goHome') }}
         </RouterLink>
         <AppButton
           v-if="exceptionsTotal"
           variant="secondary"
           @click="exceptionsOpen = !exceptionsOpen"
         >
-          Izuzeci ({{ exceptionsTotal }})
+          {{ t('ipPdsu.exceptionsCount', { count: exceptionsTotal }) }}
         </AppButton>
         <AppButton
           v-if="hasAnyPdsuData"
@@ -25,29 +25,29 @@
           :disabled="exportingPdf"
           @click="exportPdf"
         >
-          {{ exportingPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+          {{ exportingPdf ? t('ipPdsu.exporting') : t('ipPdsu.exportPdf') }}
         </AppButton>
         <AppButton
           v-if="hasAnyPdsuData && isAdmin"
           variant="danger"
           @click="clearPdsu"
         >
-          Očisti PDSU podatke
+          {{ t('ipPdsu.clearPdsu') }}
         </AppButton>
-        <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+        <AppButton variant="neutral" @click="goBack">{{ t('ipPdsu.back') }}</AppButton>
       </div>
     </div>
 
-    <div v-if="entryLoading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="entryLoading" class="text-ink-secondary">{{ t('ipPdsu.loading') }}</div>
     <div v-else-if="entryError" class="text-bad">{{ entryError }}</div>
 
     <div v-else class="space-y-4">
       <div v-if="exceptionsOpen && exceptionsTotal" class="rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
         <div class="text-sm font-medium text-ink">
-          Izuzeci od crne liste za ovaj računar
+          {{ t('ipPdsu.exceptionsTitle') }}
         </div>
         <p class="text-xs text-ink-muted">
-          Ove stavke su globalno na crnoj listi, ali su namerno označene kao "nije neželjeno" na ovom računaru.
+          {{ t('ipPdsu.exceptionsHint') }}
         </p>
         <div class="space-y-1">
           <div
@@ -55,9 +55,9 @@
             :key="`software-${item.id}`"
             class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
-            <span>Softver: {{ item.displayName }}</span>
+            <span>{{ t('ipPdsu.softwareLabel') }} {{ item.displayName }}</span>
             <button type="button" class="text-xs text-bad hover:underline" @click="removeException('software', item.id)">
-              Ukloni izuzetak
+              {{ t('ipPdsu.removeException') }}
             </button>
           </div>
           <div
@@ -65,9 +65,9 @@
             :key="`services-${item.id}`"
             class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
-            <span>Servis: {{ item.displayName || item.name }}</span>
+            <span>{{ t('ipPdsu.servicesLabel') }} {{ item.displayName || item.name }}</span>
             <button type="button" class="text-xs text-bad hover:underline" @click="removeException('services', item.id)">
-              Ukloni izuzetak
+              {{ t('ipPdsu.removeException') }}
             </button>
           </div>
           <div
@@ -75,9 +75,9 @@
             :key="`drivers-${item.id}`"
             class="flex items-center justify-between gap-2 text-sm bg-surface rounded px-2 py-1"
           >
-            <span>Drajver: {{ item.deviceName }}</span>
+            <span>{{ t('ipPdsu.driversLabel') }} {{ item.deviceName }}</span>
             <button type="button" class="text-xs text-bad hover:underline" @click="removeException('drivers', item.id)">
-              Ukloni izuzetak
+              {{ t('ipPdsu.removeException') }}
             </button>
           </div>
         </div>
@@ -94,7 +94,7 @@
               : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
-          Softver
+          {{ t('ipPdsu.tabSoftware') }}
           <span v-if="loaded.software" class="ml-1"> ({{ software.length }}) </span>
         </button>
 
@@ -108,7 +108,7 @@
               : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
-          Drajveri
+          {{ t('ipPdsu.tabDrivers') }}
           <span v-if="loaded.drivers" class="ml-1"> ({{ drivers.length }}) </span>
         </button>
 
@@ -122,7 +122,7 @@
               : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
-          Servisi
+          {{ t('ipPdsu.tabServices') }}
           <span v-if="loaded.services" class="ml-1"> ({{ services.length }}) </span>
         </button>
 
@@ -136,7 +136,7 @@
               : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
-          Ažuriranja
+          {{ t('ipPdsu.tabUpdates') }}
           <span v-if="loaded.updates" class="ml-1"> ({{ updates.length }}) </span>
         </button>
 
@@ -150,7 +150,7 @@
               : 'bg-surface-sunken text-ink-secondary hover:bg-line'
           "
         >
-          Štampači
+          {{ t('ipPdsu.tabPrinters') }}
           <span v-if="loaded.printers" class="ml-1"> ({{ printers.length }}) </span>
         </button>
       </div>
@@ -161,14 +161,14 @@
           type="text"
           :placeholder="
             tab === 'software'
-              ? 'Pretraži softver, verziju ili izdavača...'
+              ? t('ipPdsu.searchSoftwarePlaceholder')
               : tab === 'drivers'
-              ? 'Pretraži uređaj, drajver ili proizvođača...'
+              ? t('ipPdsu.searchDriversPlaceholder')
               : tab === 'services'
-              ? 'Pretraži servis, status ili putanju...'
+              ? t('ipPdsu.searchServicesPlaceholder')
               : tab === 'updates'
-              ? 'Pretraži KB, opis ili korisnika...'
-              : 'Pretraži štampač, drajver ili port...'
+              ? t('ipPdsu.searchUpdatesPlaceholder')
+              : t('ipPdsu.searchPrintersPlaceholder')
           "
           class="app-input w-full pr-10"
         />
@@ -178,7 +178,7 @@
           type="button"
           @click="search = ''"
           class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-          title="Obriši pretragu"
+          :title="t('ipPdsu.clearSearch')"
         >
           <NavIcon name="x" />
         </button>
@@ -189,31 +189,31 @@
         class="inline-flex items-center gap-1.5 text-sm text-ink-secondary"
       >
         <input type="checkbox" :checked="onlyFlagged === 'true'" @change="onlyFlagged = onlyFlagged === 'true' ? '' : 'true'" />
-        Samo neželjeni
+        {{ t('ipPdsu.onlyFlagged') }}
       </label>
 
       <div v-if="search" class="text-xs text-ink-muted">
-        Pronađeno:
+        {{ t('ipPdsu.foundLabel') }}
         <template v-if="tab === 'software'">
-          {{ filteredSoftware.length }} od {{ software.length }}
+          {{ filteredSoftware.length }} {{ t('ipPdsu.ofCount', { total: software.length }) }}
         </template>
 
         <template v-else-if="tab === 'drivers'">
-          {{ filteredDrivers.length }} od {{ drivers.length }}
+          {{ filteredDrivers.length }} {{ t('ipPdsu.ofCount', { total: drivers.length }) }}
         </template>
 
         <template v-else-if="tab === 'services'">
-          {{ filteredServices.length }} od {{ services.length }}
+          {{ filteredServices.length }} {{ t('ipPdsu.ofCount', { total: services.length }) }}
         </template>
 
         <template v-else-if="tab === 'updates'">
-          {{ filteredUpdates.length }} od {{ updates.length }}
+          {{ filteredUpdates.length }} {{ t('ipPdsu.ofCount', { total: updates.length }) }}
         </template>
 
-        <template v-else> {{ filteredPrinters.length }} od {{ printers.length }} </template>
+        <template v-else> {{ filteredPrinters.length }} {{ t('ipPdsu.ofCount', { total: printers.length }) }} </template>
       </div>
 
-      <div v-if="tabLoading[tab]" class="text-ink-secondary">Učitavanje inventara…</div>
+      <div v-if="tabLoading[tab]" class="text-ink-secondary">{{ t('ipPdsu.loadingInventory') }}</div>
 
       <div
         v-else-if="tabError[tab]"
@@ -225,7 +225,7 @@
       <div v-else>
         <div v-if="tab === 'software'">
           <div v-if="filteredSoftware.length === 0" class="text-ink-muted">
-            Nema podataka o instaliranom softveru.
+            {{ t('ipPdsu.noSoftwareData') }}
           </div>
 
           <div v-else class="space-y-2">
@@ -237,13 +237,13 @@
             >
               <div class="flex items-center gap-2">
                 <div class="font-medium text-ink">
-                  {{ item.display_name || 'Nepoznat program' }}
+                  {{ item.display_name || t('ipPdsu.unknownProgram') }}
                 </div>
                 <span
                   v-if="item.is_flagged"
                   class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                 >
-                  <NavIcon name="alert-triangle" /> Neželjen
+                  <NavIcon name="alert-triangle" /> {{ t('ipPdsu.flagged') }}
                 </span>
                 <button
                   v-if="item.is_flagged"
@@ -251,24 +251,24 @@
                   @click="addException('software', item.matchedFlaggedId)"
                   class="text-xs text-accent hover:underline"
                 >
-                  Nije neželjen na ovom računaru
+                  {{ t('ipPdsu.notFlaggedHere') }}
                 </button>
               </div>
 
-              <div class="mt-1 text-sm text-ink-secondary">Verzija: {{ item.display_version || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">{{ t('ipPdsu.versionLabel') }} {{ item.display_version || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Izdavač: {{ item.publisher || '—' }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.publisherLabel') }} {{ item.publisher || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Instalirano: {{ fmtDate(item.install_date) }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.installedLabel') }} {{ fmtDateLoc(item.install_date) }}</div>
 
-              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">{{ t('ipPdsu.inventoryLabel') }} {{ fmtDateLoc(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'drivers'">
           <div v-if="filteredDrivers.length === 0" class="text-ink-muted">
-            Nema podataka o drajverima.
+            {{ t('ipPdsu.noDriversData') }}
           </div>
 
           <div v-else class="space-y-2">
@@ -279,12 +279,12 @@
               :class="item.is_flagged ? 'border-bad/30 bg-bad-subtle' : ''"
             >
               <div class="flex items-center gap-2">
-                <div class="font-medium text-ink">{{ item.device_name || 'Nepoznat uređaj' }}</div>
+                <div class="font-medium text-ink">{{ item.device_name || t('ipPdsu.unknownDevice') }}</div>
                 <span
                   v-if="item.is_flagged"
                   class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                 >
-                  <NavIcon name="alert-triangle" /> Neželjen
+                  <NavIcon name="alert-triangle" /> {{ t('ipPdsu.flagged') }}
                 </span>
                 <button
                   v-if="item.is_flagged"
@@ -292,26 +292,26 @@
                   @click="addException('drivers', item.matchedFlaggedId)"
                   class="text-xs text-accent hover:underline"
                 >
-                  Nije neželjen na ovom računaru
+                  {{ t('ipPdsu.notFlaggedHere') }}
                 </button>
               </div>
 
-              <div class="mt-1 text-sm text-ink-secondary">Verzija: {{ item.driver_version || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">{{ t('ipPdsu.versionLabel') }} {{ item.driver_version || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Datum drajvera: {{ fmtDate(item.driver_date) }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.driverDateLabel') }} {{ fmtDateLoc(item.driver_date) }}</div>
 
-              <div class="text-sm text-ink-secondary">Proizvođač: {{ item.manufacturer || '—' }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.manufacturerLabel') }} {{ item.manufacturer || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Provider: {{ item.driver_provider_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.providerLabel') }} {{ item.driver_provider_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">{{ t('ipPdsu.inventoryLabel') }} {{ fmtDateLoc(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'services'">
           <div v-if="filteredServices.length === 0" class="text-ink-muted">
-            Nema podataka o servisima.
+            {{ t('ipPdsu.noServicesData') }}
           </div>
 
           <div v-else class="space-y-2">
@@ -325,13 +325,13 @@
                 <div>
                   <div class="flex items-center gap-2">
                     <div class="font-medium text-ink">
-                      {{ item.display_name || item.name || 'Nepoznat servis' }}
+                      {{ item.display_name || item.name || t('ipPdsu.unknownService') }}
                     </div>
                     <span
                       v-if="item.is_flagged"
                       class="inline-flex items-center gap-1 rounded-full border border-bad/40 bg-bad-subtle px-2 py-0.5 text-xs text-bad"
                     >
-                      <NavIcon name="alert-triangle" /> Neželjen
+                      <NavIcon name="alert-triangle" /> {{ t('ipPdsu.flagged') }}
                     </span>
                     <button
                       v-if="item.is_flagged"
@@ -339,7 +339,7 @@
                       @click="addException('services', item.matchedFlaggedId)"
                       class="text-xs text-accent hover:underline"
                     >
-                      Nije neželjen na ovom računaru
+                      {{ t('ipPdsu.notFlaggedHere') }}
                     </button>
                   </div>
 
@@ -354,58 +354,58 @@
                       : 'border-line bg-surface-sunken text-ink-secondary'
                   "
                 >
-                  {{ item.state || 'Nepoznato' }}
+                  {{ item.state || t('pdsu.stateUnknown') }}
                 </span>
               </div>
 
-              <div class="mt-2 text-sm text-ink-secondary">Start mode: {{ item.start_mode || '—' }}</div>
+              <div class="mt-2 text-sm text-ink-secondary">{{ t('ipPdsu.startModeLabel') }} {{ item.start_mode || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Korisnik: {{ item.start_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.userLabel') }} {{ item.start_name || '—' }}</div>
 
               <div class="mt-1 break-all text-xs text-ink-muted font-mono">{{ item.path_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">{{ t('ipPdsu.inventoryLabel') }} {{ fmtDateLoc(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'updates'">
           <div v-if="filteredUpdates.length === 0" class="text-ink-muted">
-            Nema podataka o Windows ažuriranjima.
+            {{ t('ipPdsu.noUpdatesData') }}
           </div>
 
           <div v-else class="space-y-2">
             <div v-for="item in filteredUpdates" :key="item.id" class="rounded-lg border border-line bg-surface p-3">
               <div class="flex items-start justify-between gap-3">
-                <div class="font-medium text-ink">{{ item.hotfix_id || 'Nepoznat KB' }}</div>
+                <div class="font-medium text-ink">{{ item.hotfix_id || t('ipPdsu.unknownKb') }}</div>
 
-                <div class="text-xs text-ink-muted">{{ fmtDate(item.installed_on) }}</div>
+                <div class="text-xs text-ink-muted">{{ fmtDateLoc(item.installed_on) }}</div>
               </div>
 
               <div class="mt-1 text-sm text-ink-secondary">{{ item.description || '—' }}</div>
 
-              <div class="mt-1 text-sm text-ink-secondary">Instalirao: {{ item.installed_by || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">{{ t('ipPdsu.installedByLabel') }} {{ item.installed_by || '—' }}</div>
 
-              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">{{ t('ipPdsu.inventoryLabel') }} {{ fmtDateLoc(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
 
         <div v-else-if="tab === 'printers'">
           <div v-if="filteredPrinters.length === 0" class="text-ink-muted">
-            Nema podataka o štampačima.
+            {{ t('ipPdsu.noPrintersData') }}
           </div>
 
           <div v-else class="space-y-2">
             <div v-for="item in filteredPrinters" :key="item.id" class="rounded-lg border border-line bg-surface p-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-2">
-                  <div class="font-medium text-ink">{{ item.name || 'Nepoznat štampač' }}</div>
+                  <div class="font-medium text-ink">{{ item.name || t('ipPdsu.unknownPrinter') }}</div>
                   <span
                     v-if="item.is_default"
                     class="rounded-full border border-info/40 bg-info-subtle px-2 py-0.5 text-xs text-info"
                   >
-                    Podrazumevani
+                    {{ t('ipPdsu.defaultLabel') }}
                   </span>
                 </div>
 
@@ -417,15 +417,15 @@
                       : 'border-bad/40 bg-bad-subtle text-bad'
                   "
                 >
-                  {{ item.status || 'Nepoznato' }}
+                  {{ item.status || t('pdsu.stateUnknown') }}
                 </span>
               </div>
 
-              <div class="mt-1 text-sm text-ink-secondary">Drajver: {{ item.driver_name || '—' }}</div>
+              <div class="mt-1 text-sm text-ink-secondary">{{ t('ipPdsu.driverLabel') }} {{ item.driver_name || '—' }}</div>
 
-              <div class="text-sm text-ink-secondary">Port: {{ item.port_name || '—' }}</div>
+              <div class="text-sm text-ink-secondary">{{ t('ipPdsu.portLabel') }} {{ item.port_name || '—' }}</div>
 
-              <div class="mt-1 text-xs text-ink-muted font-mono">Inventar: {{ fmtDate(item.inventory_date) }}</div>
+              <div class="mt-1 text-xs text-ink-muted font-mono">{{ t('ipPdsu.inventoryLabel') }} {{ fmtDateLoc(item.inventory_date) }}</div>
             </div>
           </div>
         </div>
@@ -447,6 +447,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { downloadFromResponse } from '@/utils/download.js'
@@ -460,11 +461,14 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
+
+const fmtDateLoc = (d) => fmtDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 
 const entry = ref(null)
 const entryLoading = ref(false)
@@ -514,7 +518,7 @@ async function exportPdf() {
     )
   } catch (err) {
     console.error('Greška pri izvozu PDF-a:', err)
-    showToast('Greška pri izvozu PDF-a.', { kind: 'error', duration: 3000 })
+    showToast(t('ipPdsu.errorExportPdf'), { kind: 'error', duration: 3000 })
   } finally {
     exportingPdf.value = false
   }
@@ -522,8 +526,8 @@ async function exportPdf() {
 
 async function clearPdsu() {
   const ok = await askConfirm(
-    'Da li želiš da obrišeš SVE PDSU podatke (softver, drajveri, servisi, ažuriranja, štampači) za ovaj računar? Ova akcija se ne može poništiti.',
-    { title: 'Brisanje PDSU podataka' },
+    t('ipPdsu.confirmClearPdsuMessage'),
+    { title: t('ipPdsu.confirmClearPdsuTitle') },
   )
   if (!ok) return
 
@@ -535,10 +539,10 @@ async function clearPdsu() {
     services.value = []
     updates.value = []
     printers.value = []
-    showToast('PDSU podaci obrisani.')
+    showToast(t('ipPdsu.pdsuCleared'))
   } catch (err) {
     console.error('Greška pri brisanju PDSU podataka:', err)
-    showToast('Greška pri brisanju PDSU podataka.', { kind: 'error', duration: 3000 })
+    showToast(t('ipPdsu.errorClearPdsu'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -555,14 +559,14 @@ async function addException(kind, flaggedId) {
       `/api/protected/pdsu/${route.params.id}/flagged-exceptions/${kind}/${flaggedId}`,
       { method: 'POST' },
     )
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju izuzetka'))
-    showToast('Izuzetak dodat - neće se prikazivati kao neželjeno na ovom računaru')
+    if (!res.ok) throw new Error(await parseError(res, t('ipPdsu.errorAddException')))
+    showToast(t('ipPdsu.exceptionAdded'))
     loaded.value[kind] = false
     await loadTabData(kind)
     await loadExceptions()
   } catch (err) {
     console.error('Greška pri dodavanju izuzetka:', err)
-    showToast(err?.message || 'Greška pri dodavanju izuzetka', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('ipPdsu.errorAddException'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -585,14 +589,14 @@ async function removeException(kind, flaggedId) {
       `/api/protected/pdsu/${route.params.id}/flagged-exceptions/${kind}/${flaggedId}`,
       { method: 'DELETE' },
     )
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju izuzetka'))
-    showToast('Izuzetak uklonjen')
+    if (!res.ok) throw new Error(await parseError(res, t('ipPdsu.errorRemoveException')))
+    showToast(t('ipPdsu.exceptionRemoved'))
     await loadExceptions()
     loaded.value[kind] = false
     if (tab.value === kind) await loadTabData(kind)
   } catch (err) {
     console.error('Greška pri uklanjanju izuzetka:', err)
-    showToast(err?.message || 'Greška pri uklanjanju izuzetka', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('ipPdsu.errorRemoveException'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -610,7 +614,7 @@ async function loadTabData(name) {
     const res = await fetchWithAuth(`/api/protected/pdsu/${route.params.id}/${name}`)
 
     if (!res.ok) {
-      throw new Error(await parseError(res, `Greška pri učitavanju inventara. HTTP ${res.status}`))
+      throw new Error(await parseError(res, t('ipPdsu.errorLoadInventory', { status: res.status })))
     }
 
     const data = await res.json()
@@ -625,7 +629,7 @@ async function loadTabData(name) {
     loaded.value[name] = true
   } catch (err) {
     console.error('Greška pri učitavanju inventara:', err)
-    tabError.value[name] = err?.message || 'Neuspešno učitavanje inventara.'
+    tabError.value[name] = err?.message || t('ipPdsu.errorLoadInventoryFallback')
   } finally {
     tabLoading.value[name] = false
   }
@@ -696,13 +700,13 @@ async function loadEntry() {
   try {
     const res = await fetchWithAuth(`/api/protected/pdsu/${route.params.id}`)
     if (!res.ok) {
-      entryError.value = 'Računar nije pronađen'
+      entryError.value = t('ipPdsu.computerNotFound')
       return
     }
     entry.value = await res.json()
   } catch (err) {
     console.error(err)
-    entryError.value = 'Neuspešno učitan računar'
+    entryError.value = t('ipPdsu.errorLoadComputer')
   } finally {
     entryLoading.value = false
   }
