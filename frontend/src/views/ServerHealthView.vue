@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, h, defineComponent, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { useToast } from '@/composables/useToast.js'
@@ -9,6 +10,7 @@ import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
+const { t, locale } = useI18n()
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
@@ -49,7 +51,7 @@ const TrendLine = defineComponent({
       const pad = 10
       const n = props.points.length
       if (n < 2) {
-        return h('div', { class: 'text-sm text-ink-muted py-8 text-center' }, 'Nema dovoljno podataka još.')
+        return h('div', { class: 'text-sm text-ink-muted py-8 text-center' }, t('serverHealth.notEnoughData'))
       }
       const ys = props.points.map((p) => p.y ?? 0)
       const max = Math.max(1, ...ys)
@@ -102,7 +104,7 @@ const TrendLine = defineComponent({
 
 function fmtHistTime(v) {
   const d = new Date(v)
-  return isNaN(d) ? '—' : d.toLocaleString('sr-RS', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+  return isNaN(d) ? '—' : d.toLocaleString(locale.value === 'en' ? 'en-US' : 'sr-RS', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
 }
 
 const live = ref(null)
@@ -119,7 +121,7 @@ async function loadLive() {
     liveError.value = ''
   } catch (err) {
     console.error('Greška pri učitavanju live stanja servera:', err)
-    liveError.value = 'Neuspešno učitavanje live stanja.'
+    liveError.value = t('serverHealth.errorLoadLive')
   }
 }
 
@@ -165,7 +167,7 @@ async function runGhostAudit() {
     ghostAudit.value = await res.json()
   } catch (err) {
     console.error('Greška pri proveri ghost referenci:', err)
-    showToast('Greška pri proveri baze.', { kind: 'error', duration: 3000 })
+    showToast(t('serverHealth.errorGhostAudit'), { kind: 'error', duration: 3000 })
   } finally {
     ghostAuditLoading.value = false
   }
@@ -173,8 +175,8 @@ async function runGhostAudit() {
 
 async function cleanGhostReferences() {
   const ok = await askConfirm(
-    `Nađeno je ${ghostAudit.value?.totalOrphans ?? 0} ghost referenci/desinhronizacija. Da li želiš da ih očistiš? Ova akcija se ne može poništiti.`,
-    { title: 'Čišćenje baze' },
+    t('serverHealth.confirmCleanMessage', { count: ghostAudit.value?.totalOrphans ?? 0 }),
+    { title: t('serverHealth.confirmCleanTitle') },
   )
   if (!ok) return
 
@@ -184,11 +186,11 @@ async function cleanGhostReferences() {
     if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
     const data = await res.json()
     const total = data.cleaned.reduce((sum, c) => sum + (c.deleted || c.fixed || 0), 0)
-    showToast(total ? `Očišćeno/ispravljeno ${total} redova.` : 'Nije bilo šta da se očisti.')
+    showToast(total ? t('serverHealth.cleanedCount', { count: total }) : t('serverHealth.nothingToClean'))
     await runGhostAudit()
   } catch (err) {
     console.error('Greška pri čišćenju baze:', err)
-    showToast('Greška pri čišćenju baze.', { kind: 'error', duration: 3000 })
+    showToast(t('serverHealth.errorCleanDb'), { kind: 'error', duration: 3000 })
   } finally {
     ghostCleaning.value = false
   }
@@ -210,9 +212,9 @@ onBeforeUnmount(() => {
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Server</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('nav.server') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          Live opterećenje backend servera (CPU/RAM/disk, baza, requestovi) — osvežava se automatski.
+          {{ t('serverHealth.subtitle') }}
         </p>
       </div>
     </div>
@@ -235,77 +237,77 @@ onBeforeUnmount(() => {
           :warn="live.system.ramUsedPct > 85"
         />
         <KpiCard
-          title="Disk (glavni volumen)"
+          :title="t('serverHealth.diskMainVolume')"
           :value="live.system.diskUsedPct != null ? live.system.diskUsedPct + '%' : '—'"
           :warn="live.system.diskUsedPct > 90"
         />
         <KpiCard
-          title="Node proces"
+          :title="t('serverHealth.nodeProcess')"
           :value="live.process.rssMb + ' MB'"
-          :sub="`heap: ${live.process.heapUsedMb} MB · uptime: ${Math.floor(live.process.uptimeSeconds / 3600)}h`"
+          :sub="t('serverHealth.nodeProcessSub', { heap: live.process.heapUsedMb, hours: Math.floor(live.process.uptimeSeconds / 3600) })"
         />
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          title="Requestova/min"
+          :title="t('serverHealth.requestsPerMin')"
           :value="live.requests.requestsPerMin"
         />
         <KpiCard
-          title="Prosečno vreme odgovora"
+          :title="t('serverHealth.avgResponseTime')"
           :value="live.requests.avgResponseMs + ' ms'"
-          sub="idealno <50-100ms u internoj mreži"
+          :sub="t('serverHealth.avgResponseSub')"
           :warn="live.requests.avgResponseMs > 100"
         />
         <KpiCard
-          title="P95 vreme odgovora"
+          :title="t('serverHealth.p95ResponseTime')"
           :value="live.requests.p95ResponseMs + ' ms'"
-          sub="95% zahteva brže od ovoga"
+          :sub="t('serverHealth.p95Sub')"
           :warn="live.requests.p95ResponseMs > 300"
         />
         <KpiCard
-          title="P99 vreme odgovora"
+          :title="t('serverHealth.p99ResponseTime')"
           :value="live.requests.p99ResponseMs + ' ms'"
-          sub="najgori 1% zahteva"
+          :sub="t('serverHealth.p99Sub')"
           :warn="live.requests.p99ResponseMs > 1000"
         />
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          title="Stopa grešaka (5xx)"
+          :title="t('serverHealth.errorRate')"
           :value="live.requests.errorRatePct + '%'"
           :warn="live.requests.errorRatePct > 5"
         />
         <KpiCard
-          title="Veličina baze"
+          :title="t('serverHealth.dbSize')"
           :value="live.db.size.totalSizeMb + ' MB'"
         />
         <KpiCard
-          title="MariaDB proces — CPU"
-          :value="live.db.process.found ? live.db.process.cpuPct + '%' : 'nije pronađen'"
+          :title="t('serverHealth.mariadbCpu')"
+          :value="live.db.process.found ? live.db.process.cpuPct + '%' : t('serverHealth.notFound')"
           :warn="live.db.process.found && live.db.process.cpuPct > 80"
         />
         <KpiCard
-          title="MariaDB proces — RAM"
-          :value="live.db.process.found ? live.db.process.memMb + ' MB' : 'nije pronađen'"
+          :title="t('serverHealth.mariadbRam')"
+          :value="live.db.process.found ? live.db.process.memMb + ' MB' : t('serverHealth.notFound')"
         />
       </div>
 
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
         <h2 class="font-semibold text-ink mb-3">
-          Najaktivnije rute (poslednji minut)
+          {{ t('serverHealth.topRoutesTitle') }}
         </h2>
         <div v-if="!live.requests.topRoutes.length" class="text-sm text-ink-muted">
-          Nema zabeleženih requestova u poslednjem minutu.
+          {{ t('serverHealth.noRequestsLastMinute') }}
         </div>
         <table v-else class="min-w-full text-left text-sm">
           <thead class="table-head-row">
             <tr>
-              <th class="px-3 py-2 font-medium whitespace-nowrap">Ruta</th>
-              <th class="px-3 py-2 font-medium whitespace-nowrap">Broj</th>
-              <th class="px-3 py-2 font-medium whitespace-nowrap">Pros. ms</th>
-              <th class="px-3 py-2 font-medium whitespace-nowrap">Greške</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colRoute') }}</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colCount') }}</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colAvgMs') }}</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colErrors') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -322,23 +324,23 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- ================= BAZA ================= -->
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">Baza</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">{{ t('serverHealth.databaseSection') }}</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          title="DB konekcije"
+          :title="t('serverHealth.dbConnections')"
           :value="`${live.db.threadsConnected} / ${live.db.maxConnections}`"
         />
         <KpiCard
-          title="Upita/min"
+          :title="t('serverHealth.queriesPerMin')"
           :value="live.db.queriesPerMin"
         />
         <KpiCard
-          title="Prosečno trajanje upita"
+          :title="t('serverHealth.avgQueryDuration')"
           :value="live.db.avgQueryMs + ' ms'"
         />
         <KpiCard
-          title="Spori upiti (≥200ms, poslednji minut)"
+          :title="t('serverHealth.slowQueries')"
           :value="live.db.slowQueryCount"
           :warn="live.db.slowQueryCount > 0"
         />
@@ -346,32 +348,32 @@ onBeforeUnmount(() => {
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
-          <h3 class="font-semibold text-ink mb-3">Najveće tabele</h3>
+          <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.biggestTables') }}</h3>
           <table class="min-w-full text-left text-sm">
             <thead class="table-head-row">
               <tr>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela</th>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Veličina</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colTable') }}</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('downloads.colSize') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in live.db.size.topTables" :key="t.table" class="border-b border-line last:border-0">
-                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ t.table }}</td>
-                <td class="px-3 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ t.sizeMb }} MB</td>
+              <tr v-for="tbl in live.db.size.topTables" :key="tbl.table" class="border-b border-line last:border-0">
+                <td class="px-3 py-2 font-mono text-xs whitespace-nowrap text-ink-secondary">{{ tbl.table }}</td>
+                <td class="px-3 py-2 whitespace-nowrap font-mono text-ink-secondary">{{ tbl.sizeMb }} MB</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
-          <h3 class="font-semibold text-ink mb-3">Najsporiji upiti (poslednji minut)</h3>
+          <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.slowestQueries') }}</h3>
           <div v-if="!live.db.slowestQueries.length" class="text-sm text-ink-muted">
-            Nema zabeleženih upita u poslednjem minutu.
+            {{ t('serverHealth.noQueriesLastMinute') }}
           </div>
           <table v-else class="min-w-full text-left text-sm">
             <thead class="table-head-row">
               <tr>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Upit</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colQuery') }}</th>
                 <th class="px-3 py-2 font-medium whitespace-nowrap">ms</th>
               </tr>
             </thead>
@@ -390,15 +392,14 @@ onBeforeUnmount(() => {
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
           <div>
-            <h3 class="font-semibold text-ink">Ghost reference / desinhronizacije</h3>
+            <h3 class="font-semibold text-ink">{{ t('serverHealth.ghostRefsTitle') }}</h3>
             <p class="text-xs text-ink-muted mt-1">
-              Redovi koji pokazuju na obrisane zapise (npr. metapodaci vezani za obrisan IP unos), ili
-              zapisi kojima je izgubljen pokazivač iako podatak postoji.
+              {{ t('serverHealth.ghostRefsDescription') }}
             </p>
           </div>
           <div class="flex gap-2 shrink-0">
             <AppButton variant="secondary" :disabled="ghostAuditLoading" @click="runGhostAudit">
-              {{ ghostAuditLoading ? 'Proveravam…' : 'Proveri ponovo' }}
+              {{ ghostAuditLoading ? t('serverHealth.checking') : t('serverHealth.checkAgain') }}
             </AppButton>
             <AppButton
               v-if="isAdmin && ghostAudit && ghostAudit.totalOrphans > 0"
@@ -406,7 +407,7 @@ onBeforeUnmount(() => {
               :disabled="ghostCleaning"
               @click="cleanGhostReferences"
             >
-              {{ ghostCleaning ? 'Čistim…' : `Očisti (${ghostAudit.totalOrphans})` }}
+              {{ ghostCleaning ? t('serverHealth.cleaning') : t('serverHealth.cleanCount', { count: ghostAudit.totalOrphans }) }}
             </AppButton>
           </div>
         </div>
@@ -416,14 +417,14 @@ onBeforeUnmount(() => {
             v-if="ghostAudit.totalOrphans === 0"
             class="text-sm text-good bg-good-subtle border border-good/40 rounded-lg px-3 py-2"
           >
-            ✓ Baza je čista — nema ghost referenci ni desinhronizacija.
+            ✓ {{ t('serverHealth.dbClean') }}
           </div>
           <table v-else class="min-w-full text-left text-sm">
             <thead class="table-head-row">
               <tr>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Tabela.kolona</th>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Referencira</th>
-                <th class="px-3 py-2 font-medium whitespace-nowrap">Broj</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colTableColumn') }}</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colReferences') }}</th>
+                <th class="px-3 py-2 font-medium whitespace-nowrap">{{ t('serverHealth.colCount') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -442,10 +443,10 @@ onBeforeUnmount(() => {
       </div>
     </template>
 
-    <div v-else-if="!liveError" class="text-ink-secondary text-sm">Učitavanje…</div>
+    <div v-else-if="!liveError" class="text-ink-secondary text-sm">{{ t('common.loading') }}</div>
 
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">Istorija</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted pt-2" style="font-family: var(--font-display)">{{ t('serverHealth.historyTitle') }}</h2>
       <div class="flex gap-2">
         <AppButton
           v-for="opt in [{ h: 6, label: '6h' }, { h: 24, label: '24h' }, { h: 168, label: '7d' }]"
@@ -458,49 +459,49 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="historyLoading" class="text-ink-secondary text-sm">Učitavanje istorije…</div>
+    <div v-if="historyLoading" class="text-ink-secondary text-sm">{{ t('serverHealth.loadingHistory') }}</div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">CPU %</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.cpuPercent') }}</h3>
         <TrendLine :points="cpuPoints" unit="%" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">RAM %</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.ramPercent') }}</h3>
         <TrendLine :points="ramPoints" unit="%" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">Requestova/min</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.requestsPerMin') }}</h3>
         <TrendLine :points="reqPoints" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">Prosečno vreme odgovora (ms)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.avgResponseMsChart') }}</h3>
         <TrendLine :points="respPoints" unit="ms" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">P95 vreme odgovora (ms)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.p95Ms') }}</h3>
         <TrendLine :points="p95Points" unit="ms" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">P99 vreme odgovora (ms)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.p99Ms') }}</h3>
         <TrendLine :points="p99Points" unit="ms" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">Veličina baze (MB)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.dbSizeMb') }}</h3>
         <TrendLine :points="dbSizePoints" unit="MB" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">Prosečno trajanje upita (ms)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.avgQueryMsChart') }}</h3>
         <TrendLine :points="queryMsPoints" unit="ms" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
-        <h3 class="font-semibold text-ink mb-3">MariaDB proces — CPU (%)</h3>
+        <h3 class="font-semibold text-ink mb-3">{{ t('serverHealth.mariadbCpuPercent') }}</h3>
         <TrendLine :points="mariadbCpuPoints" unit="%" />
       </div>
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm lg:col-span-2">
         <h3 class="font-semibold text-ink mb-3">
-          Node proces — heap (MB)
-          <span class="text-xs font-normal text-ink-muted">— stabilnost kroz vreme (očekivano ~50-70 MB)</span>
+          {{ t('serverHealth.nodeHeapTitle') }}
+          <span class="text-xs font-normal text-ink-muted">{{ t('serverHealth.nodeHeapSub') }}</span>
         </h3>
         <TrendLine :points="heapPoints" unit="MB" />
       </div>

@@ -1,20 +1,20 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Korisnici</h1>
-      <AppButton variant="success" @click="openAddModal">Dodaj korisnika</AppButton>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('routes.users') }}</h1>
+      <AppButton variant="success" @click="openAddModal">{{ t('users.addUser') }}</AppButton>
     </div>
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <div v-else class="table-shell overflow-x-auto">
       <table class="min-w-full text-sm">
         <thead class="table-head-row">
           <tr>
-            <th class="px-4 py-3 text-left">Korisničko ime</th>
-            <th class="px-4 py-3 text-left">Rola</th>
-            <th class="px-4 py-3 text-left">Kreiran</th>
+            <th class="px-4 py-3 text-left">{{ t('users.username') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('users.role') }}</th>
+            <th class="px-4 py-3 text-left">{{ t('users.created') }}</th>
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
@@ -39,12 +39,12 @@
                 class="text-bad hover:underline"
                 @click="confirmDelete(u)"
               >
-                Obriši
+                {{ t('common.delete') }}
               </button>
             </td>
           </tr>
           <tr v-if="!users.length">
-            <td colspan="4" class="px-4 py-8 text-center text-ink-muted">Nema korisnika.</td>
+            <td colspan="4" class="px-4 py-8 text-center text-ink-muted">{{ t('users.noUsers') }}</td>
           </tr>
         </tbody>
       </table>
@@ -60,28 +60,28 @@
       @cancel="resolveConfirm(false)"
     />
 
-    <SlideOverPanel :open="showForm" title="Dodaj korisnika" @close="closeForm">
+    <SlideOverPanel :open="showForm" :title="t('users.addUser')" @close="closeForm">
       <div class="space-y-4">
         <div>
-          <label class="block text-xs text-ink-muted mb-1">Korisničko ime</label>
+          <label class="block text-xs text-ink-muted mb-1">{{ t('users.username') }}</label>
           <input v-model.trim="form.username" class="app-input w-full text-sm" placeholder="npr. pera" />
         </div>
         <div>
-          <label class="block text-xs text-ink-muted mb-1">Lozinka</label>
-          <input v-model="form.password" type="password" class="app-input w-full text-sm" placeholder="Minimum 8 karaktera" />
+          <label class="block text-xs text-ink-muted mb-1">{{ t('login.password') }}</label>
+          <input v-model="form.password" type="password" class="app-input w-full text-sm" :placeholder="t('users.passwordPlaceholder')" />
         </div>
         <div>
-          <label class="block text-xs text-ink-muted mb-1">Rola</label>
+          <label class="block text-xs text-ink-muted mb-1">{{ t('users.role') }}</label>
           <select v-model="form.role" class="app-input w-full text-sm">
-            <option value="viewer">viewer — samo čitanje</option>
-            <option value="operator">operator — akcije nad agentima/IP-jevima</option>
-            <option value="admin">admin — pun pristup</option>
+            <option value="viewer">{{ t('users.roleViewer') }}</option>
+            <option value="operator">{{ t('users.roleOperator') }}</option>
+            <option value="admin">{{ t('users.roleAdmin') }}</option>
           </select>
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-line">
-          <AppButton type="button" variant="neutral" @click="closeForm">Odustani</AppButton>
-          <AppButton type="button" variant="success" @click="createUser">Sačuvaj</AppButton>
+          <AppButton type="button" variant="neutral" @click="closeForm">{{ t('inventory.discard') }}</AppButton>
+          <AppButton type="button" variant="success" @click="createUser">{{ t('common.save') }}</AppButton>
         </div>
       </div>
     </SlideOverPanel>
@@ -90,6 +90,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDateOnly } from '@/utils/format.js'
@@ -101,6 +102,7 @@ import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppButton from '@/components/AppButton.vue'
 
+const { t } = useI18n()
 const { toast, showToast } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { currentUser } = useCurrentUser()
@@ -120,7 +122,7 @@ async function fetchData() {
     users.value = await res.json()
   } catch (e) {
     console.error('Neuspešno učitavanje korisnika:', e)
-    error.value = 'Neuspešno učitavanje korisnika.'
+    error.value = t('users.errorLoad')
   } finally {
     loading.value = false
   }
@@ -140,11 +142,11 @@ function closeForm() {
 
 async function createUser() {
   if (!form.value.username || form.value.username.length < 3) {
-    showToast('Korisničko ime mora imati bar 3 karaktera.', { kind: 'error', duration: 3000 })
+    showToast(t('users.errorUsernameLength'), { kind: 'error', duration: 3000 })
     return
   }
   if (!form.value.password || form.value.password.length < 8) {
-    showToast('Lozinka mora imati bar 8 karaktera.', { kind: 'error', duration: 3000 })
+    showToast(t('users.errorPasswordLength'), { kind: 'error', duration: 3000 })
     return
   }
 
@@ -157,11 +159,11 @@ async function createUser() {
     if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
 
     showForm.value = false
-    showToast('Korisnik kreiran')
+    showToast(t('users.created'))
     await fetchData()
   } catch (e) {
     console.error('Greška pri kreiranju korisnika:', e)
-    showToast(e.message || 'Greška pri kreiranju korisnika.', { kind: 'error', duration: 3000 })
+    showToast(e.message || t('users.errorCreate'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -174,18 +176,18 @@ async function changeRole(user, role) {
       body: JSON.stringify({ role }),
     })
     if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
-    showToast('Rola izmenjena')
+    showToast(t('users.roleChanged'))
     await fetchData()
   } catch (e) {
     console.error('Greška pri izmeni role:', e)
-    showToast(e.message || 'Greška pri izmeni role.', { kind: 'error', duration: 3000 })
+    showToast(e.message || t('users.errorRoleChange'), { kind: 'error', duration: 3000 })
     await fetchData()
   }
 }
 
 async function confirmDelete(user) {
-  const ok = await askConfirm(`Da li želiš da obrišeš korisnika ${user.username}?`, {
-    title: 'Brisanje korisnika',
+  const ok = await askConfirm(t('users.confirmDeleteMessage', { name: user.username }), {
+    title: t('users.confirmDeleteTitle'),
   })
   if (!ok) return
 
@@ -195,7 +197,7 @@ async function confirmDelete(user) {
     await fetchData()
   } catch (e) {
     console.error('Greška pri brisanju korisnika:', e)
-    showToast(e.message || 'Greška pri brisanju korisnika.', { kind: 'error', duration: 3000 })
+    showToast(e.message || t('users.errorDelete'), { kind: 'error', duration: 3000 })
   }
 }
 

@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   updates: {
@@ -62,31 +65,31 @@ const normalizedFreshnessBuckets = computed(() => {
   return [
     {
       key: 'last30Days',
-      label: 'Poslednjih 30 dana',
+      label: t('pdsu.freshnessLast30Days'),
       count: Number(freshness.value.last30Days) || 0,
       barClass: 'bg-green-600',
     },
     {
       key: 'between31And60Days',
-      label: '31–60 dana',
+      label: t('pdsu.freshnessBetween31And60'),
       count: Number(freshness.value.between31And60Days) || 0,
       barClass: 'bg-blue-600',
     },
     {
       key: 'between61And90Days',
-      label: '61–90 dana',
+      label: t('pdsu.freshnessBetween61And90'),
       count: Number(freshness.value.between61And90Days) || 0,
       barClass: 'bg-amber-500',
     },
     {
       key: 'olderThan90Days',
-      label: 'Starije od 90 dana',
+      label: t('pdsu.freshnessOlderThan90'),
       count: Number(freshness.value.olderThan90Days) || 0,
       barClass: 'bg-red-600',
     },
     {
       key: 'withoutData',
-      label: 'Bez podataka',
+      label: t('pdsu.freshnessWithoutData'),
       count: Number(freshness.value.withoutData) || 0,
       barClass: 'bg-slate-500',
     },
@@ -150,18 +153,18 @@ function ageLabel(value) {
   const days = daysSince(value)
 
   if (days === null) {
-    return 'Bez podataka'
+    return t('pdsu.freshnessWithoutData')
   }
 
   if (days === 0) {
-    return 'Danas'
+    return t('pdsu.ageToday')
   }
 
   if (days === 1) {
-    return 'Pre 1 dan'
+    return t('pdsu.ageOneDayAgo')
   }
 
-  return `Pre ${formatNumber(days)} dana`
+  return t('pdsu.ageDaysAgo', { count: formatNumber(days) })
 }
 
 function freshnessLabel(value) {
@@ -170,26 +173,26 @@ function freshnessLabel(value) {
     .replace(/\s+/g, '')
 
   if (normalized.includes('30') || normalized.includes('fresh')) {
-    return 'Poslednjih 30 dana'
+    return t('pdsu.freshnessLast30Days')
   }
 
   if (normalized.includes('31') || normalized.includes('60')) {
-    return '31–60 dana'
+    return t('pdsu.freshnessBetween31And60')
   }
 
   if (normalized.includes('61') || normalized.includes('90')) {
-    return '61–90 dana'
+    return t('pdsu.freshnessBetween61And90')
   }
 
   if (normalized.includes('older') || normalized.includes('stale')) {
-    return 'Starije od 90 dana'
+    return t('pdsu.freshnessOlderThan90')
   }
 
   if (normalized.includes('without') || normalized.includes('missing')) {
-    return 'Bez podataka'
+    return t('pdsu.freshnessWithoutData')
   }
 
-  return value || 'Nepoznato'
+  return value || t('pdsu.stateUnknown')
 }
 
 function freshnessClass(value) {
@@ -221,47 +224,45 @@ function freshnessClass(value) {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Ukupno update zapisa</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.totalUpdateRecords') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalUpdates) }}
           </div>
 
           <div class="text-xs text-ink-muted mt-2">
-            Na
-            {{ formatNumber(stats.computersWithUpdates) }}
-            računara
+            {{ t('pdsu.onComputersCount', { count: formatNumber(stats.computersWithUpdates) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Jedinstveni hotfix paketi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.uniqueHotfixPackages') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniqueHotfixes) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Različitih KB oznaka</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.distinctKbLabels') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Poslednjih 30 dana</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.freshnessLast30Days') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-good">
             {{ formatNumber(stats.installationsLast30Days ?? freshness.last30Days) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Svežih update zapisa</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.freshUpdateRecords') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Starije od 90 dana</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.freshnessOlderThan90') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -270,13 +271,13 @@ function freshnessClass(value) {
             {{ formatNumber(freshness.olderThan90Days) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Računara koji zahtevaju proveru</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.computersNeedReviewUpdates') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Bez update podataka</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.withoutUpdateData') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -285,7 +286,7 @@ function freshnessClass(value) {
             {{ formatNumber(freshness.withoutData) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Računara bez inventara update-a</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.computersWithoutUpdateInventory') }}</div>
         </div>
       </div>
     </div>
@@ -294,7 +295,7 @@ function freshnessClass(value) {
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.avgPerComputer') }}</div>
 
           <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.avgPerComputer, 1) }}
@@ -304,7 +305,7 @@ function freshnessClass(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Bez KB oznake</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.withoutKbLabel') }}</div>
 
           <div
             class="text-lg font-bold"
@@ -317,7 +318,7 @@ function freshnessClass(value) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Bez datuma instalacije</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.withoutInstallDate') }}</div>
 
           <div
             class="text-lg font-bold"
@@ -332,10 +333,10 @@ function freshnessClass(value) {
     <!-- Svežina update-a -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
-        <h5 class="pdsu-card-title">Svežina poslednjeg update-a</h5>
+        <h5 class="pdsu-card-title">{{ t('pdsu.updateFreshnessTitle') }}</h5>
 
         <div class="text-xs text-ink-muted">
-          Raspodela računara prema datumu poslednjeg instaliranog update-a
+          {{ t('pdsu.updateFreshnessHint') }}
         </div>
       </div>
 
@@ -371,7 +372,7 @@ function freshnessClass(value) {
       <div class="p-4">
         <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <div class="text-xs text-ink-muted">Najstariji instalirani update</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.oldestInstalledUpdate') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.oldestInstalledOn) }}
@@ -379,7 +380,7 @@ function freshnessClass(value) {
           </div>
 
           <div class="md:text-center">
-            <div class="text-xs text-ink-muted">Najnoviji instalirani update</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.newestInstalledUpdate') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInstalledOn) }}
@@ -387,7 +388,7 @@ function freshnessClass(value) {
           </div>
 
           <div class="md:text-right">
-            <div class="text-xs text-ink-muted">Najnoviji PDSU inventar</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.newestPdsuInventory') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInventoryDate, true) }}
@@ -400,16 +401,16 @@ function freshnessClass(value) {
     <!-- Najčešći hotfix paketi -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
-        <h5 class="pdsu-card-title">Najzastupljeniji hotfix paketi</h5>
+        <h5 class="pdsu-card-title">{{ t('pdsu.topHotfixesTitle') }}</h5>
 
         <div class="text-xs text-ink-muted">
-          Rangirano prema broju računara na kojima je paket pronađen
+          {{ t('pdsu.rankedByComputersFound') }}
         </div>
       </div>
 
       <div class="p-4">
         <div v-if="topHotfixes.length === 0" class="text-ink-muted text-center py-4">
-          Nema podataka o hotfix paketima.
+          {{ t('pdsu.noHotfixData') }}
         </div>
 
         <div
@@ -423,7 +424,7 @@ function freshnessClass(value) {
               <span class="text-ink-muted mr-2"> {{ index + 1 }}. </span>
 
               <span class="font-semibold text-ink" :title="item.hotfixId">
-                {{ item.hotfixId || 'Bez KB oznake' }}
+                {{ item.hotfixId || t('pdsu.withoutKbLabel') }}
               </span>
 
               <div
@@ -440,7 +441,7 @@ function freshnessClass(value) {
                 {{ formatNumber(item.computers) }}
               </span>
 
-              <span class="text-ink-muted text-xs"> računara </span>
+              <span class="text-ink-muted text-xs"> {{ t('pdsu.computersSuffix') }} </span>
             </div>
           </div>
 
@@ -456,11 +457,11 @@ function freshnessClass(value) {
           <div class="flex items-center justify-between mt-1 text-xs text-ink-muted">
             <span>
               {{ formatNumber(item.installations) }}
-              instalacija
+              {{ t('pdsu.installationsSuffix') }}
             </span>
 
             <span>
-              Poslednja:
+              {{ t('pdsu.latestLabel') }}
               {{ formatDate(item.latestInstalledOn) }}
             </span>
           </div>
@@ -472,9 +473,9 @@ function freshnessClass(value) {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Poslednji update po računaru</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.lastUpdatePerComputerTitle') }}</h5>
 
-          <div class="text-xs text-ink-muted">Najnoviji pronađeni hotfix za svaki računar</div>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.lastUpdatePerComputerHint') }}</div>
         </div>
 
         <span class="pdsu-badge bg-accent text-white">
@@ -486,13 +487,13 @@ function freshnessClass(value) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
-              <th>Odeljenje</th>
-              <th>Hotfix</th>
-              <th>Opis</th>
-              <th>Instalirao</th>
-              <th>Datum instalacije</th>
-              <th class="text-center">Starost</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colHotfix') }}</th>
+              <th>{{ t('pdsu.colDescription') }}</th>
+              <th>{{ t('pdsu.colInstalledBy') }}</th>
+              <th>{{ t('pdsu.colInstallDate') }}</th>
+              <th class="text-center">{{ t('pdsu.colAge') }}</th>
             </tr>
           </thead>
 
@@ -503,7 +504,7 @@ function freshnessClass(value) {
             >
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.computerName || 'Nepoznat računar' }}
+                  {{ item.computerName || t('pdsu.unknownComputer') }}
                 </div>
 
                 <div>
@@ -517,7 +518,7 @@ function freshnessClass(value) {
 
               <td>
                 <span class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line">
-                  {{ item.hotfixId || 'Bez KB oznake' }}
+                  {{ item.hotfixId || t('pdsu.withoutKbLabel') }}
                 </span>
               </td>
 
@@ -543,7 +544,7 @@ function freshnessClass(value) {
             </tr>
 
             <tr v-if="latestUpdateByComputer.length === 0">
-              <td colspan="7" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="7" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -554,10 +555,10 @@ function freshnessClass(value) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Računari sa zastarelim update podacima</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.staleComputersTitle') }}</h5>
 
           <div class="text-xs text-ink-muted">
-            Računari čiji je poslednji pronađeni update stariji od 90 dana ili nedostaje datum
+            {{ t('pdsu.staleComputersHint') }}
           </div>
         </div>
 
@@ -573,13 +574,13 @@ function freshnessClass(value) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
-              <th>IP adresa</th>
-              <th>Odeljenje</th>
-              <th>Poslednji hotfix</th>
-              <th>Datum instalacije</th>
-              <th class="text-center">Starost</th>
-              <th>Datum inventara</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colIpAddress') }}</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colLastHotfix') }}</th>
+              <th>{{ t('pdsu.colInstallDate') }}</th>
+              <th class="text-center">{{ t('pdsu.colAge') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
 
@@ -589,7 +590,7 @@ function freshnessClass(value) {
               :key="item.ipEntryId ?? `${item.ip}-${item.hotfixId}-${index}`"
             >
               <td class="font-semibold text-ink">
-                {{ item.computerName || 'Nepoznat računar' }}
+                {{ item.computerName || t('pdsu.unknownComputer') }}
               </td>
 
               <td>
@@ -602,7 +603,7 @@ function freshnessClass(value) {
 
               <td>
                 <span class="pdsu-badge bg-surface-sunken text-ink-secondary border border-line">
-                  {{ item.hotfixId || 'Bez KB oznake' }}
+                  {{ item.hotfixId || t('pdsu.withoutKbLabel') }}
                 </span>
 
                 <div v-if="item.description" class="text-xs text-ink-muted mt-1">
@@ -627,7 +628,7 @@ function freshnessClass(value) {
 
             <tr v-if="staleUpdateComputers.length === 0">
               <td colspan="7" class="text-center text-ink-muted py-4">
-                Nema računara sa zastarelim update podacima.
+                {{ t('pdsu.noStaleComputers') }}
               </td>
             </tr>
           </tbody>

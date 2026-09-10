@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t, te } = useI18n()
 const notifications = ref([])
 const POLL_MS = 60000
 
@@ -21,6 +23,15 @@ const levelIcon = {
 
 // Duplirano radi bešavne petlje animacije (drugi set je duplikat prvog).
 const loopItems = computed(() => [...notifications.value, ...notifications.value])
+
+// Backend šalje stabilan `id` po tipu upozorenja (npr. "disk-full") + `count` -
+// za poznate id-jeve prevod ide preko lokalnog t() ključa, `message` (uvek na
+// srpskom - backend ne zna trenutni jezik) ostaje fallback za bilo koji budući
+// tip koji još nema prevod.
+function notificationLabel(n) {
+  const key = `notifications.${n.id}`
+  return te(key) ? t(key, { count: n.count }) : n.message
+}
 
 async function load() {
   try {
@@ -54,7 +65,7 @@ onBeforeUnmount(() => {
         :class="levelClass[n.level] || levelClass.info"
       >
         <NavIcon :name="levelIcon[n.level] || levelIcon.info" />
-        <span>{{ n.message }}</span>
+        <span>{{ notificationLabel(n) }}</span>
       </RouterLink>
     </div>
   </div>

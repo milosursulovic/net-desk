@@ -1,11 +1,13 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import AppButton from '@/components/AppButton.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const site = useCurrentSite()
 const { formatNumber, formatDate: formatDateBase } = usePdsuFormatters()
@@ -112,8 +114,8 @@ const totalComputers = computed(() => Number(props.coverage?.totalComputers) || 
 const coverageItems = computed(() => [
   {
     key: 'software',
-    label: 'Programi',
-    description: 'Računari sa prikupljenim programima',
+    label: t('pdsu.covSoftwareLabel'),
+    description: t('pdsu.covSoftwareDesc'),
     value: Number(props.coverage?.withSoftware) || 0,
     missing: Number(props.coverage?.withoutSoftware) || 0,
     percent: Number(props.coverage?.softwarePct) || 0,
@@ -121,8 +123,8 @@ const coverageItems = computed(() => [
   },
   {
     key: 'drivers',
-    label: 'Drajveri',
-    description: 'Računari sa prikupljenim drajverima',
+    label: t('pdsu.driversTitle'),
+    description: t('pdsu.covDriversDesc'),
     value: Number(props.coverage?.withDrivers) || 0,
     missing: Number(props.coverage?.withoutDrivers) || 0,
     percent: Number(props.coverage?.driversPct) || 0,
@@ -130,8 +132,8 @@ const coverageItems = computed(() => [
   },
   {
     key: 'services',
-    label: 'Servisi',
-    description: 'Računari sa prikupljenim servisima',
+    label: t('pdsu.servicesTitle'),
+    description: t('pdsu.covServicesDesc'),
     value: Number(props.coverage?.withServices) || 0,
     missing: Number(props.coverage?.withoutServices) || 0,
     percent: Number(props.coverage?.servicesPct) || 0,
@@ -139,8 +141,8 @@ const coverageItems = computed(() => [
   },
   {
     key: 'updates',
-    label: 'Updates',
-    description: 'Računari sa prikupljenim update podacima',
+    label: t('pdsu.covUpdatesLabel'),
+    description: t('pdsu.covUpdatesDesc'),
     value: Number(props.coverage?.withUpdates) || 0,
     missing: Number(props.coverage?.withoutUpdates) || 0,
     percent: Number(props.coverage?.updatesPct) || 0,
@@ -148,8 +150,8 @@ const coverageItems = computed(() => [
   },
   {
     key: 'printers',
-    label: 'Štampači',
-    description: 'Računari sa prikupljenim podacima o štampačima',
+    label: t('pdsu.covPrintersLabel'),
+    description: t('pdsu.covPrintersDesc'),
     value: Number(props.coverage?.withPrinters) || 0,
     missing: Number(props.coverage?.withoutPrinters) || 0,
     percent: Number(props.coverage?.printersPct) || 0,
@@ -160,14 +162,14 @@ const coverageItems = computed(() => [
 const alertItems = computed(() => [
   {
     key: 'automaticStopped',
-    label: 'Automatski servisi koji ne rade',
+    label: t('pdsu.automaticServicesNotRunning'),
     value: Number(serviceStats.value?.automaticStopped) || 0,
     badgeClass:
       Number(serviceStats.value?.automaticStopped) > 0 ? 'bg-bad text-white' : 'bg-good text-white',
   },
   {
     key: 'oldUpdates',
-    label: 'Računari bez update-a duže od 90 dana',
+    label: t('pdsu.computersWithoutUpdatesOver90'),
     value: Number(updateFreshness.value?.olderThan90Days) || 0,
     badgeClass:
       Number(updateFreshness.value?.olderThan90Days) > 0
@@ -176,21 +178,21 @@ const alertItems = computed(() => [
   },
   {
     key: 'missingUpdates',
-    label: 'Računari bez update podataka',
+    label: t('pdsu.computersWithoutUpdateData'),
     value: Number(updateFreshness.value?.withoutData) || 0,
     badgeClass:
       Number(updateFreshness.value?.withoutData) > 0 ? 'bg-ink-muted text-white' : 'bg-good text-white',
   },
   {
     key: 'missingDriverDates',
-    label: 'Drajveri bez datuma',
+    label: t('pdsu.driversWithoutDateShort'),
     value: Number(driverStats.value?.withoutDate) || 0,
     badgeClass:
       Number(driverStats.value?.withoutDate) > 0 ? 'bg-warn text-white' : 'bg-good text-white',
   },
   {
     key: 'printerProblemStatus',
-    label: 'Štampači sa problematičnim statusom',
+    label: t('pdsu.printersWithProblemStatusShort'),
     value: Number(printerStats.value?.problemStatus) || 0,
     badgeClass:
       Number(printerStats.value?.problemStatus) > 0 ? 'bg-bad text-white' : 'bg-good text-white',
@@ -215,7 +217,7 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-ink-muted mb-1">Instalirani programi</div>
+              <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.installedPrograms') }}</div>
 
               <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(softwareStats.totalInstallations) }}
@@ -226,14 +228,11 @@ function percentageClass(percent) {
           </div>
 
           <div class="text-xs text-ink-muted mt-3">
-            {{ formatNumber(softwareStats.uniqueSoftware) }}
-            jedinstvenih programa
+            {{ t('pdsu.uniqueSoftwareInline', { count: formatNumber(softwareStats.uniqueSoftware) }) }}
           </div>
 
           <div class="text-xs text-ink-muted">
-            Prosek:
-            {{ formatNumber(softwareStats.avgPerComputer) }}
-            po računaru
+            {{ t('pdsu.avgPerComputerInline', { count: formatNumber(softwareStats.avgPerComputer) }) }}
           </div>
         </div>
       </div>
@@ -242,7 +241,7 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-ink-muted mb-1">Drajveri</div>
+              <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.driversTitle') }}</div>
 
               <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(driverStats.totalDrivers) }}
@@ -253,14 +252,11 @@ function percentageClass(percent) {
           </div>
 
           <div class="text-xs text-ink-muted mt-3">
-            {{ formatNumber(driverStats.uniqueDevices) }}
-            jedinstvenih uređaja
+            {{ t('pdsu.uniqueDevicesInline', { count: formatNumber(driverStats.uniqueDevices) }) }}
           </div>
 
           <div class="text-xs text-ink-muted">
-            Prosek:
-            {{ formatNumber(driverStats.avgPerComputer) }}
-            po računaru
+            {{ t('pdsu.avgPerComputerInline', { count: formatNumber(driverStats.avgPerComputer) }) }}
           </div>
         </div>
       </div>
@@ -269,7 +265,7 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-ink-muted mb-1">Servisi</div>
+              <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.servicesTitle') }}</div>
 
               <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(serviceStats.totalServices) }}
@@ -280,13 +276,11 @@ function percentageClass(percent) {
           </div>
 
           <div class="text-xs text-ink-muted mt-3">
-            {{ formatNumber(serviceStats.running) }}
-            pokrenutih
+            {{ t('pdsu.runningCountInline', { count: formatNumber(serviceStats.running) }) }}
           </div>
 
           <div class="text-xs text-ink-muted">
-            {{ formatNumber(serviceStats.stopped) }}
-            zaustavljenih
+            {{ t('pdsu.stoppedCountInline', { count: formatNumber(serviceStats.stopped) }) }}
           </div>
         </div>
       </div>
@@ -295,7 +289,7 @@ function percentageClass(percent) {
         <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
-              <div class="text-xs text-ink-muted mb-1">Updates</div>
+              <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.covUpdatesLabel') }}</div>
 
               <div class="text-3xl font-bold tracking-tight text-ink">
                 {{ formatNumber(updateStats.totalUpdates) }}
@@ -306,13 +300,11 @@ function percentageClass(percent) {
           </div>
 
           <div class="text-xs text-ink-muted mt-3">
-            {{ formatNumber(updateStats.uniqueHotfixes) }}
-            jedinstvenih KB paketa
+            {{ t('pdsu.uniqueKbPackagesInline', { count: formatNumber(updateStats.uniqueHotfixes) }) }}
           </div>
 
           <div class="text-xs text-ink-muted">
-            {{ formatNumber(updateStats.installationsLast30Days) }}
-            instalacija u poslednjih 30 dana
+            {{ t('pdsu.installationsLast30DaysInline', { count: formatNumber(updateStats.installationsLast30Days) }) }}
           </div>
         </div>
       </div>
@@ -322,12 +314,12 @@ function percentageClass(percent) {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between">
         <div>
-          <h5 class="pdsu-card-title">Pokrivenost PDSU podacima</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.coverageTitle') }}</h5>
 
-          <div class="text-xs text-ink-muted">U odnosu na ukupan broj računara u sistemu</div>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.coverageHint') }}</div>
         </div>
 
-        <span class="pdsu-badge bg-ink text-white"> {{ formatNumber(totalComputers) }} računara </span>
+        <span class="pdsu-badge bg-ink text-white"> {{ formatNumber(totalComputers) }} {{ t('pdsu.computersSuffix') }} </span>
       </div>
 
       <div class="p-4">
@@ -352,7 +344,7 @@ function percentageClass(percent) {
             <div
               class="pdsu-progress"
               role="progressbar"
-              :aria-label="`${item.label} pokrivenost`"
+              :aria-label="`${item.label} ${t('pdsu.coverageAriaSuffix')}`"
               :aria-valuenow="item.percent"
               aria-valuemin="0"
               aria-valuemax="100"
@@ -378,7 +370,7 @@ function percentageClass(percent) {
                   'text-good': item.missing === 0,
                 }"
               >
-                Bez podataka:
+                {{ t('pdsu.withoutDataColon') }}
                 {{ formatNumber(item.missing) }}
               </span>
             </div>
@@ -392,10 +384,10 @@ function percentageClass(percent) {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">
-            Računari bez PDSU podataka ({{ missingComputers.length }})
+            {{ t('pdsu.missingComputersTitle', { count: missingComputers.length }) }}
           </h5>
           <div class="text-xs text-ink-muted">
-            Nema nijedan zapis (ni programi, ni drajveri, ni servisi, ni update-i)
+            {{ t('pdsu.missingComputersHint') }}
           </div>
         </div>
         <AppButton
@@ -403,7 +395,7 @@ function percentageClass(percent) {
           :disabled="!missingComputers.length || exportingMissing"
           @click="emit('export-missing')"
         >
-          {{ exportingMissing ? 'Izvoz…' : 'Izvezi PDF' }}
+          {{ exportingMissing ? t('pdsu.exporting') : t('pdsu.exportPdfLabel') }}
         </AppButton>
       </div>
 
@@ -411,7 +403,7 @@ function percentageClass(percent) {
         v-if="!missingComputers.length"
         class="p-4 text-sm text-ink-muted"
       >
-        Svi računari imaju bar neki PDSU podatak.
+        {{ t('pdsu.allComputersHaveSomeData') }}
       </div>
       <div
         v-else
@@ -420,17 +412,17 @@ function percentageClass(percent) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
+              <th>{{ t('metadata.colComputer') }}</th>
               <th>IP</th>
-              <th>Odeljenje</th>
-              <th>OS</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colOs') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in missingComputers" :key="row.id">
               <td class="font-semibold text-ink">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
-                  {{ row.computerName || 'Nepoznat računar' }}
+                  {{ row.computerName || t('pdsu.unknownComputer') }}
                 </RouterLink>
               </td>
               <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
@@ -447,11 +439,10 @@ function percentageClass(percent) {
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
           <h5 class="pdsu-card-title">
-            Računari bez UltraVNC ({{ withoutUltravnc.length }})
+            {{ t('pdsu.withoutUltravncTitle', { count: withoutUltravnc.length }) }}
           </h5>
           <div class="text-xs text-ink-muted">
-            Nema servis nalik UltraVNC (uvnc_service) u servis inventaru - kandidati za
-            (ponovno) pokretanje deploy skripte
+            {{ t('pdsu.withoutUltravncHint') }}
           </div>
         </div>
         <AppButton
@@ -459,7 +450,7 @@ function percentageClass(percent) {
           :disabled="!withoutUltravnc.length || exportingWithoutUltravnc"
           @click="emit('export-without-ultravnc')"
         >
-          {{ exportingWithoutUltravnc ? 'Izvoz…' : 'Izvezi PDF' }}
+          {{ exportingWithoutUltravnc ? t('pdsu.exporting') : t('pdsu.exportPdfLabel') }}
         </AppButton>
       </div>
 
@@ -467,7 +458,7 @@ function percentageClass(percent) {
         v-if="!withoutUltravnc.length"
         class="p-4 text-sm text-ink-muted"
       >
-        Svi računari imaju UltraVNC servis.
+        {{ t('pdsu.allHaveUltravnc') }}
       </div>
       <div
         v-else
@@ -476,20 +467,20 @@ function percentageClass(percent) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
+              <th>{{ t('metadata.colComputer') }}</th>
               <th>IP</th>
-              <th>Odeljenje</th>
-              <th>OS</th>
-              <th>Status</th>
-              <th>Servis podaci</th>
-              <th>Agent</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colOs') }}</th>
+              <th>{{ t('pdsu.colStatus') }}</th>
+              <th>{{ t('pdsu.colServiceData') }}</th>
+              <th>{{ t('pdsu.colAgent') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in withoutUltravnc" :key="row.id">
               <td class="font-semibold text-ink">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
-                  {{ row.computerName || 'Nepoznat računar' }}
+                  {{ row.computerName || t('pdsu.unknownComputer') }}
                 </RouterLink>
               </td>
               <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
@@ -500,7 +491,7 @@ function percentageClass(percent) {
                   class="pdsu-badge"
                   :class="row.isOnline ? 'bg-good text-white' : 'bg-ink-muted text-white'"
                 >
-                  {{ row.isOnline ? 'Online' : 'Offline' }}
+                  {{ row.isOnline ? t('common.online') : t('common.offline') }}
                 </span>
               </td>
               <td>
@@ -508,7 +499,7 @@ function percentageClass(percent) {
                   class="pdsu-badge"
                   :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-ink-muted text-white'"
                 >
-                  {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
+                  {{ row.hasServiceData ? t('pdsu.confirmedMissing') : t('pdsu.noDataPlaceholder') }}
                 </span>
               </td>
               <td>
@@ -517,9 +508,9 @@ function percentageClass(percent) {
                   :to="`/agents/${row.agentId}`"
                   class="text-good hover:underline"
                 >
-                  Otvori agenta
+                  {{ t('pdsu.openAgent') }}
                 </RouterLink>
-                <span v-else class="text-ink-muted">Nema agenta</span>
+                <span v-else class="text-ink-muted">{{ t('pdsu.noAgent') }}</span>
               </td>
             </tr>
           </tbody>
@@ -532,11 +523,10 @@ function percentageClass(percent) {
       <div class="pdsu-card-header flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h5 class="pdsu-card-title">
-            Računari bez NetdeskAgentManager-a ({{ withoutNetdeskAgentManager.length }})
+            {{ t('pdsu.withoutManagerTitle', { count: withoutNetdeskAgentManager.length }) }}
           </h5>
           <div class="text-xs text-ink-muted">
-            Nema NetdeskAgentManager servis u servis inventaru - kandidati za instalaciju
-            preko "Instaliraj/ažuriraj NetdeskAgent Manager servis" preseta
+            {{ t('pdsu.withoutManagerHint') }}
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -546,14 +536,14 @@ function percentageClass(percent) {
             class="inline-flex items-center gap-1 text-accent hover:underline text-sm"
             @click="selectAgentsFor"
           >
-            <NavIcon name="target" /> Selektuj agente ({{ managerAgentRows.length }})
+            <NavIcon name="target" /> {{ t('pdsu.selectAgentsCount', { count: managerAgentRows.length }) }}
           </button>
           <AppButton
             variant="secondary"
             :disabled="!withoutNetdeskAgentManager.length || exportingWithoutNetdeskAgentManager"
             @click="emit('export-without-netdesk-agent-manager')"
           >
-            {{ exportingWithoutNetdeskAgentManager ? 'Izvoz…' : 'Izvezi PDF' }}
+            {{ exportingWithoutNetdeskAgentManager ? t('pdsu.exporting') : t('pdsu.exportPdfLabel') }}
           </AppButton>
         </div>
       </div>
@@ -562,7 +552,7 @@ function percentageClass(percent) {
         v-if="!withoutNetdeskAgentManager.length"
         class="p-4 text-sm text-ink-muted"
       >
-        Svi računari imaju NetdeskAgentManager servis.
+        {{ t('pdsu.allHaveManager') }}
       </div>
       <div
         v-else
@@ -571,20 +561,20 @@ function percentageClass(percent) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
+              <th>{{ t('metadata.colComputer') }}</th>
               <th>IP</th>
-              <th>Odeljenje</th>
-              <th>OS</th>
-              <th>Status</th>
-              <th>Servis podaci</th>
-              <th>Agent</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colOs') }}</th>
+              <th>{{ t('pdsu.colStatus') }}</th>
+              <th>{{ t('pdsu.colServiceData') }}</th>
+              <th>{{ t('pdsu.colAgent') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in withoutNetdeskAgentManager" :key="row.id">
               <td class="font-semibold text-ink">
                 <RouterLink :to="`/ip/${row.id}/meta`" class="text-accent hover:underline">
-                  {{ row.computerName || 'Nepoznat računar' }}
+                  {{ row.computerName || t('pdsu.unknownComputer') }}
                 </RouterLink>
               </td>
               <td><code class="pdsu-code">{{ row.ip || '—' }}</code></td>
@@ -595,7 +585,7 @@ function percentageClass(percent) {
                   class="pdsu-badge"
                   :class="row.isOnline ? 'bg-good text-white' : 'bg-ink-muted text-white'"
                 >
-                  {{ row.isOnline ? 'Online' : 'Offline' }}
+                  {{ row.isOnline ? t('common.online') : t('common.offline') }}
                 </span>
               </td>
               <td>
@@ -603,7 +593,7 @@ function percentageClass(percent) {
                   class="pdsu-badge"
                   :class="row.hasServiceData ? 'bg-bad text-white' : 'bg-ink-muted text-white'"
                 >
-                  {{ row.hasServiceData ? 'Potvrđeno nema' : 'Nema podataka' }}
+                  {{ row.hasServiceData ? t('pdsu.confirmedMissing') : t('pdsu.noDataPlaceholder') }}
                 </span>
               </td>
               <td>
@@ -612,9 +602,9 @@ function percentageClass(percent) {
                   :to="`/agents/${row.agentId}`"
                   class="text-good hover:underline"
                 >
-                  Otvori agenta
+                  {{ t('pdsu.openAgent') }}
                 </RouterLink>
-                <span v-else class="text-ink-muted">Nema agenta</span>
+                <span v-else class="text-ink-muted">{{ t('pdsu.noAgent') }}</span>
               </td>
             </tr>
           </tbody>
@@ -627,9 +617,9 @@ function percentageClass(percent) {
       <div class="xl:col-span-7">
         <div class="pdsu-card h-full">
           <div class="pdsu-card-header">
-            <h5 class="pdsu-card-title">Stanje koje zahteva pažnju</h5>
+            <h5 class="pdsu-card-title">{{ t('pdsu.needsAttentionTitle') }}</h5>
 
-            <div class="text-xs text-ink-muted">Najvažniji indikatori iz prikupljenih podataka</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.needsAttentionHint') }}</div>
           </div>
 
           <div class="p-4">
@@ -657,14 +647,14 @@ function percentageClass(percent) {
       <div class="xl:col-span-5">
         <div class="pdsu-card h-full">
           <div class="pdsu-card-header">
-            <h5 class="pdsu-card-title">Poslednje prikupljanje</h5>
+            <h5 class="pdsu-card-title">{{ t('pdsu.lastCollectedTitle') }}</h5>
 
-            <div class="text-xs text-ink-muted">Najnoviji datum inventara po kategoriji</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.lastCollectedHint') }}</div>
           </div>
 
           <div class="p-4">
             <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
-              <span class="font-semibold text-ink"> Programi </span>
+              <span class="font-semibold text-ink"> {{ t('pdsu.programsLabel') }} </span>
 
               <span class="text-ink-muted text-right">
                 {{ formatDate(softwareStats.newestInventoryDate) }}
@@ -672,7 +662,7 @@ function percentageClass(percent) {
             </div>
 
             <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
-              <span class="font-semibold text-ink"> Drajveri </span>
+              <span class="font-semibold text-ink"> {{ t('pdsu.driversTitle') }} </span>
 
               <span class="text-ink-muted text-right">
                 {{ formatDate(driverStats.newestInventoryDate) }}
@@ -680,7 +670,7 @@ function percentageClass(percent) {
             </div>
 
             <div class="flex items-center justify-between gap-3 py-2 border-b border-line">
-              <span class="font-semibold text-ink"> Servisi </span>
+              <span class="font-semibold text-ink"> {{ t('pdsu.servicesTitle') }} </span>
 
               <span class="text-ink-muted text-right">
                 {{ formatDate(serviceStats.newestInventoryDate) }}
@@ -688,7 +678,7 @@ function percentageClass(percent) {
             </div>
 
             <div class="flex items-center justify-between gap-3 pt-2">
-              <span class="font-semibold text-ink"> Updates </span>
+              <span class="font-semibold text-ink"> {{ t('pdsu.covUpdatesLabel') }} </span>
 
               <span class="text-ink-muted text-right">
                 {{ formatDate(updateStats.newestInventoryDate) }}

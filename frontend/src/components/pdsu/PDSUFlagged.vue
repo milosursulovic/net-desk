@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fmtDateSr } from '@/utils/format.js'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
@@ -9,6 +10,7 @@ import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const { isAdmin } = useCurrentUser()
 const router = useRouter()
 const site = useCurrentSite()
@@ -71,11 +73,11 @@ async function selectAgentsFor(kind, id) {
   selectingAgentsFor.value = key
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/${kind}/${id}/agents?site=${site.value}`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri traženju agenata'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorFindAgents')))
     const data = await res.json()
     const ids = data.agentIds || []
     if (!ids.length) {
-      showToast('Nijedan agent na ovom sajtu trenutno nema ovo instalirano/prisutno.', {
+      showToast(t('pdsu.noAgentsHaveThis'), {
         kind: 'info',
         duration: 3000,
       })
@@ -84,7 +86,7 @@ async function selectAgentsFor(kind, id) {
     router.push({ path: '/agents', query: { site: site.value, agentIds: ids.join(',') } })
   } catch (e) {
     console.error('Neuspešna selekcija agenata za flagged stavku', e)
-    showToast('Greška pri traženju agenata', { kind: 'error', duration: 3000 })
+    showToast(t('pdsu.errorFindAgents'), { kind: 'error', duration: 3000 })
   } finally {
     selectingAgentsFor.value = null
   }
@@ -96,9 +98,9 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni programi</h5>
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> {{ t('pdsu.unwantedSoftware') }}</h5>
           <div class="text-xs text-ink-muted">
-            Programi koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
+            {{ t('pdsu.unwantedSoftwareHint') }}
           </div>
         </div>
         <span class="pdsu-badge bg-bad text-white">{{ flaggedSoftware.length }}</span>
@@ -109,7 +111,7 @@ async function selectAgentsFor(kind, id) {
           v-model="softwareFilter"
           type="text"
           class="app-input w-full"
-          placeholder="Pretraži po nazivu ili izdavaču..."
+          :placeholder="t('pdsu.searchByNameOrPublisher')"
         />
       </div>
 
@@ -117,10 +119,10 @@ async function selectAgentsFor(kind, id) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Izdavač</th>
-              <th>Napomena</th>
-              <th>Označeno</th>
+              <th>{{ t('groups.colName') }}</th>
+              <th>{{ t('pdsu.colPublisher') }}</th>
+              <th>{{ t('pdsu.colNote') }}</th>
+              <th>{{ t('pdsu.colFlaggedAt') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -134,7 +136,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
-                  title="Selektuj agente"
+                  :title="t('pdsu.selectAgents')"
                   :disabled="selectingAgentsFor === `software-${item.id}`"
                   @click="selectAgentsFor('software', item.id)"
                 >
@@ -143,7 +145,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-bad hover:bg-surface-sunken"
-                  title="Ukloni"
+                  :title="t('pdsu.remove')"
                   @click="emit('remove-software', item.id)"
                 >
                   <NavIcon name="trash" />
@@ -154,8 +156,8 @@ async function selectAgentsFor(kind, id) {
               <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedSoftware.length === 0
-                    ? 'Još uvek nema označenih neželjenih programa. Pretraži programe iznad i klikni "Označi kao neželjen".'
-                    : 'Nema rezultata za dati filter.'
+                    ? t('pdsu.noneFlaggedSoftware')
+                    : t('pdsu.noFilterResults')
                 }}
               </td>
             </tr>
@@ -167,9 +169,9 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni servisi</h5>
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> {{ t('pdsu.unwantedServices') }}</h5>
           <div class="text-xs text-ink-muted">
-            Servisi koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
+            {{ t('pdsu.unwantedServicesHint') }}
           </div>
         </div>
         <span class="pdsu-badge bg-bad text-white">{{ flaggedServices.length }}</span>
@@ -180,7 +182,7 @@ async function selectAgentsFor(kind, id) {
           v-model="serviceFilter"
           type="text"
           class="app-input w-full"
-          placeholder="Pretraži po nazivu..."
+          :placeholder="t('pdsu.searchByName')"
         />
       </div>
 
@@ -188,10 +190,10 @@ async function selectAgentsFor(kind, id) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Prikazni naziv</th>
-              <th>Napomena</th>
-              <th>Označeno</th>
+              <th>{{ t('groups.colName') }}</th>
+              <th>{{ t('pdsu.colDisplayName') }}</th>
+              <th>{{ t('pdsu.colNote') }}</th>
+              <th>{{ t('pdsu.colFlaggedAt') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -205,7 +207,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
-                  title="Selektuj agente"
+                  :title="t('pdsu.selectAgents')"
                   :disabled="selectingAgentsFor === `services-${item.id}`"
                   @click="selectAgentsFor('services', item.id)"
                 >
@@ -214,7 +216,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-bad hover:bg-surface-sunken"
-                  title="Ukloni"
+                  :title="t('pdsu.remove')"
                   @click="emit('remove-service', item.id)"
                 >
                   <NavIcon name="trash" />
@@ -225,8 +227,8 @@ async function selectAgentsFor(kind, id) {
               <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedServices.length === 0
-                    ? 'Još uvek nema označenih neželjenih servisa. Pretraži servise iznad i klikni "Označi kao neželjen".'
-                    : 'Nema rezultata za dati filter.'
+                    ? t('pdsu.noneFlaggedServices')
+                    : t('pdsu.noFilterResults')
                 }}
               </td>
             </tr>
@@ -238,9 +240,9 @@ async function selectAgentsFor(kind, id) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> Neželjeni drajveri</h5>
+          <h5 class="pdsu-card-title inline-flex items-center gap-1.5"><NavIcon name="alert-triangle" /> {{ t('pdsu.unwantedDrivers') }}</h5>
           <div class="text-xs text-ink-muted">
-            Drajveri koji, ako se pojave na bilo kom računaru, izazivaju upozorenje na kartici
+            {{ t('pdsu.unwantedDriversHint') }}
           </div>
         </div>
         <span class="pdsu-badge bg-bad text-white">{{ flaggedDrivers.length }}</span>
@@ -251,7 +253,7 @@ async function selectAgentsFor(kind, id) {
           v-model="driverFilter"
           type="text"
           class="app-input w-full"
-          placeholder="Pretraži po nazivu uređaja ili provideru..."
+          :placeholder="t('pdsu.searchByDeviceOrProvider')"
         />
       </div>
 
@@ -259,10 +261,10 @@ async function selectAgentsFor(kind, id) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Uređaj</th>
+              <th>{{ t('pdsu.colDevice') }}</th>
               <th>Provider</th>
-              <th>Napomena</th>
-              <th>Označeno</th>
+              <th>{{ t('pdsu.colNote') }}</th>
+              <th>{{ t('pdsu.colFlaggedAt') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -276,7 +278,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-accent hover:bg-surface-sunken disabled:opacity-50"
-                  title="Selektuj agente"
+                  :title="t('pdsu.selectAgents')"
                   :disabled="selectingAgentsFor === `drivers-${item.id}`"
                   @click="selectAgentsFor('drivers', item.id)"
                 >
@@ -285,7 +287,7 @@ async function selectAgentsFor(kind, id) {
                 <button
                   type="button"
                   class="rounded p-1 text-bad hover:bg-surface-sunken"
-                  title="Ukloni"
+                  :title="t('pdsu.remove')"
                   @click="emit('remove-driver', item.id)"
                 >
                   <NavIcon name="trash" />
@@ -296,8 +298,8 @@ async function selectAgentsFor(kind, id) {
               <td colspan="5" class="text-center text-ink-muted py-4">
                 {{
                   flaggedDrivers.length === 0
-                    ? 'Još uvek nema označenih neželjenih drajvera. Pretraži drajvere iznad i klikni "Označi kao neželjen".'
-                    : 'Nema rezultata za dati filter.'
+                    ? t('pdsu.noneFlaggedDrivers')
+                    : t('pdsu.noFilterResults')
                 }}
               </td>
             </tr>

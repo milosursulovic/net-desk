@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 import {
   stateLabel,
@@ -7,6 +8,8 @@ import {
   startModeLabel,
   startModeBadgeClass,
 } from '@/utils/pdsuServiceLabels.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   services: {
@@ -69,37 +72,35 @@ function shortenPath(value, maxLength = 90) {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Ukupno servisa</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.totalServicesCount') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalServices) }}
           </div>
 
           <div class="text-xs text-ink-muted mt-2">
-            Na
-            {{ formatNumber(stats.computersWithServices) }}
-            računara
+            {{ t('pdsu.onComputersCount', { count: formatNumber(stats.computersWithServices) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Pokrenuti servisi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.runningServices') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-good">
             {{ formatNumber(stats.running) }}
           </div>
 
           <div class="text-xs text-ink-muted mt-2">
-            {{ formatNumber(runningPercent) }}% svih servisa
+            {{ t('pdsu.percentOfAllServices', { percent: formatNumber(runningPercent) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Zaustavljeni servisi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.stoppedServices') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -109,14 +110,14 @@ function shortenPath(value, maxLength = 90) {
           </div>
 
           <div class="text-xs text-ink-muted mt-2">
-            {{ formatNumber(stoppedPercent) }}% svih servisa
+            {{ t('pdsu.percentOfAllServices', { percent: formatNumber(stoppedPercent) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Automatski, a zaustavljeni</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.automaticStopped') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -125,19 +126,19 @@ function shortenPath(value, maxLength = 90) {
             {{ formatNumber(stats.automaticStopped) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Potencijalno zahtevaju proveru</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.mayNeedReview') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Jedinstveni servisi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.uniqueServices') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniqueServices) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Različitih naziva servisa</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.distinctServiceNames') }}</div>
         </div>
       </div>
     </div>
@@ -146,7 +147,7 @@ function shortenPath(value, maxLength = 90) {
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Automatski servisi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.automaticServices') }}</div>
 
           <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.automatic) }}
@@ -156,7 +157,7 @@ function shortenPath(value, maxLength = 90) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Ručno pokretanje</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.manualStart') }}</div>
 
           <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.manual) }}
@@ -166,7 +167,7 @@ function shortenPath(value, maxLength = 90) {
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Isključeni servisi</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.disabledServices') }}</div>
 
           <div class="text-lg font-bold text-ink">
             {{ formatNumber(stats.disabled) }}
@@ -178,14 +179,14 @@ function shortenPath(value, maxLength = 90) {
     <!-- Status distribucija -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
-        <h5 class="pdsu-card-title">Status servisa</h5>
+        <h5 class="pdsu-card-title">{{ t('pdsu.serviceStatusTitle') }}</h5>
 
-        <div class="text-xs text-ink-muted">Odnos pokrenutih i zaustavljenih servisa</div>
+        <div class="text-xs text-ink-muted">{{ t('pdsu.serviceStatusHint') }}</div>
       </div>
 
       <div class="p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="font-semibold text-ink"> Pokrenuti </span>
+          <span class="font-semibold text-ink"> {{ t('pdsu.running') }} </span>
 
           <span>
             {{ formatNumber(stats.running) }}
@@ -199,7 +200,7 @@ function shortenPath(value, maxLength = 90) {
         </div>
 
         <div class="flex items-center justify-between mb-2">
-          <span class="font-semibold text-ink"> Zaustavljeni </span>
+          <span class="font-semibold text-ink"> {{ t('pdsu.stopped') }} </span>
 
           <span>
             {{ formatNumber(stats.stopped) }}
@@ -219,7 +220,7 @@ function shortenPath(value, maxLength = 90) {
       <div class="p-4">
         <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-xs text-ink-muted">Najstariji PDSU zapis servisa</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.oldestServiceRecord') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.oldestInventoryDate) }}
@@ -227,7 +228,7 @@ function shortenPath(value, maxLength = 90) {
           </div>
 
           <div class="md:text-right">
-            <div class="text-xs text-ink-muted">Najnoviji PDSU zapis servisa</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.newestServiceRecord') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInventoryDate) }}
@@ -241,10 +242,10 @@ function shortenPath(value, maxLength = 90) {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Automatski servisi koji nisu pokrenuti</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.automaticNotRunningTitle') }}</h5>
 
           <div class="text-xs text-ink-muted">
-            Servisi podešeni na automatsko pokretanje, ali su trenutno zaustavljeni
+            {{ t('pdsu.automaticNotRunningHint') }}
           </div>
         </div>
 
@@ -260,12 +261,12 @@ function shortenPath(value, maxLength = 90) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Servis</th>
-              <th>Računar</th>
-              <th>Nalog</th>
-              <th>Putanja</th>
-              <th class="text-center">Status</th>
-              <th>Datum inventara</th>
+              <th>{{ t('pdsu.colService') }}</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colAccount') }}</th>
+              <th>{{ t('pdsu.colPath') }}</th>
+              <th class="text-center">{{ t('pdsu.colStatus') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
 
@@ -276,7 +277,7 @@ function shortenPath(value, maxLength = 90) {
             >
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.displayName || item.name || 'Nepoznat servis' }}
+                  {{ item.displayName || item.name || t('pdsu.unknownService') }}
                 </div>
 
                 <div class="text-xs text-ink-muted">
@@ -286,7 +287,7 @@ function shortenPath(value, maxLength = 90) {
 
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.computerName || 'Nepoznat računar' }}
+                  {{ item.computerName || t('pdsu.unknownComputer') }}
                 </div>
 
                 <div>
@@ -310,7 +311,7 @@ function shortenPath(value, maxLength = 90) {
 
               <td class="text-center">
                 <span class="pdsu-badge" :class="stateBadgeClass(item.state)">
-                  {{ stateLabel(item.state) }}
+                  {{ stateLabel(item.state, t) }}
                 </span>
               </td>
 
@@ -321,7 +322,7 @@ function shortenPath(value, maxLength = 90) {
 
             <tr v-if="automaticStopped.length === 0">
               <td colspan="6" class="text-center text-ink-muted py-4">
-                Nema automatskih servisa koji su zaustavljeni.
+                {{ t('pdsu.noAutomaticStopped') }}
               </td>
             </tr>
           </tbody>
@@ -333,10 +334,10 @@ function shortenPath(value, maxLength = 90) {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Neuobičajene putanje servisa</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.unusualPathsTitle') }}</h5>
 
           <div class="text-xs text-ink-muted">
-            Servisi čije izvršne datoteke nisu pronađene u standardnim Windows direktorijumima
+            {{ t('pdsu.unusualPathsHint') }}
           </div>
         </div>
 
@@ -349,12 +350,12 @@ function shortenPath(value, maxLength = 90) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Servis</th>
-              <th>Računar</th>
-              <th>Način pokretanja</th>
-              <th>Nalog</th>
-              <th>Putanja</th>
-              <th class="text-center">Status</th>
+              <th>{{ t('pdsu.colService') }}</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colStartMode') }}</th>
+              <th>{{ t('pdsu.colAccount') }}</th>
+              <th>{{ t('pdsu.colPath') }}</th>
+              <th class="text-center">{{ t('pdsu.colStatus') }}</th>
             </tr>
           </thead>
 
@@ -365,7 +366,7 @@ function shortenPath(value, maxLength = 90) {
             >
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.displayName || item.name || 'Nepoznat servis' }}
+                  {{ item.displayName || item.name || t('pdsu.unknownService') }}
                 </div>
 
                 <div class="text-xs text-ink-muted">
@@ -375,7 +376,7 @@ function shortenPath(value, maxLength = 90) {
 
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.computerName || 'Nepoznat računar' }}
+                  {{ item.computerName || t('pdsu.unknownComputer') }}
                 </div>
 
                 <div>
@@ -389,7 +390,7 @@ function shortenPath(value, maxLength = 90) {
 
               <td>
                 <span class="pdsu-badge" :class="startModeBadgeClass(item.startMode)">
-                  {{ startModeLabel(item.startMode) }}
+                  {{ startModeLabel(item.startMode, t) }}
                 </span>
               </td>
 
@@ -405,13 +406,13 @@ function shortenPath(value, maxLength = 90) {
 
               <td class="text-center">
                 <span class="pdsu-badge" :class="stateBadgeClass(item.state)">
-                  {{ stateLabel(item.state) }}
+                  {{ stateLabel(item.state, t) }}
                 </span>
               </td>
             </tr>
 
             <tr v-if="unusualPaths.length === 0">
-              <td colspan="6" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -422,9 +423,9 @@ function shortenPath(value, maxLength = 90) {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Retki servisi</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.rareServicesTitle') }}</h5>
 
-          <div class="text-xs text-ink-muted">Servisi pronađeni na malom broju računara</div>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.rareServicesHint') }}</div>
         </div>
 
         <span class="pdsu-badge bg-ink-muted text-white">
@@ -436,12 +437,12 @@ function shortenPath(value, maxLength = 90) {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Servis</th>
-              <th>Način pokretanja</th>
-              <th>Nalog</th>
-              <th class="text-center">Računari</th>
-              <th>Pronađen na</th>
-              <th>Putanja</th>
+              <th>{{ t('pdsu.colService') }}</th>
+              <th>{{ t('pdsu.colStartMode') }}</th>
+              <th>{{ t('pdsu.colAccount') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
+              <th>{{ t('pdsu.foundOnShort') }}</th>
+              <th>{{ t('pdsu.colPath') }}</th>
             </tr>
           </thead>
 
@@ -449,7 +450,7 @@ function shortenPath(value, maxLength = 90) {
             <tr v-for="(item, index) in rareServices" :key="`${item.name}-${index}`">
               <td>
                 <div class="font-semibold text-ink">
-                  {{ item.displayName || item.name || 'Nepoznat servis' }}
+                  {{ item.displayName || item.name || t('pdsu.unknownService') }}
                 </div>
 
                 <div class="text-xs text-ink-muted">
@@ -459,7 +460,7 @@ function shortenPath(value, maxLength = 90) {
 
               <td>
                 <span class="pdsu-badge" :class="startModeBadgeClass(item.startMode)">
-                  {{ startModeLabel(item.startMode) }}
+                  {{ startModeLabel(item.startMode, t) }}
                 </span>
               </td>
 
@@ -484,7 +485,7 @@ function shortenPath(value, maxLength = 90) {
                   </span>
 
                   <span v-if="splitValues(item.computerNames).length === 0" class="text-ink-muted">
-                    Nema podatka
+                    {{ t('pdsu.noData') }}
                   </span>
                 </div>
               </td>
@@ -497,7 +498,7 @@ function shortenPath(value, maxLength = 90) {
             </tr>
 
             <tr v-if="rareServices.length === 0">
-              <td colspan="6" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>

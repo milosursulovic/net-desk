@@ -12,9 +12,9 @@
         class="rounded-xl border border-line bg-surface p-4 shadow-sm flex items-start justify-between gap-4"
       >
         <div class="min-w-0">
-          <div class="font-medium text-ink">{{ setting.label }}</div>
-          <p v-if="setting.description" class="text-sm text-ink-muted mt-0.5">
-            {{ setting.description }}
+          <div class="font-medium text-ink">{{ settingLabel(setting) }}</div>
+          <p v-if="settingDescription(setting)" class="text-sm text-ink-muted mt-0.5">
+            {{ settingDescription(setting) }}
           </p>
           <p v-if="setting.updatedAt" class="text-xs text-ink-muted mt-1 font-mono">
             {{ t('config.lastChanged', { date: fmtDate(setting.updatedAt) }) }}
@@ -64,9 +64,22 @@ import { useToast } from '@/composables/useToast.js'
 import { setAppLanguage } from '@/i18n/index.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const { toast, showToast } = useToast()
 const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
+
+// Setting label/description dolaze sa backend-a (deljeni izvor za API), pa
+// su hardkodovane na srpskom - za poznate ključeve prevod se uzima ovde,
+// backend tekst ostaje fallback za bilo koji budući ključ koji još nema
+// prevod.
+const settingLabel = (setting) => {
+  const key = `config.settings.${setting.key}.label`
+  return te(key) ? t(key) : setting.label
+}
+const settingDescription = (setting) => {
+  const key = `config.settings.${setting.key}.description`
+  return te(key) ? t(key) : setting.description
+}
 
 const settings = ref([])
 const loading = ref(false)

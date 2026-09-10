@@ -44,11 +44,17 @@ export async function listNotifications(site) {
 
   const notifications = [];
 
+  // `count` je dodat uz `message` da frontend UI ticker (NotificationTicker.vue)
+  // može da prevede po `id`-u za trenutno izabrani jezik aplikacije - `message`
+  // ostaje na srpskom kao fallback/za druge potrošače (dailyReport.service.js
+  // PDF, pushNotificationWatcher.js push tekst) koji nisu per-viewer jezički
+  // svesni.
   if (diskFull > 0) {
     notifications.push({
       id: "disk-full",
       level: "critical",
       message: `${diskFull} računara ima disk preko 90% popunjenosti`,
+      count: diskFull,
       to: "/agents",
     });
   }
@@ -58,6 +64,7 @@ export async function listNotifications(site) {
       id: "antivirus-inactive",
       level: "critical",
       message: `${avInactive} računara nema aktivan antivirus`,
+      count: avInactive,
       to: "/agents",
     });
   }
@@ -67,6 +74,7 @@ export async function listNotifications(site) {
       id: "firewall-inactive",
       level: "critical",
       message: `${fwInactive} računara nema aktivan firewall`,
+      count: fwInactive,
       to: "/agents",
     });
   }
@@ -76,6 +84,7 @@ export async function listNotifications(site) {
       id: "blacklisted-domain",
       level: "critical",
       message: `${blacklistedDomainHits} računara je poslednjih 24h posetilo domen sa crne liste`,
+      count: blacklistedDomainHits,
       to: "/dns-logs",
     });
   }
@@ -85,6 +94,7 @@ export async function listNotifications(site) {
       id: "agent-offline-ip-online",
       level: "warning",
       message: `${agentOfflineIpOnline} agenata je offline dok je računar dostupan na mreži - moguć kvar agenta`,
+      count: agentOfflineIpOnline,
       to: "/agents?agentOfflineIpOnline=true",
     });
   }
@@ -94,6 +104,7 @@ export async function listNotifications(site) {
       id: "failed-jobs",
       level: "warning",
       message: `${failedJobs} neuspešno izvršenih komandi u poslednja 24h`,
+      count: failedJobs,
       to: "/agents",
     });
   }
@@ -103,6 +114,7 @@ export async function listNotifications(site) {
       id: "wu-unavailable",
       level: "warning",
       message: `${wuUnavailable} računara ima nedostupan Windows Update servis`,
+      count: wuUnavailable,
       to: "/agents",
     });
   }
@@ -112,6 +124,7 @@ export async function listNotifications(site) {
       id: "auto-stopped",
       level: "critical",
       message: `${autoStopped} automatskih servisa nije pokrenuto`,
+      count: autoStopped,
       to: "/pdsu",
     });
   }
@@ -121,6 +134,7 @@ export async function listNotifications(site) {
       id: "offline",
       level: "warning",
       message: `${offline} unosa je trenutno offline`,
+      count: offline,
       to: "/",
     });
   }
@@ -130,6 +144,7 @@ export async function listNotifications(site) {
       id: "stale-updates",
       level: "warning",
       message: `${staleUpdates} računara bez Windows update-a duže od 90 dana`,
+      count: staleUpdates,
       to: "/pdsu",
     });
   }
@@ -139,6 +154,7 @@ export async function listNotifications(site) {
       id: "duplicates",
       level: "warning",
       message: `${duplicates} dupliranih imena računara`,
+      count: duplicates,
       to: "/",
     });
   }
@@ -148,6 +164,7 @@ export async function listNotifications(site) {
       id: "unclassified",
       level: "info",
       message: `${unclassified} unosa nema određen tip (Računar/Aparat)`,
+      count: unclassified,
       to: "/",
     });
   }

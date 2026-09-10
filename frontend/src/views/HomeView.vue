@@ -222,8 +222,8 @@
         </div>
 
         <div class="mt-auto pt-3 border-t border-line flex items-center justify-between gap-2">
-          <span class="text-xs text-ink-muted font-mono" :title="t('home.statusChange', { date: fmtRelative(entry.lastStatusChange) })">
-            {{ fmtRelative(entry.lastChecked) }}
+          <span class="text-xs text-ink-muted font-mono" :title="t('home.statusChange', { date: fmtRelative(entry.lastStatusChange, locale.value) })">
+            {{ fmtRelative(entry.lastChecked, locale.value) }}
           </span>
           <div class="flex items-center gap-1">
             <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
@@ -297,7 +297,7 @@ import TagChip from '@/components/TagChip.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()

@@ -3,6 +3,7 @@ import { isTokenExpired, decodeJwt } from '@/utils/auth.js'
 import { resetCurrentUser } from '@/composables/useCurrentUser.js'
 import { isValidSite } from '@/constants/sites.js'
 import { getRememberedSite, rememberSite } from '@/utils/siteStorage.js'
+import { i18n } from '@/i18n/index.js'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 const HomeView = () => import('@/views/HomeView.vue')
@@ -46,21 +47,21 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
-      meta: { requiresAuth: true, title: 'Početna - NetDesk' },
+      meta: { requiresAuth: true, titleKey: 'routes.home' },
       children: [
         {
           path: '',
           name: 'home',
-          meta: { title: 'Početna - NetDesk', breadcrumb: 'IP Adrese' },
+          meta: { titleKey: 'routes.home', breadcrumbKey: 'nav.ipAddresses' },
           component: HomeView,
         },
         {
           path: 'add',
           name: 'add-ip',
           meta: {
-            title: 'Dodaj IP - NetDesk',
-            breadcrumb: 'Dodaj IP',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'routes.addIp',
+            breadcrumbKey: 'routes.addIp',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
           },
           component: AddIpView,
         },
@@ -68,9 +69,9 @@ const router = createRouter({
           path: 'free-ip-addresses',
           name: 'free-ip-addresses',
           meta: {
-            title: 'Slobodne IP adrese - NetDesk',
-            breadcrumb: 'Slobodne IP adrese',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'freeIps.title',
+            breadcrumbKey: 'freeIps.title',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
           },
           component: FreeIpAddressesView,
         },
@@ -78,9 +79,9 @@ const router = createRouter({
           path: 'edit/:id',
           name: 'edit-ip',
           meta: {
-            title: 'Uredi IP - NetDesk',
-            breadcrumb: 'Uredi IP',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'routes.editIp',
+            breadcrumbKey: 'routes.editIp',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
             // Konkretan postojeći unos, sopstveni site već poznat iz baze.
             requiresSite: false,
           },
@@ -90,9 +91,9 @@ const router = createRouter({
           path: 'ip/:id/meta',
           name: 'ip-meta',
           meta: {
-            title: 'Metapodaci - NetDesk',
-            breadcrumb: 'Metapodaci',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'nav.metadata',
+            breadcrumbKey: 'nav.metadata',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
             // Per-računar detalj strana - lokacija je već implicitna kroz
             // taj jedan IP unos (svoj site u bazi), ne treba filter.
             requiresSite: false,
@@ -103,9 +104,9 @@ const router = createRouter({
           path: 'ip/:id/pdsu',
           name: 'ip-pdsu',
           meta: {
-            title: 'PDSU Inventar - NetDesk',
-            breadcrumb: 'PDSU Inventar',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'routes.pdsuInventory',
+            breadcrumbKey: 'routes.pdsuInventory',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
             requiresSite: false,
           },
           component: IpPdsuView,
@@ -114,9 +115,9 @@ const router = createRouter({
           path: 'ip/:id/port-scan',
           name: 'ip-port-scan',
           meta: {
-            title: 'Port scan - NetDesk',
-            breadcrumb: 'Port scan',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'routes.portScan',
+            breadcrumbKey: 'routes.portScan',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
             requiresSite: false,
           },
           component: IpPortScanView,
@@ -125,9 +126,9 @@ const router = createRouter({
           path: 'duplicates',
           name: 'duplicates',
           meta: {
-            title: 'Duplirana imena - NetDesk',
-            breadcrumb: 'Duplirana imena',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'duplicates.title',
+            breadcrumbKey: 'duplicates.title',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
           },
           component: DuplicateNamesView,
         },
@@ -135,9 +136,9 @@ const router = createRouter({
           path: 'computers-for-repack',
           name: 'computers-for-repack',
           meta: {
-            title: 'Računari za pakovanje - NetDesk',
-            breadcrumb: 'Računari za pakovanje',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'repack.title',
+            breadcrumbKey: 'repack.title',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
           },
           component: ComputersForRepackView,
         },
@@ -145,9 +146,9 @@ const router = createRouter({
           path: 'repack-recommendations',
           name: 'repack-recommendations',
           meta: {
-            title: 'Preporuke za pakovanje - NetDesk',
-            breadcrumb: 'Preporuke za pakovanje',
-            breadcrumbParent: { label: 'Računari za pakovanje', to: '/computers-for-repack' },
+            titleKey: 'routes.repackRecommendations',
+            breadcrumbKey: 'routes.repackRecommendations',
+            breadcrumbParent: { labelKey: 'repack.title', to: '/computers-for-repack' },
           },
           component: RepackRecommendationsView,
         },
@@ -155,9 +156,9 @@ const router = createRouter({
           path: 'groups',
           name: 'groups',
           meta: {
-            title: 'Grupe - NetDesk',
-            breadcrumb: 'Grupe',
-            breadcrumbParent: { label: 'IP Adrese', to: '/' },
+            titleKey: 'groups.title',
+            breadcrumbKey: 'groups.title',
+            breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
           },
           component: GroupsView,
         },
@@ -165,49 +166,49 @@ const router = createRouter({
           path: 'deployment-groups',
           name: 'deployment-groups',
           meta: {
-            title: 'Deployment grupe - NetDesk',
-            breadcrumb: 'Deployment grupe',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'deploymentGroups.title',
+            breadcrumbKey: 'deploymentGroups.title',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
           },
           component: DeploymentGroupsView,
         },
         {
           path: 'metadata',
           name: 'metadata',
-          meta: { title: 'Metapodaci - NetDesk', breadcrumb: 'Metapodaci' },
+          meta: { titleKey: 'nav.metadata', breadcrumbKey: 'nav.metadata' },
           component: MetadataView,
         },
         {
           path: 'printers',
           name: 'printers',
-          meta: { title: 'Štampači - NetDesk', breadcrumb: 'Štampači' },
+          meta: { titleKey: 'nav.printers', breadcrumbKey: 'nav.printers' },
           component: PrintersView,
         },
         {
           path: 'inventory',
           name: 'inventory',
-          meta: { title: 'Inventar hardvera - NetDesk', breadcrumb: 'Inventar hardvera' },
+          meta: { titleKey: 'inventory.title', breadcrumbKey: 'inventory.title' },
           component: InventoryView,
         },
         {
           path: 'pdsu',
           name: 'pdsu',
-          meta: { title: 'PDSU Analitika - NetDesk', breadcrumb: 'PDSU Analitika' },
+          meta: { titleKey: 'routes.pdsuAnalytics', breadcrumbKey: 'routes.pdsuAnalytics' },
           component: PDSUAnalyticsView,
         },
         {
           path: 'agents',
           name: 'agents',
-          meta: { title: 'Netdesk Agenti - NetDesk', breadcrumb: 'Agenti' },
+          meta: { titleKey: 'routes.netdeskAgents', breadcrumbKey: 'nav.agents' },
           component: AgentsView,
         },
         {
           path: 'agents/:id',
           name: 'agent-detail',
           meta: {
-            title: 'Agent - NetDesk',
-            breadcrumb: 'Detalji agenta',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'routes.agentDetail',
+            breadcrumbKey: 'routes.agentDetail',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
             // Konkretan agent, vezan za jedan računar čiji je site već poznat.
             requiresSite: false,
           },
@@ -217,9 +218,9 @@ const router = createRouter({
           path: 'agent-releases',
           name: 'agent-releases',
           meta: {
-            title: 'Verzije agenta - NetDesk',
-            breadcrumb: 'Verzije agenta',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'releases.title',
+            breadcrumbKey: 'releases.title',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
           },
           component: AgentReleasesView,
         },
@@ -227,9 +228,9 @@ const router = createRouter({
           path: 'agent-batches',
           name: 'agent-batches',
           meta: {
-            title: 'Batch komande - NetDesk',
-            breadcrumb: 'Batch komande',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'agents.batchCommands',
+            breadcrumbKey: 'agents.batchCommands',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
           },
           component: BatchJobsView,
         },
@@ -237,9 +238,9 @@ const router = createRouter({
           path: 'agent-batches/:batchId',
           name: 'agent-batch-detail',
           meta: {
-            title: 'Status batch komande - NetDesk',
-            breadcrumb: 'Status batch komande',
-            breadcrumbParent: { label: 'Batch komande', to: '/agent-batches' },
+            titleKey: 'routes.batchStatus',
+            breadcrumbKey: 'routes.batchStatus',
+            breadcrumbParent: { labelKey: 'agents.batchCommands', to: '/agent-batches' },
             // Konkretan batch po id-ju, može obuhvatati agente sa obe
             // lokacije - nema smisla vezivati ga za jednu.
             requiresSite: false,
@@ -250,9 +251,9 @@ const router = createRouter({
           path: 'computers-without-agent',
           name: 'computers-without-agent',
           meta: {
-            title: 'Računari bez agenta - NetDesk',
-            breadcrumb: 'Računari bez agenta',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'withoutAgent.title',
+            breadcrumbKey: 'withoutAgent.title',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
           },
           component: ComputersWithoutAgentView,
         },
@@ -260,9 +261,9 @@ const router = createRouter({
           path: 'downloads-folder',
           name: 'downloads-folder',
           meta: {
-            title: 'Deljeni fajlovi - NetDesk',
-            breadcrumb: 'Deljeni fajlovi',
-            breadcrumbParent: { label: 'Agenti', to: '/agents' },
+            titleKey: 'downloads.title',
+            breadcrumbKey: 'downloads.title',
+            breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
             requiresAdmin: true,
           },
           component: DownloadsFolderView,
@@ -270,53 +271,53 @@ const router = createRouter({
         {
           path: 'reports',
           name: 'reports',
-          meta: { title: 'Dnevni izveštaj - NetDesk', breadcrumb: 'Izveštaji' },
+          meta: { titleKey: 'routes.dailyReport', breadcrumbKey: 'routes.reports' },
           component: ReportsView,
         },
         {
           path: 'reports/:id',
           name: 'report-detail',
           meta: {
-            title: 'Izveštaj - NetDesk',
-            breadcrumb: 'Detalji izveštaja',
-            breadcrumbParent: { label: 'Izveštaji', to: '/reports' },
+            titleKey: 'routes.report',
+            breadcrumbKey: 'routes.reportDetails',
+            breadcrumbParent: { labelKey: 'routes.reports', to: '/reports' },
           },
           component: ReportsView,
         },
         {
           path: 'users',
           name: 'users',
-          meta: { title: 'Korisnici - NetDesk', breadcrumb: 'Korisnici', requiresRootAdmin: true },
+          meta: { titleKey: 'routes.users', breadcrumbKey: 'routes.users', requiresRootAdmin: true },
           component: UsersView,
         },
         {
           path: 'logs',
           name: 'logs',
-          meta: { title: 'Logovi - NetDesk', breadcrumb: 'Logovi', requiresRootAdmin: true },
+          meta: { titleKey: 'nav.logs', breadcrumbKey: 'nav.logs', requiresRootAdmin: true },
           component: LogsView,
         },
         {
           path: 'config',
           name: 'config',
-          meta: { title: 'Konfiguracija - NetDesk', breadcrumb: 'Konfiguracija', requiresRootAdmin: true },
+          meta: { titleKey: 'nav.config', breadcrumbKey: 'nav.config', requiresRootAdmin: true },
           component: ConfigView,
         },
         {
           path: 'server-health',
           name: 'server-health',
-          meta: { title: 'Server - NetDesk', breadcrumb: 'Server', requiresOperator: true },
+          meta: { titleKey: 'nav.server', breadcrumbKey: 'nav.server', requiresOperator: true },
           component: ServerHealthView,
         },
         {
           path: 'dns-logs',
           name: 'dns-logs',
-          meta: { title: 'DNS Logovi - NetDesk', breadcrumb: 'DNS Logovi', requiresOperator: true },
+          meta: { titleKey: 'nav.dnsLogs', breadcrumbKey: 'nav.dnsLogs', requiresOperator: true },
           component: DnsLogsView,
         },
         {
           path: 'process-detections',
           name: 'process-detections',
-          meta: { title: 'Sumnjivi procesi - NetDesk', breadcrumb: 'Sumnjivi procesi', requiresOperator: true },
+          meta: { titleKey: 'nav.suspiciousProcesses', breadcrumbKey: 'nav.suspiciousProcesses', requiresOperator: true },
           component: ProcessDetectionsView,
         },
       ],
@@ -324,7 +325,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      meta: { guestOnly: true, title: 'Prijavi se - NetDesk' },
+      meta: { guestOnly: true, titleKey: 'login.submit' },
       component: LoginView,
     },
     {
@@ -334,7 +335,7 @@ const router = createRouter({
       // preusmeravanja na samog sebe.
       path: '/select-site',
       name: 'select-site',
-      meta: { requiresAuth: true, requiresSite: false, title: 'Izbor lokacije - NetDesk' },
+      meta: { requiresAuth: true, requiresSite: false, titleKey: 'selectSite.title' },
       component: SelectSiteView,
     },
     {
@@ -344,7 +345,7 @@ const router = createRouter({
       // lokaciji, pa ne treba da bude preusmerena na /select-site.
       path: '/agents/:id/screen',
       name: 'agent-vnc-session',
-      meta: { requiresAuth: true, requiresSite: false, title: 'Udaljena kontrola ekrana - NetDesk' },
+      meta: { requiresAuth: true, requiresSite: false, titleKey: 'routes.vncSession' },
       component: VncSessionView,
     },
     {
@@ -406,7 +407,7 @@ router.beforeEach((to, from, next) => {
     return next('/')
   }
 
-  const title = to.meta?.title || 'NetDesk'
+  const title = to.meta?.titleKey ? `${i18n.global.t(to.meta.titleKey)} - NetDesk` : to.meta?.title || 'NetDesk'
   if (typeof document !== 'undefined') document.title = title
 
   next()

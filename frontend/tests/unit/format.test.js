@@ -50,25 +50,31 @@ describe('fmtRelative', () => {
   it('reports seconds just under the 45s boundary', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-15T12:00:44.000Z'))
-    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre par sekundi')
+    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 44 sekunde')
   })
 
   it('reports minutes once past the 45s boundary', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-15T12:01:00.000Z'))
-    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 1 min')
+    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 1 minuta')
   })
 
   it('reports hours once past 60 minutes', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-15T14:00:00.000Z'))
-    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 2 h')
+    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 2 sata')
   })
 
   it('reports days once past 24 hours', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-17T12:00:00.000Z'))
-    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 2 d')
+    expect(fmtRelative('2026-01-15T12:00:00.000Z')).toBe('pre 2 dana')
+  })
+
+  it('supports an explicit English locale', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-15T14:00:00.000Z'))
+    expect(fmtRelative('2026-01-15T12:00:00.000Z', 'en')).toBe('2 hours ago')
   })
 })
 

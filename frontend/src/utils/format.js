@@ -11,19 +11,28 @@ export function fmtDateOnly(d) {
   return isNaN(dt) ? '—' : dt.toLocaleDateString()
 }
 
-export function fmtRelative(d) {
+// Intl.RelativeTimeFormat lokalizuje "pre X" formulaciju sam (npr. srpski
+// padeži "pre 2 minuta" vs "pre 5 minuta", ili engleski "2 minutes ago") -
+// nema potrebe za ručnim t() ključevima po jedinici vremena. `locale` je
+// i18n.global.locale.value ('sr'/'en') iz pozivaoca (Vue komponenta).
+// 'sr-Latn' (ne golo 'sr') - bez toga Intl vrati ćirilicu, van stila
+// ostatka (latiničnog) interfejsa. numeric: 'always' - bez toga Intl za
+// male vrednosti vraća idiomatske reči ("juče", "prekjuče") umesto broja,
+// nekonzistentno sa ostatkom formata.
+export function fmtRelative(d, locale = 'sr') {
   if (!d) return '—'
   const t = new Date(d).getTime()
   if (isNaN(t)) return '—'
-  const diff = Date.now() - t
-  const s = Math.floor(diff / 1000)
-  if (s < 45) return 'pre par sekundi'
-  const m = Math.floor(s / 60)
-  if (m < 60) return `pre ${m} min`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `pre ${h} h`
-  const days = Math.floor(h / 24)
-  return `pre ${days} d`
+  const diffSec = Math.round((t - Date.now()) / 1000)
+  const rtf = new Intl.RelativeTimeFormat(locale === 'sr' ? 'sr-Latn' : locale, { numeric: 'always' })
+  const abs = Math.abs(diffSec)
+  if (abs < 45) return rtf.format(diffSec, 'second')
+  const diffMin = Math.round(diffSec / 60)
+  if (Math.abs(diffMin) < 60) return rtf.format(diffMin, 'minute')
+  const diffHour = Math.round(diffMin / 60)
+  if (Math.abs(diffHour) < 24) return rtf.format(diffHour, 'hour')
+  const diffDay = Math.round(diffHour / 24)
+  return rtf.format(diffDay, 'day')
 }
 
 export function fmtGb(n) {

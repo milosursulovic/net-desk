@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
@@ -22,6 +23,7 @@ import PDSUUpdates from '@/components/pdsu/PDSUUpdates.vue'
 import PDSUPrinters from '@/components/pdsu/PDSUPrinters.vue'
 import PDSUFlagged from '@/components/pdsu/PDSUFlagged.vue'
 
+const { t } = useI18n()
 const { toast, showToast } = useToast()
 const site = useCurrentSite()
 
@@ -53,41 +55,41 @@ const printers = computed(() => stats.value?.printers ?? {})
 
 const searchCategories = ['software', 'drivers', 'services', 'updates', 'printers']
 
-const searchCategoryLabels = {
-  software: 'Programi',
-  drivers: 'Drajveri',
-  services: 'Servisi',
-  updates: 'Updates',
-  printers: 'Štampači',
-}
+const searchCategoryLabels = computed(() => ({
+  software: t('pdsu.tabSoftware'),
+  drivers: t('pdsu.tabDrivers'),
+  services: t('pdsu.tabServices'),
+  updates: t('pdsu.tabUpdates'),
+  printers: t('nav.printers'),
+}))
 
-const searchColumnsMap = {
+const searchColumnsMap = computed(() => ({
   software: [
-    { label: 'Program', key: 'displayName' },
-    { label: 'Verzija', key: 'displayVersion' },
-    { label: 'Izdavač', key: 'publisher' },
+    { label: t('pdsu.colProgram'), key: 'displayName' },
+    { label: t('pdsu.colVersion'), key: 'displayVersion' },
+    { label: t('pdsu.colPublisher'), key: 'publisher' },
   ],
   drivers: [
-    { label: 'Uređaj', key: 'deviceName' },
-    { label: 'Verzija drajvera', key: 'driverVersion' },
-    { label: 'Proizvođač', key: 'manufacturer' },
+    { label: t('pdsu.colDevice'), key: 'deviceName' },
+    { label: t('pdsu.colDriverVersion'), key: 'driverVersion' },
+    { label: t('printers.manufacturer'), key: 'manufacturer' },
   ],
   services: [
-    { label: 'Naziv', key: 'displayName' },
-    { label: 'Status', key: 'state' },
-    { label: 'Način pokretanja', key: 'startMode' },
+    { label: t('groups.colName'), key: 'displayName' },
+    { label: t('home.colStatus'), key: 'state' },
+    { label: t('pdsu.colStartMode'), key: 'startMode' },
   ],
   updates: [
     { label: 'KB', key: 'hotfixId' },
-    { label: 'Opis', key: 'description' },
-    { label: 'Datum instalacije', key: 'installedOn' },
+    { label: t('pdsu.colDescription'), key: 'description' },
+    { label: t('pdsu.colInstallDate'), key: 'installedOn' },
   ],
   printers: [
-    { label: 'Naziv', key: 'name' },
-    { label: 'Drajver', key: 'driverName' },
-    { label: 'Status', key: 'status' },
+    { label: t('groups.colName'), key: 'name' },
+    { label: t('pdsu.colDriver'), key: 'driverName' },
+    { label: t('home.colStatus'), key: 'status' },
   ],
-}
+}))
 
 const searchResults = ref({ software: [], drivers: [], services: [], updates: [], printers: [] })
 const searchLoading = ref(false)
@@ -150,12 +152,12 @@ async function flagSoftware(item) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ displayName: item.displayName, publisher: item.publisher }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju programa'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorFlagSoftware')))
     await fetchFlagged()
-    showToast('Program označen kao neželjen')
+    showToast(t('pdsu.softwareFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju programa', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorFlagSoftware'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -166,12 +168,12 @@ async function flagService(item) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: item.name, displayName: item.displayName }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju servisa'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorFlagService')))
     await fetchFlagged()
-    showToast('Servis označen kao neželjen')
+    showToast(t('pdsu.serviceFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju servisa', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorFlagService'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -182,48 +184,48 @@ async function flagDriver(item) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceName: item.deviceName, driverProviderName: item.driverProviderName }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri označavanju drajvera'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorFlagDriver')))
     await fetchFlagged()
-    showToast('Drajver označen kao neželjen')
+    showToast(t('pdsu.driverFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri označavanju drajvera', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorFlagDriver'), { kind: 'error', duration: 3000 })
   }
 }
 
 async function removeFlaggedSoftware(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/software/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorRemoveFlag')))
     await fetchFlagged()
-    showToast('Uklonjeno sa liste neželjenih')
+    showToast(t('pdsu.removedFromFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorRemoveFlag'), { kind: 'error', duration: 3000 })
   }
 }
 
 async function removeFlaggedService(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/services/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorRemoveFlag')))
     await fetchFlagged()
-    showToast('Uklonjeno sa liste neželjenih')
+    showToast(t('pdsu.removedFromFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorRemoveFlag'), { kind: 'error', duration: 3000 })
   }
 }
 
 async function removeFlaggedDriver(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/flagged/drivers/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju'))
+    if (!res.ok) throw new Error(await parseError(res, t('pdsu.errorRemoveFlag')))
     await fetchFlagged()
-    showToast('Uklonjeno sa liste neželjenih')
+    showToast(t('pdsu.removedFromFlagged'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri uklanjanju', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('pdsu.errorRemoveFlag'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -231,8 +233,8 @@ function cellValue(item, key) {
   const value = item?.[key]
   if (value == null || value === '') return '—'
   if (key === 'installedOn') return fmtDateSr(value)
-  if (key === 'state') return stateLabel(value)
-  if (key === 'startMode') return startModeLabel(value)
+  if (key === 'state') return stateLabel(value, t)
+  if (key === 'startMode') return startModeLabel(value, t)
   return value
 }
 
@@ -289,7 +291,7 @@ async function loadStats() {
     const response = await fetchWithAuth(`/api/protected/pdsu-analytics/stats?site=${site.value}`)
 
     if (!response.ok) {
-      const message = await parseError(response, 'Greška prilikom učitavanja PDSU analitike.')
+      const message = await parseError(response, t('pdsu.errorLoad'))
 
       throw new Error(message)
     }
@@ -301,7 +303,7 @@ async function loadStats() {
   } catch (err) {
     console.error('PDSU analytics error:', err)
 
-    error.value = err?.message || 'Greška prilikom učitavanja PDSU analitike.'
+    error.value = err?.message || t('pdsu.errorLoad')
   } finally {
     loading.value = false
   }
@@ -413,50 +415,49 @@ watch(site, loadStats)
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">PDSU analitika</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('routes.pdsuAnalytics') }}</h1>
 
         <p class="text-sm text-ink-muted mt-1">
-          Centralni pregled programa, drajvera, servisa, Windows update podataka i štampača.
-          Prikazani su samo računari (Aparati su isključeni iz analitike).
+          {{ t('pdsu.subtitle') }}
         </p>
       </div>
 
       <div class="flex flex-nowrap items-center gap-2 shrink-0">
         <AppButton variant="secondary" class="whitespace-nowrap" :disabled="exporting || loading || !stats" @click="exportXlsx">
           <span v-if="exporting" class="pdsu-spinner" role="status" aria-hidden="true" />
-          <span>{{ exporting ? 'Izvoz...' : 'Izvezi XLSX' }}</span>
+          <span>{{ exporting ? t('pdsu.exporting') : t('home.exportXlsx') }}</span>
         </AppButton>
 
         <AppButton variant="primary" class="whitespace-nowrap" :disabled="loading" @click="loadStats">
           <span v-if="loading" class="pdsu-spinner" role="status" aria-hidden="true" />
-          <span>{{ loading ? 'Osvežavanje...' : 'Osveži' }}</span>
+          <span>{{ loading ? t('pdsu.refreshing') : t('metadata.refresh') }}</span>
         </AppButton>
       </div>
     </div>
 
     <div v-if="loading && !stats" class="pdsu-state-card">
       <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
-        <span class="sr-only">Učitavanje...</span>
+        <span class="sr-only">{{ t('pdsu.loadingEllipsis') }}</span>
       </div>
 
-      <h2 class="text-lg font-bold text-ink mb-2">Učitavanje PDSU analitike</h2>
+      <h2 class="text-lg font-bold text-ink mb-2">{{ t('pdsu.loadingTitle') }}</h2>
 
       <p class="text-ink-muted mb-0">
-        Prikupljamo statistiku programa, drajvera, servisa i update podataka.
+        {{ t('pdsu.loadingDescription') }}
       </p>
     </div>
 
     <div v-else-if="error && !stats" class="pdsu-state-card">
       <div class="pdsu-error-icon">!</div>
 
-      <h2 class="text-lg font-bold text-ink mb-2">Podaci nisu učitani</h2>
+      <h2 class="text-lg font-bold text-ink mb-2">{{ t('pdsu.dataNotLoaded') }}</h2>
 
       <p class="text-ink-muted mb-4">
         {{ error }}
       </p>
 
       <AppButton variant="primary" :disabled="loading" @click="loadStats">
-        Pokušaj ponovo
+        {{ t('pdsu.tryAgain') }}
       </AppButton>
     </div>
 
@@ -471,14 +472,14 @@ watch(site, loadStats)
             v-model="search"
             type="text"
             class="app-input w-full"
-            placeholder="Pretraži programe, drajvere, servise, update-e i štampače u celoj bazi..."
+            :placeholder="t('pdsu.searchPlaceholder')"
           />
 
           <button
             v-if="search"
             type="button"
             class="shrink-0 text-ink-muted hover:text-ink"
-            title="Obriši pretragu"
+            :title="t('printers.clearSearchAriaLabel')"
             @click="search = ''"
           >
             <NavIcon name="x" />
@@ -490,16 +491,16 @@ watch(site, loadStats)
       <div v-if="search.trim()">
         <div v-if="searchLoading" class="pdsu-state-card mb-4">
           <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
-            <span class="sr-only">Pretraživanje...</span>
+            <span class="sr-only">{{ t('pdsu.searchingEllipsis') }}</span>
           </div>
-          <p class="text-ink-muted mb-0">Pretražujem programe, drajvere, servise, update-e i štampače...</p>
+          <p class="text-ink-muted mb-0">{{ t('pdsu.searchingDescription') }}</p>
         </div>
 
         <template v-else>
           <div v-if="searchTotalCount === 0" class="pdsu-state-card mb-4">
-            <h2 class="text-lg font-bold text-ink mb-2">Nema rezultata</h2>
+            <h2 class="text-lg font-bold text-ink mb-2">{{ t('pdsu.noResults') }}</h2>
             <p class="text-ink-muted mb-0">
-              Ništa ne odgovara pojmu "{{ search.trim() }}" ni u jednoj kategoriji.
+              {{ t('pdsu.noResultsForQuery', { query: search.trim() }) }}
             </p>
           </div>
 
@@ -521,9 +522,9 @@ watch(site, loadStats)
                 <table class="pdsu-table">
                   <thead>
                     <tr>
-                      <th>Računar</th>
+                      <th>{{ t('metadata.colComputer') }}</th>
                       <th>IP</th>
-                      <th>Odeljenje</th>
+                      <th>{{ t('common.department') }}</th>
                       <th v-for="col in searchColumnsMap[cat]" :key="col.key">{{ col.label }}</th>
                       <th v-if="cat === 'software' || cat === 'services' || cat === 'drivers'"></th>
                     </tr>
@@ -532,7 +533,7 @@ watch(site, loadStats)
                   <tbody>
                     <tr v-for="(item, idx) in searchResults[cat]" :key="idx">
                       <td class="font-semibold text-ink">
-                        {{ item.computerName || 'Nepoznat računar' }}
+                        {{ item.computerName || t('pdsu.unknownComputer') }}
                       </td>
 
                       <td>
@@ -547,7 +548,7 @@ watch(site, loadStats)
 
                       <td v-if="cat === 'software'" class="text-right">
                         <span v-if="isSoftwareFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
-                          <NavIcon name="check" /> Već označeno
+                          <NavIcon name="check" /> {{ t('pdsu.alreadyFlagged') }}
                         </span>
                         <button
                           v-else
@@ -555,13 +556,13 @@ watch(site, loadStats)
                           class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagSoftware(item)"
                         >
-                          <NavIcon name="ban" /> Označi kao neželjen
+                          <NavIcon name="ban" /> {{ t('pdsu.markAsUnwanted') }}
                         </button>
                       </td>
 
                       <td v-else-if="cat === 'services'" class="text-right">
                         <span v-if="isServiceFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
-                          <NavIcon name="check" /> Već označeno
+                          <NavIcon name="check" /> {{ t('pdsu.alreadyFlagged') }}
                         </span>
                         <button
                           v-else
@@ -569,13 +570,13 @@ watch(site, loadStats)
                           class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagService(item)"
                         >
-                          <NavIcon name="ban" /> Označi kao neželjen
+                          <NavIcon name="ban" /> {{ t('pdsu.markAsUnwanted') }}
                         </button>
                       </td>
 
                       <td v-else-if="cat === 'drivers'" class="text-right">
                         <span v-if="isDriverFlagged(item)" class="pdsu-badge bg-bad text-white inline-flex items-center gap-1">
-                          <NavIcon name="check" /> Već označeno
+                          <NavIcon name="check" /> {{ t('pdsu.alreadyFlagged') }}
                         </span>
                         <button
                           v-else
@@ -583,7 +584,7 @@ watch(site, loadStats)
                           class="inline-flex items-center gap-1 text-bad hover:underline text-sm whitespace-nowrap"
                           @click="flagDriver(item)"
                         >
-                          <NavIcon name="ban" /> Označi kao neželjen
+                          <NavIcon name="ban" /> {{ t('pdsu.markAsUnwanted') }}
                         </button>
                       </td>
                     </tr>
@@ -597,7 +598,7 @@ watch(site, loadStats)
 
       <!-- Normalan dashboard prikaz kad se ne pretražuje -->
       <template v-else>
-        <nav class="pdsu-tabs" aria-label="PDSU kategorije">
+        <nav class="pdsu-tabs" :aria-label="t('pdsu.categoriesAriaLabel')">
           <button
             type="button"
             class="pdsu-tab"
@@ -605,7 +606,7 @@ watch(site, loadStats)
             @click="activeTab = 'overview'"
           >
             <span class="pdsu-tab-icon">◫</span>
-            <span>Pregled</span>
+            <span>{{ t('metadata.overview') }}</span>
           </button>
 
           <button
@@ -615,7 +616,7 @@ watch(site, loadStats)
             @click="activeTab = 'software'"
           >
             <span class="pdsu-tab-icon">P</span>
-            <span>Programi</span>
+            <span>{{ t('pdsu.tabSoftware') }}</span>
           </button>
 
           <button
@@ -625,7 +626,7 @@ watch(site, loadStats)
             @click="activeTab = 'drivers'"
           >
             <span class="pdsu-tab-icon">D</span>
-            <span>Drajveri</span>
+            <span>{{ t('pdsu.tabDrivers') }}</span>
           </button>
 
           <button
@@ -635,7 +636,7 @@ watch(site, loadStats)
             @click="activeTab = 'services'"
           >
             <span class="pdsu-tab-icon">S</span>
-            <span>Servisi</span>
+            <span>{{ t('pdsu.tabServices') }}</span>
           </button>
 
           <button
@@ -645,7 +646,7 @@ watch(site, loadStats)
             @click="activeTab = 'updates'"
           >
             <span class="pdsu-tab-icon">U</span>
-            <span>Updates</span>
+            <span>{{ t('pdsu.tabUpdates') }}</span>
           </button>
 
           <button
@@ -655,7 +656,7 @@ watch(site, loadStats)
             @click="activeTab = 'printers'"
           >
             <span class="pdsu-tab-icon">Š</span>
-            <span>Štampači</span>
+            <span>{{ t('nav.printers') }}</span>
           </button>
 
           <button
@@ -665,7 +666,7 @@ watch(site, loadStats)
             @click="activeTab = 'flagged'"
           >
             <span class="pdsu-tab-icon"><NavIcon name="alert-triangle" /></span>
-            <span>Neželjeni</span>
+            <span>{{ t('pdsu.tabFlagged') }}</span>
           </button>
         </nav>
 

@@ -474,7 +474,7 @@
             </div>
             <div>
               <span class="text-ink-muted">{{ t('agents.lastHeartbeat') }}:</span>
-              {{ fmtRelative(a.lastHeartbeatAt) }}
+              {{ fmtRelative(a.lastHeartbeatAt, locale) }}
               <span class="font-mono text-xs text-ink-muted">({{ fmtDate(a.lastHeartbeatAt) }})</span>
             </div>
             <div>

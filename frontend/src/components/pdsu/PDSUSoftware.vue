@@ -1,7 +1,9 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 
+const { t } = useI18n()
 const props = defineProps({
   software: {
     type: Object,
@@ -44,47 +46,45 @@ const maxPublisherInstallations = computed(() => {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Ukupno instalacija</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.totalInstallations') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalInstallations) }}
           </div>
 
           <div class="text-xs text-ink-muted mt-2">
-            Na
-            {{ formatNumber(stats.computersWithSoftware) }}
-            računara
+            {{ t('pdsu.onComputersCount', { count: formatNumber(stats.computersWithSoftware) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Jedinstvenih programa</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.uniqueSoftware') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniqueSoftware) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Različitih naziva programa</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.distinctSoftwareNames') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.avgPerComputer') }}</div>
 
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.avgPerComputer, 1) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Instalacija po računaru</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.installationsPerComputer') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Bez izdavača</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.withoutPublisher') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -93,13 +93,13 @@ const maxPublisherInstallations = computed(() => {
             {{ formatNumber(stats.withoutPublisher) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Zapisa bez publisher podatka</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.recordsWithoutPublisher') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Bez verzije</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.withoutVersion') }}</div>
 
           <div
             class="text-2xl font-bold tracking-tight"
@@ -108,7 +108,7 @@ const maxPublisherInstallations = computed(() => {
             {{ formatNumber(stats.withoutVersion) }}
           </div>
 
-          <div class="text-xs text-ink-muted mt-2">Zapisa bez verzije programa</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.recordsWithoutVersion') }}</div>
         </div>
       </div>
     </div>
@@ -118,7 +118,7 @@ const maxPublisherInstallations = computed(() => {
       <div class="p-4">
         <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-xs text-ink-muted">Najstariji PDSU zapis programa</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.oldestSoftwareRecord') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.oldestInventoryDate) }}
@@ -126,7 +126,7 @@ const maxPublisherInstallations = computed(() => {
           </div>
 
           <div class="md:text-right">
-            <div class="text-xs text-ink-muted">Najnoviji PDSU zapis programa</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.newestSoftwareRecord') }}</div>
 
             <div class="font-semibold text-ink">
               {{ formatDate(stats.newestInventoryDate) }}
@@ -141,14 +141,14 @@ const maxPublisherInstallations = computed(() => {
       <div class="xl:col-span-7">
         <div class="pdsu-card h-full">
           <div class="pdsu-card-header">
-            <h5 class="pdsu-card-title">Najzastupljeniji programi</h5>
+            <h5 class="pdsu-card-title">{{ t('pdsu.topSoftwareTitle') }}</h5>
 
-            <div class="text-xs text-ink-muted">Rangirano prema broju računara</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.rankedByComputerCount') }}</div>
           </div>
 
           <div class="p-4">
             <div v-if="topSoftware.length === 0" class="text-ink-muted text-center py-4">
-              Nema podataka o programima.
+              {{ t('pdsu.noSoftwareData') }}
             </div>
 
             <div
@@ -171,7 +171,7 @@ const maxPublisherInstallations = computed(() => {
                     {{ formatNumber(item.computers) }}
                   </span>
 
-                  <span class="text-ink-muted text-xs"> računara </span>
+                  <span class="text-ink-muted text-xs"> {{ t('pdsu.computersSuffix') }} </span>
                 </div>
               </div>
 
@@ -187,12 +187,12 @@ const maxPublisherInstallations = computed(() => {
               <div class="flex items-center justify-between mt-1 text-xs text-ink-muted">
                 <span>
                   {{ formatNumber(item.installations) }}
-                  instalacija
+                  {{ t('pdsu.installationsSuffix') }}
                 </span>
 
                 <span>
                   {{ formatNumber(item.versions) }}
-                  verzija
+                  {{ t('pdsu.versionsSuffix') }}
                 </span>
               </div>
             </div>
@@ -203,14 +203,14 @@ const maxPublisherInstallations = computed(() => {
       <div class="xl:col-span-5">
         <div class="pdsu-card h-full">
           <div class="pdsu-card-header">
-            <h5 class="pdsu-card-title">Najzastupljeniji izdavači</h5>
+            <h5 class="pdsu-card-title">{{ t('pdsu.topPublishersTitle') }}</h5>
 
-            <div class="text-xs text-ink-muted">Prema ukupnom broju instalacija</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.rankedByInstallCount') }}</div>
           </div>
 
           <div class="p-4">
             <div v-if="topPublishers.length === 0" class="text-ink-muted text-center py-4">
-              Nema podataka o izdavačima.
+              {{ t('pdsu.noPublisherData') }}
             </div>
 
             <div
@@ -241,12 +241,12 @@ const maxPublisherInstallations = computed(() => {
               <div class="flex items-center justify-between mt-1 text-xs text-ink-muted">
                 <span>
                   {{ formatNumber(item.computers) }}
-                  računara
+                  {{ t('pdsu.computersSuffix') }}
                 </span>
 
                 <span>
                   {{ formatNumber(item.softwareCount) }}
-                  programa
+                  {{ t('pdsu.softwareSuffix') }}
                 </span>
               </div>
             </div>
@@ -259,10 +259,10 @@ const maxPublisherInstallations = computed(() => {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Programi sa više verzija</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.multipleVersionsTitle') }}</h5>
 
           <div class="text-xs text-ink-muted">
-            Programi kod kojih je pronađeno više različitih verzija
+            {{ t('pdsu.multipleVersionsHint') }}
           </div>
         </div>
 
@@ -275,10 +275,10 @@ const maxPublisherInstallations = computed(() => {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Program</th>
-              <th class="text-center">Broj verzija</th>
-              <th class="text-center">Računari</th>
-              <th>Pronađene verzije</th>
+              <th>{{ t('pdsu.colProgram') }}</th>
+              <th class="text-center">{{ t('pdsu.colVersionCount') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
+              <th>{{ t('pdsu.colFoundVersions') }}</th>
             </tr>
           </thead>
 
@@ -309,14 +309,14 @@ const maxPublisherInstallations = computed(() => {
                   </span>
 
                   <span v-if="splitValues(item.versions).length === 0" class="text-ink-muted">
-                    Nema podatka
+                    {{ t('pdsu.noData') }}
                   </span>
                 </div>
               </td>
             </tr>
 
             <tr v-if="multipleVersions.length === 0">
-              <td colspan="4" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="4" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -327,9 +327,9 @@ const maxPublisherInstallations = computed(() => {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Retki programi</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.rareSoftwareTitle') }}</h5>
 
-          <div class="text-xs text-ink-muted">Programi pronađeni na najviše dva računara</div>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.rareSoftwareHint') }}</div>
         </div>
 
         <span class="pdsu-badge bg-ink-muted text-white">
@@ -341,11 +341,11 @@ const maxPublisherInstallations = computed(() => {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Program</th>
-              <th>Verzija</th>
-              <th>Izdavač</th>
-              <th class="text-center">Računari</th>
-              <th>Pronađen na</th>
+              <th>{{ t('pdsu.colProgram') }}</th>
+              <th>{{ t('pdsu.colVersion') }}</th>
+              <th>{{ t('pdsu.colPublisher') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
+              <th>{{ t('pdsu.foundOn') }}</th>
             </tr>
           </thead>
 
@@ -360,7 +360,7 @@ const maxPublisherInstallations = computed(() => {
               </td>
 
               <td>
-                {{ item.publisher || 'Nepoznat izdavač' }}
+                {{ item.publisher || t('pdsu.unknownPublisher') }}
               </td>
 
               <td class="text-center">
@@ -380,14 +380,14 @@ const maxPublisherInstallations = computed(() => {
                   </span>
 
                   <span v-if="splitValues(item.computerNames).length === 0" class="text-ink-muted">
-                    Nema podatka
+                    {{ t('pdsu.noData') }}
                   </span>
                 </div>
               </td>
             </tr>
 
             <tr v-if="rareSoftware.length === 0">
-              <td colspan="5" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="5" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -398,9 +398,9 @@ const maxPublisherInstallations = computed(() => {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between">
         <div>
-          <h5 class="pdsu-card-title">Računari sa najviše programa</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.computersWithMostSoftware') }}</h5>
 
-          <div class="text-xs text-ink-muted">Rangirano prema broju instaliranih programa</div>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.rankedByInstalledCount') }}</div>
         </div>
 
         <span class="pdsu-badge bg-ink text-white">
@@ -414,11 +414,11 @@ const maxPublisherInstallations = computed(() => {
           <thead>
             <tr>
               <th>#</th>
-              <th>Računar</th>
-              <th>IP adresa</th>
-              <th>Odeljenje</th>
-              <th class="text-center">Broj programa</th>
-              <th>Datum inventara</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colIpAddress') }}</th>
+              <th>{{ t('common.department') }}</th>
+              <th class="text-center">{{ t('pdsu.colSoftwareCount') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
 
@@ -432,7 +432,7 @@ const maxPublisherInstallations = computed(() => {
               </td>
 
               <td class="font-semibold text-ink">
-                {{ item.computerName || 'Nepoznat računar' }}
+                {{ item.computerName || t('pdsu.unknownComputer') }}
               </td>
 
               <td>
@@ -455,7 +455,7 @@ const maxPublisherInstallations = computed(() => {
             </tr>
 
             <tr v-if="computersWithMostSoftware.length === 0">
-              <td colspan="6" class="text-center text-ink-muted py-4">Nema podataka.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">{{ t('pdsu.noData') }}</td>
             </tr>
           </tbody>
         </table>

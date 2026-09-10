@@ -1,11 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { downloadFromResponse } from '@/utils/download.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useToast } from '@/composables/useToast.js'
 import { usePdsuFormatters } from '@/composables/usePdsuFormatters.js'
 import AppButton from '@/components/AppButton.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   printers: {
@@ -68,7 +71,7 @@ async function exportActivePrintersPdf() {
     )
   } catch (err) {
     console.error('Export aktivnih štampača greška:', err)
-    showToast('Greška pri izvozu PDF-a', { kind: 'error', duration: 3000 })
+    showToast(t('pdsu.exportPdfError'), { kind: 'error', duration: 3000 })
   } finally {
     exportingActivePrintersPdf.value = false
   }
@@ -81,56 +84,56 @@ async function exportActivePrintersPdf() {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-4">
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Ukupno štampača</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.totalPrinters') }}</div>
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.totalPrinters) }}
           </div>
           <div class="text-xs text-ink-muted mt-2">
-            Na {{ formatNumber(stats.computersWithPrinters) }} računara
+            {{ t('pdsu.onComputersCount', { count: formatNumber(stats.computersWithPrinters) }) }}
           </div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Jedinstveni štampači</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.uniquePrintersTitle') }}</div>
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.uniquePrinters) }}
           </div>
-          <div class="text-xs text-ink-muted mt-2">Različitih naziva štampača</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.distinctPrinterNames') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Prosek po računaru</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.avgPerComputer') }}</div>
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.avgPerComputer) }}
           </div>
-          <div class="text-xs text-ink-muted mt-2">Štampača po računaru sa štampačem</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.printersPerComputerWithPrinter') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Podrazumevani</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.defaultLabel') }}</div>
           <div class="text-2xl font-bold tracking-tight text-ink">
             {{ formatNumber(stats.defaultCount) }}
           </div>
-          <div class="text-xs text-ink-muted mt-2">Označeni kao podrazumevani</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.markedAsDefault') }}</div>
         </div>
       </div>
 
       <div class="pdsu-card">
         <div class="p-4">
-          <div class="text-xs text-ink-muted mb-1">Problematičan status</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.problemStatusTitle') }}</div>
           <div
             class="text-2xl font-bold tracking-tight"
             :class="Number(stats.problemStatus) > 0 ? 'text-bad' : 'text-good'"
           >
             {{ formatNumber(stats.problemStatus) }}
           </div>
-          <div class="text-xs text-ink-muted mt-2">Status različit od OK/Idle</div>
+          <div class="text-xs text-ink-muted mt-2">{{ t('pdsu.statusDifferentFromOkIdle') }}</div>
         </div>
       </div>
     </div>
@@ -140,11 +143,11 @@ async function exportActivePrintersPdf() {
       <div class="p-4">
         <div class="flex flex-col justify-between gap-3 md:flex-row">
           <div>
-            <div class="text-xs text-ink-muted">Najstariji PDSU zapis štampača</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.oldestPrinterRecord') }}</div>
             <div class="font-semibold text-ink">{{ formatDate(stats.oldestInventoryDate) }}</div>
           </div>
           <div class="md:text-right">
-            <div class="text-xs text-ink-muted">Najnoviji PDSU zapis štampača</div>
+            <div class="text-xs text-ink-muted">{{ t('pdsu.newestPrinterRecord') }}</div>
             <div class="font-semibold text-ink">{{ formatDate(stats.newestInventoryDate) }}</div>
           </div>
         </div>
@@ -155,12 +158,9 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Aktivni štampač po računaru</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.activePrinterPerComputerTitle') }}</h5>
           <div class="text-xs text-ink-muted">
-            Svi sinhronizovani štampači po računaru - dosta mašina nema nijedan štampač
-            markiran kao podrazumevani, pa se ovde prikazuju svi da nijedan računar ne bude
-            izostavljen. "Podrazumevani" označava Windows-ov Default štampač, ako postoji.
-            Ovo je isto što se izvozi u "Aktivni štampači" list pri XLSX izvozu.
+            {{ t('pdsu.activePrinterPerComputerHint') }}
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -169,7 +169,7 @@ async function exportActivePrintersPdf() {
             :disabled="exportingActivePrintersPdf || activePerComputer.length === 0"
             @click="exportActivePrintersPdf"
           >
-            {{ exportingActivePrintersPdf ? 'Izvoz…' : 'Izvezi PDF' }}
+            {{ exportingActivePrintersPdf ? t('pdsu.exporting') : t('pdsu.exportPdfLabel') }}
           </AppButton>
           <span class="pdsu-badge bg-accent text-white">{{ formatNumber(activePerComputer.length) }}</span>
         </div>
@@ -179,37 +179,37 @@ async function exportActivePrintersPdf() {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Računar</th>
+              <th>{{ t('metadata.colComputer') }}</th>
               <th>IP</th>
-              <th>Odeljenje</th>
-              <th>Štampač</th>
-              <th>Proizvođač</th>
-              <th>Drajver</th>
-              <th class="text-center">Status</th>
-              <th>Datum inventara</th>
+              <th>{{ t('common.department') }}</th>
+              <th>{{ t('pdsu.colPrinter') }}</th>
+              <th>{{ t('printers.manufacturer') }}</th>
+              <th>{{ t('pdsu.colDriver') }}</th>
+              <th class="text-center">{{ t('pdsu.colStatus') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, index) in activePerComputer" :key="item.ipEntryId ? `${item.ipEntryId}-${item.name}` : `${item.ip}-${index}`">
-              <td class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</td>
+              <td class="font-semibold text-ink">{{ item.computerName || t('pdsu.unknownComputer') }}</td>
               <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
               <td>{{ item.department || '—' }}</td>
               <td>
                 <div>{{ item.name || '—' }}</div>
-                <span v-if="item.isDefault" class="text-xs text-accent">Podrazumevani</span>
+                <span v-if="item.isDefault" class="text-xs text-accent">{{ t('pdsu.defaultLabel') }}</span>
               </td>
-              <td>{{ item.manufacturer || 'Nepoznato' }}</td>
+              <td>{{ item.manufacturer || t('pdsu.stateUnknown') }}</td>
               <td>{{ item.driverName || '—' }}</td>
               <td class="text-center">
                 <span class="pdsu-badge" :class="statusBadgeClass(item.status)">
-                  {{ item.status || 'Nepoznato' }}
+                  {{ item.status || t('pdsu.stateUnknown') }}
                 </span>
               </td>
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="activePerComputer.length === 0">
               <td colspan="8" class="text-center text-ink-muted py-4">
-                Nema sinhronizovanih štampača.
+                {{ t('pdsu.noSyncedPrinters') }}
               </td>
             </tr>
           </tbody>
@@ -221,10 +221,9 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Aktivni štampači po proizvođaču</h5>
+          <h5 class="pdsu-card-title">{{ t('pdsu.activePrintersByManufacturerTitle') }}</h5>
           <div class="text-xs text-ink-muted">
-            Grupisano po brendu (izvedeno iz naziva drajvera/štampača - Win32_Printer nema strukturiran
-            proizvođač podatak). Broji sve sinhronizovane štampače, ne samo podrazumevane.
+            {{ t('pdsu.activePrintersByManufacturerHint') }}
           </div>
         </div>
         <span class="pdsu-badge bg-ink text-white">{{ formatNumber(groupedByManufacturer.length) }}</span>
@@ -234,9 +233,9 @@ async function exportActivePrintersPdf() {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Proizvođač</th>
-              <th class="text-center">Štampača</th>
-              <th>Računari</th>
+              <th>{{ t('printers.manufacturer') }}</th>
+              <th class="text-center">{{ t('pdsu.colPrinterCount') }}</th>
+              <th>{{ t('pdsu.colComputers') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -258,7 +257,7 @@ async function exportActivePrintersPdf() {
               </td>
             </tr>
             <tr v-if="groupedByManufacturer.length === 0">
-              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -269,8 +268,8 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Štampači sa problematičnim statusom</h5>
-          <div class="text-xs text-ink-muted">Status različit od OK/Idle/Unknown - potencijalno zahtevaju proveru</div>
+          <h5 class="pdsu-card-title">{{ t('pdsu.printersWithProblemStatusTitle') }}</h5>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.printersWithProblemStatusHint') }}</div>
         </div>
         <span class="pdsu-badge" :class="problemStatus.length > 0 ? 'bg-bad text-white' : 'bg-good text-white'">
           {{ formatNumber(problemStatus.length) }}
@@ -281,12 +280,12 @@ async function exportActivePrintersPdf() {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Štampač</th>
-              <th>Računar</th>
-              <th>Drajver</th>
-              <th>Port</th>
-              <th class="text-center">Status</th>
-              <th>Datum inventara</th>
+              <th>{{ t('pdsu.colPrinter') }}</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colDriver') }}</th>
+              <th>{{ t('pdsu.colPort') }}</th>
+              <th class="text-center">{{ t('pdsu.colStatus') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -295,11 +294,11 @@ async function exportActivePrintersPdf() {
               :key="item.id ?? `${item.ipEntryId}-${item.name}-${index}`"
             >
               <td>
-                <div class="font-semibold text-ink">{{ item.name || 'Nepoznat štampač' }}</div>
-                <span v-if="item.isDefault" class="text-xs text-accent">Podrazumevani</span>
+                <div class="font-semibold text-ink">{{ item.name || t('pdsu.unknownPrinter') }}</div>
+                <span v-if="item.isDefault" class="text-xs text-accent">{{ t('pdsu.defaultLabel') }}</span>
               </td>
               <td>
-                <div class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</div>
+                <div class="font-semibold text-ink">{{ item.computerName || t('pdsu.unknownComputer') }}</div>
                 <div><code class="pdsu-code">{{ item.ip || '—' }}</code></div>
                 <div class="text-xs text-ink-muted">{{ item.department || '—' }}</div>
               </td>
@@ -307,13 +306,13 @@ async function exportActivePrintersPdf() {
               <td>{{ item.portName || '—' }}</td>
               <td class="text-center">
                 <span class="pdsu-badge" :class="statusBadgeClass(item.status)">
-                  {{ item.status || 'Nepoznato' }}
+                  {{ item.status || t('pdsu.stateUnknown') }}
                 </span>
               </td>
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="problemStatus.length === 0">
-              <td colspan="6" class="text-center text-ink-muted py-4">Nema štampača sa problematičnim statusom.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">{{ t('pdsu.noPrintersWithProblemStatus') }}</td>
             </tr>
           </tbody>
         </table>
@@ -324,8 +323,8 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Najčešći štampači</h5>
-          <div class="text-xs text-ink-muted">Rangirano po broju računara koji imaju konfigurisan taj štampač</div>
+          <h5 class="pdsu-card-title">{{ t('pdsu.mostCommonPrintersTitle') }}</h5>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.rankedByComputersConfigured') }}</div>
         </div>
         <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(topNames.length) }}</span>
       </div>
@@ -335,8 +334,8 @@ async function exportActivePrintersPdf() {
           <thead>
             <tr>
               <th>#</th>
-              <th>Štampač</th>
-              <th class="text-center">Računari</th>
+              <th>{{ t('pdsu.colPrinter') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -348,7 +347,7 @@ async function exportActivePrintersPdf() {
               </td>
             </tr>
             <tr v-if="topNames.length === 0">
-              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -359,8 +358,8 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Najčešći drajveri štampača</h5>
-          <div class="text-xs text-ink-muted">Korisno za planiranje ažuriranja drajvera</div>
+          <h5 class="pdsu-card-title">{{ t('pdsu.mostCommonPrinterDriversTitle') }}</h5>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.usefulForDriverUpdates') }}</div>
         </div>
         <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(topDrivers.length) }}</span>
       </div>
@@ -370,9 +369,9 @@ async function exportActivePrintersPdf() {
           <thead>
             <tr>
               <th>#</th>
-              <th>Drajver</th>
-              <th class="text-center">Štampači</th>
-              <th class="text-center">Računari</th>
+              <th>{{ t('pdsu.colDriver') }}</th>
+              <th class="text-center">{{ t('pdsu.colPrinters') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -385,7 +384,7 @@ async function exportActivePrintersPdf() {
               </td>
             </tr>
             <tr v-if="topDrivers.length === 0">
-              <td colspan="4" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="4" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -396,8 +395,8 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Retki štampači</h5>
-          <div class="text-xs text-ink-muted">Štampači pronađeni na malom broju računara</div>
+          <h5 class="pdsu-card-title">{{ t('pdsu.rarePrintersTitle') }}</h5>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.printersFoundOnSmallSet') }}</div>
         </div>
         <span class="pdsu-badge bg-ink-muted text-white">{{ formatNumber(rarePrinters.length) }}</span>
       </div>
@@ -406,9 +405,9 @@ async function exportActivePrintersPdf() {
         <table class="pdsu-table">
           <thead>
             <tr>
-              <th>Štampač</th>
-              <th class="text-center">Računari</th>
-              <th>Pronađen na</th>
+              <th>{{ t('pdsu.colPrinter') }}</th>
+              <th class="text-center">{{ t('pdsu.colComputers') }}</th>
+              <th>{{ t('pdsu.foundOnShort') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -426,12 +425,12 @@ async function exportActivePrintersPdf() {
                   >
                     {{ computer }}
                   </span>
-                  <span v-if="splitValues(item.computerNames).length === 0" class="text-ink-muted">Nema podatka</span>
+                  <span v-if="splitValues(item.computerNames).length === 0" class="text-ink-muted">{{ t('pdsu.noData') }}</span>
                 </div>
               </td>
             </tr>
             <tr v-if="rarePrinters.length === 0">
-              <td colspan="3" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="3" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
@@ -442,8 +441,8 @@ async function exportActivePrintersPdf() {
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
-          <h5 class="pdsu-card-title">Računari sa najviše štampača</h5>
-          <div class="text-xs text-ink-muted">Rangirano prema ukupnom broju konfigurisanih štampača</div>
+          <h5 class="pdsu-card-title">{{ t('pdsu.computersWithMostPrintersTitle') }}</h5>
+          <div class="text-xs text-ink-muted">{{ t('pdsu.rankedByTotalPrintersConfigured') }}</div>
         </div>
         <span class="pdsu-badge bg-ink text-white">Top {{ formatNumber(computersWithMostPrinters.length) }}</span>
       </div>
@@ -453,11 +452,11 @@ async function exportActivePrintersPdf() {
           <thead>
             <tr>
               <th>#</th>
-              <th>Računar</th>
-              <th>IP adresa</th>
-              <th>Odeljenje</th>
-              <th class="text-center">Broj štampača</th>
-              <th>Datum inventara</th>
+              <th>{{ t('metadata.colComputer') }}</th>
+              <th>{{ t('pdsu.colIpAddress') }}</th>
+              <th>{{ t('common.department') }}</th>
+              <th class="text-center">{{ t('pdsu.colPrinterCountFull') }}</th>
+              <th>{{ t('pdsu.colInventoryDate') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -466,7 +465,7 @@ async function exportActivePrintersPdf() {
               :key="item.ipEntryId ?? `${item.ip}-${index}`"
             >
               <td class="text-ink-muted">{{ index + 1 }}</td>
-              <td class="font-semibold text-ink">{{ item.computerName || 'Nepoznat računar' }}</td>
+              <td class="font-semibold text-ink">{{ item.computerName || t('pdsu.unknownComputer') }}</td>
               <td><code class="pdsu-code">{{ item.ip || '—' }}</code></td>
               <td>{{ item.department || '—' }}</td>
               <td class="text-center">
@@ -475,7 +474,7 @@ async function exportActivePrintersPdf() {
               <td>{{ formatDate(item.inventoryDate) }}</td>
             </tr>
             <tr v-if="computersWithMostPrinters.length === 0">
-              <td colspan="6" class="text-center text-ink-muted py-4">Nema rezultata.</td>
+              <td colspan="6" class="text-center text-ink-muted py-4">{{ t('pdsu.noResults') }}</td>
             </tr>
           </tbody>
         </table>
