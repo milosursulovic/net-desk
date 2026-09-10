@@ -1,0 +1,95 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# Poništi u toku eventualne starije radove za isti branch/PR kad stigne novi
+# push - nema smisla čekati/trošiti runner na kod koji je već zastareo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  backend-ci:
+    # Samo tests/unit (npr. DTO/zod validacija) - tests/integration namerno
+    # NIJE deo ovog job-a: hita PRAVU bazu (vidi CLAUDE.md/db-migration
+    # skill), a migracije u backend/migrations/ pokrivaju samo inkrementalne
+    # izmene od 0001 nadalje - baseline šema (ip_entries/agents/users/...)
+    # ne postoji nigde u repo-u kao SQL, pa se ne može pouzdano podići
+    # efemerna baza za CI iz onoga što je ovde. Integracioni testovi ostaju
+    # ono što su i do sada bili - ručna disciplina na dev mašini pre push-a
+    # (vidi CLAUDE.md "Workflow expectations").
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx vitest run tests/unit
+
+  deploy:
+    needs: [frontend-ci, backend-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted
+    env:
+      APP_DIR: /opt/net-desk/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sinhronizuj kod na /opt/net-desk/app
+        # --filter=':- .gitignore' koristi SAM .gitignore kao listu šta da se
+        # preskoči (isti mehanizam kojim git odlučuje šta da NE prati) -
+        # umesto ručno održavane --exclude liste koja bi mogla da zaostane
+        # kad se doda novi runtime folder. Ovo štiti (nikad ih ne dira, ni
+        # čita ni briše): .env/.env.* (i front i back), backend/uploads/
+        # (STVARNI otpremljeni agent-release .zip paketi i downloads-folder
+        # sadržaj - .gitignore-ovan upravo zato što je runtime podatak, ne
+        # kod), *.pem/*.key/*.crt (TLS sertifikati za HTTPS server),
+        # logs/, node_modules/, frontend/dist/ (stari build i dalje servira
+        # dok se novi ne napravi ispod, umesto praznog prozora).
+        run: |
+          rsync -a --delete \
+            --exclude '.git/' \
+            --filter=':- .gitignore' \
+            ./ "$APP_DIR"/
+
+      - name: Backend - instaliraj i migriraj
+        working-directory: /opt/net-desk/app/backend
+        run: |
+          npm ci --omit=dev
+          npm run migrate
+
+      - name: Frontend - build
+        working-directory: /opt/net-desk/app/frontend
+        run: npm ci && npm run build
+
+      - name: Restartuj netdesk.service
+        run: sudo systemctl restart netdesk.service
+
+      - name: Proveri da je servis aktivan posle restarta
+        run: sudo systemctl is-active --quiet netdesk.service
