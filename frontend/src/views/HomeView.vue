@@ -157,121 +157,108 @@
       {{ t('home.noResults') }}
     </div>
 
-    <div v-else class="table-shell">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-300 border-collapse text-sm">
-          <thead>
-            <tr class="table-head-row">
-              <th class="px-3 py-2 text-left">{{ t('home.colIpComputer') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colType') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colStatus') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colSystem') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colRdpApp') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colFlags') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colDescription') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('home.colLastChecked') }}</th>
-              <th class="px-3 py-2 text-right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in entries" :key="entry.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
-              <td class="px-3 py-2.5 align-top">
-                <div class="flex items-center gap-1.5">
-                  <span class="font-mono font-semibold text-ink">{{ entry.ip }}</span>
-                  <button
-                    @click="copyToClipboard(entry.ip, t('home.copyIpToast', { ip: entry.ip }))"
-                    class="shrink-0 text-ink-muted hover:text-ink"
-                    :title="t('home.copyIpTitle')"
-                  >
-                    <NavIcon name="copy" />
-                  </button>
-                </div>
-                <div class="mt-0.5 text-xs text-ink-muted wrap-break-word">{{ entry.computerName || '—' }}</div>
-                <div v-if="entry.department" class="mt-1"><TagChip :label="entry.department" class="max-w-40 truncate" /></div>
-              </td>
-              <td class="px-3 py-2.5 align-top"><TagChip :label="labelForEntryType(entry.entryType)" :title="t('home.entryTypeTitle')" /></td>
-              <td class="px-3 py-2.5 align-top">
-                <StatusPill
-                  :status="entry.isOnline ? 'good' : 'bad'"
-                  :label="entry.isOnline ? t('common.online') : t('common.offline')"
-                  :title="statusTooltip(entry)"
-                />
-              </td>
-              <td class="px-3 py-2.5 align-top text-ink-secondary">
-                <div>{{ entry.os || '—' }}</div>
-                <div class="text-xs text-ink-muted">{{ entry.osArchitecture || '—' }}</div>
-              </td>
-              <td class="px-3 py-2.5 align-top text-ink-secondary">{{ entry.rdpApp || '—' }}</td>
-              <td class="px-3 py-2.5 align-top">
-                <div v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount || entry.pendingRepack || entry.hasIzvolteFolder" class="flex flex-wrap gap-1">
-                  <router-link
-                    v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
-                    :to="`/ip/${entry.id}/pdsu`"
-                    :title="t('home.flaggedTitle', { soft: entry.flaggedSoftwareCount || 0, svc: entry.flaggedServiceCount || 0, drv: entry.flaggedDriverCount || 0 })"
-                  >
-                    <StatusPill status="bad" :label="t('home.flaggedLabel')" icon="alert-triangle" />
-                  </router-link>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="entry in entries" :key="entry.id"
+        class="rounded-xl border border-line bg-surface shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono font-semibold text-ink">{{ entry.ip }}</span>
+              <button
+                @click="copyToClipboard(entry.ip, t('home.copyIpToast', { ip: entry.ip }))"
+                class="shrink-0 text-ink-muted hover:text-ink"
+                :title="t('home.copyIpTitle')"
+              >
+                <NavIcon name="copy" />
+              </button>
+            </div>
+            <div class="mt-0.5 text-sm text-ink-secondary truncate">{{ entry.computerName || '—' }}</div>
+          </div>
+          <StatusPill
+            :status="entry.isOnline ? 'good' : 'bad'"
+            :label="entry.isOnline ? t('common.online') : t('common.offline')"
+            :title="statusTooltip(entry)"
+          />
+        </div>
 
-                  <router-link v-if="entry.pendingRepack" to="/computers-for-repack" :title="t('home.repackTitle')">
-                    <StatusPill status="warn" :label="t('home.repackLabel')" icon="package" />
-                  </router-link>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <TagChip :label="labelForEntryType(entry.entryType)" :title="t('home.entryTypeTitle')" />
+          <TagChip v-if="entry.department" :label="entry.department" class="max-w-40 truncate" />
 
-                  <button
-                    v-if="entry.hasIzvolteFolder"
-                    type="button"
-                    @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, t('home.copyIzvolteToast'))"
-                    class="appearance-none"
-                    :title="t('home.copyIzvolteTitle', { path: `\\\\${entry.ip}\\Izvolte` })"
-                  >
-                    <StatusPill status="info" :label="t('home.izvolteLabel')" icon="folder" />
-                  </button>
-                </div>
-                <span v-else class="text-ink-muted">—</span>
-              </td>
-              <td class="px-3 py-2.5 align-top max-w-70 truncate text-xs text-ink-secondary" :title="entry.description">
-                {{ entry.description || '—' }}
-              </td>
-              <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono" :title="t('home.statusChange', { date: fmtRelative(entry.lastStatusChange) })">
-                {{ fmtRelative(entry.lastChecked) }}
-              </td>
-              <td class="px-3 py-2.5 align-top text-right">
-                <div class="table-row-actions flex-wrap justify-end">
-                  <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
-                    <NavIcon name="edit" />
-                  </button>
-                  <button
-                    @click="togglePendingRepack(entry)"
-                    class="rounded p-1 hover:bg-surface-sunken"
-                    :class="entry.pendingRepack ? 'text-warn' : 'text-ink-secondary'"
-                    :title="entry.pendingRepack ? t('home.unmarkRepack') : t('home.markRepack')"
-                  >
-                    <NavIcon name="package" />
-                  </button>
-                  <router-link :to="`/ip/${entry.id}/meta`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('nav.metadata')">
-                    <NavIcon name="metadata" />
-                  </router-link>
-                  <router-link :to="`/ip/${entry.id}/pdsu`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.pdsuTitle')">
-                    <NavIcon name="pdsu" />
-                  </router-link>
-                  <router-link :to="`/ip/${entry.id}/port-scan`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.portScanTitle')">
-                    <NavIcon name="port" />
-                  </router-link>
-                  <router-link
-                    v-if="entry.agentId"
-                    :to="`/agents/${entry.agentId}`"
-                    class="rounded p-1 text-good hover:bg-surface-sunken inline-flex"
-                    :title="t('home.openAgentTitle')"
-                  >
-                    <NavIcon name="agents" />
-                  </router-link>
-                  <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
-                    <NavIcon name="trash" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          <router-link
+            v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
+            :to="`/ip/${entry.id}/pdsu`"
+            :title="t('home.flaggedTitle', { soft: entry.flaggedSoftwareCount || 0, svc: entry.flaggedServiceCount || 0, drv: entry.flaggedDriverCount || 0 })"
+          >
+            <StatusPill status="bad" :label="t('home.flaggedLabel')" icon="alert-triangle" />
+          </router-link>
+
+          <router-link v-if="entry.pendingRepack" to="/computers-for-repack" :title="t('home.repackTitle')">
+            <StatusPill status="warn" :label="t('home.repackLabel')" icon="package" />
+          </router-link>
+
+          <button
+            v-if="entry.hasIzvolteFolder"
+            type="button"
+            @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, t('home.copyIzvolteToast'))"
+            class="appearance-none"
+            :title="t('home.copyIzvolteTitle', { path: `\\\\${entry.ip}\\Izvolte` })"
+          >
+            <StatusPill status="info" :label="t('home.izvolteLabel')" icon="folder" />
+          </button>
+        </div>
+
+        <div class="text-sm text-ink-secondary space-y-1">
+          <div>
+            <span class="text-ink-muted">{{ t('home.colSystem') }}:</span>
+            {{ entry.os || '—' }}<span v-if="entry.osArchitecture"> ({{ entry.osArchitecture }})</span>
+          </div>
+          <div v-if="entry.rdpApp">
+            <span class="text-ink-muted">{{ t('home.colRdpApp') }}:</span> {{ entry.rdpApp }}
+          </div>
+          <div v-if="entry.description" class="truncate" :title="entry.description">
+            <span class="text-ink-muted">{{ t('home.colDescription') }}:</span> {{ entry.description }}
+          </div>
+        </div>
+
+        <div class="mt-auto pt-3 border-t border-line flex items-center justify-between gap-2">
+          <span class="text-xs text-ink-muted font-mono" :title="t('home.statusChange', { date: fmtRelative(entry.lastStatusChange) })">
+            {{ fmtRelative(entry.lastChecked) }}
+          </span>
+          <div class="flex items-center gap-1">
+            <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
+              <NavIcon name="edit" />
+            </button>
+            <button
+              @click="togglePendingRepack(entry)"
+              class="rounded p-1 hover:bg-surface-sunken"
+              :class="entry.pendingRepack ? 'text-warn' : 'text-ink-secondary'"
+              :title="entry.pendingRepack ? t('home.unmarkRepack') : t('home.markRepack')"
+            >
+              <NavIcon name="package" />
+            </button>
+            <router-link :to="`/ip/${entry.id}/meta`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('nav.metadata')">
+              <NavIcon name="metadata" />
+            </router-link>
+            <router-link :to="`/ip/${entry.id}/pdsu`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.pdsuTitle')">
+              <NavIcon name="pdsu" />
+            </router-link>
+            <router-link :to="`/ip/${entry.id}/port-scan`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.portScanTitle')">
+              <NavIcon name="port" />
+            </router-link>
+            <router-link
+              v-if="entry.agentId"
+              :to="`/agents/${entry.agentId}`"
+              class="rounded p-1 text-good hover:bg-surface-sunken inline-flex"
+              :title="t('home.openAgentTitle')"
+            >
+              <NavIcon name="agents" />
+            </router-link>
+            <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
+              <NavIcon name="trash" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

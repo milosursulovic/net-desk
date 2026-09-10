@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/src/assets/icons/netdesk.svg" alt="NetDesk" width="96" height="96" />
+</p>
+
 # NetDesk
 
 Internal IT tool for viewing and managing network/hardware infrastructure —

@@ -37,10 +37,11 @@
     </div>
 
     <div class="min-h-50">
-      <div v-if="loading" class="table-shell p-4">
-        <div v-for="n in 6" :key="n" class="animate-pulse border-b border-line py-3 last:border-0">
-          <div class="mb-2 h-4 w-1/3 rounded bg-surface-sunken"></div>
-          <div class="h-3 w-1/4 rounded bg-surface-sunken"></div>
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-line bg-surface shadow-sm p-4">
+          <div class="h-5 w-2/3 bg-surface-sunken rounded mb-3"></div>
+          <div class="h-4 w-1/2 bg-surface-sunken rounded mb-2"></div>
+          <div class="h-4 w-1/3 bg-surface-sunken rounded"></div>
         </div>
       </div>
 
@@ -48,67 +49,56 @@
         {{ t('home.noResults') }}
       </div>
 
-      <div v-else class="table-shell">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-225 border-collapse text-sm">
-            <thead>
-              <tr class="table-head-row">
-                <th class="px-3 py-2 text-left">{{ t('printers.colName') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('printers.colConnection') }}</th>
-                <th class="px-3 py-2 text-left">IP</th>
-                <th class="px-3 py-2 text-left">{{ t('printers.colHost') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('printers.colConnectedPcs') }}</th>
-                <th class="px-3 py-2 text-right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in items" :key="p.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
-                <td class="px-3 py-2.5 align-top">
-                  <div class="font-semibold text-ink">{{ p.name || '—' }}</div>
-                  <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                    <TagChip v-if="p.manufacturer" :label="p.manufacturer" />
-                    <TagChip v-if="p.model" :label="p.model" />
-                    <TagChip v-if="p.serial" :label="`SN: ${p.serial}`" />
-                    <TagChip v-if="p.department" :label="p.department" />
-                  </div>
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <div class="flex items-center gap-2">
-                    <TagChip :label="p.connectionType || '—'" />
-                    <StatusPill v-if="p.shared" status="good" :label="t('printers.shared')" />
-                  </div>
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-mono text-ink-secondary">{{ p.ip || '—' }}</span>
-                    <button v-if="p.ip" @click="copy(p.ip)" class="text-xs text-ink-muted hover:underline">
-                      {{ t('printers.copy') }}
-                    </button>
-                  </div>
-                </td>
-                <td class="px-3 py-2.5 align-top text-ink-secondary">
-                  <span v-if="p.host">{{ p.host.computerName || p.host.ip }}</span>
-                  <span v-else class="text-ink-muted">—</span>
-                </td>
-                <td class="px-3 py-2.5 align-top font-mono tabular-nums text-ink-secondary">
-                  {{ typeof p.connectedCount === 'number' ? p.connectedCount : 0 }}
-                </td>
-                <td class="px-3 py-2.5 align-top text-right">
-                  <div class="table-row-actions">
-                    <button @click="openTools(p)" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken" :title="t('printers.connectTitle')">
-                      <NavIcon name="link" />
-                    </button>
-                    <button @click="openEdit(p)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
-                      <NavIcon name="edit" />
-                    </button>
-                    <button v-if="isAdmin" @click="confirmDelete(p)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
-                      <NavIcon name="trash" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="p in items" :key="p.id"
+          class="rounded-xl border border-line bg-surface shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="font-semibold text-ink truncate">{{ p.name || '—' }}</div>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                <TagChip v-if="p.manufacturer" :label="p.manufacturer" />
+                <TagChip v-if="p.model" :label="p.model" />
+                <TagChip v-if="p.serial" :label="`SN: ${p.serial}`" />
+                <TagChip v-if="p.department" :label="p.department" />
+              </div>
+            </div>
+            <StatusPill v-if="p.shared" status="good" :label="t('printers.shared')" />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <TagChip :label="p.connectionType || '—'" />
+          </div>
+
+          <div class="text-sm text-ink-secondary space-y-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-ink-muted">IP:</span>
+              <span class="font-mono">{{ p.ip || '—' }}</span>
+              <button v-if="p.ip" @click="copy(p.ip)" class="text-xs text-ink-muted hover:underline">
+                {{ t('printers.copy') }}
+              </button>
+            </div>
+            <div>
+              <span class="text-ink-muted">{{ t('printers.colHost') }}:</span>
+              <span v-if="p.host">{{ p.host.computerName || p.host.ip }}</span>
+              <span v-else class="text-ink-muted">—</span>
+            </div>
+            <div>
+              <span class="text-ink-muted">{{ t('printers.colConnectedPcs') }}:</span>
+              <span class="font-mono tabular-nums">{{ typeof p.connectedCount === 'number' ? p.connectedCount : 0 }}</span>
+            </div>
+          </div>
+
+          <div class="mt-auto pt-3 border-t border-line flex items-center justify-end gap-1">
+            <button @click="openTools(p)" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken" :title="t('printers.connectTitle')">
+              <NavIcon name="link" />
+            </button>
+            <button @click="openEdit(p)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
+              <NavIcon name="edit" />
+            </button>
+            <button v-if="isAdmin" @click="confirmDelete(p)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
+              <NavIcon name="trash" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

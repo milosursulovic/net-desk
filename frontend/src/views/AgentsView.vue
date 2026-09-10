@@ -386,10 +386,11 @@
     </div>
 
     <div class="min-h-50">
-      <div v-if="loading" class="table-shell p-4">
-        <div v-for="n in 6" :key="n" class="animate-pulse border-b border-line py-3 last:border-0">
-          <div class="mb-2 h-4 w-1/3 rounded bg-surface-sunken"></div>
-          <div class="h-3 w-1/4 rounded bg-surface-sunken"></div>
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="n in 6" :key="n" class="animate-pulse rounded-xl border border-line bg-surface shadow-sm p-4">
+          <div class="h-5 w-2/3 bg-surface-sunken rounded mb-3"></div>
+          <div class="h-4 w-1/2 bg-surface-sunken rounded mb-2"></div>
+          <div class="h-4 w-1/3 bg-surface-sunken rounded"></div>
         </div>
       </div>
 
@@ -397,115 +398,100 @@
         {{ t('agents.noResults') }}
       </div>
 
-      <div v-else class="table-shell">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-275 border-collapse text-sm">
-            <thead>
-              <tr class="table-head-row">
-                <th class="px-3 py-2 text-left"></th>
-                <th class="px-3 py-2 text-left">{{ t('repack.colComputerName') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('home.colStatus') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('printers.colConnection') }}</th>
-                <th class="px-3 py-2 text-left">OS</th>
-                <th class="px-3 py-2 text-left">{{ t('agents.version') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('agents.lastHeartbeat') }}</th>
-                <th class="px-3 py-2 text-left">IP</th>
-                <th class="px-3 py-2 text-left">{{ t('agents.enroll') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('agents.deployment') }}</th>
-                <th class="px-3 py-2 text-left">{{ t('agents.findings') }}</th>
-                <th class="px-3 py-2 text-right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="a in items" :key="a.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
-                <td class="px-3 py-2.5 align-top">
-                  <input
-                    type="checkbox"
-                    class="mt-1"
-                    :checked="selectedIds.has(a.id)"
-                    @change="toggleSelect(a.id)"
-                    :aria-label="t('agents.selectAgent')"
-                  />
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <RouterLink :to="`/agents/${a.id}`" class="block truncate font-semibold text-ink hover:underline">
-                    {{ a.hostname || '—' }}
-                  </RouterLink>
-                  <div class="mt-0.5 flex items-center gap-1 font-mono text-xs text-ink-muted">
-                    <span class="truncate">{{ a.agentUid }}</span>
-                    <button @click="copy(a.agentUid)" class="shrink-0 text-ink-muted hover:text-ink" :aria-label="t('agents.copyAgentId')">
-                      <NavIcon name="copy" />
-                    </button>
-                  </div>
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <StatusPill :status="agentStatusTone(a.status)" :label="agentStatusLabel(a.status)" />
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <StatusPill :status="connectivityTone(a.connectivityStatus)" :label="connectivityLabel(a.connectivityStatus)" />
-                </td>
-                <td class="px-3 py-2.5 align-top text-ink-secondary">{{ a.osCaption || '—' }}</td>
-                <td class="px-3 py-2.5 align-top">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-mono tabular-nums text-ink-secondary">{{ a.agentVersion || '—' }}</span>
-                    <span
-                      v-if="a.managerChannelStatus"
-                      class="inline-flex h-2 w-2 shrink-0 rounded-full bg-info"
-                      :title="t('agents.managerChannelRegistered', { status: a.managerChannelStatus })"
-                    ></span>
-                  </div>
-                </td>
-                <td class="px-3 py-2.5 align-top text-ink-secondary">
-                  {{ fmtRelative(a.lastHeartbeatAt) }}
-                  <span class="mt-0.5 block font-mono text-xs text-ink-muted">{{ fmtDate(a.lastHeartbeatAt) }}</span>
-                </td>
-                <td class="px-3 py-2.5 align-top font-mono text-ink-secondary">{{ a.lastIp || '—' }}</td>
-                <td class="px-3 py-2.5 align-top font-mono text-xs text-ink-muted">{{ fmtDate(a.enrolledAt) }}</td>
-                <td class="px-3 py-2.5 align-top">
-                  <div v-if="agentDeploymentGroups(a).length" class="flex flex-wrap gap-1">
-                    <TagChip v-for="g in agentDeploymentGroups(a)" :key="g" :label="g" />
-                  </div>
-                  <span v-else class="text-ink-muted">—</span>
-                  <RouterLink v-if="a.ipEntryId" :to="`/ip/${a.ipEntryId}/meta`" class="mt-1 block text-xs text-accent hover:underline">
-                    {{ t('agents.openComputer') }}
-                  </RouterLink>
-                </td>
-                <td class="px-3 py-2.5 align-top">
-                  <div
-                    v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
-                    class="flex flex-wrap gap-1"
-                  >
-                    <span v-if="a.antivirusStatus !== 'enabled'" :title="t('agents.antivirusNotConfirmed')">
-                      <StatusPill status="bad" label="Antivirus" :dot="false" />
-                    </span>
-                    <span v-if="a.firewallStatus !== 'enabled'" :title="t('agents.firewallNotConfirmed')">
-                      <StatusPill status="bad" label="Firewall" :dot="false" />
-                    </span>
-                    <span v-if="a.windowsUpdateStatus !== 'Running'" :title="t('agents.wuNotConfirmed')">
-                      <StatusPill status="bad" label="WU" :dot="false" />
-                    </span>
-                    <span v-if="isAgentMismatch(a)" :title="t('agents.agentMismatchTitle')">
-                      <StatusPill status="warn" :label="t('agents.possibleFault')" :dot="false" />
-                    </span>
-                    <span
-                      v-if="a.serviceFilesMismatch"
-                      :title="a.serviceFilesMismatchDetails || t('agents.serviceFilesMismatchDetails')"
-                    >
-                      <StatusPill status="warn" :label="t('agents.files')" :dot="false" />
-                    </span>
-                  </div>
-                  <span v-else class="text-ink-muted">—</span>
-                </td>
-                <td class="px-3 py-2.5 align-top text-right">
-                  <div class="table-row-actions">
-                    <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('agents.revokeAccess')">
-                      <NavIcon name="ban" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="a in items" :key="a.id"
+          class="rounded-xl border border-line bg-surface shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2 min-w-0">
+              <input
+                type="checkbox"
+                class="mt-1 shrink-0"
+                :checked="selectedIds.has(a.id)"
+                @change="toggleSelect(a.id)"
+                :aria-label="t('agents.selectAgent')"
+              />
+              <div class="min-w-0">
+                <RouterLink :to="`/agents/${a.id}`" class="block truncate font-semibold text-ink hover:underline">
+                  {{ a.hostname || '—' }}
+                </RouterLink>
+                <div class="mt-0.5 flex items-center gap-1 font-mono text-xs text-ink-muted">
+                  <span class="truncate">{{ a.agentUid }}</span>
+                  <button @click="copy(a.agentUid)" class="shrink-0 text-ink-muted hover:text-ink" :aria-label="t('agents.copyAgentId')">
+                    <NavIcon name="copy" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button v-if="a.status === 'active'" @click="confirmRevoke(a)" class="shrink-0 rounded p-1 text-bad hover:bg-surface-sunken" :title="t('agents.revokeAccess')">
+              <NavIcon name="ban" />
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            <StatusPill :status="agentStatusTone(a.status)" :label="agentStatusLabel(a.status)" />
+            <StatusPill :status="connectivityTone(a.connectivityStatus)" :label="connectivityLabel(a.connectivityStatus)" />
+          </div>
+
+          <div
+            v-if="a.antivirusStatus !== 'enabled' || a.firewallStatus !== 'enabled' || a.windowsUpdateStatus !== 'Running' || isAgentMismatch(a) || a.serviceFilesMismatch"
+            class="flex flex-wrap gap-1"
+          >
+            <span v-if="a.antivirusStatus !== 'enabled'" :title="t('agents.antivirusNotConfirmed')">
+              <StatusPill status="bad" label="Antivirus" :dot="false" />
+            </span>
+            <span v-if="a.firewallStatus !== 'enabled'" :title="t('agents.firewallNotConfirmed')">
+              <StatusPill status="bad" label="Firewall" :dot="false" />
+            </span>
+            <span v-if="a.windowsUpdateStatus !== 'Running'" :title="t('agents.wuNotConfirmed')">
+              <StatusPill status="bad" label="WU" :dot="false" />
+            </span>
+            <span v-if="isAgentMismatch(a)" :title="t('agents.agentMismatchTitle')">
+              <StatusPill status="warn" :label="t('agents.possibleFault')" :dot="false" />
+            </span>
+            <span
+              v-if="a.serviceFilesMismatch"
+              :title="a.serviceFilesMismatchDetails || t('agents.serviceFilesMismatchDetails')"
+            >
+              <StatusPill status="warn" :label="t('agents.files')" :dot="false" />
+            </span>
+          </div>
+
+          <div class="text-sm text-ink-secondary space-y-1">
+            <div>
+              <span class="text-ink-muted">OS:</span> {{ a.osCaption || '—' }}
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-ink-muted">{{ t('agents.version') }}:</span>
+              <span class="font-mono tabular-nums">{{ a.agentVersion || '—' }}</span>
+              <span
+                v-if="a.managerChannelStatus"
+                class="inline-flex h-2 w-2 shrink-0 rounded-full bg-info"
+                :title="t('agents.managerChannelRegistered', { status: a.managerChannelStatus })"
+              ></span>
+            </div>
+            <div>
+              <span class="text-ink-muted">IP:</span> <span class="font-mono">{{ a.lastIp || '—' }}</span>
+            </div>
+            <div>
+              <span class="text-ink-muted">{{ t('agents.lastHeartbeat') }}:</span>
+              {{ fmtRelative(a.lastHeartbeatAt) }}
+              <span class="font-mono text-xs text-ink-muted">({{ fmtDate(a.lastHeartbeatAt) }})</span>
+            </div>
+            <div>
+              <span class="text-ink-muted">{{ t('agents.enroll') }}:</span>
+              <span class="font-mono text-xs">{{ fmtDate(a.enrolledAt) }}</span>
+            </div>
+          </div>
+
+          <div>
+            <div v-if="agentDeploymentGroups(a).length" class="flex flex-wrap gap-1">
+              <TagChip v-for="g in agentDeploymentGroups(a)" :key="g" :label="g" />
+            </div>
+            <span v-else class="text-sm text-ink-muted">{{ t('agents.noDeploymentGroup') }}</span>
+            <RouterLink v-if="a.ipEntryId" :to="`/ip/${a.ipEntryId}/meta`" class="mt-1 block text-xs text-accent hover:underline">
+              {{ t('agents.openComputer') }}
+            </RouterLink>
+          </div>
         </div>
       </div>
     </div>

@@ -77,69 +77,54 @@
       {{ t('inventory.noResults') }}
     </div>
 
-    <div v-else class="table-shell">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-250 border-collapse text-sm">
-          <thead>
-            <tr class="table-head-row">
-              <th class="px-3 py-2 text-left">{{ t('inventory.colType') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.colManufacturerModel') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.colSerial') }}</th>
-              <th class="px-3 py-2 text-right">{{ t('inventory.colQuantity') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.colSpec') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.location') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.colNote') }}</th>
-              <th class="px-3 py-2 text-left">{{ t('inventory.colAdded') }}</th>
-              <th class="px-3 py-2 text-right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in entries" :key="item.id" class="group border-b border-line last:border-0 hover:bg-surface-sunken">
-              <td class="px-3 py-2.5 align-top text-xs uppercase tracking-wide text-ink-muted">
-                {{ labelForType(item.type) }}
-              </td>
-              <td class="px-3 py-2.5 align-top">
-                <div class="font-semibold text-ink">{{ item.model || t('inventory.unknownModel') }}</div>
-                <div class="text-xs text-ink-muted">{{ item.manufacturer || t('inventory.unknownManufacturer') }}</div>
-              </td>
-              <td class="px-3 py-2.5 align-top">
-                <button v-if="item.serialNumber" @click="copyToClipboard(item.serialNumber, t('inventory.serialCopied'))"
-                  class="font-mono text-xs text-accent hover:underline" :title="t('inventory.copySerialTitle')">
-                  <NavIcon name="copy" class="inline-block align-text-bottom" /> {{ shortSerial(item.serialNumber) }}
-                </button>
-                <span v-else class="text-ink-muted">—</span>
-              </td>
-              <td class="px-3 py-2.5 align-top text-right font-mono font-semibold text-ink">{{ item.quantity }}</td>
-              <td class="px-3 py-2.5 align-top text-xs text-ink-secondary">
-                <div v-if="item.capacity">{{ t('inventory.capacity') }}: {{ item.capacity }}</div>
-                <div v-if="item.speed">{{ t('inventory.speed') }}: {{ item.speed }}</div>
-                <div v-if="item.socket">{{ t('inventory.socket') }}: {{ item.socket }}</div>
-                <span v-if="!item.capacity && !item.speed && !item.socket" class="text-ink-muted">—</span>
-              </td>
-              <td class="px-3 py-2.5 align-top text-ink-secondary">
-                <div>{{ labelForSite(item.site) }}</div>
-                <div class="text-xs text-ink-muted">{{ item.location || t('inventory.warehouse') }}</div>
-              </td>
-              <td class="px-3 py-2.5 align-top max-w-40 truncate text-ink-secondary" :title="item.notes">
-                {{ item.notes || '—' }}
-              </td>
-              <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono">
-                {{ fmtDate(item.createdAt) }}
-                <span v-if="item.updatedAt" class="block">{{ t('inventory.updatedShort') }}: {{ fmtDate(item.updatedAt) }}</span>
-              </td>
-              <td class="px-3 py-2.5 align-top text-right">
-                <div class="table-row-actions">
-                  <button @click="openEditModal(item)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
-                    <NavIcon name="edit" />
-                  </button>
-                  <button v-if="isAdmin" @click="confirmDelete(item)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
-                    <NavIcon name="trash" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="item in entries" :key="item.id"
+        class="rounded-xl border border-line bg-surface shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-xs uppercase tracking-wide text-ink-muted">{{ labelForType(item.type) }}</div>
+            <div class="font-semibold text-ink truncate">{{ item.model || t('inventory.unknownModel') }}</div>
+            <div class="text-xs text-ink-muted">{{ item.manufacturer || t('inventory.unknownManufacturer') }}</div>
+          </div>
+          <div class="shrink-0 text-right font-mono font-semibold text-ink">{{ item.quantity }}</div>
+        </div>
+
+        <div class="text-sm text-ink-secondary space-y-1">
+          <div>
+            <span class="text-ink-muted">{{ t('inventory.colSerial') }}:</span>
+            <button v-if="item.serialNumber" @click="copyToClipboard(item.serialNumber, t('inventory.serialCopied'))"
+              class="font-mono text-xs text-accent hover:underline" :title="t('inventory.copySerialTitle')">
+              <NavIcon name="copy" class="inline-block align-text-bottom" /> {{ shortSerial(item.serialNumber) }}
+            </button>
+            <span v-else class="text-ink-muted">—</span>
+          </div>
+          <div v-if="item.capacity">{{ t('inventory.capacity') }}: {{ item.capacity }}</div>
+          <div v-if="item.speed">{{ t('inventory.speed') }}: {{ item.speed }}</div>
+          <div v-if="item.socket">{{ t('inventory.socket') }}: {{ item.socket }}</div>
+          <div>
+            <span class="text-ink-muted">{{ t('inventory.location') }}:</span>
+            {{ labelForSite(item.site) }}<span v-if="item.location"> — {{ item.location }}</span>
+            <span v-else> — {{ t('inventory.warehouse') }}</span>
+          </div>
+          <div v-if="item.notes" class="truncate" :title="item.notes">
+            <span class="text-ink-muted">{{ t('inventory.colNote') }}:</span> {{ item.notes }}
+          </div>
+        </div>
+
+        <div class="mt-auto pt-3 border-t border-line flex items-center justify-between gap-2">
+          <span class="text-xs text-ink-muted font-mono">
+            {{ fmtDate(item.createdAt) }}
+            <span v-if="item.updatedAt">· {{ t('inventory.updatedShort') }}: {{ fmtDate(item.updatedAt) }}</span>
+          </span>
+          <div class="flex items-center gap-1">
+            <button @click="openEditModal(item)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
+              <NavIcon name="edit" />
+            </button>
+            <button v-if="isAdmin" @click="confirmDelete(item)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
+              <NavIcon name="trash" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
