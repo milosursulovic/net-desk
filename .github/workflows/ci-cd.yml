@@ -72,11 +72,11 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: self-hosted
     env:
-      APP_DIR: /opt/net-desk/app
+      APP_DIR: /opt/netdesk/app
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sinhronizuj kod na /opt/net-desk/app
+      - name: Sinhronizuj kod na /opt/netdesk/app
         # --filter=':- .gitignore' koristi SAM .gitignore kao listu šta da se
         # preskoči (isti mehanizam kojim git odlučuje šta da NE prati) -
         # umesto ručno održavane --exclude liste koja bi mogla da zaostane
@@ -94,13 +94,13 @@ jobs:
             ./ "$APP_DIR"/
 
       - name: Backend - instaliraj i migriraj
-        working-directory: /opt/net-desk/app/backend
+        working-directory: /opt/netdesk/app/backend
         run: |
           npm ci --omit=dev
           npm run migrate
 
       - name: Frontend - build
-        working-directory: /opt/net-desk/app/frontend
+        working-directory: /opt/netdesk/app/frontend
         run: npm ci && npm run build
 
       - name: Restartuj netdesk.service

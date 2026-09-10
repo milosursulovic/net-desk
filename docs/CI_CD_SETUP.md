@@ -1,7 +1,7 @@
 # CI/CD setup (jednokratno, na serveru)
 
 Workflow je u `.github/workflows/ci-cd.yml`. Ovaj dokument je samo za
-jednokratni setup na `/opt/net-desk` serveru - GitHub sam ne može ništa od
+jednokratni setup na `/opt/netdesk` serveru - GitHub sam ne može ništa od
 ovoga da uradi umesto tebe, runner mora fizički da se instalira tamo.
 
 Pre nego što krene prvi automatski deploy: **ugasi postojeći polling
@@ -61,7 +61,7 @@ proveri.
 ## 4. Prvi deploy
 
 Ništa posebno - prvi push na `main` posle ovog setup-a će automatski da
-uradi CI pa deploy. `/opt/net-desk/app` već ima `.env` fajlove i
+uradi CI pa deploy. `/opt/netdesk/app` već ima `.env` fajlove i
 `backend/uploads/` sa pravim podacima - `.gitignore`-filter u workflow-u ih
 ostavlja netaknutim (vidi komentar u `ci-cd.yml`), sinhronizuje se samo kod
 praćen u git-u.
