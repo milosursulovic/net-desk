@@ -75,6 +75,12 @@ jobs:
       APP_DIR: /opt/netdesk/app
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Puna istorija (ne samo poslednji commit) - frontend/vite.config.js
+          # računa "verziju" kao broj commit-ova (git rev-list --count HEAD),
+          # a taj build se pokreće na serveru iz OVOG checkout-a nakon rsync-a
+          # ispod - plitak checkout bi zamrznuo verziju na 1.
+          fetch-depth: 0
 
       - name: Sinhronizuj kod na /opt/netdesk/app
         # --filter=':- .gitignore' koristi SAM .gitignore kao listu šta da se
@@ -87,9 +93,13 @@ jobs:
         # kod), *.pem/*.key/*.crt (TLS sertifikati za HTTPS server),
         # logs/, node_modules/, frontend/dist/ (stari build i dalje servira
         # dok se novi ne napravi ispod, umesto praznog prozora).
+        #
+        # .git/ SE sinhronizuje (nije više isključen) - frontend build čita
+        # commit count odavde za verziju stringa; isključivanjem bi server-ov
+        # .git ostao zamrznut na staroj kloniranoj istoriji zauvek, pa se
+        # verzija nikad ne bi pomerala bez obzira na deploy.
         run: |
           rsync -a --delete \
-            --exclude '.git/' \
             --filter=':- .gitignore' \
             ./ "$APP_DIR"/
 
