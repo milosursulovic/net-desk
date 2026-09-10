@@ -58,6 +58,23 @@ polling skript koristio, samo sad pokrenuto od strane runner-a umesto crona.
 `rsync` mora biti instaliran (`rsync --version`) - obično je već tu, ali
 proveri.
 
+**Mrežna SSL inspekcija (poznat problem)**: mreža ove ustanove ima
+SSL-inspecting firewall/proxy koji ubacuje sopstveni self-signed root CA u
+sav HTTPS saobraćaj. `curl` to ne primeti (koristi sistemski trust store,
+koji taj CA već ima), ali Node/npm koristi svoj ugrađeni CA bundle i ne
+veruje mu - `npm ci` visi u beskonačnom retry-u sa `SELF_SIGNED_CERT_IN_CHAIN`
+umesto brzog fail-a. Rešenje - dodaj u runner-ov `.env`
+(`/opt/actions-runner/.env`, čita ga runner servis i ubaci u svaki job):
+
+```
+NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+```
+
+pa restartuj servis (`sudo ./svc.sh stop && sudo ./svc.sh start`). Ako
+runner ikad treba da se reinstalira na istom ili drugom serveru u istoj
+mreži, ovaj korak ponovi odmah - bez njega prvi deploy će izgledati kao da
+je zaglavio (a zapravo samo retry-uje TLS handshake u nedogled).
+
 ## 4. Prvi deploy
 
 Ništa posebno - prvi push na `main` posle ovog setup-a će automatski da
