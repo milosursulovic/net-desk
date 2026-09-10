@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { i18n } from '@/i18n/index.js'
 import UserMenu from '@/components/UserMenu.vue'
 
 // The dropdown itself is <teleport to="body"> (needed so it isn't clipped by
@@ -19,7 +20,7 @@ async function mountWithRouter() {
   })
   router.push('/')
   await router.isReady()
-  const wrapper = mount(UserMenu, { global: { plugins: [router] } })
+  const wrapper = mount(UserMenu, { global: { plugins: [router, i18n] } })
   activeWrapper = wrapper
   return { wrapper, router }
 }

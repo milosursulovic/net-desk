@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePushNotifications } from '@/composables/usePushNotifications.js'
 import { useCurrentUser, resetCurrentUser } from '@/composables/useCurrentUser.js'
 import NavIcon from '@/components/NavIcon.vue'
 import ChangePasswordButton from '@/components/ChangePasswordButton.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const { currentUser } = useCurrentUser()
 const { isSupported, isSubscribed, loading, error, checkSubscription, subscribe, unsubscribe } =
@@ -104,7 +106,7 @@ onBeforeUnmount(() => {
       <div class="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle text-xs font-semibold text-accent">
         {{ userInitial }}
       </div>
-      <span class="hidden text-sm font-medium text-ink sm:inline">{{ currentUser?.username || 'Nepoznat' }}</span>
+      <span class="hidden text-sm font-medium text-ink sm:inline">{{ currentUser?.username || t('common.unknown') }}</span>
       <NavIcon name="chevron-down" class="hidden text-ink-muted sm:block" />
     </button>
 
@@ -123,8 +125,8 @@ onBeforeUnmount(() => {
           @click="toggleNotifications"
         >
           <NavIcon :name="isSubscribed ? 'bell' : 'bell-off'" class="text-ink-muted" />
-          <span class="flex-1 text-left">Notifikacije</span>
-          <span class="text-xs text-ink-muted">{{ isSubscribed ? 'Uključene' : 'Isključene' }}</span>
+          <span class="flex-1 text-left">{{ t('common.notifications') }}</span>
+          <span class="text-xs text-ink-muted">{{ isSubscribed ? t('common.notificationsOn') : t('common.notificationsOff') }}</span>
         </button>
 
         <button
@@ -133,7 +135,7 @@ onBeforeUnmount(() => {
           @click="openPasswordModal"
         >
           <NavIcon name="key" class="text-ink-muted" />
-          <span class="flex-1 text-left">Promeni lozinku</span>
+          <span class="flex-1 text-left">{{ t('common.changePassword') }}</span>
         </button>
 
         <div class="my-1.5 border-t border-line"></div>
@@ -144,7 +146,7 @@ onBeforeUnmount(() => {
           @click="logout"
         >
           <NavIcon name="log-out" />
-          <span class="flex-1 text-left">Odjavi se</span>
+          <span class="flex-1 text-left">{{ t('common.logout') }}</span>
         </button>
       </div>
     </teleport>

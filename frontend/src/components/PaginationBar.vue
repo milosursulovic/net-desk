@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import NavIcon from '@/components/NavIcon.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   page: { type: Number, required: true },
@@ -19,7 +22,7 @@ const nextDisabled = computed(() => props.page * props.limit >= props.total || p
 
 <template>
   <div class="flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
-    <label class="text-ink-secondary" for="pagination-limit">Po strani</label>
+    <label class="text-ink-secondary" for="pagination-limit">{{ t('common.perPage') }}</label>
     <select
       id="pagination-limit"
       class="app-input w-auto py-1.5 text-sm"
@@ -35,17 +38,17 @@ const nextDisabled = computed(() => props.page * props.limit >= props.total || p
       type="button"
       class="rounded-lg border border-line bg-surface p-1.5 hover:bg-surface-sunken disabled:opacity-50"
       :disabled="prevDisabled"
-      aria-label="Prethodna strana"
+      :aria-label="t('common.prevPage')"
       @click="$emit('prev')"
     >
       <NavIcon name="chevron-left" />
     </button>
-    <span class="font-mono tabular-nums">Strana {{ totalPages === 0 ? '0' : page }} / {{ totalPages }}</span>
+    <span class="font-mono tabular-nums">{{ t('common.pageOfShort', { page: totalPages === 0 ? '0' : page, total: totalPages }) }}</span>
     <button
       type="button"
       class="rounded-lg border border-line bg-surface p-1.5 hover:bg-surface-sunken disabled:opacity-50"
       :disabled="nextDisabled"
-      aria-label="Sledeća strana"
+      :aria-label="t('common.nextPage')"
       @click="$emit('next')"
     >
       <NavIcon name="chevron-right" />

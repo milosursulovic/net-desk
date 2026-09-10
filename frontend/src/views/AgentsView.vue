@@ -428,8 +428,8 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-1.5">
-            <StatusPill :status="agentStatusTone(a.status)" :label="agentStatusLabel(a.status)" />
-            <StatusPill :status="connectivityTone(a.connectivityStatus)" :label="connectivityLabel(a.connectivityStatus)" />
+            <StatusPill :status="agentStatusTone(a.status)" :label="agentStatusLabel(a.status, t)" />
+            <StatusPill :status="connectivityTone(a.connectivityStatus)" :label="connectivityLabel(a.connectivityStatus, t)" />
           </div>
 
           <div

@@ -32,3 +32,8 @@ export const COMMAND_LABELS = {
 }
 
 export const SERVICE_COMMANDS = new Set(['restart_service', 'start_service', 'stop_service'])
+
+export function commandLabel(type, t) {
+  if (!t) return COMMAND_LABELS[type] || type
+  return t('agentCommands.' + type)
+}

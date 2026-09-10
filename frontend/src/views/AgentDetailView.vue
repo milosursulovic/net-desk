@@ -14,55 +14,55 @@
         </h1>
         <p v-if="agent?.department" class="mt-0.5 text-sm text-ink-muted">{{ agent.department }}</p>
       </div>
-      <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      <AppButton variant="neutral" @click="goBack">{{ t('agentDetail.back') }}</AppButton>
     </div>
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('agentDetail.loading') }}</div>
     <div v-else-if="loadError" class="text-bad">{{ loadError }}</div>
 
     <div v-else-if="agent" class="space-y-4">
       <!-- Info kartica -->
       <div class="hud-panel rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
         <div class="flex flex-wrap items-center gap-2">
-          <StatusPill :status="agentStatusTone(agent.status)" :label="agentStatusLabel(agent.status)" />
-          <StatusPill :status="connectivityTone(agent.connectivityStatus)" :label="connectivityLabel(agent.connectivityStatus)" />
+          <StatusPill :status="agentStatusTone(agent.status)" :label="agentStatusLabel(agent.status, t)" />
+          <StatusPill :status="connectivityTone(agent.connectivityStatus)" :label="connectivityLabel(agent.connectivityStatus, t)" />
           <StatusPill
             v-if="managerStatus"
             status="info"
             label="MANAGER"
-            :title="`Novi (nezavisni) Manager kanal registrovan - ${managerStatus.connectivityStatus}`"
+            :title="t('agentDetail.managerChannelBadgeTitle', { status: managerStatus.connectivityStatus })"
           />
           <span class="font-mono text-xs text-ink-muted">{{ agent.agentUid }}</span>
           <button @click="copy(agent.agentUid)" class="text-xs text-ink-muted hover:text-ink"><NavIcon name="copy" /></button>
 
           <button v-if="agent.status === 'active' && isAdmin" @click="confirmRevoke" class="ml-auto inline-flex items-center gap-1.5 text-bad hover:underline text-sm">
             <NavIcon name="ban" />
-            Povuci pristup
+            {{ t('agentDetail.revokeAccess') }}
           </button>
           <button v-if="agent.status === 'revoked' && isAdmin" @click="confirmDelete" class="ml-auto inline-flex items-center gap-1.5 text-bad hover:underline text-sm">
             <NavIcon name="trash" />
-            Obriši agenta
+            {{ t('agentDetail.deleteAgent') }}
           </button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-ink-secondary">
-          <div><span class="font-medium text-ink">OS:</span> {{ agent.osCaption || '—' }} {{ agent.osVersion || '' }}</div>
-          <div><span class="font-medium text-ink">Verzija agenta:</span> <span class="font-mono">{{ agent.agentVersion || '—' }}</span></div>
-          <div><span class="font-medium text-ink">Poslednji heartbeat:</span> {{ fmtRelative(agent.lastHeartbeatAt) }}</div>
-          <div><span class="font-medium text-ink">Poslednji IP:</span> <span class="font-mono">{{ agent.lastIp || '—' }}</span></div>
-          <div><span class="font-medium text-ink">Enroll:</span> <span class="font-mono">{{ fmtDate(agent.enrolledAt) }}</span></div>
+          <div><span class="font-medium text-ink">{{ t('agentDetail.osLabel') }}</span> {{ agent.osCaption || '—' }} {{ agent.osVersion || '' }}</div>
+          <div><span class="font-medium text-ink">{{ t('agentDetail.agentVersionLabel') }}</span> <span class="font-mono">{{ agent.agentVersion || '—' }}</span></div>
+          <div><span class="font-medium text-ink">{{ t('agentDetail.lastHeartbeatLabel') }}</span> {{ fmtRelative(agent.lastHeartbeatAt, locale) }}</div>
+          <div><span class="font-medium text-ink">{{ t('agentDetail.lastIpLabel') }}</span> <span class="font-mono">{{ agent.lastIp || '—' }}</span></div>
+          <div><span class="font-medium text-ink">{{ t('agentDetail.enrollLabel') }}</span> <span class="font-mono">{{ fmtDate(agent.enrolledAt) }}</span></div>
           <div>
-            <span class="font-medium text-ink">Povezan računar:</span>
+            <span class="font-medium text-ink">{{ t('agentDetail.connectedComputerLabel') }}</span>
             <template v-if="agent.ipEntryId">
               <RouterLink :to="`/ip/${agent.ipEntryId}/meta`" class="text-accent hover:underline">
-                Otvori
+                {{ t('agentDetail.open') }}
               </RouterLink>
               <RouterLink
                 v-if="agent.computerIp && agent.site"
                 :to="{ path: '/', query: { search: agent.computerIp, site: agent.site } }"
                 class="ml-2 text-accent hover:underline"
               >
-                Na početnoj
+                {{ t('agentDetail.goHome') }}
               </RouterLink>
             </template>
             <span v-else>—</span>
@@ -70,12 +70,12 @@
         </div>
 
         <div v-if="agent.description" class="rounded-lg bg-surface-sunken px-3 py-2">
-          <div class="text-xs text-ink-muted mb-1">Opis</div>
+          <div class="text-xs text-ink-muted mb-1">{{ t('pdsu.colDescription') }}</div>
           <p class="text-sm text-ink whitespace-pre-wrap wrap-break-word">{{ agent.description }}</p>
         </div>
 
         <div class="flex flex-col gap-2 pt-2 border-t border-line">
-          <label class="text-sm font-medium text-ink">Deployment grupe</label>
+          <label class="text-sm font-medium text-ink">{{ t('agentDetail.deploymentGroupsLabel') }}</label>
           <div class="flex flex-wrap items-center gap-1.5">
             <TagChip
               v-for="g in agent.deploymentGroups"
@@ -85,7 +85,7 @@
               :removable="isAdmin"
               @remove="removeDeploymentGroup(g)"
             />
-            <span v-if="!agent.deploymentGroups?.length" class="text-sm text-ink-muted">rest (podrazumevano)</span>
+            <span v-if="!agent.deploymentGroups?.length" class="text-sm text-ink-muted">{{ t('agentDetail.restDefault') }}</span>
           </div>
           <GroupSelect
             v-if="isAdmin"
@@ -104,11 +104,11 @@
         <div class="flex items-center gap-2 pt-2 border-t border-line">
           <label class="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer">
             <input type="checkbox" v-model="processKillExemptInput" @change="saveProcessKillExempt" class="rounded" />
-            Izuzet od ubijanja sumnjivih procesa (whitelist)
+            {{ t('agentDetail.processKillExemptLabel') }}
           </label>
         </div>
         <p class="text-xs text-ink-muted -mt-2">
-          Watched procesi (npr. AnyDesk/TeamViewer) se i dalje detektuju i loguju na ovom računaru, ali se nikad ne ubijaju.
+          {{ t('agentDetail.processKillExemptHint') }}
         </p>
       </div>
 
@@ -135,12 +135,12 @@
             </div>
           </div>
           <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
-            <div class="text-xs text-ink-muted">Slobodno (disk)</div>
+            <div class="text-xs text-ink-muted">{{ t('agentDetail.freeDisk') }}</div>
             <div class="hud-metric font-mono font-semibold tabular-nums text-ink">{{ fmtGb(agent.monitoring.diskFreeGb) }}</div>
           </div>
           <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
-            <div class="text-xs text-ink-muted">Mreža</div>
-            <div class="font-semibold text-ink">{{ agent.monitoring.networkConnected ? 'Povezan' : 'Nepovezan' }}</div>
+            <div class="text-xs text-ink-muted">{{ t('agentDetail.network') }}</div>
+            <div class="font-semibold text-ink">{{ agent.monitoring.networkConnected ? t('agentDetail.networkConnected') : t('agentDetail.networkDisconnected') }}</div>
           </div>
           <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
             <div class="text-xs text-ink-muted">Antivirus</div>
@@ -151,8 +151,8 @@
               @click="sendFixJob('fix-antivirus-defender')"
               class="mt-1 text-xs text-accent hover:underline disabled:opacity-50"
             >
-              <span v-if="fixingPresetId === 'fix-antivirus-defender'">Šalje se…</span>
-              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />Popravi</span>
+              <span v-if="fixingPresetId === 'fix-antivirus-defender'">{{ t('agentDetail.sending') }}</span>
+              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />{{ t('agentDetail.fix') }}</span>
             </button>
           </div>
           <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
@@ -164,8 +164,8 @@
               @click="sendFixJob('fix-firewall')"
               class="mt-1 text-xs text-accent hover:underline disabled:opacity-50"
             >
-              <span v-if="fixingPresetId === 'fix-firewall'">Šalje se…</span>
-              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />Popravi</span>
+              <span v-if="fixingPresetId === 'fix-firewall'">{{ t('agentDetail.sending') }}</span>
+              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />{{ t('agentDetail.fix') }}</span>
             </button>
           </div>
           <div class="hud-tile rounded-lg bg-surface-sunken border border-line p-2">
@@ -181,26 +181,26 @@
               @click="sendFixJob('fix-windows-update-service')"
               class="mt-1 text-xs text-accent hover:underline disabled:opacity-50"
             >
-              <span v-if="fixingPresetId === 'fix-windows-update-service'">Šalje se…</span>
-              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />Popravi</span>
+              <span v-if="fixingPresetId === 'fix-windows-update-service'">{{ t('agentDetail.sending') }}</span>
+              <span v-else class="inline-flex items-center gap-1"><NavIcon name="wrench" />{{ t('agentDetail.fix') }}</span>
             </button>
           </div>
         </div>
-        <div class="text-xs text-ink-muted mt-2">Prikupljeno: {{ fmtDate(agent.monitoring.collectedAt) }}</div>
+        <div class="text-xs text-ink-muted mt-2">{{ t('agentDetail.collectedAtLabel') }} {{ fmtDate(agent.monitoring.collectedAt) }}</div>
       </div>
 
       <!-- Tabovi -->
       <div class="hud-tabs flex flex-nowrap gap-2 overflow-x-auto border-b border-line pb-3 no-scrollbar sm:flex-wrap sm:overflow-visible">
         <button
-          v-for="t in TAB_NAMES"
-          :key="t"
+          v-for="tabName in TAB_NAMES"
+          :key="tabName"
           type="button"
-          @click="selectTab(t)"
+          @click="selectTab(tabName)"
           class="hud-tab shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition"
-          :class="tabButtonClass(t)"
+          :class="tabButtonClass(tabName)"
           style="font-family: var(--font-display)"
         >
-          {{ TAB_LABELS[t] }}
+          {{ TAB_LABELS[tabName] }}
         </button>
       </div>
 
@@ -212,32 +212,32 @@
       <!-- Komande -->
       <div v-else-if="tab === 'jobs'" class="space-y-4">
         <div class="hud-panel rounded-xl border border-line bg-surface shadow-sm p-4 space-y-3">
-          <div class="font-medium text-ink hud-section-title">Nova komanda</div>
+          <div class="font-medium text-ink hud-section-title">{{ t('agentDetail.newCommand') }}</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="text-sm text-ink-secondary">Tip komande</label>
+              <label class="text-sm text-ink-secondary">{{ t('agentDetail.commandTypeLabel') }}</label>
               <select v-model="jobForm.commandType" class="app-input w-full">
-                <option v-for="c in COMMAND_TYPES" :key="c" :value="c">{{ COMMAND_LABELS[c] }}</option>
+                <option v-for="c in COMMAND_TYPES" :key="c" :value="c">{{ commandLabel(c, t) }}</option>
               </select>
             </div>
-            <FormInput v-if="isServiceCommand" v-model.trim="jobForm.serviceName" label="Naziv servisa" placeholder="Spooler" />
+            <FormInput v-if="isServiceCommand" v-model.trim="jobForm.serviceName" :label="t('agentDetail.serviceNameLabel')" placeholder="Spooler" />
           </div>
           <div v-if="jobForm.commandType === 'run_powershell_script'" class="space-y-2">
             <div>
-              <label class="text-sm text-ink-secondary">Gotova skripta (opciono)</label>
+              <label class="text-sm text-ink-secondary">{{ t('agentDetail.presetScriptLabel') }}</label>
               <select v-model="selectedPresetId" class="app-input w-full" @change="applyPreset">
-                <option value="">— Prilagođena skripta —</option>
+                <option value="">{{ t('agentDetail.customScriptOption') }}</option>
                 <option v-for="p in POWERSHELL_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
               </select>
             </div>
             <div>
-              <label class="text-sm text-ink-secondary">PowerShell skripta</label>
+              <label class="text-sm text-ink-secondary">{{ t('agentDetail.psScriptLabel') }}</label>
               <textarea v-model="jobForm.script" rows="6" class="app-input w-full font-mono text-xs" placeholder="Get-Service | Where-Object ..."></textarea>
             </div>
           </div>
           <div class="flex justify-end">
             <AppButton variant="success" :disabled="creatingJob" @click="createJob">
-              {{ creatingJob ? 'Šaljem…' : 'Pošalji komandu' }}
+              {{ creatingJob ? t('agentDetail.sendingCommand') : t('agentDetail.sendCommand') }}
             </AppButton>
           </div>
         </div>
@@ -245,18 +245,18 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <div class="font-medium text-ink">
-              Istorija komandi
-              <span v-if="jobsPolling" class="text-accent text-xs font-normal">· automatski se osvežava…</span>
+              {{ t('agentDetail.commandHistory') }}
+              <span v-if="jobsPolling" class="text-accent text-xs font-normal">{{ t('agentDetail.autoRefreshing') }}</span>
             </div>
             <button v-if="jobs.length && isAdmin" @click="confirmClearJobs" class="text-bad hover:underline text-sm">
-              Očisti logove
+              {{ t('agentDetail.clearLogs') }}
             </button>
           </div>
-          <div v-if="jobsLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
-          <div v-else-if="!jobs.length" class="text-ink-muted text-sm">Nema poslatih komandi.</div>
+          <div v-if="jobsLoading" class="text-ink-secondary text-sm">{{ t('agentDetail.loading') }}</div>
+          <div v-else-if="!jobs.length" class="text-ink-muted text-sm">{{ t('agentDetail.noCommandsSent') }}</div>
           <div v-for="j in jobs" :key="j.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-start justify-between gap-3">
-              <div class="font-medium text-ink">{{ COMMAND_LABELS[j.commandType] || j.commandType }}</div>
+              <div class="font-medium text-ink">{{ commandLabel(j.commandType, t) }}</div>
               <div class="flex items-center gap-2 shrink-0">
                 <button
                   v-if="j.status === 'pending' || j.status === 'sent'"
@@ -264,25 +264,25 @@
                   @click="cancelJob(j)"
                   class="text-bad hover:underline text-xs whitespace-nowrap"
                 >
-                  {{ cancellingJobId === j.id ? 'Otkazujem…' : 'Otkaži' }}
+                  {{ cancellingJobId === j.id ? t('agentDetail.cancelling') : t('common.cancel') }}
                 </button>
                 <StatusPill :status="jobStatusTone(j.status)" :label="j.status" :dot="false" />
               </div>
             </div>
             <div class="text-xs text-ink-muted mt-1 font-mono">
-              Kreirano: {{ fmtDate(j.createdAt) }}
-              <span v-if="j.completedAt"> · Završeno: {{ fmtDate(j.completedAt) }}</span>
+              {{ t('agentDetail.createdLabel') }} {{ fmtDate(j.createdAt) }}
+              <span v-if="j.completedAt"> · {{ t('agentDetail.completedLabel') }} {{ fmtDate(j.completedAt) }}</span>
               <span v-if="j.exitCode !== null"> · Exit code: {{ j.exitCode }}</span>
               <span v-if="j.durationMs !== null"> · {{ j.durationMs }}ms</span>
             </div>
             <div v-if="j.output" class="relative mt-1">
-              <button @click="copyToClipboard(j.output, 'Izlaz kopiran!')"
-                class="absolute top-1 right-1 text-xs text-accent hover:underline" title="Kopiraj izlaz"><NavIcon name="copy" /></button>
+              <button @click="copyToClipboard(j.output, t('agentDetail.outputCopied'))"
+                class="absolute top-1 right-1 text-xs text-accent hover:underline" :title="t('agentDetail.copyOutput')"><NavIcon name="copy" /></button>
               <div class="text-xs font-mono bg-surface-sunken rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ j.output }}</div>
             </div>
             <div v-if="j.errorOutput" class="relative mt-1">
-              <button @click="copyToClipboard(j.errorOutput, 'Izlaz greške kopiran!')"
-                class="absolute top-1 right-1 text-xs text-accent hover:underline" title="Kopiraj izlaz greške"><NavIcon name="copy" /></button>
+              <button @click="copyToClipboard(j.errorOutput, t('agentDetail.errorOutputCopied'))"
+                class="absolute top-1 right-1 text-xs text-accent hover:underline" :title="t('agentDetail.copyErrorOutput')"><NavIcon name="copy" /></button>
               <div class="text-xs font-mono bg-bad-subtle text-bad rounded p-2 pr-7 whitespace-pre-wrap break-all">{{ j.errorOutput }}</div>
             </div>
           </div>
@@ -292,19 +292,18 @@
       <!-- Update log -->
       <div v-else-if="tab === 'updates'" class="space-y-3">
         <p class="text-xs text-ink-muted">
-          Za instalaciju određene verzije na ovaj agent, koristi tab "Manager" - jedini put koji sad ostaje,
-          radi bez obzira na to da li je NetdeskAgent servis dostupan.
+          {{ t('agentDetail.updatesTabHint') }}
         </p>
 
-        <div v-if="updateLogLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
-        <div v-else-if="!updateLog.length" class="text-ink-muted text-sm">Nema pokušaja ažuriranja.</div>
+        <div v-if="updateLogLoading" class="text-ink-secondary text-sm">{{ t('agentDetail.loading') }}</div>
+        <div v-else-if="!updateLog.length" class="text-ink-muted text-sm">{{ t('agentDetail.noUpdateAttempts') }}</div>
         <div v-for="u in updateLog" :key="u.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="font-mono text-ink-secondary">{{ u.fromVersion || '—' }} → {{ u.toVersion || '—' }}</span>
               <StatusPill status="info" :label="u.channel === 'manager' ? 'Manager' : 'Agent'" :dot="false" />
             </div>
-            <StatusPill :status="u.success ? 'good' : 'bad'" :label="u.success ? 'Uspešno' : 'Neuspešno'" />
+            <StatusPill :status="u.success ? 'good' : 'bad'" :label="u.success ? t('agentDetail.success') : t('agentDetail.failure')" />
           </div>
           <div v-if="u.reason" class="text-xs text-ink-secondary mt-1">{{ u.reason }}</div>
           <div class="text-xs text-ink-muted mt-1 font-mono">{{ fmtDate(u.reportedAt) }}</div>
@@ -314,22 +313,22 @@
       <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
       <div v-else-if="tab === 'manager'" class="space-y-3">
         <div class="hud-panel rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
-          <div class="text-sm font-medium text-info">Netdesk Agent Manager (nezavisni kanal)</div>
+          <div class="text-sm font-medium text-info">{{ t('agentDetail.managerChannelTitle') }}</div>
           <p class="text-xs text-ink-secondary">
-            Radi nezavisno od NetdeskAgent servisa - dostupno čak i kad je on ugašen ili onemogućen.
+            {{ t('agentDetail.managerChannelHint') }}
           </p>
 
-          <div v-if="managerStatusLoading" class="text-xs text-ink-secondary">Učitavanje…</div>
+          <div v-if="managerStatusLoading" class="text-xs text-ink-secondary">{{ t('agentDetail.loading') }}</div>
           <div v-else-if="!managerStatus" class="text-xs text-ink-secondary">
-            Manager nije registrovan na ovoj mašini.
+            {{ t('agentDetail.managerNotRegistered') }}
           </div>
           <template v-else>
             <div class="flex flex-wrap items-center gap-2 text-xs text-ink-secondary">
-              <StatusPill :status="connectivityTone(managerStatus.connectivityStatus)" :label="connectivityLabel(managerStatus.connectivityStatus)" />
+              <StatusPill :status="connectivityTone(managerStatus.connectivityStatus)" :label="connectivityLabel(managerStatus.connectivityStatus, t)" />
               <span class="font-mono">Manager v{{ managerStatus.managerVersion || '—' }}</span>
               <span>
-                NetdeskAgent: <strong class="text-ink">{{ managerStatus.netdeskAgentServiceStatus || 'Nepoznato' }}</strong>,
-                startup: <strong class="text-ink">{{ managerStatus.netdeskAgentStartMode || 'Nepoznato' }}</strong>
+                {{ t('agentDetail.netdeskAgentStatusLabel') }} <strong class="text-ink">{{ managerStatus.netdeskAgentServiceStatus || t('pdsu.stateUnknown') }}</strong>,
+                {{ t('agentDetail.startupLabel') }} <strong class="text-ink">{{ managerStatus.netdeskAgentStartMode || t('pdsu.stateUnknown') }}</strong>
               </span>
             </div>
 
@@ -339,31 +338,31 @@
 
             <div class="flex flex-wrap gap-2">
               <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('start_service')">
-                Pokreni
+                {{ t('agentDetail.start') }}
               </AppButton>
               <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('stop_service')">
-                Zaustavi
+                {{ t('agentDetail.stop') }}
               </AppButton>
               <AppButton variant="neutral" :disabled="sendingManagerAction" @click="sendManagerServiceAction('restart_service')">
-                Restartuj
+                {{ t('agentDetail.restart') }}
               </AppButton>
             </div>
 
             <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span class="text-xs font-medium text-ink">Startup tip servisa:</span>
+              <span class="text-xs font-medium text-ink">{{ t('agentDetail.startupTypeLabel') }}</span>
               <select v-model="selectedStartMode" class="app-input w-full sm:w-40 text-sm">
                 <option value="Automatic">Automatic</option>
                 <option value="Manual">Manual</option>
                 <option value="Disabled">Disabled</option>
               </select>
               <AppButton variant="neutral" :disabled="sendingManagerAction" @click="setManagerStartMode">
-                Postavi startup tip
+                {{ t('agentDetail.setStartupType') }}
               </AppButton>
             </div>
 
             <div class="flex flex-col sm:flex-row gap-2">
               <select v-model="selectedReleaseId" class="app-input w-full sm:w-64 text-sm">
-                <option value="">— Izaberi verziju —</option>
+                <option value="">{{ t('agentDetail.selectVersionOption') }}</option>
                 <option v-for="r in activeReleaseOptions" :key="r.id" :value="r.id">{{ r.version }}</option>
               </select>
               <AppButton
@@ -371,16 +370,16 @@
                 :disabled="!selectedReleaseId || installingViaManager"
                 @click="installViaManager"
               >
-                {{ installingViaManager ? 'Šaljem…' : 'Instaliraj preko Manager-a (kad Agent nije dostupan)' }}
+                {{ installingViaManager ? t('agentDetail.sendingCommand') : t('agentDetail.installViaManagerLabel') }}
               </AppButton>
             </div>
           </template>
         </div>
 
         <div v-if="managerStatus" class="space-y-2">
-          <div class="text-sm font-medium text-ink">Istorija Manager poslova</div>
-          <div v-if="managerJobHistoryLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
-          <div v-else-if="!managerJobHistory.length" class="text-ink-muted text-sm">Nema poslova za ovaj Manager.</div>
+          <div class="text-sm font-medium text-ink">{{ t('agentDetail.managerJobHistoryTitle') }}</div>
+          <div v-if="managerJobHistoryLoading" class="text-ink-secondary text-sm">{{ t('agentDetail.loading') }}</div>
+          <div v-else-if="!managerJobHistory.length" class="text-ink-muted text-sm">{{ t('agentDetail.noManagerJobs') }}</div>
           <div v-for="j in managerJobHistory" :key="j.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-center justify-between gap-2">
               <div class="text-ink">{{ MANAGER_COMMAND_LABELS[j.commandType] || j.commandType }}</div>
@@ -395,18 +394,18 @@
       <!-- Event log -->
       <div v-else-if="tab === 'events'" class="space-y-2">
         <div v-if="!agent.ipEntryId" class="text-ink-muted text-sm">
-          Računar još nije povezan (nema inventory sync-a).
+          {{ t('agentDetail.computerNotConnected') }}
         </div>
         <template v-else>
-          <div v-if="eventLogsLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
-          <div v-else-if="!eventLogs.length" class="text-ink-muted text-sm">Nema event log unosa.</div>
+          <div v-if="eventLogsLoading" class="text-ink-secondary text-sm">{{ t('agentDetail.loading') }}</div>
+          <div v-else-if="!eventLogs.length" class="text-ink-muted text-sm">{{ t('agentDetail.noEventLogEntries') }}</div>
           <div v-for="e in eventLogs" :key="e.id" class="hud-row rounded-lg border border-line bg-surface p-3 text-sm">
             <div class="flex items-center justify-between gap-2">
               <div class="font-medium text-ink">{{ e.source || '—' }} <span class="text-xs text-ink-muted">({{ e.log_name }})</span></div>
               <StatusPill :status="eventLevelTone(e.level)" :label="e.level || '—'" :dot="false" />
             </div>
             <div class="text-xs text-ink-secondary mt-1">{{ e.message || '—' }}</div>
-            <div class="text-xs text-ink-muted mt-1 font-mono">Event ID: {{ e.event_id ?? '—' }} · {{ fmtDate(e.logged_at) }}</div>
+            <div class="text-xs text-ink-muted mt-1 font-mono">{{ t('agentDetail.eventIdLabel') }} {{ e.event_id ?? '—' }} · {{ fmtDate(e.logged_at) }}</div>
           </div>
         </template>
       </div>
@@ -414,17 +413,17 @@
       <!-- DNS -->
       <div v-else-if="tab === 'dns'" class="space-y-2">
         <div v-if="!agent.ipEntryId" class="text-ink-muted text-sm">
-          Računar još nije povezan (nema inventory sync-a).
+          {{ t('agentDetail.computerNotConnected') }}
         </div>
         <template v-else>
           <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary">
             <input type="checkbox" v-model="dnsBlacklistedOnly" @change="loadDnsLogs" />
-            Samo domeni sa crne liste
+            {{ t('agentDetail.blacklistedOnly') }}
           </label>
 
-          <div v-if="dnsLogsLoading" class="text-ink-secondary text-sm">Učitavanje…</div>
+          <div v-if="dnsLogsLoading" class="text-ink-secondary text-sm">{{ t('agentDetail.loading') }}</div>
           <div v-else-if="!dnsLogs.length" class="text-ink-muted text-sm">
-            {{ dnsBlacklistedOnly ? 'Nema DNS upita ka domenima sa crne liste.' : 'Nema DNS upita.' }}
+            {{ dnsBlacklistedOnly ? t('agentDetail.noBlacklistedDnsQueries') : t('agentDetail.noDnsQueries') }}
           </div>
           <div v-for="d in dnsLogs" :key="d.id"
             class="hud-row rounded-lg border bg-surface p-3 text-sm"
@@ -432,12 +431,12 @@
             <div class="flex items-center justify-between gap-2">
               <div class="font-medium font-mono text-ink">
                 {{ d.domain }}
-                <span v-if="d.isBlacklisted" class="ml-1 inline-flex text-bad" title="Domen je na crnoj listi"><NavIcon name="ban" /></span>
+                <span v-if="d.isBlacklisted" class="ml-1 inline-flex text-bad" :title="t('agentDetail.domainBlacklisted')"><NavIcon name="ban" /></span>
               </div>
               <span class="text-xs font-mono text-ink-muted tabular-nums shrink-0">{{ d.queryCount }}×</span>
             </div>
             <div class="text-xs text-ink-muted mt-1 font-mono">
-              Prvi put viđen: {{ fmtDate(d.firstSeen) }} · Poslednji put viđen: {{ fmtDate(d.lastSeen) }}
+              {{ t('agentDetail.firstSeenLabel') }} {{ fmtDate(d.firstSeen) }} · {{ t('agentDetail.lastSeenLabel') }} {{ fmtDate(d.lastSeen) }}
             </div>
           </div>
         </template>
@@ -459,6 +458,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate, fmtRelative } from '@/utils/format.js'
@@ -467,7 +467,7 @@ import { useToast } from '@/composables/useToast.js'
 import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { POWERSHELL_PRESETS } from '@/constants/powershellPresets.js'
-import { COMMAND_TYPES, COMMAND_LABELS, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
+import { COMMAND_TYPES, commandLabel, SERVICE_COMMANDS } from '@/constants/agentCommands.js'
 import {
   agentStatusTone,
   agentStatusLabel,
@@ -486,7 +486,9 @@ import VncViewer from '@/components/VncViewer.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import TagChip from '@/components/TagChip.vue'
 
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const { t, locale } = useI18n()
+
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`)
 const fmtGb = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)} GB`)
 
@@ -526,7 +528,14 @@ async function fetchDeploymentGroupOptions() {
 }
 
 const TAB_NAMES = ['screen', 'jobs', 'updates', 'manager', 'events', 'dns']
-const TAB_LABELS = { screen: 'Ekran', jobs: 'Komande', updates: 'Update log', manager: 'Manager', events: 'Event Log', dns: 'DNS' }
+const TAB_LABELS = computed(() => ({
+  screen: t('agentDetail.tabScreen'),
+  jobs: t('agentDetail.tabJobs'),
+  updates: t('agentDetail.tabUpdates'),
+  manager: 'Manager',
+  events: 'Event Log',
+  dns: 'DNS',
+}))
 
 // "manager" tab koristi "info" ton (isti kao Manager bedž/panel) umesto
 // generičkog akcenta - vizuelna veza sa panelom koji taj tab otvara. Drži
@@ -574,21 +583,21 @@ const managerJobHistory = ref([])
 const managerJobHistoryLoading = ref(false)
 const managerJobHistoryLoaded = ref(false)
 
-const MANAGER_COMMAND_LABELS = {
-  start_service: 'Pokreni servis',
-  stop_service: 'Zaustavi servis',
-  restart_service: 'Restartuj servis',
-  set_service_start_mode: 'Promena startup tipa',
-  install_update: 'Instalacija update-a',
-}
+const MANAGER_COMMAND_LABELS = computed(() => ({
+  start_service: t('agentDetail.managerCommandStart'),
+  stop_service: t('agentDetail.managerCommandStop'),
+  restart_service: t('agentDetail.managerCommandRestart'),
+  set_service_start_mode: t('agentDetail.managerCommandSetStartMode'),
+  install_update: t('agentDetail.managerCommandInstallUpdate'),
+}))
 
-const MANAGER_JOB_STATUS_LABELS = {
-  pending: 'Na čekanju',
-  sent: 'Poslato Manager-u',
-  completed: 'Uspešno',
-  failed: 'Neuspešno',
-  cancelled: 'Otkazano',
-}
+const MANAGER_JOB_STATUS_LABELS = computed(() => ({
+  pending: t('agentDetail.managerJobPending'),
+  sent: t('agentDetail.managerJobSent'),
+  completed: t('agentDetail.managerJobCompleted'),
+  failed: t('agentDetail.managerJobFailed'),
+  cancelled: t('agentDetail.managerJobCancelled'),
+}))
 
 async function fetchReleaseOptions() {
   try {
@@ -625,7 +634,7 @@ function goBack() {
 }
 
 async function copy(text) {
-  await copyToClipboard(text, 'Agent ID kopiran')
+  await copyToClipboard(text, t('agentDetail.agentIdCopied'))
 }
 
 async function loadAgent() {
@@ -634,7 +643,7 @@ async function loadAgent() {
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}`)
     if (!res.ok) {
-      loadError.value = await parseError(res, 'Agent nije pronađen')
+      loadError.value = await parseError(res, t('agentDetail.loadErrorFallback'))
       return
     }
     agent.value = await res.json()
@@ -643,7 +652,7 @@ async function loadAgent() {
     processKillExemptInput.value = Boolean(agent.value.processKillExempt)
   } catch (err) {
     console.error(err)
-    loadError.value = 'Neuspešno učitan agent'
+    loadError.value = t('agentDetail.loadFailed')
   } finally {
     loading.value = false
   }
@@ -657,11 +666,11 @@ async function addDeploymentGroup(name) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupName: name }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri dodavanju deployment grupe'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorAddDeploymentGroup')))
     agent.value = await res.json()
   } catch (err) {
     console.error(err)
-    showToast(err.message || 'Greška pri dodavanju deployment grupe', { kind: 'error', duration: 3000 })
+    showToast(err.message || t('agentDetail.errorAddDeploymentGroup'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -671,11 +680,11 @@ async function removeDeploymentGroup(name) {
       `/api/protected/agents/${route.params.id}/deployment-groups/${encodeURIComponent(name)}`,
       { method: 'DELETE' },
     )
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri uklanjanju deployment grupe'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorRemoveDeploymentGroup')))
     agent.value = await res.json()
   } catch (err) {
     console.error(err)
-    showToast(err.message || 'Greška pri uklanjanju deployment grupe', { kind: 'error', duration: 3000 })
+    showToast(err.message || t('agentDetail.errorRemoveDeploymentGroup'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -687,46 +696,46 @@ async function saveProcessKillExempt() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ processKillExempt: value }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čuvanju whitelist-e'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSaveWhitelist')))
     agent.value = { ...agent.value, processKillExempt: value }
-    showToast(value ? 'Računar dodat na whitelist' : 'Računar uklonjen sa whitelist-e')
+    showToast(value ? t('agentDetail.addedToWhitelist') : t('agentDetail.removedFromWhitelist'))
   } catch (err) {
     console.error(err)
     processKillExemptInput.value = !value
-    showToast('Greška pri čuvanju whitelist-e', { kind: 'error', duration: 3000 })
+    showToast(t('agentDetail.errorSaveWhitelist'), { kind: 'error', duration: 3000 })
   }
 }
 
 async function confirmRevoke() {
-  const ok = await askConfirm(`Povući pristup agentu "${agent.value?.hostname || agent.value?.agentUid}"?`, {
-    title: 'Povlačenje agenta',
+  const ok = await askConfirm(t('agentDetail.confirmRevokeMessage', { name: agent.value?.hostname || agent.value?.agentUid }), {
+    title: t('agentDetail.confirmRevokeTitle'),
   })
   if (!ok) return
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/revoke`, { method: 'POST' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri povlačenju'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorRevoke')))
     await loadAgent()
-    showToast('Agent povučen')
+    showToast(t('agentDetail.agentRevoked'))
   } catch (err) {
     console.error(err)
-    showToast('Greška pri povlačenju agenta', { kind: 'error', duration: 3000 })
+    showToast(t('agentDetail.errorRevokeAgent'), { kind: 'error', duration: 3000 })
   }
 }
 
 async function confirmDelete() {
   const ok = await askConfirm(
-    `Trajno obrisati agenta "${agent.value?.hostname || agent.value?.agentUid}"? Ova radnja se ne može poništiti - briše i istoriju komandi, monitoring i deployment grupe ovog agenta.`,
-    { title: 'Brisanje agenta' },
+    t('agentDetail.confirmDeleteMessage', { name: agent.value?.hostname || agent.value?.agentUid }),
+    { title: t('agentDetail.confirmDeleteTitle') },
   )
   if (!ok) return
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri brisanju agenta'))
-    showToast('Agent obrisan')
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorDeleteAgent')))
+    showToast(t('agentDetail.agentDeleted'))
     router.push('/agents')
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri brisanju agenta', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorDeleteAgent'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -746,7 +755,7 @@ async function loadJobs(isBackgroundPoll = false) {
   if (!isBackgroundPoll) jobsLoading.value = true
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs?limit=50`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju komandi'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorLoadCommands')))
     const data = await res.json()
     jobs.value = data.items || []
     jobsLoaded.value = true
@@ -769,38 +778,38 @@ async function loadJobs(isBackgroundPoll = false) {
 // ili sent) - isti backend endpoint kao "Otkaži" na Batch Job Detail strani.
 async function cancelJob(job) {
   const ok = await askConfirm(
-    `Otkazati komandu "${COMMAND_LABELS[job.commandType] || job.commandType}"?`,
-    { title: 'Otkazivanje komande' },
+    t('agentDetail.confirmCancelCommandMessage', { command: commandLabel(job.commandType, t) }),
+    { title: t('agentDetail.confirmCancelCommandTitle') },
   )
   if (!ok) return
 
   cancellingJobId.value = job.id
   try {
     const res = await fetchWithAuth(`/api/protected/agents/jobs/${job.id}/cancel`, { method: 'POST' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri otkazivanju komande'))
-    showToast('Komanda otkazana')
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorCancelCommand')))
+    showToast(t('agentDetail.commandCancelled'))
     await loadJobs()
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri otkazivanju komande', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorCancelCommand'), { kind: 'error', duration: 3000 })
   } finally {
     cancellingJobId.value = null
   }
 }
 
 async function confirmClearJobs() {
-  const ok = await askConfirm('Očistiti istoriju komandi za ovaj agent? Ova radnja se ne može poništiti.', {
-    title: 'Čišćenje logova komandi',
+  const ok = await askConfirm(t('agentDetail.confirmClearCommandsMessage'), {
+    title: t('agentDetail.confirmClearCommandsTitle'),
   })
   if (!ok) return
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/jobs`, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri čišćenju logova'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorClearLogs')))
     await loadJobs()
-    showToast('Logovi komandi očišćeni')
+    showToast(t('agentDetail.commandsCleared'))
   } catch (err) {
     console.error(err)
-    showToast('Greška pri čišćenju logova', { kind: 'error', duration: 3000 })
+    showToast(t('agentDetail.errorClearLogs'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -821,12 +830,12 @@ async function sendFixJob(presetId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commandType: 'run_powershell_script', payload: { script: preset.script } }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande za popravku'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendFixCommand')))
     if (jobsLoaded.value) await loadJobs()
-    showToast('Komanda za popravku poslata - proveri rezultat u tabu "Komande".')
+    showToast(t('agentDetail.fixCommandSent'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande za popravku', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorSendFixCommand'), { kind: 'error', duration: 3000 })
   } finally {
     fixingPresetId.value = ''
   }
@@ -836,14 +845,14 @@ async function createJob() {
   const payload = {}
   if (isServiceCommand.value) {
     if (!jobForm.value.serviceName.trim()) {
-      showToast('Naziv servisa je obavezan', { kind: 'error', duration: 3000 })
+      showToast(t('agentDetail.serviceNameRequired'), { kind: 'error', duration: 3000 })
       return
     }
     payload.serviceName = jobForm.value.serviceName.trim()
   }
   if (jobForm.value.commandType === 'run_powershell_script') {
     if (!jobForm.value.script.trim()) {
-      showToast('Skripta je obavezna', { kind: 'error', duration: 3000 })
+      showToast(t('agentDetail.scriptRequired'), { kind: 'error', duration: 3000 })
       return
     }
     payload.script = jobForm.value.script.trim()
@@ -856,12 +865,12 @@ async function createJob() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commandType: jobForm.value.commandType, payload }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendCommand')))
     await loadJobs()
-    showToast('Komanda poslata')
+    showToast(t('agentDetail.commandSent'))
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorSendCommand'), { kind: 'error', duration: 3000 })
   } finally {
     creatingJob.value = false
   }
@@ -944,14 +953,14 @@ async function waitForManagerJobResult(managerId, jobId, maxAttempts = MANAGER_J
 
 async function reportManagerJobOutcome(job) {
   if (!job) {
-    showToast('Manager nije potvrdio izvršenje u očekivanom roku - proveri da li je online.', {
+    showToast(t('agentDetail.managerNoConfirmation'), {
       kind: 'warning',
       duration: 4000,
     })
   } else if (job.status === 'completed') {
-    showToast('Komanda uspešno izvršena.')
+    showToast(t('agentDetail.managerCommandSuccess'))
   } else {
-    showToast(job.errorOutput || 'Komanda nije uspela.', { kind: 'error', duration: 4000 })
+    showToast(job.errorOutput || t('agentDetail.managerCommandFailed'), { kind: 'error', duration: 4000 })
   }
   await loadManagerStatus()
   await loadManagerJobHistory()
@@ -960,21 +969,21 @@ async function reportManagerJobOutcome(job) {
 async function sendManagerServiceAction(commandType) {
   if (!managerStatus.value?.managerId) return
   sendingManagerAction.value = true
-  managerJobStatusText.value = 'Šaljem komandu…'
+  managerJobStatusText.value = t('agentDetail.sendingCommandEllipsis')
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commandType, payload: {} }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendCommand')))
     const job = await res.json()
-    managerJobStatusText.value = 'Čekam da Manager izvrši komandu…'
+    managerJobStatusText.value = t('agentDetail.waitingForManager')
     const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id)
     await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorSendCommand'), { kind: 'error', duration: 3000 })
   } finally {
     sendingManagerAction.value = false
     managerJobStatusText.value = ''
@@ -984,7 +993,7 @@ async function sendManagerServiceAction(commandType) {
 async function setManagerStartMode() {
   if (!managerStatus.value?.managerId) return
   sendingManagerAction.value = true
-  managerJobStatusText.value = 'Šaljem komandu…'
+  managerJobStatusText.value = t('agentDetail.sendingCommandEllipsis')
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
@@ -994,14 +1003,14 @@ async function setManagerStartMode() {
         payload: { startMode: selectedStartMode.value },
       }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendCommand')))
     const job = await res.json()
-    managerJobStatusText.value = 'Čekam da Manager izvrši komandu…'
+    managerJobStatusText.value = t('agentDetail.waitingForManager')
     const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id)
     await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorSendCommand'), { kind: 'error', duration: 3000 })
   } finally {
     sendingManagerAction.value = false
     managerJobStatusText.value = ''
@@ -1013,13 +1022,13 @@ async function installViaManager() {
   if (!release || !managerStatus.value?.managerId) return
 
   const ok = await askConfirm(
-    `Instalirati verziju ${release.version} preko Manager-a? Koristi se kad NetdeskAgent nije dostupan da sam preuzme update.`,
-    { title: 'Instalacija preko Manager-a' },
+    t('agentDetail.confirmInstallViaManagerMessage', { version: release.version }),
+    { title: t('agentDetail.confirmInstallViaManagerTitle') },
   )
   if (!ok) return
 
   installingViaManager.value = true
-  managerJobStatusText.value = 'Šaljem komandu…'
+  managerJobStatusText.value = t('agentDetail.sendingCommandEllipsis')
   try {
     const res = await fetchWithAuth(`/api/protected/managers/${managerStatus.value.managerId}/jobs`, {
       method: 'POST',
@@ -1029,16 +1038,16 @@ async function installViaManager() {
         payload: { releaseId: release.id },
       }),
     })
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri slanju komande'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendCommand')))
     const job = await res.json()
     // Duži rok od servisnih akcija - preuzimanje+raspakivanje paketa realno
     // može trajati duže od jednostavnog start/stop/restart poziva.
-    managerJobStatusText.value = 'Čekam da Manager preuzme i instalira paket…'
+    managerJobStatusText.value = t('agentDetail.waitingForManagerInstall')
     const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id, 40)
     await reportManagerJobOutcome(result)
   } catch (err) {
     console.error(err)
-    showToast(err?.message || 'Greška pri slanju komande', { kind: 'error', duration: 3000 })
+    showToast(err?.message || t('agentDetail.errorSendCommand'), { kind: 'error', duration: 3000 })
   } finally {
     installingViaManager.value = false
     managerJobStatusText.value = ''
@@ -1049,7 +1058,7 @@ async function loadUpdateLog() {
   updateLogLoading.value = true
   try {
     const res = await fetchWithAuth(`/api/protected/agents/${route.params.id}/update-log?limit=50`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju update log-a'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorLoadUpdateLog')))
     const data = await res.json()
     updateLog.value = data.items || []
     updateLogLoaded.value = true
@@ -1065,7 +1074,7 @@ async function loadEventLogs() {
   eventLogsLoading.value = true
   try {
     const res = await fetchWithAuth(`/api/protected/pdsu/${agent.value.ipEntryId}/event-logs?limit=50`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju event log-a'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorLoadEventLogs')))
     const data = await res.json()
     eventLogs.value = data.items || []
     eventLogsLoaded.value = true
@@ -1088,7 +1097,7 @@ async function loadDnsLogs() {
     })
     if (dnsBlacklistedOnly.value) params.set('blacklistedOnly', 'true')
     const res = await fetchWithAuth(`/api/protected/dns-logs?${params.toString()}`)
-    if (!res.ok) throw new Error(await parseError(res, 'Greška pri učitavanju DNS logova'))
+    if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorLoadDnsLogs')))
     const data = await res.json()
     dnsLogs.value = data.items || []
     dnsLogsLoaded.value = true

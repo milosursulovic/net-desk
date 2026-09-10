@@ -19,16 +19,21 @@ export function connectivityTone(status) {
   return 'neutral'
 }
 
-export function connectivityLabel(status) {
-  return CONNECTIVITY_LABELS[status] || 'Nepoznato'
+export function connectivityLabel(status, t) {
+  if (!t) return CONNECTIVITY_LABELS[status] || 'Nepoznato'
+  if (status === 'online') return t('common.online')
+  if (status === 'stale') return t('agents.stale')
+  if (status === 'offline') return t('common.offline')
+  return t('pdsu.stateUnknown')
 }
 
 export function agentStatusTone(status) {
   return status === 'active' ? 'good' : 'neutral'
 }
 
-export function agentStatusLabel(status) {
-  return status === 'active' ? 'Aktivan' : 'Povučen'
+export function agentStatusLabel(status, t) {
+  if (!t) return status === 'active' ? 'Aktivan' : 'Povučen'
+  return status === 'active' ? t('agents.badgeActive') : t('agents.badgeRevoked')
 }
 
 const JOB_STATUS_LABELS = {
