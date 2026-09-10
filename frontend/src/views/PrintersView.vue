@@ -120,7 +120,16 @@
           <FormInput v-model.trim="form.manufacturer" label="Proizvođač" placeholder="HP" />
           <FormInput v-model.trim="form.model" label="Model" placeholder="M401dne" />
           <FormInput v-model.trim="form.serial" label="Serijski" />
-          <FormInput v-model.trim="form.department" label="Odeljenje" />
+          <div>
+            <label class="text-sm text-ink-secondary">Odeljenje</label>
+            <GroupSelect
+              v-model="form.department"
+              :options="groupOptions"
+              :is-admin="isAdmin"
+              @group-added="groupOptions.push($event)"
+              @error="(msg) => showToast(msg, { kind: 'error', duration: 3000 })"
+            />
+          </div>
           <div>
             <label class="text-sm text-ink-secondary">Lokacija</label>
             <select v-model="form.site" class="app-input w-full">
@@ -253,6 +262,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import { SITE_OPTIONS } from '@/constants/sites.js'
 import FormInput from '@/components/FormInput.vue'
+import GroupSelect from '@/components/GroupSelect.vue'
 import SlideOverPanel from '@/components/SlideOverPanel.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -291,6 +301,7 @@ const saving = ref(false)
 
 const showModal = ref(false)
 const editId = ref(null)
+const groupOptions = ref([])
 const form = ref({
   name: '',
   manufacturer: '',
@@ -530,6 +541,16 @@ async function unsetHostFromTools() {
   }
 }
 
+async function fetchGroupOptions() {
+  try {
+    const res = await fetchWithAuth('/api/protected/groups')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    groupOptions.value = await res.json()
+  } catch (err) {
+    console.error('Neuspešno dohvatanje grupa', err)
+  }
+}
+
 async function copy(text) {
   await copyToClipboard(text, 'IP kopiran')
 }
@@ -558,5 +579,6 @@ onBeforeUnmount(() => {
 
 onMounted(() => {
   fetchData()
+  fetchGroupOptions()
 })
 </script>
