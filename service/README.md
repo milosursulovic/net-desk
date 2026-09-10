@@ -1,94 +1,102 @@
 # Netdesk Agent (Windows Service)
 
-Klijentska komponenta iz `Netdesk Agent - Tehnička specifikacija.pdf` — Windows
-servis koji se instalira na svaki podržani računar i komunicira sa Netdesk
-serverom (`backend/`) preko HTTPS-a. Odvojen projekat/stek od `backend/` i
-`frontend/` — C#, .NET Framework 4.5.2 (zbog Windows 7 podrške).
+The client-side component from `Netdesk Agent - Tehnička specifikacija.pdf` —
+a Windows service installed on every supported computer that communicates
+with the Netdesk server (`backend/`) over HTTPS. A separate project/stack
+from `backend/` and `frontend/` — C#, .NET Framework 4.5.2 (for Windows 7
+support).
 
 ## Status
 
-Sve faze iz specifikacije su implementirane: enrollment, heartbeat, monitoring,
-inventory sync (hardver/softver/servisi/Windows Update/štampači preko WMI i
-registry-ja), job polling/izvršavanje (restart/shutdown/logoff/servisi/
-PowerShell/brisanje temp fajlova), event log sync, i auto-update (provera
-verzije, preuzimanje, SHA-256 + digitalni potpis verifikacija, zamena preko
-odvojenog NetdeskAgentManager servisa, rollback pri neuspehu - videti sekciju
-"Netdesk Agent Manager" ispod).
+All phases from the specification are implemented: enrollment, heartbeat,
+monitoring, inventory sync (hardware/software/services/Windows Update/
+printers via WMI and the registry), job polling/execution (restart/
+shutdown/logoff/services/PowerShell/deleting temp files), event log sync,
+and auto-update (version check, download, SHA-256 + digital signature
+verification, swap via a separate NetdeskAgentManager service, rollback on
+failure - see the "Netdesk Agent Manager" section below).
 
-**Namerno neurađeno** (videti komentare u kodu za detalje):
-- Instalacija sertifikata i odobrenih paketa kao job komande — zahteva poseban
-  katalog odobravanja koji nije izgrađen.
-- Potpisivanje komandi (11.12) — trenutno se potpisuju samo update paketi, ne
-  i pojedinačne job komande.
+**Deliberately not done** (see code comments for details):
+- Installing certificates and approved packages as job commands — requires
+  a separate approval catalog that hasn't been built.
+- Signing commands (11.12) — currently only update packages are signed, not
+  individual job commands.
 
-## Digitalni potpis update paketa
+## Digital signature for update packages
 
-Pošto je organizacija već distribuirala internu root CA u trusted root store
-svih upravljanih računara (koristi se za HTTPS ka Netdesk serveru), verifikacija
-potpisa je zasnovana na toj istoj CA — nema potrebe za posebnom distribucijom
-javnog ključa agentu.
+Since the organization has already distributed an internal root CA into
+the trusted root store of every managed computer (used for HTTPS to the
+Netdesk server), signature verification is based on that same CA — there's
+no need to separately distribute a public key to the agent.
 
-**Podešavanje na serveru** (`backend/.env`):
+**Server-side setup** (`backend/.env`):
 
 ```
-AGENT_SIGNING_CERT_PATH=putanja/do/code-signing-sertifikata.pem
-AGENT_SIGNING_KEY_PATH=putanja/do/privatnog-kljuca.pem
+AGENT_SIGNING_CERT_PATH=path/to/code-signing-certificate.pem
+AGENT_SIGNING_KEY_PATH=path/to/private-key.pem
 ```
 
-Sertifikat mora biti **izdat od iste interne CA** koja je već u trusted root
-store-u računara (ne mora biti isti sertifikat koji se koristi za HTTPS -
-poželjno je poseban code-signing sertifikat, ali mora deliti istu CA
-lanac-do-root). Ako ova dva env-a nisu podešena, release paketi se i dalje
-otpremaju normalno, samo bez potpisa (agent tada proveri samo SHA-256, kao
-i pre) — potpisivanje je opciono, u skladu sa spec formulacijom "mogućnost".
+The certificate must be **issued by the same internal CA** that's already
+in the computers' trusted root store (it doesn't have to be the same
+certificate used for HTTPS - a dedicated code-signing certificate is
+preferable, but it must share the same CA chain-to-root). If these two env
+vars aren't set, release packages still upload normally, just unsigned
+(the agent then only checks SHA-256, as before) — signing is optional, per
+the spec's "capability" wording.
 
-**Kako radi:**
-1. Server pri upload-u potpisuje sirove bajtove paketa (`RSA-SHA256`,
-   `utils/agentSigning.js`) i čuva potpis u `agent_releases.signature`.
-2. `GET /api/agents/update` vraća i `signature` i `signatureCertificatePem`
-   (javni sertifikat, ne privatni ključ).
-3. Agent (`UpdateManager.VerifySignatureIfPresent`) posle SHA-256 provere:
-   - gradi `X509Chain` od primljenog sertifikata i proverava da vodi do
-     trusted root (već prisutne na mašini) - `X509RevocationMode.NoCheck`
-     jer organizacija verovatno nema CRL/OCSP za internu CA,
-   - verifikuje RSA potpis nad preuzetim fajlom.
-   - Ako sertifikat/paket nema potpis (server nema podešeno potpisivanje),
-     provera se preskače i update ide dalje samo sa SHA-256 potvrdom.
-   - Ako je potpis poslat ali provera (lanac ili sam potpis) ne uspe, update
-     se pouzdano odbacuje.
+**How it works:**
+1. On upload, the server signs the package's raw bytes (`RSA-SHA256`,
+   `utils/agentSigning.js`) and stores the signature in
+   `agent_releases.signature`.
+2. `GET /api/agents/update` returns both `signature` and
+   `signatureCertificatePem` (the public certificate, not the private key).
+3. The agent (`UpdateManager.VerifySignatureIfPresent`), after the SHA-256
+   check:
+   - builds an `X509Chain` from the received certificate and checks that it
+     leads to a trusted root (already present on the machine) -
+     `X509RevocationMode.NoCheck` since the organization likely has no
+     CRL/OCSP for the internal CA,
+   - verifies the RSA signature over the downloaded file.
+   - If the certificate/package has no signature (the server has no
+     signing configured), the check is skipped and the update proceeds with
+     just the SHA-256 confirmation.
+   - If a signature was sent but verification (the chain or the signature
+     itself) fails, the update is reliably rejected.
 
-**Napomena o .NET Framework 4.5.2 kompatibilnosti:** verifikacija koristi
-stariji `RSACryptoServiceProvider.VerifyData(byte[], string, byte[])` API, NE
-`RSA.VerifyData(..., HashAlgorithmName, RSASignaturePadding)` ni
-`X509Certificate2.GetRSAPublicKey()` - oba su dodata tek u .NET Framework 4.6
-i ne postoje na 4.5.2 (Windows 7 cilj).
+**Note on .NET Framework 4.5.2 compatibility:** verification uses the older
+`RSACryptoServiceProvider.VerifyData(byte[], string, byte[])` API, NOT
+`RSA.VerifyData(..., HashAlgorithmName, RSASignaturePadding)` or
+`X509Certificate2.GetRSAPublicKey()` - both were only added in .NET
+Framework 4.6 and don't exist on 4.5.2 (the Windows 7 target).
 
-**Testirano u ovoj sesiji** (van stvarnog Windows/Visual Studio okruženja):
-generisan test self-signed sertifikat, potpisan test paket preko iste
-Node.js logike koja se koristi u `agentSigning.js`, i verifikovan preko
-identičnog C# koda kao `UpdateManager` (uključujući ceo HTTP round-trip -
-pravi upload → pravi `/api/agents/update` odgovor → pravi download → uspešna
-verifikacija, plus potvrda da namerno izmenjen/oštećen sadržaj ispravno
-propada proveru). **X509Chain provera do stvarne trusted root CA nije
-testirana** - to zahteva pravu Windows mašinu sa vašom internom CA već
-instaliranom, što ovo sandboxovano okruženje nema.
+**Tested in this session** (outside a real Windows/Visual Studio
+environment): generated a test self-signed certificate, signed a test
+package via the same Node.js logic used in `agentSigning.js`, and verified
+it via identical C# code to `UpdateManager` (including the whole HTTP
+round trip - a real upload → a real `/api/agents/update` response → a real
+download → successful verification, plus confirming that deliberately
+tampered/corrupted content correctly fails the check). **X509Chain
+verification against a real trusted root CA was not tested** - that
+requires an actual Windows machine with your internal CA already
+installed, which this sandboxed environment doesn't have.
 
-## Struktura
+## Structure
 
 ```
 Netdesk.Agent.sln
-Netdesk.Agent.Common/     deljeni kod - modeli, HTTP klijent, WMI/registry
-                          kolektori (Inventory/Monitoring/EventLogs/DnsLogs),
+Netdesk.Agent.Common/     shared code - models, HTTP client, WMI/registry
+                          collectors (Inventory/Monitoring/EventLogs/DnsLogs),
                           job executor, update manager, manager mailbox
-                          protokol, config/state/logger
+                          protocol, config/state/logger
 Netdesk.Agent.Service/    Netdesk.Agent.Service.exe - Windows Service
-Netdesk.Agent.Manager/    Netdesk.Agent.Manager.exe - odvojen, TRAJAN Windows
-                          Service koji na komandu start/stop/restart-uje
-                          NetdeskAgent i fizički menja fajlove pri update-u -
-                          videti sekciju "Netdesk Agent Manager" ispod
+Netdesk.Agent.Manager/    Netdesk.Agent.Manager.exe - a separate, PERMANENT
+                          Windows Service that start/stop/restarts
+                          NetdeskAgent on command and physically swaps files
+                          during an update - see the "Netdesk Agent Manager"
+                          section below
 ```
 
-## Raspored instalacije (bitno za auto-update)
+## Install layout (relevant to auto-update)
 
 ```
 C:\Program Files\NetdeskAgent\
@@ -107,58 +115,62 @@ C:\Program Files\NetdeskAgent\
     └── Newtonsoft.Json.dll
 ```
 
-`websocket-sharp.dll` (paket `WebSocketSharp-netstandard`) je dodat zbog
-`VncBridge`-a - videti napomenu u sekciji "Udaljena kontrola ekrana"
-ispod za razlog (`System.Net.WebSockets.ClientWebSocket` ne radi na
-Windows 7). `WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` su
-za DNS query logging - videti sekciju "DNS query logging" ispod
-(`Microsoft.Diagnostics.Tracing.TraceEvent` paket, ETW-bazirani DNS
-logging do verzije 1.5.5, je potpuno uklonjen, zajedno sa svih 6
-tranzitivnih DLL-ova i `amd64\`/`x86\` native helper podfoldera).
+`websocket-sharp.dll` (the `WebSocketSharp-netstandard` package) was added
+for `VncBridge` - see the note in the "Remote screen control" section
+below for why (`System.Net.WebSockets.ClientWebSocket` doesn't work on
+Windows 7). `WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` are
+for DNS query logging - see the "DNS query logging" section below (the
+`Microsoft.Diagnostics.Tracing.TraceEvent` package, ETW-based DNS logging
+up to version 1.5.5, has been fully removed, along with all 6 transitive
+DLLs and the `amd64\`/`x86\` native helper subfolders).
 
-`Manager\` NEMA `Netdesk.Agent.Common.dll` niti `websocket-sharp.dll` -
-videti sekciju "Netdesk Agent Manager" ispod: Manager ima sopstveni
-FileLogger/Paths/ManagerCommand/DirectorySync, namerno odvojeno od
-`Netdesk.Agent.Common` da Agent update nikad ne može da obori Manager i
-obrnuto (ni WinDivert - Manager ne radi DNS logging).
+`Manager\` does NOT have `Netdesk.Agent.Common.dll` or
+`websocket-sharp.dll` - see the "Netdesk Agent Manager" section below: the
+Manager has its own FileLogger/Paths/ManagerCommand/DirectorySync,
+deliberately separate from `Netdesk.Agent.Common` so an Agent update can
+never break the Manager and vice versa (WinDivert included - the Manager
+doesn't do DNS logging).
 
-**`Service\` i `Manager\` moraju biti odvojeni folderi.** Auto-update paket
-prepisuje samo sadržaj `Service\` — `Manager\` namerno ostaje netaknut jer
-Manager ne sme (i ne može, zbog file lock-a) da prepisuje sopstvene fajlove
-dok je pokrenut. `Netdesk.Agent.Service.exe` ne zna/ne mora da zna gde
-Manager fizički živi (za razliku od starog `ResolveUpdaterExePath` obrasca) -
-komunikacija ide isključivo preko mailbox fajla i Windows Service imena
-(`NetdeskAgentManager`), ne preko putanje na disku - videti sekciju "Netdesk
-Agent Manager" ispod.
+**`Service\` and `Manager\` must be separate folders.** The auto-update
+package only overwrites the contents of `Service\` — `Manager\`
+deliberately stays untouched since the Manager must not (and, due to file
+locks, cannot) overwrite its own files while running.
+`Netdesk.Agent.Service.exe` doesn't know/need to know where the Manager
+physically lives (unlike the old `ResolveUpdaterExePath` pattern) -
+communication happens exclusively via the mailbox file and the Windows
+Service name (`NetdeskAgentManager`), not a path on disk - see the
+"Netdesk Agent Manager" section below.
 
-## Preduslovi za build
+## Build prerequisites
 
-- Visual Studio 2019+ (ili noviji dotnet SDK sa MSBuild-om) — mora imati
-  ".NET Framework 4.5.2 targeting pack" (Visual Studio Installer → Individual
-  Components → ".NET Framework 4.5.2 targeting pack" ako fali).
-- NuGet pristup internetu (za `Newtonsoft.Json`) prilikom prvog build-a.
+- Visual Studio 2019+ (or a newer dotnet SDK with MSBuild) — must have the
+  ".NET Framework 4.5.2 targeting pack" (Visual Studio Installer →
+  Individual Components → ".NET Framework 4.5.2 targeting pack" if
+  missing).
+- NuGet internet access (for `Newtonsoft.Json`) on the first build.
 
-**Napomena:** Ovaj kod je pisan van Windows/Visual Studio GUI okruženja, ali
-`dotnet build -c Release` (moderna .NET SDK CLI) je uživo potvrđeno da
-uspešno build-uje sva četiri projekta (Common, Service, Manager, i ranije
-Updater) na ovom net452 target-u - stvarna MSBuild kompajl-time provera
-(tipovi, reference, NuGet restore), ne samo sintaksno čitanje. Ono što ovo I
-DALJE ne proverava: da li se servis stvarno instalira/pokreće/zaustavlja na
-pravoj Windows mašini preko `InstallUtil.exe`, da li `ServiceController.
-ExecuteCommand`/`OnCustomCommand` signal stvarno stiže između dva procesa, i
-da li ceo enroll→heartbeat→inventory→job→auto-update tok radi end-to-end
-protiv pravog backend-a. **Prva stvarna provera mora da bude ručna, na test/
-pilot mašini**, pre distribucije na celu flotu.
+**Note:** This code was written outside a Windows/Visual Studio GUI
+environment, but `dotnet build -c Release` (the modern .NET SDK CLI) has
+been confirmed live to successfully build all four projects (Common,
+Service, Manager, and previously Updater) on this net452 target - a real
+MSBuild compile-time check (types, references, NuGet restore), not just a
+syntax read. What this STILL doesn't verify: whether the service actually
+installs/starts/stops on a real Windows machine via `InstallUtil.exe`,
+whether the `ServiceController.ExecuteCommand`/`OnCustomCommand` signal
+actually arrives between the two processes, and whether the whole
+enroll→heartbeat→inventory→job→auto-update flow works end-to-end against
+a real backend. **The first real check must be manual, on a test/pilot
+machine**, before rolling out to the whole fleet.
 
-## Konfiguracija
+## Configuration
 
-Servis čita `%ProgramData%\NetdeskAgent\config.json`. Kopiraj
-`Netdesk.Agent.Service\config.example.json` tamo i popuni:
+The service reads `%ProgramData%\NetdeskAgent\config.json`. Copy
+`Netdesk.Agent.Service\config.example.json` there and fill it in:
 
 ```json
 {
   "ServerBaseUrl": "https://<netdesk-server>:3000",
-  "EnrollToken": "<AGENT_ENROLL_TOKEN sa backend .env>",
+  "EnrollToken": "<AGENT_ENROLL_TOKEN from backend .env>",
   "HeartbeatIntervalSeconds": 30,
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
@@ -169,41 +181,44 @@ Servis čita `%ProgramData%\NetdeskAgent\config.json`. Kopiraj
 }
 ```
 
-`VncLocalPort` je port na kom lokalni UltraVNC server sluša (videti sekciju
-"Udaljena kontrola ekrana (VNC)" ispod). **Default je namerno 5901, ne
-standardni VNC port 5900** - na upravljanim mašinama je 5900 već zauzet
-postojećim RealVNC serverom (nezavisna instalacija, van ovog sistema).
-UltraVNC treba instalirati/konfigurisati da sluša na 5901 (ili bilo kom
-drugom slobodnom portu - mora se samo poklapati sa ovim poljem).
+`VncLocalPort` is the port the local UltraVNC server listens on (see the
+"Remote screen control (VNC)" section below). **The default is
+deliberately 5901, not the standard VNC port 5900** - on managed machines
+5900 is already taken by the existing RealVNC server (an independent
+install, outside this system). UltraVNC should be installed/configured to
+listen on 5901 (or any other free port - it just has to match this field).
 
-Nakon prve uspešne registracije, agent trajno čuva dobijeni `agentId`/`apiKey`
-u `%ProgramData%\NetdeskAgent\state.json` — `EnrollToken` se posle toga više ne
-koristi i može se ukloniti iz config-a pri distribuciji na ostale mašine.
+After the first successful registration, the agent permanently stores the
+received `agentId`/`apiKey` in `%ProgramData%\NetdeskAgent\state.json` —
+`EnrollToken` is no longer used after that and can be removed from the
+config when rolling out to other machines.
 
-Ostali fajlovi u `%ProgramData%\NetdeskAgent\`:
-- `logs\agent.log` — log rada NetdeskAgent servisa
-- `logs\manager.log` — log rada NetdeskAgentManager servisa (odvojen fajl -
-  oba servisa rade istovremeno, videti sekciju "Netdesk Agent Manager")
-- `manager-command.json` — mailbox fajl, NetdeskAgent → Manager komande
-  (postoji samo dok komanda čeka da bude obrađena)
-- `eventlog-bookmarks.json` — poslednji pročitan event log record ID (da se
-  isti unosi ne šalju ponovo)
-- `update-staging\`, `update-backup\` — privremeni fajlovi tokom auto-update-a
+Other files in `%ProgramData%\NetdeskAgent\`:
+- `logs\agent.log` — the NetdeskAgent service's run log
+- `logs\manager.log` — the NetdeskAgentManager service's run log (a
+  separate file - both services run at the same time, see the "Netdesk
+  Agent Manager" section)
+- `manager-command.json` — the mailbox file, NetdeskAgent → Manager
+  commands (only exists while a command is waiting to be processed)
+- `eventlog-bookmarks.json` — the last read event log record ID (so the
+  same entries aren't sent again)
+- `update-staging\`, `update-backup\` — temporary files during auto-update
 
-## Pokretanje za debug (bez instalacije servisa)
+## Running for debugging (without installing the service)
 
 ```
 Netdesk.Agent.Service.exe --console
 ```
 
-Radi identičnu petlju kao pravi servis, samo u konzoli (Ctrl+C za izlaz).
+Runs the exact same loop as the real service, just in a console (Ctrl+C to
+exit).
 
-## Instalacija kao pravi Windows Service
+## Installing as a real Windows Service
 
-Preko `InstallUtil.exe` (deo .NET Framework-a), iz `Service\` foldera.
-**Putanja zavisi od bitnosti OS-a na target mašini** (sklopovi su MSIL/
-AnyCPU i rade na oba, ali `Framework64` folder ne postoji na pravom
-32-bit Windows-u):
+Via `InstallUtil.exe` (part of .NET Framework), from the `Service\` folder.
+**The path depends on the target machine's OS bitness** (the assemblies
+are MSIL/AnyCPU and run on both, but the `Framework64` folder doesn't
+exist on real 32-bit Windows):
 
 ```
 :: 64-bit Windows
@@ -217,249 +232,266 @@ AnyCPU i rade na oba, ali `Framework64` folder ne postoji na pravom
 sc start NetdeskAgent
 ```
 
-Servis se instalira pod `LocalSystem` nalogom, `Automatic` startup (podešeno u
-`ProjectInstaller.cs`). Automatski restart pri padu servisa nije deo
-InstallUtil-a — podešava se posebno:
+The service installs under the `LocalSystem` account, `Automatic` startup
+(configured in `ProjectInstaller.cs`). Automatic restart on a service
+crash isn't part of InstallUtil — it's configured separately:
 
 ```
 sc failure NetdeskAgent reset=86400 actions=restart/60000/restart/60000/restart/60000
 ```
 
-Deinstalacija: isti `InstallUtil.exe` (64-bit ili 32-bit putanja iznad) sa
+Uninstall: the same `InstallUtil.exe` (64-bit or 32-bit path above) with
 `/u Netdesk.Agent.Service.exe`.
 
-**Manager se INSTALIRA kao pravi Windows Service** (za razliku od starog
-Updater-a) — isti InstallUtil postupak kao gore, samo nad
-`Netdesk.Agent.Manager.exe` u `Manager\` folderu i sa `NetdeskAgentManager`
-imenom servisa. Za rollout na celu postojeću flotu, preporučen put je preset
-"Instaliraj/ažuriraj NetdeskAgent Manager servis"
-(`frontend/src/constants/powershellPresets.js`) poslat kao
-`run_powershell_script` job preko postojećih agenata (prvo `pilot` grupa) -
-radi ceo InstallUtil/`sc failure` postupak automatski. Ručni koraci iznad
-ostaju kao fallback za prvu pilot mašinu.
+**The Manager IS INSTALLED as a real Windows Service** (unlike the old
+Updater) — the same InstallUtil procedure as above, just against
+`Netdesk.Agent.Manager.exe` in the `Manager\` folder and with the
+`NetdeskAgentManager` service name. For rolling out to the whole existing
+fleet, the recommended path is the "Install/update NetdeskAgent Manager
+service" preset (`frontend/src/constants/powershellPresets.js`) sent as a
+`run_powershell_script` job through the existing agents (`pilot` group
+first) - it runs the whole InstallUtil/`sc failure` procedure
+automatically. The manual steps above remain a fallback for the first
+pilot machine.
 
-## Auth model (za referencu)
+## Auth model (for reference)
 
-Isti kao backend memorija — enroll ide sa `Authorization: Bearer <EnrollToken>`,
-sve posle toga (heartbeat, inventory, jobs, update) sa
-`Authorization: Bearer <agentId>:<apiKey>`. Videti
-`Netdesk.Agent.Common/Http/NetdeskApiClient.cs`.
+Same as the backend's memory — enrollment goes with
+`Authorization: Bearer <EnrollToken>`, everything after that (heartbeat,
+inventory, jobs, update) with `Authorization: Bearer <agentId>:<apiKey>`.
+See `Netdesk.Agent.Common/Http/NetdeskApiClient.cs`.
 
-## Dozvoljene job komande
+## Allowed job commands
 
 `restart_computer`, `shutdown_computer`, `logoff_user`, `restart_service`,
-`start_service`, `stop_service` (zahtevaju `payload.serviceName`),
-`start_netdesk_agent`, `stop_netdesk_agent`, `restart_netdesk_agent` (bez
-payload-a - cilj je uvek NetdeskAgent), `run_powershell_script` (zahteva
-`payload.script`), `collect_inventory`, `refresh_software_list`,
-`delete_temp_files`. Mora se tačno poklapati sa backend `COMMAND_TYPES`
-(`dtos/agentJobs.dto.js`) — videti `Netdesk.Agent.Common/Jobs/JobExecutor.cs`.
+`start_service`, `stop_service` (require `payload.serviceName`),
+`start_netdesk_agent`, `stop_netdesk_agent`, `restart_netdesk_agent` (no
+payload - the target is always NetdeskAgent), `run_powershell_script`
+(requires `payload.script`), `collect_inventory`, `refresh_software_list`,
+`delete_temp_files`. Must exactly match the backend's `COMMAND_TYPES`
+(`dtos/agentJobs.dto.js`) — see `Netdesk.Agent.Common/Jobs/JobExecutor.cs`.
 
-`start_vnc_bridge` i `force_reinstall_agent` su posebni slučajevi - kreira ih
-server/frontend programski (ne ručno biranje tipa komande), ne prolaze kroz
-`JobExecutor`, i obrađuje ih `AgentWorker.ProcessJobAsync` direktno
-(`force_reinstall_agent` poziva `UpdateManager.ForceInstallAsync` - videti
-sekciju "Netdesk Agent Manager" ispod).
+`start_vnc_bridge` and `force_reinstall_agent` are special cases - created
+programmatically by the server/frontend (not manually picked as a command
+type), they don't go through `JobExecutor`, and are handled by
+`AgentWorker.ProcessJobAsync` directly (`force_reinstall_agent` calls
+`UpdateManager.ForceInstallAsync` - see the "Netdesk Agent Manager" section
+below).
 
-`start_netdesk_agent`/`stop_netdesk_agent`/`restart_netdesk_agent` su glavni,
-preporučeni put za RUČNO upravljanje NetdeskAgent servisom - uvek idu preko
-NetdeskAgentManager-a (mailbox), nikad kroz `JobExecutor` direktno. Kao
-odbrana u dubinu, i generički `restart_service`/`start_service`/
-`stop_service` sa `payload.serviceName = "NetdeskAgent"` (case-insensitive)
-se TIHO PREUSMERAVAJU na isti put (`AgentWorker.IsNetdeskAgentServiceControl`)
-umesto da idu kroz `JobExecutor` - agent ne sme sam sebe da (re)startuje
-sinhrono na istoj petlji koja treba da prijavi rezultat serveru. Za SVAKI
-DRUGI naziv servisa, `JobExecutor.ControlService` radi nepromenjeno.
+`start_netdesk_agent`/`stop_netdesk_agent`/`restart_netdesk_agent` are the
+main, recommended path for MANUALLY managing the NetdeskAgent service -
+they always go through NetdeskAgentManager (the mailbox), never through
+`JobExecutor` directly. As defense in depth, the generic
+`restart_service`/`start_service`/`stop_service` with
+`payload.serviceName = "NetdeskAgent"` (case-insensitive) are also SILENTLY
+REDIRECTED to the same path (`AgentWorker.IsNetdeskAgentServiceControl`)
+instead of going through `JobExecutor` - the agent must not
+(re)start itself synchronously on the same loop that needs to report the
+result to the server. For ANY OTHER service name,
+`JobExecutor.ControlService` works unchanged.
 
 ## Netdesk Agent Manager
 
-Odvojen, TRAJAN Windows Service (`NetdeskAgentManager`, `Netdesk.Agent.
-Manager.exe`) - jedini razlog postojanja je da NetdeskAgent.Service.exe
-nikad ne mora sam sebe da (re)startuje ili menja sopstvene fajlove dok je
-pokrenut. "Postavi i zaboravi" komponenta - nema svoju auto-update logiku,
-rollout je ručan preko preseta (videti "Instalacija kao pravi Windows
-Service" iznad).
+A separate, PERMANENT Windows Service (`NetdeskAgentManager`,
+`Netdesk.Agent.Manager.exe`) - its only reason to exist is so that
+NetdeskAgent.Service.exe never has to (re)start itself or change its own
+files while running. A "set and forget" component - it has no auto-update
+logic of its own, rollout is manual via the preset (see "Installing as a
+real Windows Service" above).
 
-**Komunikacija (NetdeskAgent → Manager):**
-1. NetdeskAgent piše `ManagerCommand` JSON u `%ProgramData%\NetdeskAgent\
-   manager-command.json` (atomic rename preko `.tmp` fajla - Manager nikad
-   ne čita polu-napisan fajl). Jedna pending komanda odjednom, ne red
-   čekanja (namerno prihvaćen kompromis za v1 - dat realan tempo jobova ovo
-   je nizak rizik).
-2. NetdeskAgent zove `new ServiceController("NetdeskAgentManager").
-   ExecuteCommand(128)` - Windows Service custom control code, "probudi se
-   i proveri mailbox" (kod 128, `ManagerCommandClient.CustomCommandCode`).
-   Neuspeh ovog poziva (npr. Manager trenutno nije pokrenut) NIJE fatalan -
-   komanda već čeka u fajlu.
-3. Manager-ov `OnCustomCommand(128)` samo signalizira event (mora brzo da
-   vrati kontrolu SCM-u) - `ManagerWorker`-ova radna petlja ga obrađuje.
-   Manager TAKOĐE nezavisno pollduje isti fajl na svaki tick (5s) - safety
-   net ako je custom command signal izgubljen (npr. Manager je bio ugašen
-   kad je komanda upisana).
+**Communication (NetdeskAgent → Manager):**
+1. NetdeskAgent writes a `ManagerCommand` JSON to
+   `%ProgramData%\NetdeskAgent\manager-command.json` (an atomic rename via
+   a `.tmp` file - the Manager never reads a half-written file). One
+   pending command at a time, not a queue (a deliberately accepted
+   trade-off for v1 - given the realistic pace of jobs this is low risk).
+2. NetdeskAgent calls `new ServiceController("NetdeskAgentManager").
+   ExecuteCommand(128)` - a Windows Service custom control code, "wake up
+   and check the mailbox" (code 128,
+   `ManagerCommandClient.CustomCommandCode`). A failure of this call (e.g.
+   the Manager isn't currently running) is NOT fatal - the command is
+   already waiting in the file.
+3. The Manager's `OnCustomCommand(128)` just signals an event (it has to
+   return control to the SCM quickly) - the `ManagerWorker`'s work loop
+   processes it. The Manager ALSO independently polls the same file on
+   every tick (5s) - a safety net in case the custom command signal was
+   lost (e.g. the Manager was down when the command was written).
 
-**Dve akcije (`ManagerCommand.Action`):**
+**Two actions (`ManagerCommand.Action`):**
 - `control_service` - `ServiceName`/`ServiceAction` ("start"/"stop"/
-  "restart"). `ServiceName` NIJE hardkodovan na "NetdeskAgent" - Manager ume
-  da kontroliše bilo koji naziv servisa (trenutno se koristi samo za
-  NetdeskAgent, ali mehanizam sam po sebi je generički).
-- `install_files` - `StagingDir`/`InstallDir`/`BackupDir` (proizvoljne
-  putanje, NISU hardkodovane na Service folder), `ServiceName` (koji servis
-  zaustaviti/pokrenuti oko kopiranja), i OPCIONO `ServerBaseUrl`/`AgentId`/
-  `ApiKey`/`FromVersion`/`ToVersion` (samo ako pošiljalac želi da Manager
-  javi rezultat serveru - videti ispod). Manager: **prvo eksplicitno
-  proverava da je stop servisa uspeo** (`TryControlService`) - ako NIJE,
-  fajlovi se uopšte ne diraju, javlja se jasan neuspeh sa razlogom, kraj. Tek
-  ako je stop uspeo: backup `InstallDir` u `BackupDir` (rekurzivno,
-  `DirectorySync` - ispravlja stari bug gde Updater nije kopirao `amd64\`/
-  `x86\` podfoldere) → kopira `StagingDir` preko `InstallDir`-a → start
-  servisa. Na grešku POSLE uspešnog stop-a: rollback iz backup-a + ponovni
-  start pre javljanja neuspeha (isti oblik kao stari Updater). Mehanizam NIJE
-  vezan za NetdeskAgent specifično - iste tri putanje + naziv servisa mogu u
-  budućnosti da instaliraju/ažuriraju BILO KOJU komponentu na BILO KOJOJ
-  lokaciji (npr. potpuno odvojen folder/servis van `C:\Program
-  Files\NetdeskAgent\`), bez izmene Manager koda. Trenutna (NetdeskAgent)
-  upotreba ne dira `config.json` - živi van `InstallDir`-a.
+  "restart"). `ServiceName` is NOT hardcoded to "NetdeskAgent" - the
+  Manager can control any service name (currently only used for
+  NetdeskAgent, but the mechanism itself is generic).
+- `install_files` - `StagingDir`/`InstallDir`/`BackupDir` (arbitrary paths,
+  NOT hardcoded to the Service folder), `ServiceName` (which service to
+  stop/start around the copy), and OPTIONALLY `ServerBaseUrl`/`AgentId`/
+  `ApiKey`/`FromVersion`/`ToVersion` (only if the sender wants the Manager
+  to report the result to the server - see below). The Manager: **first
+  explicitly verifies that stopping the service succeeded**
+  (`TryControlService`) - if it did NOT, the files aren't touched at all, a
+  clear failure with a reason is reported, and it's done. Only if the stop
+  succeeded: back up `InstallDir` to `BackupDir` (recursively,
+  `DirectorySync` - fixes an old bug where the Updater didn't copy the
+  `amd64\`/`x86\` subfolders) → copy `StagingDir` over `InstallDir` → start
+  the service. On an error AFTER a successful stop: roll back from the
+  backup + restart before reporting failure (the same shape as the old
+  Updater). The mechanism is NOT tied to NetdeskAgent specifically - the
+  same three paths + service name could in the future install/update ANY
+  component at ANY location (e.g. a completely separate folder/service
+  outside `C:\Program Files\NetdeskAgent\`), with no change to the Manager
+  code. The current (NetdeskAgent) usage doesn't touch `config.json` - it
+  lives outside `InstallDir`.
 
-  Ako je `ServerBaseUrl` popunjen, Manager posle (uspeha ili neuspeha) javlja
-  rezultat serveru (`POST /api/agents/update/report`) - JEDINI mrežni poziv
-  koji Manager ikad pravi (zato ima sopstveno outbound firewall pravilo,
-  isti razlog kao NetdeskAgent-ovo). Ako `ServerBaseUrl` NIJE popunjen
-  (buduća ne-agent upotreba), ovaj korak se tiho preskače.
+  If `ServerBaseUrl` is filled in, the Manager reports the result (success
+  or failure) to the server afterward (`POST /api/agents/update/report`) -
+  the ONLY network call the Manager ever makes (which is why it has its
+  own outbound firewall rule, for the same reason as NetdeskAgent's). If
+  `ServerBaseUrl` is NOT filled in (a future non-agent use), this step is
+  silently skipped.
 
-**Forsirana reinstalacija** (`force_reinstall_agent` job, pokreće se iz
-"Forsiraj reinstalaciju" dugmeta na `/agent-releases` stranici) ide istim
-`install_files` putem, samo BEZ `isNewerVersion` provere - može
-"reinstalirati" i verziju na kojoj agent VEĆ tvrdi da je (popravka oštećene
-instalacije). Digitalni potpis se u ovom slučaju ne proverava (job payload
-ne nosi ga) - SHA-256 integritet i dalje obavezno važi.
+**Forced reinstall** (the `force_reinstall_agent` job, triggered from the
+"Force reinstall" button on the `/agent-releases` page) goes through the
+same `install_files` path, just WITHOUT the `isNewerVersion` check - it can
+"reinstall" even a version the agent already claims to be on (fixing a
+corrupted install). The digital signature isn't checked in this case (the
+job payload doesn't carry it) - SHA-256 integrity still applies mandatorily.
 
-**Nije uživo provereno** (isti razlog kao ostatak agenta): da
-`ServiceController.ExecuteCommand`/`OnCustomCommand` signal stvarno stiže
-između dva procesa na pravoj Windows mašini, i da ceo stop→copy→start
-ciklus ne ostavlja mašinu u pokvarenom stanju. Prva provera mora biti na
-pilot mašini - videti `DEPLOYMENT.md`.
+**Not verified live** (same reason as the rest of the agent): that the
+`ServiceController.ExecuteCommand`/`OnCustomCommand` signal actually
+arrives between the two processes on a real Windows machine, and that the
+whole stop→copy→start cycle doesn't leave the machine in a broken state.
+The first check must be on a pilot machine - see `DEPLOYMENT.md`.
 
-## Udaljena kontrola ekrana (VNC)
+## Remote screen control (VNC)
 
-Agent sam ne radi screen capture ni input injection - to radi **UltraVNC**
-(mora biti instaliran i pokrenut kao Windows servis na svakoj mašini gde
-se ova funkcionalnost koristi, vezan **samo na 127.0.0.1**, nikad izložen
-na mreži). Agentova uloga je tanak `NetdeskAgent.Common.Vnc.VncBridge` -
-kad stigne `start_vnc_bridge` komanda (poslata sa servera nakon što admin
-klikne "Uzmi kontrolu ekrana" u UI-u), agent otvara TCP konekciju na
-`127.0.0.1:<VncLocalPort>` i WebSocket konekciju ka backend-u
-(`/api/agents/vnc-stream?sessionId=N`), pa samo prosleđuje sirove bajtove
-(pravi RFB protokol) u oba smera dok jedna od strana ne zatvori konekciju.
-Nema GDI-ja, `SendInput`-a, ni WTS/Session 0 workaround-a - obična loopback
-TCP konekcija radi identično bez obzira na sesiju u kojoj je servis
-pokrenut.
+The agent itself doesn't do screen capture or input injection - **UltraVNC**
+does (it must be installed and running as a Windows service on every
+machine where this feature is used, bound **only to 127.0.0.1**, never
+exposed on the network). The agent's role is a thin
+`NetdeskAgent.Common.Vnc.VncBridge` - when a `start_vnc_bridge` command
+arrives (sent from the server after an admin clicks "Take screen control"
+in the UI), the agent opens a TCP connection to
+`127.0.0.1:<VncLocalPort>` and a WebSocket connection to the backend
+(`/api/agents/vnc-stream?sessionId=N`), then just forwards raw bytes (the
+real RFB protocol) in both directions until either side closes the
+connection. No GDI, no `SendInput`, no WTS/Session 0 workaround - a plain
+loopback TCP connection works identically regardless of which session the
+service is running in.
 
-**Instalacija UltraVNC-a na agent mašini je van obima ovog repoa** - nije
-deo automatskog build/update procesa (namerno, da se ne dodaje treći
-Windows servis u rutinsku, neizanadziranu auto-update petlju). Preuzeti sa
-uvnc.com, instalirati kao servis (`winvnc.exe -install`), i podesiti da
-sluša samo na loopback (bind adresa ako postoji, ili Windows Firewall
-pravilo kao odbrana u dubinu). Ako je backend podešen sa
-`VNC_SHARED_PASSWORD`, UltraVNC treba istu lozinku u `ultravnc.ini`;
-alternativa je podesiti UltraVNC da ne traži lozinku za loopback konekcije
-(stvarna bezbednosna granica je JWT/agent-kredencijali na WS relay sloju,
-ne VNC lozinka).
+**Installing UltraVNC on the agent machine is outside the scope of this
+repo** - it's not part of the automatic build/update process (deliberately,
+to avoid adding a third Windows service into the routine, unsupervised
+auto-update loop). Download it from uvnc.com, install it as a service
+(`winvnc.exe -install`), and configure it to listen only on loopback (a
+bind address if available, or a Windows Firewall rule as defense in
+depth). If the backend is configured with `VNC_SHARED_PASSWORD`, UltraVNC
+needs the same password in `ultravnc.ini`; alternatively, configure
+UltraVNC to not require a password for loopback connections (the real
+security boundary is the JWT/agent credentials at the WS relay layer, not
+the VNC password).
 
-**Port**: standardni VNC port `5900` je na upravljanim mašinama već zauzet
-postojećim RealVNC serverom (odvojena instalacija, nevezana za ovaj
-sistem) - UltraVNC treba instalirati/konfigurisati na `5901` (default u
-`AgentSettings.VncLocalPort`) da ne dođe do konflikta pri bind-u. Ovo je
-čisto konfiguracioni izbor - `VncLocalPort` u `config.json` mora se
-poklapati sa portom na kom je UltraVNC stvarno podešen, bilo koji slobodan
-port radi.
+**Port**: the standard VNC port `5900` is already taken on managed
+machines by the existing RealVNC server (a separate install, unrelated to
+this system) - UltraVNC should be installed/configured on `5901` (the
+default in `AgentSettings.VncLocalPort`) to avoid a bind conflict. This is
+purely a configuration choice - `VncLocalPort` in `config.json` must match
+whatever port UltraVNC is actually configured on, any free port works.
 
-Funkcionalnost je iza `vnc_enabled` app-setting flaga (isključeno po
-default-u) - admin ga uključuje na `/config` stranici.
+The feature sits behind the `vnc_enabled` app-setting flag (off by
+default) - the admin enables it on the `/config` page.
 
-**WebSocket klijent (Windows 7 napomena)**: `VncBridge` koristi
-**websocket-sharp** (`WebSocketSharp-netstandard` NuGet paket), NE
-`System.Net.WebSockets.ClientWebSocket` - otkriveno uživo na pravoj
-Windows 7 mašini: `ClientWebSocket` baca `PlatformNotSupportedException`
-tamo, jer zavisi od WinHTTP WebSocket API-ja koji ne postoji pre
-Windows 8. websocket-sharp implementira RFB 6455 protokol sam, nad sirovim
-soketima, bez te OS zavisnosti - a Windows 7 podrška je baš razlog zašto
-ovaj projekat cilja `net452` (videti vrh ovog fajla), pa je ovo bio pravi
-blocker, ne kozmetička razlika. Posledica: ova biblioteka nema javni API za
-proizvoljne custom HTTP header-e pri handshake-u, pa agent šalje
-`agentId`/`apiKey` kao query string (`?agentId=...&apiKey=...`) umesto
-`Authorization` header-a - isti obrazac koji je viewer strana (browser)
-već morala da koristi iz istog razloga (browser-ov WebSocket API takođe ne
-dozvoljava custom header-e), i ista bezbednosna napomena važi (ruta ide
-kroz `server.on("upgrade")`, ne kroz Express/morgan, pa se ne loguje u
-access log).
+**WebSocket client (Windows 7 note)**: `VncBridge` uses **websocket-sharp**
+(the `WebSocketSharp-netstandard` NuGet package), NOT
+`System.Net.WebSockets.ClientWebSocket` - discovered live on a real
+Windows 7 machine: `ClientWebSocket` throws
+`PlatformNotSupportedException` there, because it depends on the WinHTTP
+WebSocket API which doesn't exist before Windows 8. websocket-sharp
+implements the RFB 6455 protocol itself, over raw sockets, without that OS
+dependency - and Windows 7 support is exactly why this project targets
+`net452` (see the top of this file), so this was a real blocker, not a
+cosmetic difference. Consequence: this library has no public API for
+arbitrary custom HTTP headers during the handshake, so the agent sends
+`agentId`/`apiKey` as a query string (`?agentId=...&apiKey=...`) instead of
+an `Authorization` header - the same pattern the viewer side (the browser)
+already had to use for the same reason (the browser's WebSocket API also
+doesn't allow custom headers), and the same security note applies (the
+route goes through `server.on("upgrade")`, not through Express/morgan, so
+it isn't logged to the access log).
 
 ## DNS query logging
 
-`NetdeskAgent.Common.DnsLogs.DnsQueryCollector` prati DNS upite ove mašine
-preko **WinDivert paketnog snimanja** (direktan P/Invoke nad `WinDivert.dll`,
-vidi `WinDivertInterop.cs`). Ovo je DRUGA zamena za raniju ETW
-`Microsoft-Windows-DNS-Client` verziju:
+`NetdeskAgent.Common.DnsLogs.DnsQueryCollector` tracks this machine's DNS
+queries via **WinDivert packet capture** (direct P/Invoke over
+`WinDivert.dll`, see `WinDivertInterop.cs`). This is the SECOND replacement
+for the earlier ETW `Microsoft-Windows-DNS-Client` version:
 
-1. **1.5.5 i pre**: ETW `Microsoft-Windows-DNS-Client` provajder. Uživo se
-   pokazalo nedovoljnim - ETW vidi SAMO upite kroz Windows OS resolver API,
-   aplikacija (ili malware) koja sama otvori UDP socket i pošalje sirov upit
-   na port 53 (tačan obrazac za C2 beaconing/DNS tunneling) je nevidljiva.
-2. **1.5.6**: pokušaj sa Npcap paketnim snimanjem. Ispalo je da Npcap-ov
-   tihi (`/S`) instalacioni mod postoji SAMO uz plaćeno "Npcap OEM" izdanje -
-   besplatna verzija se, uprkos `/S`, uživo ponašala kao da čeka interaktivnu
-   potvrdu (Session 0, gde servis radi, nema kome da je prikaže), pa je
-   `install-npcap` job na pravoj mašini pukao na 10-minutni JobExecutor
-   timeout. Preset i pokušaj su u potpunosti uklonjeni.
-3. **1.5.7 (trenutno)**: **WinDivert**. Nema ekvivalentan problem - drajver
-   (`WinDivert64.sys`) se automatski i TIHO instalira pri prvom
-   `WinDivertOpen()` pozivu, bez ikakvog posebnog instalacionog koraka/
-   preseta. Dovoljno je da `WinDivert.dll`/`WinDivert64.sys` (verzija 2.2.2,
-   x64) samo SEDE pored `.exe`-a (vidi `Netdesk.Agent.Service.csproj`, `<None>`
-   stavke sa `<Link>` - fajlovi fizički žive u `Netdesk.Agent.Service\WinDivert\`,
-   kopiraju se ravno u output koren). **Ograničenje**: WinDivert zvanično
-   podržava samo Windows 10/11/Server, NE Windows 7 - namerno prihvaćeno
-   (Windows 7 mašine u floti ostaju bez DNS packet-capture vidljivosti za
-   ovaj feature, `TryStart()` samo tiho vrati `false`, ostatak agenta radi
-   normalno).
+1. **1.5.5 and earlier**: the ETW `Microsoft-Windows-DNS-Client` provider.
+   Proved insufficient live - ETW sees ONLY queries made through the
+   Windows OS resolver API; an application (or malware) that opens its own
+   UDP socket and sends a raw query to port 53 (exactly the pattern for C2
+   beaconing/DNS tunneling) is invisible.
+2. **1.5.6**: an attempt with Npcap packet capture. Turned out Npcap's
+   silent (`/S`) install mode only exists with the paid "Npcap OEM"
+   edition - the free version, despite `/S`, behaved live as if it were
+   waiting for interactive confirmation (Session 0, where the service
+   runs, has no one to show it to), so the `install-npcap` job on a real
+   machine hit the 10-minute JobExecutor timeout. The preset and the
+   attempt were fully removed.
+3. **1.5.7 (current)**: **WinDivert**. No equivalent problem - the driver
+   (`WinDivert64.sys`) installs automatically and SILENTLY on the first
+   `WinDivertOpen()` call, with no separate install step/preset needed. It's
+   enough for `WinDivert.dll`/`WinDivert64.sys` (version 2.2.2, x64) to just
+   SIT next to the `.exe` (see `Netdesk.Agent.Service.csproj`, `<None>`
+   entries with `<Link>` - the files physically live in
+   `Netdesk.Agent.Service\WinDivert\`, copied straight to the output root).
+   **Limitation**: WinDivert officially only supports Windows 10/11/Server,
+   NOT Windows 7 - deliberately accepted (Windows 7 machines in the fleet
+   remain without DNS packet-capture visibility for this feature,
+   `TryStart()` just silently returns `false`, the rest of the agent works
+   normally).
 
-Hvata SAMO odlazne UDP upite ove mašine (WinDivert filter
-`"outbound and udp and udp.DstPort == 53"`, `WINDIVERT_FLAG_SNIFF` mod -
-kopija paketa, bez ikakve mogućnosti/obaveze da se pravi saobraćaj
-modifikuje ili blokira) - namerno ne i DNS odgovore (dupliralo bi brojanje
-istog upita) i namerno ne ceo mrežni segment (forenzika PO računaru, ne
-mrežni IDS). IPv6 i TCP DNS (port 53 preko TCP - retko u praksi, obično
-samo veliki/zone-transfer odgovori) su van obima v1.
+Captures ONLY this machine's outbound UDP queries (the WinDivert filter
+`"outbound and udp and udp.DstPort == 53"`, `WINDIVERT_FLAG_SNIFF` mode -
+a copy of the packet, with no ability/obligation to modify or block the
+real traffic) - deliberately not DNS responses (would double-count the
+same query) and deliberately not the whole network segment (per-computer
+forensics, not a network IDS). IPv6 and TCP DNS (port 53 over TCP - rare in
+practice, usually only large/zone-transfer responses) are out of scope for
+v1.
 
-Pokreće se JEDNOM pri startu servisa (ne po tick-u kao ostali kolektori) -
-capture nit mora da radi kontinuirano da ne propusti upite između sync
-ciklusa (jedan `WinDivertOpen()` handle pokriva CEO mrežni saobraćaj
-mašine, za razliku od Npcap-a gde je trebalo enumerisati i otvoriti capture
-po mrežnom uređaju posebno). `AgentWorker` periodično
-(`DnsLogIntervalSeconds`, podrazumevano 300s) uzima nakupljeno stanje
-(agregirano po domenu - broj upita, prvi/poslednji put viđen, ne jedan red
-po pojedinačnom upitu) i šalje preko istog `/api/agents/inventory` kanala
-kao event logovi.
+Starts ONCE at service startup (not per tick like the other collectors) -
+the capture thread has to run continuously so it doesn't miss queries
+between sync cycles (a single `WinDivertOpen()` handle covers the machine's
+ENTIRE network traffic, unlike Npcap where a capture had to be enumerated
+and opened per network device separately). `AgentWorker` periodically
+(`DnsLogIntervalSeconds`, 300s by default) takes the accumulated state
+(aggregated per domain - query count, first/last seen, not one row per
+individual query) and sends it over the same `/api/agents/inventory`
+channel as event logs.
 
-**Bezbednosna namena**: nema firewall/NDR rešenja u mreži - ovo je jedina
-vidljivost u DNS-nivo pretnje (malware C2 beaconing, DNS tunneling/
-exfiltracija, phishing domeni). Backend čuva agregat po (računar, domen) u
-`computer_dns_queries`, prikazano na `/dns-logs` (admin-only, pretraživo po
-domenu) u frontend-u. Namerno BEZ aktivnog alerting-a protiv blocklist-e u
-ovoj iteraciji - samo skladištenje + pretraga za naknadnu forenziku.
+**Security purpose**: there's no firewall/NDR solution on the network -
+this is the only visibility into DNS-level threats (malware C2 beaconing,
+DNS tunneling/exfiltration, phishing domains). The backend stores the
+aggregate per (computer, domain) in `computer_dns_queries`, shown at
+`/dns-logs` (admin-only, searchable by domain) in the frontend.
+Deliberately WITHOUT active alerting against a blocklist in this
+iteration - just storage + search for later forensics.
 
-**Licenca**: WinDivert je dual-licensed LGPLv3/GPLv2 - koristi se ovde kao
-nepromenjena, redistribuirana binarna zavisnost (LGPLv3 uslov), license
-tekst prati binarne fajlove (`WinDivert\LICENSE-WinDivert.txt`, kopira se
-u output uz DLL/SYS).
+**License**: WinDivert is dual-licensed LGPLv3/GPLv2 - used here as an
+unmodified, redistributed binary dependency (the LGPLv3 condition), the
+license text travels with the binary files
+(`WinDivert\LICENSE-WinDivert.txt`, copied to the output alongside the
+DLL/SYS).
 
-**Nije uživo provereno** (isti razlog kao i za ostatak agenta - nema
-Windows/admin/mrežnog okruženja u sandboxu): da WinDivert capture stvarno
-hvata upite u praksi na realnoj mašini, i da DNS paket parsing (ručno
-pisan - IPv4/UDP/DNS offset-i u `DnsQueryCollector.TryExtractQueryName`,
-pojednostavljen u odnosu na Npcap verziju jer WinDivert isporučuje paket
-već od IP nivoa, bez Ethernet/VLAN zaglavlja) tačno radi na realnom
-saobraćaju. Kod kompajlira čisto (`dotnet build`), `WinDivert.dll`/
-`WinDivert64.sys` su potvrđeno prisutni u build output-u pored `.exe`-a
-(provereno uživo posle clean rebuild-a) - ali prva stvarna provera mora
-biti ručna, na test/pilot mašini (pošalji 1.5.7 na jednog Windows 10/11
-agenta, proveri `/dns-logs` da se pojavljuju domeni), pre šireg rollout-a.
+**Not verified live** (same reason as the rest of the agent - no
+Windows/admin/network environment in the sandbox): that WinDivert capture
+actually catches queries in practice on a real machine, and that the DNS
+packet parsing (hand-written - IPv4/UDP/DNS offsets in
+`DnsQueryCollector.TryExtractQueryName`, simplified compared to the Npcap
+version since WinDivert delivers the packet already at the IP level,
+without Ethernet/VLAN headers) works correctly on real traffic. The code
+compiles cleanly (`dotnet build`), `WinDivert.dll`/`WinDivert64.sys` are
+confirmed present in the build output next to the `.exe` (verified live
+after a clean rebuild) - but the first real check must be manual, on a
+test/pilot machine (ship 1.5.7 to one Windows 10/11 agent, check
+`/dns-logs` for domains appearing), before a wider rollout.

@@ -1,32 +1,33 @@
-# Instalacija Netdesk Agent-a na target računaru
+# Installing the Netdesk Agent on a target computer
 
-Praktično uputstvo korak-po-korak za instalaciju na jednom upravljanom računaru.
-Za arhitekturu, strukturu projekta i digitalni potpis videti `README.md`.
+A practical step-by-step guide to installing it on one managed computer.
+For architecture, project structure and digital signing see `README.md`.
 
-## 0. Preduslov (jednom, na build mašini)
+## 0. Prerequisite (once, on the build machine)
 
-Visual Studio 2019+ sa ".NET Framework 4.5.2 targeting pack"-om (Visual Studio
-Installer → Modify → Individual Components, ako fali).
+Visual Studio 2019+ with the ".NET Framework 4.5.2 targeting pack" (Visual
+Studio Installer → Modify → Individual Components, if missing).
 
-## 1. Build (Release konfiguracija)
+## 1. Build (Release configuration)
 
-U Visual Studio-u:
+In Visual Studio:
 
-1. Otvori `Netdesk.Agent.sln`.
-2. Solution Configuration (traka sa alatkama) → **Release** (ne Debug).
+1. Open `Netdesk.Agent.sln`.
+2. Solution Configuration (toolbar) → **Release** (not Debug).
 3. Build → **Rebuild Solution**.
 
-Ili preko komandne linije:
+Or via the command line:
 
 ```
 dotnet build -c Release
 ```
 
-Prvi build zahteva internet (NuGet restore za Newtonsoft.Json).
+The first build requires internet access (NuGet restore for
+Newtonsoft.Json).
 
-## 2. Pokupi fajlove za kopiranje
+## 2. Collect the files to copy
 
-**Iz `Netdesk.Agent.Service\bin\Release\net452\`:**
+**From `Netdesk.Agent.Service\bin\Release\net452\`:**
 
 ```
 Netdesk.Agent.Service.exe
@@ -39,7 +40,7 @@ WinDivert64.sys
 LICENSE-WinDivert.txt
 ```
 
-**Iz `Netdesk.Agent.Manager\bin\Release\net452\`:**
+**From `Netdesk.Agent.Manager\bin\Release\net452\`:**
 
 ```
 Netdesk.Agent.Manager.exe
@@ -47,61 +48,66 @@ Netdesk.Agent.Manager.exe.config
 Newtonsoft.Json.dll
 ```
 
-(Manager NE referencira `Netdesk.Agent.Common` niti `websocket-sharp` -
-videti README.md, sekciju "Netdesk Agent Manager": Manager ima sopstveni
-FileLogger/Paths/ManagerCommand/DirectorySync, namerno odvojeno da Agent
-update nikad ne može da obori Manager i obrnuto.
+(The Manager does NOT reference `Netdesk.Agent.Common` or
+`websocket-sharp` - see README.md, the "Netdesk Agent Manager" section:
+the Manager has its own FileLogger/Paths/ManagerCommand/DirectorySync,
+deliberately separate so an Agent update can never break the Manager and
+vice versa.
 
-`WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` su SAMO u Service
-folderu (Manager ne radi DNS logging) - od verzije 1.5.7, DNS query logging
-koristi WinDivert paketno snimanje (vidi README.md "DNS query logging"
-sekciju za punu istoriju ETW→Npcap→WinDivert migracije). Za razliku od
-Npcap-a, WinDivert NE traži poseban instalacioni korak/preset - drajver se
-sam, tiho instalira pri prvom pozivu iz agenta, dovoljno je da ova dva
-fajla samo stoje pored `.exe`-a (već podešeno u `.csproj`-u da se kopiraju
-automatski pri build-u). VAŽNO OGRANIČENJE: WinDivert radi samo na
-Windows 10/11/Server - na Windows 7 mašinama DNS logging ostaje isključen
-(TryStart() tiho vrati false), ostatak agenta radi normalno.
+`WinDivert.dll`/`WinDivert64.sys`/`LICENSE-WinDivert.txt` are ONLY in the
+Service folder (the Manager doesn't do DNS logging) - since version 1.5.7,
+DNS query logging uses WinDivert packet capture (see README.md's "DNS
+query logging" section for the full ETW→Npcap→WinDivert migration
+history). Unlike Npcap, WinDivert does NOT require a separate install
+step/preset - the driver installs itself, silently, on the first call from
+the agent, it's enough for these two files to just sit next to the `.exe`
+(already configured in the `.csproj` to be copied automatically at build
+time). IMPORTANT LIMITATION: WinDivert only works on Windows 10/11/Server -
+on Windows 7 machines DNS logging stays disabled (`TryStart()` silently
+returns false), the rest of the agent works normally.
 
-`Microsoft.Diagnostics.Tracing.TraceEvent` paket (ETW-bazirani DNS logging
-do verzije 1.5.5, i njegovih 6 tranzitivnih DLL-ova +
-`amd64\`/`x86\`/`arm64\` native helper podfoldera) je potpuno UKLONJEN.)
+The `Microsoft.Diagnostics.Tracing.TraceEvent` package (ETW-based DNS
+logging up to version 1.5.5, and its 6 transitive DLLs +
+`amd64\`/`x86\`/`arm64\` native helper subfolders) has been completely
+REMOVED.)
 
-`.pdb` fajlovi i `config.example.json` se ne nose na target mašinu (samo debug
-simboli / šablon).
+The `.pdb` files and `config.example.json` don't get carried to the target
+machine (just debug symbols / a template).
 
-## 3. Kopiraj na target mašinu u tačan raspored
+## 3. Copy to the target machine into the exact layout
 
 ```
 C:\Program Files\NetdeskAgent\
-├── Service\    ← fajlovi iz Service bin/Release
-└── Manager\    ← fajlovi iz Manager bin/Release
+├── Service\    ← files from Service bin/Release
+└── Manager\    ← files from Manager bin/Release
 ```
 
-**Bitno:** `Service\` i `Manager\` moraju biti odvojeni, rodni folderi. Auto-update
-paket kasnije prepisuje samo sadržaj `Service\` — `Manager\` mora ostati netaknut
-(Manager ne može da prepiše sopstvene fajlove dok radi). Za instalaciju na
-POSTOJEĆU flotu (ne prvu pilot mašinu), preskoči ručno kopiranje/InstallUtil
-korake ispod za Manager - koristi umesto toga preset "Instaliraj/ažuriraj
-NetdeskAgent Manager servis" poslat kao `run_powershell_script` job (videti
-`README.md`, sekcija "Netdesk Agent Manager").
+**Important:** `Service\` and `Manager\` must be separate, sibling
+folders. The auto-update package later only overwrites the contents of
+`Service\` — `Manager\` must stay untouched (the Manager can't overwrite
+its own files while running). For installing on an EXISTING fleet (not the
+first pilot machine), skip the manual copy/InstallUtil steps below for the
+Manager - use instead the "Install/update NetdeskAgent Manager service"
+preset sent as a `run_powershell_script` job (see `README.md`, the
+"Netdesk Agent Manager" section).
 
-## 4. Proveri preduslove na target mašini
+## 4. Check prerequisites on the target machine
 
-- .NET Framework 4.5.2+ (Windows 10 ga već ima; na Windows 7 SP1 proveri da je
-  instaliran).
-- Organizaciona root CA (mkcert) već u trusted root store-u — treba da važi za
-  sve upravljane računare.
-- Mrežni pristup ka `https://<netdesk-server>:3000`.
+- .NET Framework 4.5.2+ (Windows 10 already has it; on Windows 7 SP1 check
+  it's installed).
+- The organization's root CA (mkcert) already in the trusted root store —
+  should be valid for all managed computers.
+- Network access to `https://<netdesk-server>:3000`.
 
-## 5. Napravi config.json na target mašini
+## 5. Create config.json on the target machine
 
-Kreiraj folder `%ProgramData%\NetdeskAgent\` i u njemu `config.json`:
+Create the folder `%ProgramData%\NetdeskAgent\` and inside it,
+`config.json`:
 
 ```json
 {
   "ServerBaseUrl": "https://<netdesk-server>:3000",
-  "EnrollToken": "<AGENT_ENROLL_TOKEN iz backend .env>",
+  "EnrollToken": "<AGENT_ENROLL_TOKEN from backend .env>",
   "HeartbeatIntervalSeconds": 30,
   "InventoryIntervalSeconds": 3600,
   "JobsPollIntervalSeconds": 15,
@@ -111,17 +117,18 @@ Kreiraj folder `%ProgramData%\NetdeskAgent\` i u njemu `config.json`:
 }
 ```
 
-Nakon prve uspešne registracije agent trajno čuva `agentId`/`apiKey` u
-`%ProgramData%\NetdeskAgent\state.json` — `EnrollToken` se posle toga više ne
-koristi i može se izbaciti iz config-a pri distribuciji na ostale mašine.
+After the first successful registration the agent permanently stores
+`agentId`/`apiKey` in `%ProgramData%\NetdeskAgent\state.json` —
+`EnrollToken` is no longer used after that and can be dropped from the
+config when rolling out to other machines.
 
-## 6. Instaliraj servis (CMD/PowerShell kao Administrator)
+## 6. Install the service (CMD/PowerShell as Administrator)
 
-**Bitno - `InstallUtil.exe` putanja zavisi od bitnosti OS-a na target
-mašini** (ne od bitnosti agenta - sklopovi su MSIL/AnyCPU i rade na oba,
-ali `InstallUtil.exe` sam postoji u dve odvojene instalacije koje Windows
-instalira zavisno od svoje bitnosti - `Framework64` folder NE POSTOJI na
-pravom 32-bit Windows-u):
+**Important - the `InstallUtil.exe` path depends on the target machine's
+OS bitness** (not the agent's bitness - the assemblies are MSIL/AnyCPU and
+run on both, but `InstallUtil.exe` itself exists in two separate installs
+that Windows sets up depending on its own bitness - the `Framework64`
+folder does NOT EXIST on real 32-bit Windows):
 
 - **64-bit Windows:**
   ```
@@ -134,18 +141,18 @@ pravom 32-bit Windows-u):
   %WINDIR%\Microsoft.NET\Framework\v4.0.30319\InstallUtil.exe Netdesk.Agent.Service.exe
   ```
 
-Zatim u oba slučaja:
+Then, in both cases:
 ```
 sc start NetdeskAgent
 sc failure NetdeskAgent reset=86400 actions=restart/60000/restart/60000/restart/60000
 ```
 
-Servis se instalira pod `LocalSystem` nalogom, `Automatic` startup. Poslednja
-komanda (`sc failure`) podešava automatski restart pri padu servisa — to
-`InstallUtil` ne radi sam.
+The service installs under the `LocalSystem` account, `Automatic`
+startup. The last command (`sc failure`) sets up automatic restart on a
+service crash — `InstallUtil` doesn't do that on its own.
 
-**Isti postupak, posebno, za Manager** (samo na PRVOJ pilot mašini - za ostatak
-flote koristi preset iz koraka 3 iznad):
+**Same procedure, separately, for the Manager** (only on the FIRST pilot
+machine - for the rest of the fleet use the preset from step 3 above):
 
 - **64-bit Windows:**
   ```
@@ -158,72 +165,74 @@ flote koristi preset iz koraka 3 iznad):
   %WINDIR%\Microsoft.NET\Framework\v4.0.30319\InstallUtil.exe Netdesk.Agent.Manager.exe
   ```
 
-Zatim:
+Then:
 ```
 sc start NetdeskAgentManager
 sc failure NetdeskAgentManager reset=86400 actions=restart/60000/restart/60000/restart/60000
 ```
 
-## 7. Provera da li je uspelo
+## 7. Verify it worked
 
-- `services.msc` → "NetdeskAgent" I "NetdeskAgent Manager" treba da budu
-  **Running**.
-- `%ProgramData%\NetdeskAgent\logs\agent.log` → treba da se vidi uspešan enroll
-  i redovni heartbeat unosi.
-- `%ProgramData%\NetdeskAgent\logs\manager.log` → treba da se vidi "Netdesk
-  Agent Manager se pokreće...".
-- Admin UI (`/agents` na frontend-u) → treba da se pojavi novi agent sa
-  hostname-om te mašine.
+- `services.msc` → both "NetdeskAgent" AND "NetdeskAgent Manager" should
+  be **Running**.
+- `%ProgramData%\NetdeskAgent\logs\agent.log` → should show a successful
+  enroll and regular heartbeat entries.
+- `%ProgramData%\NetdeskAgent\logs\manager.log` → should show "Netdesk
+  Agent Manager starting...".
+- The admin UI (`/agents` on the frontend) → a new agent with that
+  machine's hostname should appear.
 
-## Deinstalacija
+## Uninstalling
 
 ```
 cd "C:\Program Files\NetdeskAgent\Service"
 sc stop NetdeskAgent
 ```
 
-Zatim isti `InstallUtil.exe` (64-bit ili 32-bit putanja, videti korak 6)
-sa `/u`:
+Then the same `InstallUtil.exe` (64-bit or 32-bit path, see step 6) with
+`/u`:
 ```
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe /u Netdesk.Agent.Service.exe
 ```
 
-Isto za Manager (druga fascikla/exe, isti obrazac):
+Same for the Manager (a different folder/exe, same pattern):
 ```
 cd "C:\Program Files\NetdeskAgent\Manager"
 sc stop NetdeskAgentManager
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe /u Netdesk.Agent.Manager.exe
 ```
 
-Zatim ručno obrisati `C:\Program Files\NetdeskAgent\` i
-`%ProgramData%\NetdeskAgent\` ako se čisti do kraja, i (opciono) revoke-ovati
-agenta u admin UI-ju.
+Then manually delete `C:\Program Files\NetdeskAgent\` and
+`%ProgramData%\NetdeskAgent\` for a full cleanup, and (optionally) revoke
+the agent in the admin UI.
 
-## Napomena pre šireg rollout-a
+## Note before a wider rollout
 
-Sam `InstallUtil.exe` korak (instalacija kao pravi Windows Service, za razliku
-od `--console` debug moda) do sada nije uživo proveren ni na jednoj mašini.
-Dodatno, NOVO za Manager: sam signaling put (`ServiceController.
-ExecuteCommand` → `OnCustomCommand`, kod 128) između NetdeskAgent i
-NetdeskAgentManager procesa takođe nije uživo proveren - ovo je baš deo koji
-rešava originalni problem (IPS/EDR na mrežnom putu je ranije kidao stariji
-"detached hidden shell" restart pokušaj), pa je najvrednije za proveru uživo
-na pilot mašini. Preporučen redosled: instaliraj oba servisa → pošalji
-"Restartuj servis" job sa `serviceName=NetdeskAgent` iz admin UI-ja → potvrdi
-u `manager.log`/`agent.log` i admin UI-ju (agent ode offline pa se vrati
-online) → testiraj pravi update end-to-end → tek onda širi rollout
-(`deployment_group='pilot'` u bazi postoji tačno za ovaj korak).
+The `InstallUtil.exe` step itself (installing as a real Windows Service,
+as opposed to `--console` debug mode) hasn't been verified live on any
+machine so far. Additionally, NEW for the Manager: the signaling path
+itself (`ServiceController.ExecuteCommand` → `OnCustomCommand`, code 128)
+between the NetdeskAgent and NetdeskAgentManager processes also hasn't
+been verified live - this is exactly the part that solves the original
+problem (an IPS/EDR on the network path used to kill the older "detached
+hidden shell" restart attempt), so it's the most valuable thing to check
+live on a pilot machine. Recommended order: install both services → send
+a "Restart service" job with `serviceName=NetdeskAgent` from the admin
+UI → confirm in `manager.log`/`agent.log` and the admin UI (the agent goes
+offline then comes back online) → test a real update end-to-end → only
+then a wider rollout (`deployment_group='pilot'` exists in the database
+exactly for this step).
 
-**Za 1.5.7 (WinDivert DNS logging)**: potpuno nov, uživo neproveren capture
-put (vidi README.md "DNS query logging" sekciju za punu istoriju
-ETW→Npcap→WinDivert migracije - Npcap pokušaj u 1.5.6 je odbačen jer je
-tihi instalacioni mod dostupan samo uz plaćeno "Npcap OEM" izdanje).
-NEMA posebnog instalacionog koraka/preseta ovog puta - `WinDivert.dll`/
-`WinDivert64.sys` putuju UNUTAR release paketa (deo Service foldera),
-drajver se sam instalira pri prvom pozivu. Redosled na pilot mašini:
-pošalji `force_reinstall_agent`/normalan update na 1.5.7 (**Windows 10/11
-mašina - WinDivert ne podržava Windows 7**) → generiši malo DNS saobraćaja
-na toj mašini (npr. otvori par sajtova) → proveri `/dns-logs` u frontend-u
-da se domeni pojavljuju za tog agenta → proveri `agent.log` za
-"WinDivert DNS capture pokrenut" liniju (potvrda da `TryStart()` nije tiho
-otkazao).
+**For 1.5.7 (WinDivert DNS logging)**: a completely new, live-unverified
+capture path (see README.md's "DNS query logging" section for the full
+ETW→Npcap→WinDivert migration history - the Npcap attempt in 1.5.6 was
+abandoned because its silent install mode is only available with the paid
+"Npcap OEM" edition). There's NO separate install step/preset this time -
+`WinDivert.dll`/`WinDivert64.sys` travel INSIDE the release package (part
+of the Service folder), the driver installs itself on the first call.
+Order on the pilot machine: send a `force_reinstall_agent`/normal update
+to 1.5.7 (**a Windows 10/11 machine - WinDivert doesn't support
+Windows 7**) → generate a bit of DNS traffic on that machine (e.g. open a
+few sites) → check `/dns-logs` in the frontend for domains appearing for
+that agent → check `agent.log` for a "WinDivert DNS capture started" line
+(confirming `TryStart()` didn't silently bail).

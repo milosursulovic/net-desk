@@ -1,47 +1,47 @@
 # NetDesk
 
-Interni IT alat za pregled i upravljanje mrežnom/hardverskom infrastrukturom —
-IP adrese, metapodaci računara, štampači, hardverski inventar i PDSU analitika
-(softver, drajveri, servisi, Windows update-i), na jednom mestu. Prerastao je
-u pun RMM (Remote Monitoring & Management) sistem: Netdesk Agent, Windows
-servis koji se instalira na upravljane računare, javlja status/monitoring
-podatke, sinhronizuje pun hardverski/softverski inventar, izvršava
-administratorske komande na daljinu i ažurira se sam preko potpisanih
-paketa — videti [Netdesk Agent (RMM)](#netdesk-agent-rmm) ispod.
+Internal IT tool for viewing and managing network/hardware infrastructure —
+IP addresses, computer metadata, printers, hardware inventory and PDSU
+analytics (software, drivers, services, Windows updates), all in one place.
+It has grown into a full RMM (Remote Monitoring & Management) system: the
+Netdesk Agent, a Windows service installed on managed computers, reports
+status/monitoring data, syncs a full hardware/software inventory, executes
+remote admin commands, and updates itself via signed packages — see
+[Netdesk Agent (RMM)](#netdesk-agent-rmm) below.
 
-Za dubinsku tehničku dokumentaciju (arhitektura, baza podataka, API,
-bezbednost) videti [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
+For in-depth technical documentation (architecture, database, API,
+security) see [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
 
-## Sadržaj
+## Contents
 
-- [Struktura projekta](#struktura-projekta)
-- [Tehnologije](#tehnologije)
-- [Funkcionalnosti](#funkcionalnosti)
+- [Project structure](#project-structure)
+- [Technologies](#technologies)
+- [Features](#features)
 - [Netdesk Agent (RMM)](#netdesk-agent-rmm)
-- [Pokretanje lokalno](#pokretanje-lokalno)
-- [Environment varijable](#environment-varijable)
-- [Skripte](#skripte)
+- [Running locally](#running-locally)
+- [Environment variables](#environment-variables)
+- [Scripts](#scripts)
 
-## Struktura projekta
+## Project structure
 
 ```
 net-desk/
 ├── backend/    Express API server (Node.js, MySQL)
 ├── frontend/   Vue 3 SPA (Vite, Tailwind CSS)
-└── service/    Netdesk Agent — Windows servis (C#, .NET Framework 4.5.2)
+└── service/    Netdesk Agent — Windows service (C#, .NET Framework 4.5.2)
 ```
 
 ### Backend (`backend/`)
 
 ```
-config/         env, CORS, SSL, logger konfiguracija
-controllers/    HTTP request/response handleri po domenu
-services/       poslovna logika
-repositories/   SQL upiti (mysql2)
-dtos/           zod šeme za validaciju ulaza
+config/         env, CORS, SSL, logger configuration
+controllers/    HTTP request/response handlers per domain
+services/       business logic
+repositories/   SQL queries (mysql2)
+dtos/           zod schemas for input validation
 middlewares/    auth, error handling, cache-control
-routes/         Express router definicije
-utils/          deljeni helperi (httpError, pagination, sqlSearch,
+routes/         Express router definitions
+utils/          shared helpers (httpError, pagination, sqlSearch,
                 exportExcel, idParam, queryCoercion, withTransaction...)
 db/pool.js      MySQL connection pool
 ```
@@ -49,94 +49,95 @@ db/pool.js      MySQL connection pool
 ### Frontend (`frontend/`)
 
 ```
-views/          stranice (rute)
-components/     deljene komponente (AppButton, AppNav, Breadcrumbs,
+views/          pages (routes)
+components/     shared components (AppButton, AppNav, Breadcrumbs,
                 ConfirmDialog, SlideOverPanel, FormInput...)
-components/pdsu/PDSU tab komponente (Overview/Software/Drivers/Services/Updates)
-composables/    deljena stateful logika (useToast, useConfirmDialog,
+components/pdsu/PDSU tab components (Overview/Software/Drivers/Services/Updates)
+composables/    shared stateful logic (useToast, useConfirmDialog,
                 usePaginatedRoute, useAbortableFetch...)
-utils/          format, math, fetch/auth helperi
-constants/      deljene konstante i opcije formi
+utils/          format, math, fetch/auth helpers
+constants/      shared constants and form options
 layouts/        MainLayout (header, nav, breadcrumbs, footer)
-router/         Vue Router rute i auth guard
+router/         Vue Router routes and auth guard
 ```
 
-## Tehnologije
+## Technologies
 
-**Backend:** Node.js, Express 5, MySQL (mysql2), JWT autentikacija (bcryptjs +
-jsonwebtoken), zod validacija, exceljs (XLSX export), helmet, express-rate-limit.
+**Backend:** Node.js, Express 5, MySQL (mysql2), JWT authentication (bcryptjs +
+jsonwebtoken), zod validation, exceljs (XLSX export), helmet, express-rate-limit.
 
 **Frontend:** Vue 3 (Composition API, `<script setup>`), Vite, Vue Router,
 Tailwind CSS 4.
 
 **Netdesk Agent (`service/`):** C#, .NET Framework 4.5.2 (Windows 7+
-podrška), Windows Service, WMI/registry za inventar, Newtonsoft.Json.
+support), Windows Service, WMI/registry for inventory, Newtonsoft.Json.
 
-## Funkcionalnosti
+## Features
 
-- **IP adrese** — evidencija računara po IP-u, pretraga/filter/sortiranje,
+- **IP addresses** — computer records by IP, search/filter/sort,
   online/offline status, port scan, XLSX export
-- **Metapodaci** — hardverski detalji po računaru (CPU, RAM, disk, GPU, mreža)
-  i agregatna analitika (pokrivenost, distribucije, top liste)
-- **Štampači** — evidencija, povezivanje na računare, host dodela
-- **Inventar hardvera** — rezervni delovi/oprema van mreže
-- **PDSU analitika** — softver, drajveri, servisi i Windows update-i po
-  računaru, sa pregledom i detaljnim tabelama
-- **Dnevni izveštaj** — automatski generisan svako jutro u 7 (i ručno na
-  zahtev): pregled flote (agenti online/stale/offline, IP status promene),
-  aktivna upozorenja, trend punjenja diska (projekcija "stiže do 90% za ~N
-  dana" na osnovu istorije, kad ima dovoljno podataka), i šta je novo od
-  prethodnog izveštaja (novi agenti/IP adrese/štampači, neuspešne komande i
-  ažuriranja) — sa istorijom prethodnih izveštaja, oznakom pročitano/
-  nepročitano, štampanjem i push notifikacijom kad je spreman
+- **Metadata** — per-computer hardware details (CPU, RAM, disk, GPU, network)
+  and aggregate analytics (coverage, distributions, top lists)
+- **Printers** — records, linking to computers, host assignment
+- **Hardware inventory** — spare parts/equipment outside the network
+- **PDSU analytics** — software, drivers, services and Windows updates per
+  computer, with an overview and detailed tables
+- **Daily report** — auto-generated every morning at 7 (and on demand):
+  fleet overview (agents online/stale/offline, IP status changes), active
+  alerts, disk-fill trend (a "reaches 90% in ~N days" projection based on
+  history, once enough data exists), and what's new since the previous
+  report (new agents/IP addresses/printers, failed commands and updates) —
+  with a history of past reports, read/unread marking, printing and a push
+  notification when it's ready
 
 ## Netdesk Agent (RMM)
 
-Windows servis (`service/`) koji se instalira na upravljane računare i
-komunicira sa backend-om preko HTTPS-a, odvojen stek/projekat od
-`backend/`/`frontend/`. Pokriva ceo RMM tok:
+A Windows service (`service/`) installed on managed computers that
+communicates with the backend over HTTPS, a separate stack/project from
+`backend/`/`frontend/`. Covers the full RMM flow:
 
-- **Enrollment + heartbeat + monitoring** — registracija preko deljenog
-  tokena, periodičan heartbeat sa CPU/RAM/disk/mreža/antivirus/firewall/
-  BitLocker/temperatura podacima
-- **Pun inventory sync** — hardver (CPU, RAM, disk, GPU, mreža, matična
-  ploča, BIOS), softver, drajveri, servisi, štampači, instalirani i dostupni
-  Windows update-i, preko WMI-ja i registry-ja
-- **Remote komande** — restart/shutdown računara, odjava korisnika,
-  start/stop/restart servisa, izvršavanje PowerShell skripti, brisanje temp
-  fajlova — admin zadaje iz `AgentDetailView`, agent ih povlači i izvršava
-  na sledećem poll ciklusu
-- **Event log** — kritični/error/warning zapisi iz Windows Event Log-a,
-  append-only istorija po računaru
-- **Auto-update** — agent proverava novu verziju po deployment grupi
-  (test/it/pilot/rest), preuzima, proverava SHA-256 i (opciono) digitalni
-  potpis paketa, zamenjuje fajlove preko odvojenog Updater procesa, sa
-  automatskim rollback-om pri neuspehu
-- **Alerting** — spojeno sa postojećim notifikacionim sistemom: offline
-  mašine, pun disk, isključen antivirus/firewall, neuspeli jobovi, stao
-  Windows Update servis
-- **Push notifikacije (PWA)** — frontend je instalabilan kao Progressive Web
-  App; kad se pojavi nov alarm, prijavljeni admin dobija push notifikaciju na
-  desktop/telefon i kad tab nije otvoren, preko `web-push`/VAPID-a i
-  service worker-a (`public/push-sw.js`). Watcher (`pushNotificationWatcher.js`)
-  šalje push samo za alarme koji se TEK pojave, ne ponavlja isti alarm na
-  svaki ciklus.
+- **Enrollment + heartbeat + monitoring** — registration via a shared
+  token, periodic heartbeat with CPU/RAM/disk/network/antivirus/firewall/
+  BitLocker/temperature data
+- **Full inventory sync** — hardware (CPU, RAM, disk, GPU, network,
+  motherboard, BIOS), software, drivers, services, printers, installed and
+  available Windows updates, via WMI and the registry
+- **Remote commands** — restart/shutdown the computer, log off the user,
+  start/stop/restart a service, run PowerShell scripts, delete temp
+  files — the admin issues these from `AgentDetailView`, the agent pulls and
+  executes them on its next poll cycle
+- **Event log** — critical/error/warning entries from the Windows Event Log,
+  an append-only history per computer
+- **Auto-update** — the agent checks for a new version per deployment group
+  (test/it/pilot/rest), downloads it, verifies the SHA-256 and (optionally)
+  the package's digital signature, swaps files via a separate Updater
+  process, with automatic rollback on failure
+- **Alerting** — wired into the existing notification system: offline
+  machines, full disk, antivirus/firewall disabled, failed jobs, the
+  Windows Update service stopped
+- **Push notifications (PWA)** — the frontend is installable as a Progressive
+  Web App; when a new alert appears, a logged-in admin gets a push
+  notification to desktop/phone even when the tab isn't open, via
+  `web-push`/VAPID and a service worker (`public/push-sw.js`). The watcher
+  (`pushNotificationWatcher.js`) only pushes for alerts that just appeared,
+  it doesn't repeat the same alert on every cycle.
 
-Detaljna arhitektura, instalacija i konfiguracija: [`service/README.md`](service/README.md).
-Ideje za dalji razvoj (uživo remote pristup, konfigurabilan alerting,
-istorija monitoringa, RBAC, itd.): [`docs/agent-roadmap.md`](docs/agent-roadmap.md).
+Detailed architecture, installation and configuration:
+[`service/README.md`](service/README.md).
+Ideas for further development (live remote access, configurable alerting,
+monitoring history, RBAC, etc.): [`docs/agent-roadmap.md`](docs/agent-roadmap.md).
 
-## Pokretanje lokalno
+## Running locally
 
-Preduslovi: Node.js, MySQL server, SSL cert/key za lokalni HTTPS (i backend i
-frontend dev server rade preko HTTPS).
+Prerequisites: Node.js, a MySQL server, an SSL cert/key for local HTTPS
+(both the backend and the frontend dev server run over HTTPS).
 
 ### Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env   # popuni vrednosti, vidi ispod
+cp .env.example .env   # fill in the values, see below
 npm run dev
 ```
 
@@ -145,57 +146,57 @@ npm run dev
 ```bash
 cd frontend
 npm install
-cp .env.example .env   # popuni vrednosti, vidi ispod
+cp .env.example .env   # fill in the values, see below
 npm run dev
 ```
 
-## Environment varijable
+## Environment variables
 
 ### `backend/.env`
 
-| Varijabla              | Opis                                       |
+| Variable                | Description                                |
 | ----------------------- | ------------------------------------------ |
-| `HOST`                  | interfejs na kom server sluša              |
-| `PORT`                  | port backend servera                       |
+| `HOST`                  | interface the server listens on            |
+| `PORT`                  | backend server port                        |
 | `DB_HOST`, `DB_PORT`     | MySQL host/port                            |
-| `DB_USER`, `DB_PASS`     | MySQL kredencijali                         |
-| `DB_NAME`                | naziv baze                                 |
-| `JWT_SECRET`             | tajni ključ za potpisivanje JWT tokena     |
-| `AGENT_ENROLL_TOKEN`     | deljeni tajni token za registraciju Netdesk Agent-a (`service/`) |
-| `AGENT_SIGNING_CERT_PATH`, `AGENT_SIGNING_KEY_PATH` | opciono - PEM sertifikat/ključ za potpisivanje agent release paketa (videti `service/README.md`) |
-| `SSL_CERT`, `SSL_KEY`    | putanje do SSL sertifikata za HTTPS        |
-| `CORS_ALLOWED_ORIGINS`   | dozvoljeni origin-i, odvojeni zarezom      |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | opciono - generiše se sa `npx web-push generate-vapid-keys`; ako nisu podešeni, push notifikacije su isključene |
+| `DB_USER`, `DB_PASS`     | MySQL credentials                          |
+| `DB_NAME`                | database name                              |
+| `JWT_SECRET`             | secret key for signing JWT tokens          |
+| `AGENT_ENROLL_TOKEN`     | shared secret token for enrolling the Netdesk Agent (`service/`) |
+| `AGENT_SIGNING_CERT_PATH`, `AGENT_SIGNING_KEY_PATH` | optional - PEM certificate/key for signing agent release packages (see `service/README.md`) |
+| `SSL_CERT`, `SSL_KEY`    | paths to the SSL certificate for HTTPS     |
+| `CORS_ALLOWED_ORIGINS`   | allowed origins, comma-separated           |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional - generated with `npx web-push generate-vapid-keys`; push notifications are disabled if not set |
 
 ### `frontend/.env`
 
-| Varijabla               | Opis                                      |
+| Variable                 | Description                                |
 | ------------------------ | ------------------------------------------ |
-| `VITE_API_URL`           | bazni URL backend API-ja                  |
-| `VITE_HOST_IP_ADDRESS`   | interfejs na kom Vite dev server sluša    |
-| `VITE_HOST_PORT`         | port Vite dev servera                     |
-| `VITE_SSL_KEY_PATH`      | putanja do SSL ključa za dev server       |
-| `VITE_SSL_CERT_PATH`     | putanja do SSL sertifikata za dev server  |
+| `VITE_API_URL`           | base URL of the backend API                |
+| `VITE_HOST_IP_ADDRESS`   | interface the Vite dev server listens on   |
+| `VITE_HOST_PORT`         | Vite dev server port                       |
+| `VITE_SSL_KEY_PATH`      | path to the SSL key for the dev server     |
+| `VITE_SSL_CERT_PATH`     | path to the SSL certificate for the dev server |
 
-## Skripte
+## Scripts
 
 ### Backend
 
-| Skripta         | Opis                          |
-| ---------------- | ------------------------------ |
-| `npm run dev`     | pokreće server sa nodemon-om  |
-| `npm start`       | pokreće server (produkcija)   |
+| Script            | Description                    |
+| ------------------ | ------------------------------ |
+| `npm run dev`       | starts the server with nodemon |
+| `npm start`         | starts the server (production) |
 
-ESLint je konfigurisan (`eslint.config.js`), ali nema definisanu `npm run lint`
-skriptu — pokreće se direktno sa `npx eslint .`.
+ESLint is configured (`eslint.config.js`), but there's no dedicated
+`npm run lint` script — run it directly with `npx eslint .`.
 
 ### Frontend
 
-| Skripta            | Opis                              |
+| Script              | Description                        |
 | -------------------- | ---------------------------------- |
-| `npm run dev`         | pokreće Vite dev server           |
-| `npm run build`       | produkcioni build                 |
-| `npm run preview`     | pregled produkcionog build-a      |
-| `npm run lint`        | ESLint provera                    |
-| `npm run lint:fix`    | ESLint sa auto-fix-om             |
-| `npm run format`      | Prettier formatiranje `src/`      |
+| `npm run dev`         | starts the Vite dev server         |
+| `npm run build`       | production build                   |
+| `npm run preview`     | preview the production build       |
+| `npm run lint`        | ESLint check                       |
+| `npm run lint:fix`    | ESLint with auto-fix               |
+| `npm run format`      | Prettier formatting of `src/`      |

@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-4">
-    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Konfiguracija</h1>
+    <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('config.title') }}</h1>
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="text-bad">{{ error }}</div>
 
     <div v-else class="space-y-3">
@@ -17,11 +17,23 @@
             {{ setting.description }}
           </p>
           <p v-if="setting.updatedAt" class="text-xs text-ink-muted mt-1 font-mono">
-            Poslednja izmena: {{ fmtDate(setting.updatedAt) }}
+            {{ t('config.lastChanged', { date: fmtDate(setting.updatedAt) }) }}
           </p>
         </div>
 
-        <label class="inline-flex shrink-0 cursor-pointer items-center">
+        <select
+          v-if="setting.type === 'select'"
+          class="app-input w-auto shrink-0"
+          :value="setting.value"
+          :disabled="saving === setting.key"
+          @change="selectChanged(setting, $event.target.value)"
+        >
+          <option v-for="o in setting.options" :key="o.value" :value="o.value">
+            {{ o.flag ? `${o.flag} ` : '' }}{{ o.label }}
+          </option>
+        </select>
+
+        <label v-else class="inline-flex shrink-0 cursor-pointer items-center">
           <input
             type="checkbox"
             class="sr-only peer"
@@ -35,7 +47,7 @@
         </label>
       </div>
 
-      <div v-if="!settings.length" class="text-sm text-ink-muted">Nema podešavanja.</div>
+      <div v-if="!settings.length" class="text-sm text-ink-muted">{{ t('config.noSettings') }}</div>
     </div>
 
     <ToastNotification :message="toast" />
@@ -44,14 +56,17 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
 import { useToast } from '@/composables/useToast.js'
+import { setAppLanguage } from '@/i18n/index.js'
 import ToastNotification from '@/components/ToastNotification.vue'
 
+const { t, locale } = useI18n()
 const { toast, showToast } = useToast()
-const fmtDate = (d) => formatDate(d, 'sr-RS')
+const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 
 const settings = ref([])
 const loading = ref(false)
@@ -67,14 +82,13 @@ async function fetchData() {
     settings.value = await res.json()
   } catch (e) {
     console.error('Neuspešno učitavanje podešavanja:', e)
-    error.value = 'Neuspešno učitavanje podešavanja.'
+    error.value = t('config.loadError')
   } finally {
     loading.value = false
   }
 }
 
-async function toggle(setting) {
-  const nextValue = !setting.value
+async function saveSetting(setting, nextValue) {
   saving.value = setting.key
   try {
     const res = await fetchWithAuth('/api/protected/settings', {
@@ -84,14 +98,18 @@ async function toggle(setting) {
     })
     if (!res.ok) throw new Error(await parseError(res, `HTTP ${res.status}`))
     settings.value = await res.json()
-    showToast('Podešavanje sačuvano')
+    if (setting.key === 'app_language') setAppLanguage(nextValue)
+    showToast(t('config.saveSuccess'))
   } catch (e) {
     console.error('Greška pri izmeni podešavanja:', e)
-    showToast(e.message || 'Greška pri izmeni podešavanja.', { kind: 'error', duration: 3000 })
+    showToast(e.message || t('config.saveError'), { kind: 'error', duration: 3000 })
   } finally {
     saving.value = ''
   }
 }
+
+const toggle = (setting) => saveSetting(setting, !setting.value)
+const selectChanged = (setting, value) => saveSetting(setting, value)
 
 onMounted(fetchData)
 </script>

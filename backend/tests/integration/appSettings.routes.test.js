@@ -13,7 +13,7 @@ describe("app settings routes (integration, real DB)", () => {
     // see a clean slate - vitest.config.js disables file parallelism, so
     // this can't race.
     await pool.execute(
-      "DELETE FROM app_settings WHERE setting_key IN ('vnc_enabled', 'process_monitor_enabled')",
+      "DELETE FROM app_settings WHERE setting_key IN ('vnc_enabled', 'process_monitor_enabled', 'app_language')",
     );
   });
 
@@ -49,6 +49,7 @@ describe("app settings routes (integration, real DB)", () => {
     expect(res.body).toEqual([
       expect.objectContaining({ key: "vnc_enabled", value: false }),
       expect.objectContaining({ key: "process_monitor_enabled", value: true }),
+      expect.objectContaining({ key: "app_language", value: "sr" }),
     ]);
   });
 
@@ -81,6 +82,23 @@ describe("app settings routes (integration, real DB)", () => {
       .patch("/api/protected/settings")
       .set("Authorization", `Bearer ${rootAdminToken()}`)
       .send({ key: "vnc_enabled", value: "yes" });
+    expect(res.status).toBe(400);
+  });
+
+  it("admin can change the select-type app_language setting to a registered option", async () => {
+    const res = await request(app)
+      .patch("/api/protected/settings")
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
+      .send({ key: "app_language", value: "en" });
+    expect(res.status).toBe(200);
+    expect(res.body.find((s) => s.key === "app_language").value).toBe("en");
+  });
+
+  it("rejects a value not in app_language's registered options with 400", async () => {
+    const res = await request(app)
+      .patch("/api/protected/settings")
+      .set("Authorization", `Bearer ${rootAdminToken()}`)
+      .send({ key: "app_language", value: "fr" });
     expect(res.status).toBe(400);
   });
 });

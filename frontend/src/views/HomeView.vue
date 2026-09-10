@@ -1,21 +1,21 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">IP Adrese</h1>
+      <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('home.title') }}</h1>
 
       <div class="flex flex-wrap items-center gap-2">
-        <AppButton variant="success" @click="addEntry">Dodaj</AppButton>
+        <AppButton variant="success" @click="addEntry">{{ t('home.add') }}</AppButton>
 
-        <AppButton variant="secondary" @click="exportToXlsx">Izvezi XLSX</AppButton>
+        <AppButton variant="secondary" @click="exportToXlsx">{{ t('home.exportXlsx') }}</AppButton>
 
         <AppButton variant="secondary" to="/computers-for-repack" class="inline-flex items-center gap-1.5">
           <NavIcon name="package" />
-          Za pakovanje{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
+          {{ t('home.forPackaging') }}{{ counts.pendingRepack ? ` (${counts.pendingRepack})` : '' }}
         </AppButton>
 
-        <AppButton variant="secondary" to="/free-ip-addresses">Slobodne IP adrese</AppButton>
+        <AppButton variant="secondary" to="/free-ip-addresses">{{ t('home.freeIps') }}</AppButton>
 
-        <AppButton variant="secondary" to="/groups">Grupe</AppButton>
+        <AppButton variant="secondary" to="/groups">{{ t('home.groups') }}</AppButton>
       </div>
     </div>
 
@@ -25,7 +25,7 @@
         v-model="search"
         @input="page = 1"
         type="text"
-        placeholder="Pretraga po IP-u, imenu računara, odeljenju..."
+        :placeholder="t('home.searchPlaceholder')"
         class="app-input w-full"
       />
 
@@ -36,7 +36,7 @@
           class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-sunken sm:hidden"
           @click="filtersOpen = !filtersOpen"
         >
-          Filteri
+          {{ t('home.filters') }}
           <span
             v-if="activeFilterCount"
             class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white"
@@ -46,55 +46,55 @@
       </div>
 
       <div class="flex-wrap items-center gap-2" :class="filtersOpen ? 'flex' : 'hidden sm:flex'">
-        <select v-model="status" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter statusa'">
-          <option value="all">Svi statusi</option>
-          <option value="online">Samo online</option>
-          <option value="offline">Samo offline</option>
+        <select v-model="status" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="t('home.statusAll')">
+          <option value="all">{{ t('home.statusAll') }}</option>
+          <option value="online">{{ t('home.statusOnline') }}</option>
+          <option value="offline">{{ t('home.statusOffline') }}</option>
         </select>
 
-        <select v-model="entryType" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter tipa'">
-          <option value="all">Svi tipovi</option>
-          <option value="computer">Računari</option>
-          <option value="device">Aparati</option>
-          <option value="unknown">Nepoznato</option>
+        <select v-model="entryType" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="t('home.typeAll')">
+          <option value="all">{{ t('home.typeAll') }}</option>
+          <option value="computer">{{ t('home.typeComputer') }}</option>
+          <option value="device">{{ t('home.typeDevice') }}</option>
+          <option value="unknown">{{ t('home.typeUnknown') }}</option>
         </select>
 
         <MultiSelect
           v-model="department"
           :options="departmentOptions"
-          placeholder="Sva odeljenja"
+          :placeholder="t('home.allDepartments')"
           class="w-auto max-w-40 min-w-0"
-          title="Filter odeljenja"
+          :title="t('home.departmentFilterTitle')"
         />
 
         <MultiSelect
           v-model="os"
           :options="osOptions"
-          placeholder="Svi OS"
+          :placeholder="t('home.allOs')"
           class="w-auto max-w-40 min-w-0"
-          title="Filter operativnog sistema"
+          :title="t('home.osFilterTitle')"
         />
 
-        <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="'Filter arhitekture OS-a'">
-          <option value="">Sve arhitekture</option>
+        <select v-model="osArchitecture" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm" :title="t('home.archFilterTitle')">
+          <option value="">{{ t('home.allArchitectures') }}</option>
           <option v-for="a in osArchitectureOptions" :key="a" :value="a">{{ a }}</option>
         </select>
 
         <MultiSelect
           v-model="rdpApp"
           :options="rdpAppOptions"
-          placeholder="Svi RDP alati"
+          :placeholder="t('home.allRdpTools')"
           class="w-auto max-w-40 min-w-0"
-          title="Filter RDP/remote-access alata"
+          :title="t('home.rdpFilterTitle')"
         />
 
-        <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary shrink-0" title="Folder C:\Izvolte NIJE pronađen na računaru">
+        <label class="inline-flex items-center gap-1.5 text-sm text-ink-secondary shrink-0" :title="t('home.missingIzvolteTitle')">
           <input
             type="checkbox"
             :checked="missingIzvolteFolder === 'true'"
             @change="missingIzvolteFolder = missingIzvolteFolder === 'true' ? '' : 'true'"
           />
-          Nema Izvolte folder
+          {{ t('home.missingIzvolteLabel') }}
         </label>
 
         <select v-model="sortBy" class="app-input w-auto max-w-full min-w-0 truncate py-2 text-sm">
@@ -104,8 +104,8 @@
         <button
           @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
           class="px-2.5 py-2 border border-line rounded-lg text-sm hover:bg-surface-sunken"
-          :title="sortOrder === 'asc' ? 'Rastuće — klikni za opadajuće' : 'Opadajuće — klikni za rastuće'"
-          aria-label="Promeni redosled sortiranja"
+          :title="sortOrder === 'asc' ? t('home.sortAsc') : t('home.sortDesc')"
+          :aria-label="t('home.changeSortOrder')"
         >
           <NavIcon :name="sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'" />
         </button>
@@ -113,8 +113,8 @@
 
       <!-- Statistika i paginacija - uvek vidljivo, nije deo filter panela -->
       <div class="flex flex-wrap items-center gap-3">
-        <StatusPill status="good" :label="`Online: ${counts.online}`" />
-        <StatusPill status="bad" :label="`Offline: ${counts.offline}`" />
+        <StatusPill status="good" :label="t('home.online', { n: counts.online })" />
+        <StatusPill status="bad" :label="t('home.offline', { n: counts.offline })" />
 
         <span class="mx-1 hidden h-5 w-px bg-line sm:inline-block"></span>
 
@@ -130,7 +130,7 @@
         />
       </div>
 
-      <p class="text-sm text-ink-muted">Prikazano {{ entries.length }} od {{ total }} unosa</p>
+      <p class="text-sm text-ink-muted">{{ t('home.shown', { shown: entries.length, total }) }}</p>
     </div>
 
     <div
@@ -139,22 +139,22 @@
       role="alert"
     >
       <div class="text-sm">
-        Pronađeno je
-        <b>{{ duplicateTotalGroups }}</b> duplih imena računara (ukupno
-        <b>{{ duplicateTotalRows }}</b> zapisa).
+        {{ t('home.duplicatesFoundPrefix') }}
+        <b>{{ duplicateTotalGroups }}</b> {{ t('home.duplicatesFoundMid') }}
+        <b>{{ duplicateTotalRows }}</b> {{ t('home.duplicatesFoundSuffix') }}
       </div>
       <div class="shrink-0">
         <router-link
           to="/duplicates"
           class="text-sm bg-warn text-white px-3 py-1 rounded hover:brightness-95"
         >
-          Pogledaj detalje
+          {{ t('home.viewDetails') }}
         </router-link>
       </div>
     </div>
 
     <div v-if="!entries.length" class="table-shell p-8 text-center text-ink-muted">
-      Nema rezultata za zadate filtere.
+      {{ t('home.noResults') }}
     </div>
 
     <div v-else class="table-shell">
@@ -162,14 +162,14 @@
         <table class="w-full min-w-300 border-collapse text-sm">
           <thead>
             <tr class="table-head-row">
-              <th class="px-3 py-2 text-left">IP / Računar</th>
-              <th class="px-3 py-2 text-left">Tip</th>
-              <th class="px-3 py-2 text-left">Status</th>
-              <th class="px-3 py-2 text-left">Sistem</th>
-              <th class="px-3 py-2 text-left">RDP App</th>
-              <th class="px-3 py-2 text-left">Zastavice</th>
-              <th class="px-3 py-2 text-left">Opis</th>
-              <th class="px-3 py-2 text-left">Poslednja provera</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colIpComputer') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colType') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colStatus') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colSystem') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colRdpApp') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colFlags') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colDescription') }}</th>
+              <th class="px-3 py-2 text-left">{{ t('home.colLastChecked') }}</th>
               <th class="px-3 py-2 text-right"></th>
             </tr>
           </thead>
@@ -179,9 +179,9 @@
                 <div class="flex items-center gap-1.5">
                   <span class="font-mono font-semibold text-ink">{{ entry.ip }}</span>
                   <button
-                    @click="copyToClipboard(entry.ip, `IP ${entry.ip} kopiran!`)"
+                    @click="copyToClipboard(entry.ip, t('home.copyIpToast', { ip: entry.ip }))"
                     class="shrink-0 text-ink-muted hover:text-ink"
-                    title="Kopiraj IP"
+                    :title="t('home.copyIpTitle')"
                   >
                     <NavIcon name="copy" />
                   </button>
@@ -189,11 +189,11 @@
                 <div class="mt-0.5 text-xs text-ink-muted wrap-break-word">{{ entry.computerName || '—' }}</div>
                 <div v-if="entry.department" class="mt-1"><TagChip :label="entry.department" class="max-w-40 truncate" /></div>
               </td>
-              <td class="px-3 py-2.5 align-top"><TagChip :label="labelForEntryType(entry.entryType)" title="Tip unosa" /></td>
+              <td class="px-3 py-2.5 align-top"><TagChip :label="labelForEntryType(entry.entryType)" :title="t('home.entryTypeTitle')" /></td>
               <td class="px-3 py-2.5 align-top">
                 <StatusPill
                   :status="entry.isOnline ? 'good' : 'bad'"
-                  :label="entry.isOnline ? 'Online' : 'Offline'"
+                  :label="entry.isOnline ? t('common.online') : t('common.offline')"
                   :title="statusTooltip(entry)"
                 />
               </td>
@@ -207,23 +207,23 @@
                   <router-link
                     v-if="entry.flaggedSoftwareCount || entry.flaggedServiceCount || entry.flaggedDriverCount"
                     :to="`/ip/${entry.id}/pdsu`"
-                    :title="`${entry.flaggedSoftwareCount || 0} programa, ${entry.flaggedServiceCount || 0} servisa, ${entry.flaggedDriverCount || 0} drajvera`"
+                    :title="t('home.flaggedTitle', { soft: entry.flaggedSoftwareCount || 0, svc: entry.flaggedServiceCount || 0, drv: entry.flaggedDriverCount || 0 })"
                   >
-                    <StatusPill status="bad" label="Neželjeni" icon="alert-triangle" />
+                    <StatusPill status="bad" :label="t('home.flaggedLabel')" icon="alert-triangle" />
                   </router-link>
 
-                  <router-link v-if="entry.pendingRepack" to="/computers-for-repack" title="Markiran za pakovanje/zamenu komponenti">
-                    <StatusPill status="warn" label="Pakovanje" icon="package" />
+                  <router-link v-if="entry.pendingRepack" to="/computers-for-repack" :title="t('home.repackTitle')">
+                    <StatusPill status="warn" :label="t('home.repackLabel')" icon="package" />
                   </router-link>
 
                   <button
                     v-if="entry.hasIzvolteFolder"
                     type="button"
-                    @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, 'Putanja do Izvolte foldera kopirana - nalepi je u Explorer-u')"
+                    @click="copyToClipboard(`\\\\${entry.ip}\\Izvolte`, t('home.copyIzvolteToast'))"
                     class="appearance-none"
-                    :title="`Kopiraj putanju \\\\${entry.ip}\\Izvolte (mrežni share, Everyone read/write) - browser ne sme da otvori file:// linkove direktno`"
+                    :title="t('home.copyIzvolteTitle', { path: `\\\\${entry.ip}\\Izvolte` })"
                   >
-                    <StatusPill status="info" label="Izvolte" icon="folder" />
+                    <StatusPill status="info" :label="t('home.izvolteLabel')" icon="folder" />
                   </button>
                 </div>
                 <span v-else class="text-ink-muted">—</span>
@@ -231,40 +231,40 @@
               <td class="px-3 py-2.5 align-top max-w-70 truncate text-xs text-ink-secondary" :title="entry.description">
                 {{ entry.description || '—' }}
               </td>
-              <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono" :title="`Promena statusa: ${fmtRelative(entry.lastStatusChange)}`">
+              <td class="px-3 py-2.5 align-top text-xs text-ink-muted font-mono" :title="t('home.statusChange', { date: fmtRelative(entry.lastStatusChange) })">
                 {{ fmtRelative(entry.lastChecked) }}
               </td>
               <td class="px-3 py-2.5 align-top text-right">
                 <div class="table-row-actions flex-wrap justify-end">
-                  <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" title="Izmeni">
+                  <button @click="editEntry(entry)" class="rounded p-1 text-accent hover:bg-surface-sunken" :title="t('common.edit')">
                     <NavIcon name="edit" />
                   </button>
                   <button
                     @click="togglePendingRepack(entry)"
                     class="rounded p-1 hover:bg-surface-sunken"
                     :class="entry.pendingRepack ? 'text-warn' : 'text-ink-secondary'"
-                    :title="entry.pendingRepack ? 'Ukloni oznaku za pakovanje' : 'Markiraj za pakovanje'"
+                    :title="entry.pendingRepack ? t('home.unmarkRepack') : t('home.markRepack')"
                   >
                     <NavIcon name="package" />
                   </button>
-                  <router-link :to="`/ip/${entry.id}/meta`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="Metapodaci">
+                  <router-link :to="`/ip/${entry.id}/meta`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('nav.metadata')">
                     <NavIcon name="metadata" />
                   </router-link>
-                  <router-link :to="`/ip/${entry.id}/pdsu`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="PDSU inventar">
+                  <router-link :to="`/ip/${entry.id}/pdsu`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.pdsuTitle')">
                     <NavIcon name="pdsu" />
                   </router-link>
-                  <router-link :to="`/ip/${entry.id}/port-scan`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" title="Port scan">
+                  <router-link :to="`/ip/${entry.id}/port-scan`" class="rounded p-1 text-ink-secondary hover:bg-surface-sunken inline-flex" :title="t('home.portScanTitle')">
                     <NavIcon name="port" />
                   </router-link>
                   <router-link
                     v-if="entry.agentId"
                     :to="`/agents/${entry.agentId}`"
                     class="rounded p-1 text-good hover:bg-surface-sunken inline-flex"
-                    title="Otvori Netdesk Agent za ovaj računar"
+                    :title="t('home.openAgentTitle')"
                   >
                     <NavIcon name="agents" />
                   </router-link>
-                  <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="rounded p-1 text-bad hover:bg-surface-sunken" title="Obriši">
+                  <button v-if="isAdmin" @click="deleteEntry(entry.id)" class="rounded p-1 text-bad hover:bg-surface-sunken" :title="t('common.delete')">
                     <NavIcon name="trash" />
                   </button>
                 </div>
@@ -291,6 +291,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtRelative } from '@/utils/format.js'
 import { labelForEntryType } from '@/constants/entryTypes.js'
@@ -309,6 +310,7 @@ import TagChip from '@/components/TagChip.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const site = useCurrentSite()
 const { toast, showToast, copyToClipboard } = useToast()
@@ -424,13 +426,13 @@ const activeFilterCount = computed(() => {
   return n
 })
 
-const sortOptions = [
-  { value: 'ip', label: 'IP adresa' },
-  { value: 'computerName', label: 'Ime računara' },
-  { value: 'department', label: 'Odeljenje' },
-  { value: 'rdpApp', label: 'RDP App' },
-  { value: 'os', label: 'Sistem' },
-]
+const sortOptions = computed(() => [
+  { value: 'ip', label: t('home.sortIp') },
+  { value: 'computerName', label: t('home.sortComputerName') },
+  { value: 'department', label: t('home.sortDepartment') },
+  { value: 'rdpApp', label: t('home.sortRdpApp') },
+  { value: 'os', label: t('home.sortOs') },
+])
 
 const addEntry = () => router.push('/add')
 const editEntry = (entry) => router.push(`/edit/${entry.id}`)
@@ -478,13 +480,13 @@ const togglePendingRepack = async (entry) => {
     counts.value.pendingRepack += nextValue ? 1 : -1
   } catch (err) {
     console.error('Neuspešna izmena oznake za pakovanje', err)
-    showToast('Greška pri izmeni oznake', { kind: 'error', duration: 3000 })
+    showToast(t('home.toggleRepackErrorToast'), { kind: 'error', duration: 3000 })
   }
 }
 
 const deleteEntry = async (id) => {
-  const ok = await askConfirm('Da li si siguran da želiš da obrišeš ovaj unos?', {
-    title: 'Brisanje unosa',
+  const ok = await askConfirm(t('home.confirmDeleteMessage'), {
+    title: t('home.confirmDeleteTitle'),
   })
   if (!ok) return
 
@@ -492,7 +494,7 @@ const deleteEntry = async (id) => {
   if (res.ok) {
     fetchData()
   } else {
-    showToast('Greška pri brisanju unosa', { kind: 'error', duration: 3000 })
+    showToast(t('home.deleteErrorToast'), { kind: 'error', duration: 3000 })
   }
 }
 
@@ -509,10 +511,10 @@ const exportToXlsx = async () => {
 }
 
 const statusTooltip = (e) => {
-  const onlineTxt = e.isOnline ? 'Online' : 'Offline'
+  const onlineTxt = e.isOnline ? t('common.online') : t('common.offline')
   const lc = e.lastChecked ? new Date(e.lastChecked).toLocaleString() : '—'
   const lsc = e.lastStatusChange ? new Date(e.lastStatusChange).toLocaleString() : '—'
-  return `${onlineTxt}\nPoslednja provera: ${lc}\nPromena statusa: ${lsc}`
+  return `${onlineTxt}\n${t('home.colLastChecked')}: ${lc}\n${t('home.statusChange', { date: lsc })}`
 }
 
 const duplicateTotalGroups = ref(0)

@@ -14,25 +14,24 @@
 
       <div class="relative max-w-md">
         <h1 class="mb-4 text-3xl font-bold leading-tight tracking-tight" style="font-family: var(--font-display)">
-          Centralni pregled IT infrastrukture
+          {{ t('login.heroTitle') }}
         </h1>
         <p class="mb-8 text-white/85">
-          IP adrese, metapodaci računara, štampači, hardverski inventar i PDSU analitika — sve na
-          jednom mestu.
+          {{ t('login.heroSubtitle') }}
         </p>
 
         <ul class="space-y-3 text-sm text-white/85">
           <li class="flex items-center gap-2.5">
             <span class="h-1.5 w-1.5 rounded-full bg-white/60"></span>
-            IP adrese i metapodaci računara
+            {{ t('login.featureIp') }}
           </li>
           <li class="flex items-center gap-2.5">
             <span class="h-1.5 w-1.5 rounded-full bg-white/60"></span>
-            PDSU analitika (softver, drajveri, servisi, update-i)
+            {{ t('login.featurePdsu') }}
           </li>
           <li class="flex items-center gap-2.5">
             <span class="h-1.5 w-1.5 rounded-full bg-white/60"></span>
-            Štampači i hardverski inventar
+            {{ t('login.featurePrinters') }}
           </li>
         </ul>
       </div>
@@ -47,39 +46,39 @@
           <Logo />
         </div>
 
-        <h2 class="mb-1 text-2xl font-bold text-ink" style="font-family: var(--font-display)">Dobrodošli nazad 👋</h2>
-        <p class="mb-8 text-sm text-ink-muted">Prijavite se da nastavite na NetDesk</p>
+        <h2 class="mb-1 text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('login.welcomeBack') }}</h2>
+        <p class="mb-8 text-sm text-ink-muted">{{ t('login.subtitle') }}</p>
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label for="username" class="block text-sm font-medium text-ink mb-1">
-              Korisničko ime
+              {{ t('login.username') }}
             </label>
             <input
               id="username"
               v-model.trim="username"
               type="text"
               required
-              placeholder="Unesite korisničko ime"
+              :placeholder="t('login.usernamePlaceholder')"
               class="app-input w-full"
             />
           </div>
 
           <div>
             <label for="password" class="block text-sm font-medium text-ink mb-1">
-              Lozinka
+              {{ t('login.password') }}
             </label>
             <input
               id="password"
               v-model="password"
               type="password"
               required
-              placeholder="Unesite lozinku"
+              :placeholder="t('login.passwordPlaceholder')"
               class="app-input w-full"
             />
           </div>
 
-          <AppButton type="submit" variant="primary" class="w-full mt-2">Prijavi se</AppButton>
+          <AppButton type="submit" variant="primary" class="w-full mt-2">{{ t('login.submit') }}</AppButton>
 
           <p v-if="errorMessage" class="text-bad text-sm text-center animate-pulse">
             {{ errorMessage }}
@@ -97,11 +96,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Logo from '@/components/Logo.vue'
 import AppButton from '@/components/AppButton.vue'
 import { useAppInfo } from '@/composables/useAppInfo.js'
 import Icon from '@/assets/icons/netdesk.svg'
 
+const { t } = useI18n()
 const { year, copyright } = useAppInfo()
 
 const router = useRouter()
@@ -113,7 +114,7 @@ const errorMessage = ref('')
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
-    errorMessage.value = 'Korisničko ime i lozinka su obavezna polja'
+    errorMessage.value = t('login.errorRequired')
     return
   }
   try {
@@ -124,7 +125,7 @@ const handleLogin = async () => {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
-      errorMessage.value = data.message || 'Neuspešna prijava'
+      errorMessage.value = data.message || t('login.errorFailedLogin')
       return
     }
     localStorage.setItem('token', data.token)
@@ -132,7 +133,7 @@ const handleLogin = async () => {
     router.push(returnTo)
   } catch (err) {
     console.error(err)
-    errorMessage.value = 'Greška na serveru'
+    errorMessage.value = t('login.errorServer')
   }
 }
 </script>

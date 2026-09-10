@@ -23,15 +23,42 @@ export const APP_SETTINGS = [
     type: "boolean",
     default: "true",
   },
+  {
+    key: "app_language",
+    label: "Jezik aplikacije",
+    description: "Jezik korisničkog interfejsa za sve korisnike, uključujući ekran za prijavu.",
+    type: "select",
+    options: [
+      { value: "sr", label: "Srpski", flag: "🇷🇸" },
+      { value: "en", label: "English", flag: "🇬🇧" },
+    ],
+    default: "sr",
+  },
 ];
 
 export const SETTING_KEYS = APP_SETTINGS.map((s) => s.key);
+const SETTINGS_BY_KEY = new Map(APP_SETTINGS.map((s) => [s.key, s]));
 
 // z.enum() throws at module-load time if given an empty array, so an empty
 // registry needs a schema that still parses (and correctly rejects every
 // key, since none are valid yet) rather than crashing the whole app on
 // startup.
-export const UpdateSettingSchema = z.object({
-  key: SETTING_KEYS.length ? z.enum(SETTING_KEYS) : z.never(),
-  value: z.boolean(),
-});
+export const UpdateSettingSchema = z
+  .object({
+    key: SETTING_KEYS.length ? z.enum(SETTING_KEYS) : z.never(),
+    value: z.union([z.boolean(), z.string()]),
+  })
+  .superRefine((data, ctx) => {
+    const def = SETTINGS_BY_KEY.get(data.key);
+    if (!def) return; // unknown key - caught elsewhere (service throws 404)
+
+    if (def.type === "boolean" && typeof data.value !== "boolean") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["value"], message: "Vrednost mora biti boolean" });
+    }
+    if (def.type === "select") {
+      const allowed = def.options.map((o) => o.value);
+      if (typeof data.value !== "string" || !allowed.includes(data.value)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["value"], message: "Nepoznata vrednost" });
+      }
+    }
+  });

@@ -3,6 +3,7 @@ import './assets/main.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { i18n, setAppLanguage } from './i18n/index.js'
 
 // Vite hešuje imena JS chunk-ova pri svakom build-u (npr. AgentsView-XXXX.js).
 // Ako korisnik ostavi tab otvoren preko redeploy-a pa klikne na lenjo
@@ -24,6 +25,16 @@ window.addEventListener('vite:preloadError', () => {
 const app = createApp(App)
 
 app.use(router)
+app.use(i18n)
 app.mount('#app')
 
 sessionStorage.removeItem('netdesk-reload-on-preload-error')
+
+// Jezik iz localStorage-a (ili srpski default) se primeni odmah gore da prvi
+// render ne "trepne" - ovaj fetch samo potvrdi/ispravi tu vrednost prema bazi
+// (npr. prvi put u ovom browseru, ili posle promene sa drugog uređaja).
+// Namerno bez auth-a - ekran za prijavu takođe treba pravi jezik.
+fetch(`${import.meta.env.VITE_API_URL}/api/language`)
+  .then((res) => (res.ok ? res.json() : null))
+  .then((data) => data?.language && setAppLanguage(data.language))
+  .catch(() => {})
