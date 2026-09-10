@@ -2,37 +2,37 @@
   <div class="space-y-4">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">Slobodne IP adrese</h1>
+        <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('freeIps.title') }}</h1>
         <p class="text-sm text-ink-muted mt-1">
-          {{ labelForSite(site) }} — opseg {{ rangeLabel }}
+          {{ labelForSite(site) }} — {{ t('freeIps.range', { range: rangeLabel }) }}
         </p>
       </div>
-      <AppButton variant="neutral" @click="goBack">Nazad</AppButton>
+      <AppButton variant="neutral" @click="goBack">{{ t('common.back') }}</AppButton>
     </div>
 
     <div v-if="!loading" class="flex flex-wrap gap-4 text-sm text-ink-secondary">
-      <span>Ukupno u opsegu: <strong class="font-mono text-ink">{{ total }}</strong></span>
-      <span>Zauzeto: <strong class="font-mono text-ink">{{ occupiedCount }}</strong></span>
-      <span>Slobodno: <strong class="font-mono text-good">{{ freeIps.length }}</strong></span>
+      <span>{{ t('freeIps.totalInRange') }} <strong class="font-mono text-ink">{{ total }}</strong></span>
+      <span>{{ t('freeIps.occupied') }} <strong class="font-mono text-ink">{{ occupiedCount }}</strong></span>
+      <span>{{ t('freeIps.free') }} <strong class="font-mono text-good">{{ freeIps.length }}</strong></span>
       <span v-if="rangedIps.size" class="flex items-center gap-1.5">
         <span class="inline-block h-3 w-3 rounded-sm bg-good-subtle border border-good/40"></span>
-        deo niza od bar 2 uzastopne adrese
+        {{ t('freeIps.rangeLegend') }}
       </span>
     </div>
 
     <input
       v-model="search"
       type="text"
-      placeholder="Pretraga po IP-u (npr. 10.230.62.5)..."
+      :placeholder="t('freeIps.searchPlaceholder')"
       class="app-input w-full sm:w-72"
-      aria-label="Pretraga slobodnih IP adresa"
+      :aria-label="t('freeIps.searchAriaLabel')"
     />
 
-    <div v-if="loading" class="text-ink-secondary">Učitavanje…</div>
+    <div v-if="loading" class="text-ink-secondary">{{ t('common.loading') }}</div>
     <div v-else-if="loadError" class="text-bad">{{ loadError }}</div>
     <div v-else-if="!filteredIps.length"
       class="rounded-xl border border-line bg-surface shadow-sm p-8 text-center text-ink-muted">
-      Nema slobodnih adresa za zadatu pretragu.
+      {{ t('freeIps.noResults') }}
     </div>
 
     <template v-else>
@@ -40,19 +40,19 @@
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="table-head-row">
-              <th class="py-2 px-4 text-left">IP adresa</th>
+              <th class="py-2 px-4 text-left">{{ t('freeIps.colIp') }}</th>
               <th class="py-2 px-4"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="ip in pagedIps" :key="ip" class="border-b border-line last:border-0 hover:bg-surface-sunken"
               :class="rangedIps.has(ip) ? 'bg-good-subtle' : ''"
-              :title="rangedIps.has(ip) ? 'Deo niza od bar 2 uzastopne slobodne adrese' : ''"
+              :title="rangedIps.has(ip) ? t('freeIps.rangeLegend') : ''"
             >
               <td class="py-2 px-4 font-mono text-ink">{{ ip }}</td>
               <td class="py-2 px-4 text-right">
                 <RouterLink :to="{ path: '/add', query: { site, ip } }" class="text-accent hover:underline text-xs">
-                  Dodaj
+                  {{ t('common.add') }}
                 </RouterLink>
               </td>
             </tr>
@@ -62,12 +62,12 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <button @click="page = Math.max(1, page - 1)" :disabled="page === 1"
-          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Prethodna strana">
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" :aria-label="t('freeIps.prevPage')">
           <NavIcon name="chevron-left" />
         </button>
-        <span class="text-sm text-ink-secondary font-mono">Strana {{ page }} / {{ totalPages }}</span>
+        <span class="text-sm text-ink-secondary font-mono">{{ t('freeIps.pageOf', { page, total: totalPages }) }}</span>
         <button @click="page = Math.min(totalPages, page + 1)" :disabled="page >= totalPages"
-          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" aria-label="Sledeća strana">
+          class="px-2 py-1 bg-surface border border-line rounded-lg disabled:opacity-50 hover:bg-surface-sunken" :aria-label="t('freeIps.nextPage')">
           <NavIcon name="chevron-right" />
         </button>
       </div>
@@ -78,6 +78,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { labelForSite } from '@/constants/sites.js'
@@ -91,6 +92,7 @@ const SITE_RANGE_LABELS = {
   dom_zdravlja: '10.160.64.0/21',
 }
 
+const { t } = useI18n()
 const router = useRouter()
 const site = useCurrentSite()
 const rangeLabel = computed(() => SITE_RANGE_LABELS[site.value] || '—')
@@ -159,7 +161,7 @@ async function fetchData() {
     page.value = 1
   } catch (e) {
     console.error('Neuspešno dohvatanje slobodnih IP adresa', e)
-    loadError.value = 'Greška pri učitavanju slobodnih IP adresa'
+    loadError.value = t('freeIps.errorLoad')
   } finally {
     loading.value = false
   }

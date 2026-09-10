@@ -5,9 +5,9 @@
       <span>NetDesk</span>
     </div>
 
-    <h1 class="mb-2 text-center text-2xl font-bold text-ink" style="font-family: var(--font-display)">Izaberite lokaciju</h1>
+    <h1 class="mb-2 text-center text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('selectSite.title') }}</h1>
     <p class="mb-10 text-center text-sm text-ink-muted">
-      Podaci (IP adrese, PDSU, metapodaci, štampači...) su odvojeni po fizičkoj lokaciji.
+      {{ t('selectSite.subtitle') }}
     </p>
 
     <div class="grid w-full max-w-2xl grid-cols-1 gap-5 sm:grid-cols-2">
@@ -31,9 +31,11 @@
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { SITE_OPTIONS } from '@/constants/sites.js'
 import Icon from '@/assets/icons/netdesk.svg'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 

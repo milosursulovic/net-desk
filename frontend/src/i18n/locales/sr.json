@@ -10,7 +10,19 @@
     "no": "Ne",
     "department": "Odeljenje",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "back": "Nazad",
+    "add": "Dodaj"
+  },
+  "ipFields": {
+    "ip": "IP Adresa",
+    "computerName": "Ime računara",
+    "rdpApp": "RDP App",
+    "os": "Sistem",
+    "department": "Odeljenje",
+    "description": "Opis",
+    "required": "IP je obavezan",
+    "invalid": "Neispravna IPv4 adresa"
   },
   "nav": {
     "monitoring": "Nadzor",
@@ -124,5 +136,70 @@
     "noSettings": "Nema podešavanja.",
     "saveSuccess": "Podešavanje sačuvano",
     "saveError": "Greška pri izmeni podešavanja."
+  },
+  "addIp": {
+    "title": "Dodaj novu IP adresu",
+    "ipPlaceholder": "Unesite IP adresu",
+    "typeLabel": "Tip",
+    "typeNotSet": "— Nije određeno —",
+    "siteLabel": "Lokacija",
+    "descriptionPlaceholder": "Opis...",
+    "errorFailedAdd": "Neuspešno dodata adresa",
+    "errorServer": "Greška na serveru"
+  },
+  "editIp": {
+    "title": "Izmeni IP Unos",
+    "descriptionPlaceholder": "Unesi opis...",
+    "clearData": "Očisti podatke",
+    "save": "Sačuvaj izmene",
+    "errorNotFound": "Unos nije pronađen",
+    "errorLoadFailed": "Neuspešno učitan unos",
+    "errorUpdateFailed": "Izmena neuspešna",
+    "errorServer": "Greška na serveru",
+    "confirmClearMessage": "Obrisati ime računara, RDP app, sistem i odeljenje za ovaj unos? Izmena se čuva tek klikom na \"Sačuvaj izmene\".",
+    "confirmClearTitle": "Očisti podatke o računaru"
+  },
+  "groups": {
+    "title": "Grupe",
+    "subtitle": "Predefinisana lista koja se koristi za \"Odeljenje\" na IP unosima. Deployment grupe agenata su odvojena lista - videti {link}.",
+    "deploymentGroupsLink": "Deployment grupe",
+    "addNew": "Dodaj novu grupu",
+    "namePlaceholder": "Naziv grupe...",
+    "adding": "Dodajem…",
+    "noneDefined": "Nema definisanih grupa.",
+    "colName": "Naziv",
+    "colDepartmentUsage": "Odeljenje (IP unosi)",
+    "inUseTitle": "Grupa je u upotrebi - ne može se obrisati",
+    "errorLoad": "Greška pri učitavanju grupa",
+    "errorAdd": "Greška pri dodavanju grupe",
+    "added": "Grupa dodata",
+    "confirmDeleteMessage": "Obrisati grupu \"{name}\"?",
+    "confirmDeleteTitle": "Brisanje grupe",
+    "errorDelete": "Greška pri brisanju grupe",
+    "deleted": "Grupa obrisana"
+  },
+  "freeIps": {
+    "title": "Slobodne IP adrese",
+    "range": "opseg {range}",
+    "totalInRange": "Ukupno u opsegu:",
+    "occupied": "Zauzeto:",
+    "free": "Slobodno:",
+    "rangeLegend": "deo niza od bar 2 uzastopne adrese",
+    "searchPlaceholder": "Pretraga po IP-u (npr. 10.230.62.5)...",
+    "searchAriaLabel": "Pretraga slobodnih IP adresa",
+    "noResults": "Nema slobodnih adresa za zadatu pretragu.",
+    "colIp": "IP adresa",
+    "prevPage": "Prethodna strana",
+    "nextPage": "Sledeća strana",
+    "pageOf": "Strana {page} / {total}",
+    "errorLoad": "Greška pri učitavanju slobodnih IP adresa"
+  },
+  "notFound": {
+    "title": "Stranica nije pronađena",
+    "backHome": "Vrati se na početnu"
+  },
+  "selectSite": {
+    "title": "Izaberite lokaciju",
+    "subtitle": "Podaci (IP adrese, PDSU, metapodaci, štampači...) su odvojeni po fizičkoj lokaciji."
   }
 }

@@ -1,15 +1,15 @@
 <template>
   <div class="w-full max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold text-ink mb-6" style="font-family: var(--font-display)">Dodaj novu IP adresu</h1>
+    <h1 class="text-2xl font-bold text-ink mb-6" style="font-family: var(--font-display)">{{ t('addIp.title') }}</h1>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
       <div>
-        <label for="ip" class="block text-sm font-medium text-ink mb-1">IP Adresa *</label>
+        <label for="ip" class="block text-sm font-medium text-ink mb-1">{{ t('ipFields.ip') }} *</label>
         <input
           id="ip"
           v-model.trim="form.ip"
           type="text"
-          placeholder="Unesite IP adresu"
+          :placeholder="t('addIp.ipPlaceholder')"
           class="app-input w-full"
           required
           :class="ipError ? 'border-bad' : ''"
@@ -18,9 +18,9 @@
       </div>
 
       <div>
-        <label for="entryType" class="block text-sm font-medium text-ink mb-1">Tip</label>
+        <label for="entryType" class="block text-sm font-medium text-ink mb-1">{{ t('addIp.typeLabel') }}</label>
         <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
-          <option value="">— Nije određeno —</option>
+          <option value="">{{ t('addIp.typeNotSet') }}</option>
           <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
@@ -28,7 +28,7 @@
       </div>
 
       <div>
-        <label for="site" class="block text-sm font-medium text-ink mb-1">Lokacija *</label>
+        <label for="site" class="block text-sm font-medium text-ink mb-1">{{ t('addIp.siteLabel') }} *</label>
         <select id="site" v-model="form.site" class="app-input w-full" required>
           <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
@@ -37,7 +37,7 @@
       </div>
 
       <div>
-        <label for="department" class="block text-sm font-medium text-ink mb-1">Odeljenje</label>
+        <label for="department" class="block text-sm font-medium text-ink mb-1">{{ t('common.department') }}</label>
         <GroupSelect
           v-model="form.department"
           :options="groupOptions"
@@ -49,7 +49,7 @@
 
       <div v-for="field in optionalFields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-ink mb-1">
-          {{ field.label }}
+          {{ t(field.labelKey) }}
         </label>
 
         <textarea
@@ -57,7 +57,7 @@
           :id="field.name"
           v-model.trim="form[field.name]"
           rows="6"
-          placeholder="Opis..."
+          :placeholder="t('addIp.descriptionPlaceholder')"
           class="app-input w-full resize-y"
         />
 
@@ -66,14 +66,14 @@
           :id="field.name"
           v-model.trim="form[field.name]"
           type="text"
-          :placeholder="`${field.label}`"
+          :placeholder="t(field.labelKey)"
           class="app-input w-full"
         />
       </div>
 
       <div class="flex justify-between pt-4">
-        <AppButton type="button" variant="neutral" @click="goBack">Poništi</AppButton>
-        <AppButton type="submit" variant="success">Dodaj</AppButton>
+        <AppButton type="button" variant="neutral" @click="goBack">{{ t('common.cancel') }}</AppButton>
+        <AppButton type="submit" variant="success">{{ t('common.add') }}</AppButton>
       </div>
     </form>
 
@@ -84,6 +84,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { parseError } from '@/utils/api.js'
 import AppButton from '@/components/AppButton.vue'
@@ -98,6 +99,7 @@ import { useCurrentSite } from '@/composables/useCurrentSite.js'
 import { useCurrentUser } from '@/composables/useCurrentUser.js'
 import GroupSelect from '@/components/GroupSelect.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const currentSite = useCurrentSite()
@@ -108,7 +110,7 @@ const form = ref(createIpEntryForm({ site: currentSite.value }))
 const optionalFields = IP_OPTIONAL_FIELDS.filter((f) => f.name !== 'department')
 const groupOptions = ref([])
 
-const ipError = computed(() => validateIpv4(form.value.ip))
+const ipError = computed(() => validateIpv4(form.value.ip, { t }))
 
 const entryTypeModel = computed({
   get: () => form.value.entryType ?? '',
@@ -128,13 +130,13 @@ const handleSubmit = async () => {
       body: JSON.stringify(form.value),
     })
     if (!res.ok) {
-      error.value = await parseError(res, 'Neuspešno dodata adresa')
+      error.value = await parseError(res, t('addIp.errorFailedAdd'))
       return
     }
     router.push('/')
   } catch (err) {
     console.error(err)
-    error.value = 'Greška na serveru'
+    error.value = t('addIp.errorServer')
   }
 }
 

@@ -10,7 +10,19 @@
     "no": "No",
     "department": "Department",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "back": "Back",
+    "add": "Add"
+  },
+  "ipFields": {
+    "ip": "IP Address",
+    "computerName": "Computer name",
+    "rdpApp": "RDP App",
+    "os": "System",
+    "department": "Department",
+    "description": "Description",
+    "required": "IP is required",
+    "invalid": "Invalid IPv4 address"
   },
   "nav": {
     "monitoring": "Monitoring",
@@ -124,5 +136,70 @@
     "noSettings": "No settings.",
     "saveSuccess": "Setting saved",
     "saveError": "Error updating setting."
+  },
+  "addIp": {
+    "title": "Add a new IP address",
+    "ipPlaceholder": "Enter the IP address",
+    "typeLabel": "Type",
+    "typeNotSet": "— Not set —",
+    "siteLabel": "Location",
+    "descriptionPlaceholder": "Description...",
+    "errorFailedAdd": "Failed to add the address",
+    "errorServer": "Server error"
+  },
+  "editIp": {
+    "title": "Edit IP Entry",
+    "descriptionPlaceholder": "Enter a description...",
+    "clearData": "Clear data",
+    "save": "Save changes",
+    "errorNotFound": "Entry not found",
+    "errorLoadFailed": "Failed to load the entry",
+    "errorUpdateFailed": "Update failed",
+    "errorServer": "Server error",
+    "confirmClearMessage": "Clear the computer name, RDP app, system and department for this entry? The change is saved only when you click \"Save changes\".",
+    "confirmClearTitle": "Clear computer data"
+  },
+  "groups": {
+    "title": "Groups",
+    "subtitle": "A predefined list used for \"Department\" on IP entries. Agent deployment groups are a separate list - see {link}.",
+    "deploymentGroupsLink": "Deployment groups",
+    "addNew": "Add a new group",
+    "namePlaceholder": "Group name...",
+    "adding": "Adding…",
+    "noneDefined": "No groups defined.",
+    "colName": "Name",
+    "colDepartmentUsage": "Department (IP entries)",
+    "inUseTitle": "This group is in use - it can't be deleted",
+    "errorLoad": "Error loading groups",
+    "errorAdd": "Error adding the group",
+    "added": "Group added",
+    "confirmDeleteMessage": "Delete the group \"{name}\"?",
+    "confirmDeleteTitle": "Delete group",
+    "errorDelete": "Error deleting the group",
+    "deleted": "Group deleted"
+  },
+  "freeIps": {
+    "title": "Free IP addresses",
+    "range": "range {range}",
+    "totalInRange": "Total in range:",
+    "occupied": "Occupied:",
+    "free": "Free:",
+    "rangeLegend": "part of a run of at least 2 consecutive addresses",
+    "searchPlaceholder": "Search by IP (e.g. 10.230.62.5)...",
+    "searchAriaLabel": "Search free IP addresses",
+    "noResults": "No free addresses for the given search.",
+    "colIp": "IP address",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "pageOf": "Page {page} / {total}",
+    "errorLoad": "Error loading free IP addresses"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "backHome": "Back to home"
+  },
+  "selectSite": {
+    "title": "Select a location",
+    "subtitle": "Data (IP addresses, PDSU, metadata, printers...) is separated by physical location."
   }
 }

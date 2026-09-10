@@ -1,12 +1,12 @@
 <template>
   <div class="w-full max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6 text-ink" style="font-family: var(--font-display)">Izmeni IP Unos</h1>
+    <h1 class="text-2xl font-bold mb-6 text-ink" style="font-family: var(--font-display)">{{ t('editIp.title') }}</h1>
 
     <form @submit.prevent="handleUpdate" class="space-y-4">
       <div>
-        <label for="entryType" class="block text-sm font-medium text-ink mb-1">Tip</label>
+        <label for="entryType" class="block text-sm font-medium text-ink mb-1">{{ t('addIp.typeLabel') }}</label>
         <select id="entryType" v-model="entryTypeModel" class="app-input w-full">
-          <option value="">— Nije određeno —</option>
+          <option value="">{{ t('addIp.typeNotSet') }}</option>
           <option v-for="opt in ENTRY_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
@@ -14,7 +14,7 @@
       </div>
 
       <div>
-        <label for="site" class="block text-sm font-medium text-ink mb-1">Lokacija *</label>
+        <label for="site" class="block text-sm font-medium text-ink mb-1">{{ t('addIp.siteLabel') }} *</label>
         <select id="site" v-model="form.site" class="app-input w-full" required>
           <option v-for="opt in SITE_OPTIONS" :key="opt.value" :value="opt.value">
             {{ opt.label }}
@@ -23,7 +23,7 @@
       </div>
 
       <div>
-        <label for="department" class="block text-sm font-medium text-ink mb-1">Odeljenje</label>
+        <label for="department" class="block text-sm font-medium text-ink mb-1">{{ t('common.department') }}</label>
         <GroupSelect
           v-model="form.department"
           :options="groupOptions"
@@ -35,7 +35,7 @@
 
       <div v-for="field in fields" :key="field.name">
         <label :for="field.name" class="block text-sm font-medium text-ink mb-1">
-          {{ field.label }} <span v-if="field.name === 'ip'">*</span>
+          {{ t(field.labelKey) }} <span v-if="field.name === 'ip'">*</span>
         </label>
 
         <textarea
@@ -43,7 +43,7 @@
           :id="field.name"
           v-model.trim="form[field.name]"
           rows="6"
-          placeholder="Unesi opis..."
+          :placeholder="t('editIp.descriptionPlaceholder')"
           class="app-input w-full resize-y"
         />
 
@@ -65,13 +65,13 @@
       <div class="mt-6">
         <AppButton type="button" variant="danger" class="inline-flex items-center gap-1.5" @click="clearComputerData">
           <NavIcon name="trash" />
-          Očisti podatke
+          {{ t('editIp.clearData') }}
         </AppButton>
       </div>
 
       <div class="flex justify-between mt-6">
-        <AppButton type="button" variant="neutral" @click="goBack">Poništi</AppButton>
-        <AppButton type="submit" variant="primary">Sačuvaj izmene</AppButton>
+        <AppButton type="button" variant="neutral" @click="goBack">{{ t('common.cancel') }}</AppButton>
+        <AppButton type="submit" variant="primary">{{ t('editIp.save') }}</AppButton>
       </div>
 
       <p v-if="error" class="text-bad mt-4 text-center">{{ error }}</p>
@@ -90,6 +90,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth'
 import { parseError } from '@/utils/api.js'
 import AppButton from '@/components/AppButton.vue'
@@ -106,6 +107,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog.js'
 import GroupSelect from '@/components/GroupSelect.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { isAdmin } = useCurrentUser()
@@ -116,7 +118,7 @@ const form = ref(createIpEntryForm())
 const fields = IP_ENTRY_FIELDS.filter((f) => f.name !== 'department')
 const groupOptions = ref([])
 
-const ipError = computed(() => validateIpv4(form.value.ip, { required: true }))
+const ipError = computed(() => validateIpv4(form.value.ip, { required: true, t }))
 
 const entryTypeModel = computed({
   get: () => form.value.entryType ?? '',
@@ -129,13 +131,13 @@ const fetchEntry = async () => {
   try {
     const res = await fetchWithAuth(`/api/protected/ip-addresses/${route.params.id}`)
     if (!res.ok) {
-      error.value = 'Unos nije pronađen'
+      error.value = t('editIp.errorNotFound')
       return
     }
     form.value = createIpEntryForm(await res.json())
   } catch (err) {
     console.error(err)
-    error.value = 'Neuspešno učitan unos'
+    error.value = t('editIp.errorLoadFailed')
   }
 }
 
@@ -151,14 +153,14 @@ const handleUpdate = async () => {
     })
 
     if (!res.ok) {
-      error.value = await parseError(res, 'Izmena neuspešna')
+      error.value = await parseError(res, t('editIp.errorUpdateFailed'))
       return
     }
 
     router.push('/')
   } catch (err) {
     console.error(err)
-    error.value = 'Greška na serveru'
+    error.value = t('editIp.errorServer')
   }
 }
 
@@ -167,10 +169,7 @@ const handleUpdate = async () => {
 // ostala polja ovde) - korisnik i dalje mora da klikne "Sačuvaj izmene" da bi
 // se izmena stvarno upisala, isti obrazac kao ostatak forme.
 async function clearComputerData() {
-  const ok = await askConfirm(
-    'Obrisati ime računara, RDP app, sistem i odeljenje za ovaj unos? Izmena se čuva tek klikom na "Sačuvaj izmene".',
-    { title: 'Očisti podatke o računaru' },
-  )
+  const ok = await askConfirm(t('editIp.confirmClearMessage'), { title: t('editIp.confirmClearTitle') })
   if (!ok) return
 
   form.value.computerName = ''
