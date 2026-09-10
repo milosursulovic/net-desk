@@ -42,6 +42,21 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # tests/unit su čisto DB-free (parsing/dto), ali transitivno uvoze
+      # module koji na top-level pozivaju requireEnv() (config/env.js) - bez
+      # ovih placeholder vrednosti taj require-fejluje sa process.exit(1) pre
+      # nego što ijedan test uopšte krene. Vrednosti su lažne, ništa se stvarno
+      # ne konektuje na bazu u ovom jobu.
+      SSL_KEY: dummy
+      SSL_CERT: dummy
+      DB_HOST: dummy
+      DB_USER: dummy
+      DB_PASS: dummy
+      DB_NAME: dummy
+      JWT_SECRET: dummy
+      AGENT_ENROLL_TOKEN: dummy
+      MANAGER_ENROLL_TOKEN: dummy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

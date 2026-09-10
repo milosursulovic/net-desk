@@ -80,10 +80,17 @@ export default defineConfig({
     },
   },
   server: {
-    https: {
-      key: fs.readFileSync(process.env.VITE_SSL_KEY_PATH),
-      cert: fs.readFileSync(process.env.VITE_SSL_CERT_PATH),
-    },
+    // https samo kad su sertifikati zadati (lokalni dev) - u CI/build okruženju
+    // ovih env varijabli nema, i vite.config.js se učitava i za `vite build`,
+    // ne samo `vite dev`, pa bezuslovni readFileSync ruši build.
+    ...(process.env.VITE_SSL_KEY_PATH && process.env.VITE_SSL_CERT_PATH
+      ? {
+          https: {
+            key: fs.readFileSync(process.env.VITE_SSL_KEY_PATH),
+            cert: fs.readFileSync(process.env.VITE_SSL_CERT_PATH),
+          },
+        }
+      : {}),
     host: ip,
     port: port,
   },
