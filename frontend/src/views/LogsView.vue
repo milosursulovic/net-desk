@@ -2,7 +2,14 @@
   <div class="space-y-4">
     <h1 class="text-2xl font-bold text-ink" style="font-family: var(--font-display)">{{ t('nav.logs') }}</h1>
 
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap items-end gap-2">
+      <select v-model="category" class="app-input w-auto text-sm" :aria-label="t('logs.category')">
+        <option value="all">{{ t('logs.catAll') }}</option>
+        <option value="vnc">{{ t('logs.catVnc') }}</option>
+        <option value="auth">{{ t('logs.catAuth') }}</option>
+        <option value="requests">{{ t('logs.catRequests') }}</option>
+        <option value="other">{{ t('logs.catOther') }}</option>
+      </select>
       <input
         v-model="username"
         type="text"
@@ -15,6 +22,22 @@
         :placeholder="t('logs.actionFilterPlaceholder')"
         class="app-input w-auto text-sm"
       />
+      <label class="flex flex-col text-xs text-ink-muted">
+        {{ t('logs.dateFrom') }}
+        <input v-model="dateFrom" type="date" class="app-input w-auto text-sm" />
+      </label>
+      <label class="flex flex-col text-xs text-ink-muted">
+        {{ t('logs.dateTo') }}
+        <input v-model="dateTo" type="date" class="app-input w-auto text-sm" />
+      </label>
+      <button
+        type="button"
+        :disabled="exporting"
+        class="px-3 py-2 bg-surface border border-line rounded-lg text-sm disabled:opacity-50 hover:bg-surface-sunken"
+        @click="exportLogs"
+      >
+        {{ exporting ? t('logs.exporting') : t('logs.exportXlsx') }}
+      </button>
     </div>
 
     <div class="table-shell overflow-x-auto">
@@ -73,6 +96,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import { fmtDate as formatDate } from '@/utils/format.js'
+import { downloadFromResponse } from '@/utils/download.js'
 import { usePaginatedRoute } from '@/composables/usePaginatedRoute.js'
 import StatusPill from '@/components/StatusPill.vue'
 import NavIcon from '@/components/NavIcon.vue'
@@ -90,10 +114,25 @@ const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 
 const username = ref('')
 const action = ref('')
+const category = ref('all')
+const dateFrom = ref('')
+const dateTo = ref('')
 const entries = ref([])
 const total = ref(0)
 const totalPages = ref(0)
 const loading = ref(false)
+const exporting = ref(false)
+
+// Deljeno izmedju liste i export-a - isti filteri idu na oba endpointa.
+function filterParams() {
+  const p = new URLSearchParams()
+  if (username.value) p.set('username', username.value)
+  if (action.value) p.set('action', action.value)
+  if (category.value && category.value !== 'all') p.set('category', category.value)
+  if (dateFrom.value) p.set('dateFrom', dateFrom.value)
+  if (dateTo.value) p.set('dateTo', dateTo.value)
+  return p
+}
 
 function statusTone(status) {
   if (!status) return 'neutral'
@@ -104,12 +143,9 @@ function statusTone(status) {
 
 async function fetchData() {
   loading.value = true
-  const params = new URLSearchParams({
-    page: String(page.value),
-    limit: String(limit.value),
-  })
-  if (username.value) params.set('username', username.value)
-  if (action.value) params.set('action', action.value)
+  const params = filterParams()
+  params.set('page', String(page.value))
+  params.set('limit', String(limit.value))
 
   try {
     const res = await fetchWithAuth(`/api/protected/activity-log?${params.toString()}`)
@@ -128,8 +164,22 @@ async function fetchData() {
   }
 }
 
+async function exportLogs() {
+  exporting.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/activity-log/export?${filterParams().toString()}`)
+    const filename = `activity-log_${new Date().toISOString().slice(0, 10)}.xlsx`
+    await downloadFromResponse(res, filename)
+  } catch (e) {
+    console.error('Neuspešan izvoz logova:', e)
+    alert(t('logs.exportError'))
+  } finally {
+    exporting.value = false
+  }
+}
+
 let debounceTimer
-watch([username, action], () => {
+watch([username, action, category, dateFrom, dateTo], () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     page.value = 1

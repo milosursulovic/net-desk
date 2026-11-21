@@ -369,7 +369,18 @@
     "colAction": "Action",
     "colIp": "IP address",
     "noEntries": "No entries.",
-    "pageOfTotal": "Page {page} / {total} ({count} total)"
+    "pageOfTotal": "Page {page} / {total} ({count} total)",
+    "category": "Category",
+    "catAll": "All",
+    "catVnc": "VNC / remote access",
+    "catAuth": "Logins",
+    "catRequests": "HTTP requests",
+    "catOther": "Other",
+    "dateFrom": "From date",
+    "dateTo": "To date",
+    "exportXlsx": "Export XLSX",
+    "exporting": "Exporting…",
+    "exportError": "Failed to export logs."
   },
   "deploymentGroups": {
     "title": "Deployment groups",
