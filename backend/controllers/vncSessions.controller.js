@@ -23,12 +23,19 @@ export async function endVncSessionController(req, res) {
   res.json(session);
 }
 
-// Admin (JWT) — frontend poll-uje status dok ceka pristanak korisnika (da
-// prepozna 'rejected' i prestane da pokusava konekciju).
+// Admin/operator (JWT) — frontend poll-uje status dok ceka pristanak korisnika
+// (da prepozna 'rejected' i prestane da pokusava konekciju). NAMERNO vraca samo
+// status, ne i audit polja (approver, consent_at, IP/MAC) - ti podaci su
+// osetljiv audit trag dostupan iskljucivo root admin-u ("admin") preko
+// /api/protected/activity-log (requireRootAdmin), ne operatoru koji vodi sesiju.
 export async function getVncSessionController(req, res) {
   const sessionId = parseIdParam(req, "sessionId", "ID sesije");
   const session = await getVncSessionService(sessionId);
-  res.json(session);
+  res.json({
+    id: session.id,
+    status: session.status,
+    consentStatus: session.consentStatus,
+  });
 }
 
 // Agent (agent auth) — prijava ishoda prozora za pristanak.
