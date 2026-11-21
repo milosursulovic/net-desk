@@ -17,6 +17,7 @@ using NetdeskAgent.Common.ProcessMonitor;
 using NetdeskAgent.Common.Manager;
 using NetdeskAgent.Common.Update;
 using NetdeskAgent.Common.Vnc;
+using NetdeskAgent.Common.Consent;
 using NetdeskAgent.Common.FileTransfer;
 
 namespace NetdeskAgent.Service
@@ -450,26 +451,20 @@ namespace NetdeskAgent.Service
 
             if (job.CommandType == "start_vnc_bridge")
             {
-                // Ne ide kroz JobExecutor (blokiralo bi poll petlju za celo
-                // trajanje sesije) - fire-and-forget na sopstvenom
-                // CancellationTokenSource-u, ne servisnom token-u (sesija se
-                // ionako gasi kad WS/TCP veza padne na jednoj od strana, vidi
-                // VncBridge.RunAsync).
+                // Zabrana samoinicijativnog preuzimanja ekrana: pre nego što se
+                // digne most, korisnik na radnoj stanici MORA eksplicitno da
+                // odobri sesiju (ConsentPrompt). Ceo tok (pristanak koji blokira
+                // do timeout-a + mostovi koji traju celu sesiju) ide
+                // fire-and-forget da ne zaustavi poll petlju - ovde se odmah
+                // prijavljuje samo dispatch, ne completion.
                 var sessionId = ExtractSessionId(job.Payload);
-                var cts = new CancellationTokenSource();
-                RunVncBridgeFireAndForget(sessionId, settings, state, cts.Token);
-
-                // Zaseban kanal od VNC mosta (vidi FileTransferBridge.cs) - sopstveni
-                // CancellationTokenSource, namerno ne deli isti sa VNC mostom iznad,
-                // da zatvaranje jednog ne otkaže drugi.
-                var fileTransferCts = new CancellationTokenSource();
-                RunFileTransferBridgeFireAndForget(sessionId, settings, state, fileTransferCts.Token);
+                RunVncSessionWithConsentFireAndForget(client, state, settings, sessionId);
 
                 await ReportJobResultAsync(client, state, job.Id, new JobExecutor.ExecutionResult
                 {
                     Success = true,
                     ExitCode = 0,
-                    Output = "VNC most pokrenut.",
+                    Output = "VNC zahtev primljen - čeka se pristanak korisnika na radnoj stanici.",
                     DurationMs = 0,
                 }).ConfigureAwait(false);
                 return;
@@ -498,6 +493,67 @@ namespace NetdeskAgent.Service
         private static long ExtractSessionId(Newtonsoft.Json.Linq.JObject payload)
         {
             return payload != null ? (long)payload["sessionId"] : 0;
+        }
+
+        // Prikaz prozora za pristanak korisniku na radnoj stanici, prijava
+        // ishoda backend-u, pa most SAMO ako je odobreno. async void jer je
+        // fire-and-forget iz poll petlje (vidi start_vnc_bridge handler) -
+        // ConsentPrompt.Ask blokira do timeout-a i ne sme da zadrži polling.
+        private static async void RunVncSessionWithConsentFireAndForget(
+            NetdeskApiClient client, AgentState state, AgentSettings settings, long sessionId)
+        {
+            try
+            {
+                // IP + MAC agentove (korisnikove) radne stanice za audit trag.
+                string agentIp = null, agentMac = null;
+                try
+                {
+                    agentIp = HardwareCollector.GetPrimaryIPv4();
+                    agentMac = HardwareCollector.CollectNics()
+                        .Select(n => n.Mac)
+                        .FirstOrDefault(m => !string.IsNullOrEmpty(m));
+                }
+                catch (Exception ex)
+                {
+                    FileLogger.Warn("VNC sesija #" + sessionId + " - prikupljanje IP/MAC agenta neuspešno: " + ex.Message);
+                }
+
+                var consent = ConsentPrompt.Ask(settings.VncConsentTimeoutSeconds);
+
+                try
+                {
+                    await client.ReportVncConsentAsync(
+                        state.AgentId, state.ApiKey, sessionId,
+                        consent.ConsentStatus, consent.ApproverUsername, agentIp, agentMac)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    FileLogger.Error("VNC sesija #" + sessionId + " - prijava pristanka backend-u neuspešna", ex);
+                    // Bez potvrđenog 'granted' na backend-u, relay ionako odbija
+                    // most (odbrana u dubinu) - ne diži ga ni sa ove strane.
+                    return;
+                }
+
+                if (consent.ConsentStatus != "granted")
+                {
+                    FileLogger.Info(
+                        "VNC sesija #" + sessionId + " - pristanak nije dat (" + consent.ConsentStatus + "), most se ne diže.");
+                    return;
+                }
+
+                // Odavde identično starom toku: dva nezavisna kanala (VNC most i
+                // prenos fajlova), svaki na sopstvenom CancellationTokenSource-u.
+                var cts = new CancellationTokenSource();
+                RunVncBridgeFireAndForget(sessionId, settings, state, cts.Token);
+
+                var fileTransferCts = new CancellationTokenSource();
+                RunFileTransferBridgeFireAndForget(sessionId, settings, state, fileTransferCts.Token);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("VNC sesija #" + sessionId + " - neočekivana greška u toku pristanka", ex);
+            }
         }
 
         // Task.Run(...) started here intentionally isn't awaited by the caller

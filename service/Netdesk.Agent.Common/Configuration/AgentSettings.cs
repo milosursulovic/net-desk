@@ -71,6 +71,14 @@ namespace NetdeskAgent.Common.Configuration
         /// </summary>
         public int VncLocalPort { get; set; } = 5901;
 
+        /// <summary>
+        /// Koliko sekundi prozor za pristanak korisnika (ConsentPrompt) čeka
+        /// odgovor pre nego što se tretira kao "timeout" i preuzimanje ekrana
+        /// se odbije. Zabrana samoinicijativnog preuzimanja ekrana - most se
+        /// nikad ne diže bez eksplicitnog "Da" u ovom roku.
+        /// </summary>
+        public int VncConsentTimeoutSeconds { get; set; } = 60;
+
         public static AgentSettings Load(string path)
         {
             if (!File.Exists(path))

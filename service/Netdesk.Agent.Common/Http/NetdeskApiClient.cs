@@ -87,6 +87,28 @@ namespace NetdeskAgent.Common.Http
             return PostAsync<object>("/api/agents/jobs/" + jobId + "/result", AgentBearer(agentId, apiKey), request);
         }
 
+        /// <summary>
+        /// Prijavljuje ishod prozora za pristanak sa radne stanice PRE nego sto
+        /// se digne VNC most (zabrana samoinicijativnog preuzimanja ekrana).
+        /// consentStatus: "granted" | "denied" | "timeout" | "unavailable".
+        /// Polja se preko camelCase resolvera poklapaju sa VncConsentSchema.
+        /// </summary>
+        public Task ReportVncConsentAsync(
+            string agentId, string apiKey, long sessionId,
+            string consentStatus, string approverUsername, string agentIp, string agentMac)
+        {
+            return PostAsync<object>(
+                "/api/agents/vnc-sessions/" + sessionId + "/consent",
+                AgentBearer(agentId, apiKey),
+                new
+                {
+                    ConsentStatus = consentStatus,
+                    ApproverUsername = approverUsername,
+                    AgentIp = agentIp,
+                    AgentMac = agentMac,
+                });
+        }
+
         public Task<UpdateCheckResponse> CheckUpdateAsync(string agentId, string apiKey)
         {
             return GetAsync<UpdateCheckResponse>("/api/agents/update", AgentBearer(agentId, apiKey));

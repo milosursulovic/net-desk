@@ -43,8 +43,11 @@
       <div v-if="!connected" class="absolute inset-0 flex flex-col items-center justify-center gap-4 text-sm overflow-hidden">
         <div class="vnc-connect-grid" aria-hidden="true"></div>
         <div class="vnc-radar" aria-hidden="true"></div>
-        <span class="relative z-10 hud-mono text-accent text-xs">
-          {{ starting ? 'USPOSTAVLJANJE VEZE' : 'SIGNAL PREKINUT' }}<span class="hud-cursor">_</span>
+        <span class="relative z-10 hud-mono text-xs" :class="rejected ? 'text-bad' : 'text-accent'">
+          {{ overlayText }}<span v-if="!rejected" class="hud-cursor">_</span>
+        </span>
+        <span v-if="rejected" class="relative z-10 text-ink-muted text-xs max-w-xs text-center px-4">
+          {{ rejectedMessage }}
         </span>
       </div>
       <div ref="screenEl" class="w-full h-full"></div>
@@ -109,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import RFB from '@novnc/novnc'
 import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
@@ -133,6 +136,19 @@ const agent = ref(null)
 const connected = ref(false)
 const starting = ref(false)
 const stopping = ref(false)
+// Zabrana samoinicijativnog preuzimanja ekrana: dok korisnik na radnoj
+// stanici ne odobri, most se ne diže. awaitingConsent = čekamo odgovor;
+// rejected = odbijen/istekao, prestajemo da pokušavamo konekciju.
+const awaitingConsent = ref(false)
+const rejected = ref(false)
+const rejectedMessage = ref('')
+
+const overlayText = computed(() => {
+  if (rejected.value) return 'PRISTUP ODBIJEN'
+  if (awaitingConsent.value) return 'ČEKA SE PRISTANAK KORISNIKA'
+  if (starting.value) return 'USPOSTAVLJANJE VEZE'
+  return 'SIGNAL PREKINUT'
+})
 const isFullscreen = ref(false)
 const screenEl = ref(null)
 const rootEl = ref(null)
@@ -148,7 +164,14 @@ const uploading = ref(false)
 let rfb = null
 let sessionId = null
 let fileWs = null
+let consentPollTimer = null
 const uploadResolvers = new Map()
+
+const REJECTION_MESSAGES = {
+  denied: 'Korisnik na radnoj stanici je odbio pristup ekranu.',
+  timeout: 'Korisnik nije odgovorio na zahtev za pristanak u predviđenom roku.',
+  unavailable: 'Na radnoj stanici nema prijavljenog korisnika koji može da odobri pristup.',
+}
 
 function buildWsUrl(id) {
   const token = localStorage.getItem('token')
@@ -172,12 +195,53 @@ async function start() {
     if (!res.ok) throw new Error(await parseError(res, 'Greška pri pokretanju sesije'))
     const session = await res.json()
     sessionId = session.id
+    awaitingConsent.value = true
+    // Viewer WS se kači odmah (relay čeka agenta i beleži IP/MAC IKT stanice
+    // za audit), ali agent diže most tek kad korisnik odobri. Zato paralelno
+    // poll-ujemo status sesije da prepoznamo odbijanje/istek i prestanemo.
     startRfb(session)
+    startConsentPolling(session.id)
   } catch (e) {
     console.error('Neuspešno pokretanje VNC sesije:', e)
     showToast(e.message || 'Greška pri pokretanju sesije', { kind: 'error', duration: 3000 })
     starting.value = false
   }
+}
+
+function stopConsentPolling() {
+  if (consentPollTimer) {
+    clearInterval(consentPollTimer)
+    consentPollTimer = null
+  }
+}
+
+function startConsentPolling(id) {
+  stopConsentPolling()
+  consentPollTimer = setInterval(async () => {
+    // Kad se RFB poveže, sesija je odobrena i aktivna - nema više šta da se
+    // čeka. 'granted' samo znači da smo prestali da čekamo odgovor korisnika.
+    if (connected.value) {
+      awaitingConsent.value = false
+      stopConsentPolling()
+      return
+    }
+    try {
+      const res = await fetchWithAuth(`/api/protected/agents/${agentId}/vnc/${id}`)
+      if (!res.ok) return
+      const s = await res.json()
+      if (s.consentStatus && s.consentStatus !== 'pending') awaitingConsent.value = false
+      if (s.status === 'rejected') {
+        stopConsentPolling()
+        rejected.value = true
+        starting.value = false
+        rejectedMessage.value = REJECTION_MESSAGES[s.consentStatus] || 'Pristup ekranu nije odobren.'
+        showToast(rejectedMessage.value, { kind: 'error', duration: 5000 })
+        rfb?.disconnect()
+      }
+    } catch (e) {
+      console.error('Provera statusa pristanka neuspešna:', e)
+    }
+  }, 2000)
 }
 
 function startRfb(session) {
@@ -313,6 +377,8 @@ async function stopAndClose() {
 function cleanup() {
   connected.value = false
   starting.value = false
+  awaitingConsent.value = false
+  stopConsentPolling()
   rfb = null
   sessionId = null
   filePanelOpen.value = false
@@ -575,6 +641,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('keydown', handleGlobalKeydown, { capture: true })
   navigator.keyboard?.unlock?.()
+  stopConsentPolling()
   rfb?.disconnect()
   fileWs?.close()
 })
