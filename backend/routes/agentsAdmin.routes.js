@@ -31,6 +31,7 @@ import { listUpdateLogController } from "../controllers/agentReleases.controller
 import {
   startVncSessionController,
   endVncSessionController,
+  getVncSessionController,
 } from "../controllers/vncSessions.controller.js";
 import { downloadFileFromAgentController } from "../controllers/fileTransfer.controller.js";
 
@@ -84,6 +85,15 @@ router.get("/:id/update-log", asyncHandler(listUpdateLogController));
 
 router.post("/:id/vnc/start", asyncHandler(startVncSessionController));
 router.post("/:id/vnc/stop", asyncHandler(endVncSessionController));
+// Status jedne sesije - frontend poll-uje dok ceka pristanak korisnika, da
+// prepozna 'rejected' (odbijen/istekao) i prestane da pokusava konekciju.
+// Isti stroziji prag kao gledanje VNC ekrana (admin/operator), ne router-ov
+// GET default. "start"/"stop" su POST, pa ne mogu da se poklope sa ovim GET-om.
+router.get(
+  "/:id/vnc/:sessionId",
+  requireRole("admin", "operator"),
+  asyncHandler(getVncSessionController),
+);
 // Eksplicitan requireRole ovde iako je GET (writeRequiresOperator default
 // ostavlja GET otvoren i "viewer" ulozi) - isti stroži prag kao gledanje
 // VNC ekrana (vidi ws/vncRelay.js's authenticateViewer), ne router-ov

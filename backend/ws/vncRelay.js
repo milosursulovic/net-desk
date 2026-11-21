@@ -7,9 +7,12 @@ import { findAgentByUid } from "../repositories/agents.repo.js";
 import {
   findVncSessionById,
   markVncSessionActive,
+  setVncSessionViewerInfo,
 } from "../repositories/vncSessions.repo.js";
 import { endVncSessionService } from "../services/vncSessions.service.js";
 import { insertActivityLog } from "../repositories/activityLog.repo.js";
+import { findIpEntryIdByIp } from "../repositories/ipEntries.repo.js";
+import { findMacsForIpEntry } from "../repositories/metadata.repo.js";
 
 // 30 min hard cap so an abandoned/forgotten session can't stream/control a
 // machine indefinitely.
@@ -101,6 +104,59 @@ async function closeSession(sessionId, reason) {
   }
 }
 
+// remoteAddress stize kao IPv4-mapirani IPv6 (::ffff:10.x) ili ::1 za
+// loopback - normalizuj na goli IPv4 da bi se poklopio sa ip_entries.ip. Kad
+// backend sam servira frontend (same-origin, vidi CORS napomenu u
+// routes/index.js) nema proxy-ja, ali X-Forwarded-For se postuje ako postoji.
+function viewerIpFromRequest(req) {
+  const fwd = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  let ip = fwd || req.socket?.remoteAddress || "";
+  if (ip.startsWith("::ffff:")) ip = ip.slice("::ffff:".length);
+  return ip || null;
+}
+
+// MAC IKT (viewer) radne stanice se ne moze dobiti iz browsera - jedini
+// server-side izvor je razresavanje IP-a preko ip_entries -> computer_metadata
+// NIC-ova. Vraca null ako stanica nije upravljana (nema agenta/metapodataka).
+async function resolveViewerMac(viewerIp) {
+  if (!viewerIp) return null;
+  try {
+    const ipEntryId = await findIpEntryIdByIp(viewerIp);
+    if (!ipEntryId) return null;
+    const macs = await findMacsForIpEntry(ipEntryId);
+    return macs.length ? macs.join(", ") : null;
+  } catch {
+    return null;
+  }
+}
+
+// Neizbrisivi audit trag pocetka sesije (akt: ime IKT radnika, ime
+// odobravaoca, tacno vreme, IP+MAC obe radne stanice). Cita svezu sesiju da
+// pokupi viewer IP/MAC (upisan kad se IKT browser zakacio) i agent IP/MAC +
+// odobravaoca (upisano pri pristanku).
+async function logVncSessionStarted(sessionId) {
+  const s = await findVncSessionById(sessionId);
+  if (!s) return;
+  const entry = sessions.get(sessionId);
+  await insertActivityLog({
+    userId: s.requestedByUserId ?? null,
+    username: entry?.requestedByUsername ?? null,
+    action: "vnc_session_started",
+    ipAddress: s.viewerIp ?? null,
+    statusCode: null,
+    details: JSON.stringify({
+      sessionId,
+      agentId: s.agentId,
+      approverUsername: s.approverUsername ?? null,
+      consentAt: s.consentAt ?? null,
+      agentIp: s.agentIp ?? null,
+      agentMac: s.agentMac ?? null,
+      viewerIp: s.viewerIp ?? null,
+      viewerMac: s.viewerMac ?? null,
+    }),
+  });
+}
+
 function getOrCreateSession(sessionId, agentId) {
   let entry = sessions.get(sessionId);
   if (!entry) {
@@ -150,7 +206,16 @@ export function attachVncRelay(server) {
       const sessionId = Number(url.searchParams.get("sessionId"));
       const session = sessionId ? await findVncSessionById(sessionId) : null;
 
-      if (!agent || !session || session.agentId !== agent.id) {
+      // Zabrana samoinicijativnog preuzimanja ekrana: most se NE sme
+      // uspostaviti dok korisnik na radnoj stanici nije eksplicitno odobrio
+      // sesiju. Agent to i sam postuje (ne zove vnc-stream bez 'granted'),
+      // ovo je odbrana u dubinu na serverskoj strani.
+      if (
+        !agent ||
+        !session ||
+        session.agentId !== agent.id ||
+        session.consentStatus !== "granted"
+      ) {
         socket.destroy();
         return;
       }
@@ -158,16 +223,23 @@ export function attachVncRelay(server) {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const entry = getOrCreateSession(sessionId, agent.id);
         entry.agentSocket = ws;
-        markVncSessionActive(sessionId).catch((err) =>
-          console.error("markVncSessionActive neuspešno", err),
-        );
 
+        // Listener-i se kace SINHRONO, pre bilo kakvog await-a - "ws" ne
+        // bafera poruke stigle pre nego sto postoji "message" listener, pa bi
+        // await pre ovoga ispustio prve RFB bajtove (framebuffer update koji
+        // agent posalje odmah po otvaranju).
         ws.on("message", (data, isBinary) => {
           const viewer = sessions.get(sessionId)?.viewerSocket;
           if (viewer?.readyState === WebSocket.OPEN) viewer.send(data, { binary: isBinary });
         });
         ws.on("close", () => closeSession(sessionId, "agent_disconnected"));
         ws.on("error", () => closeSession(sessionId, "agent_error"));
+
+        // Aktivacija + neizbrisivi audit zapis pocetka sesije - async, posle
+        // kacenja listener-a. markVncSessionActive sam proverava 'granted'.
+        markVncSessionActive(sessionId)
+          .then((activated) => (activated ? logVncSessionStarted(sessionId) : null))
+          .catch((err) => console.error("markVncSessionActive neuspešno", err));
       });
       return;
     }
@@ -184,18 +256,28 @@ export function attachVncRelay(server) {
         return;
       }
 
+      const viewerIp = viewerIpFromRequest(req);
+
       wss.handleUpgrade(req, socket, head, (ws) => {
         const entry = getOrCreateSession(sessionId, session.agentId);
         entry.viewerSocket = ws;
         entry.requestedByUserId = jwtPayload.userId;
         entry.requestedByUsername = jwtPayload.username;
 
+        // Listener-i sinhrono, pre await-a (isti razlog kao agent strana -
+        // "ws" ne bafera poruke stigle pre "message" listener-a).
         ws.on("message", (data, isBinary) => {
           const agentSocket = sessions.get(sessionId)?.agentSocket;
           if (agentSocket?.readyState === WebSocket.OPEN) agentSocket.send(data, { binary: isBinary });
         });
         ws.on("close", () => closeSession(sessionId, "viewer_disconnected"));
         ws.on("error", () => closeSession(sessionId, "viewer_error"));
+
+        // IP+MAC IKT radne stanice za audit (akt trazi obe stanice). MAC se
+        // razresava preko ip_entries - null ako IKT stanica nije upravljana.
+        resolveViewerMac(viewerIp)
+          .then((viewerMac) => setVncSessionViewerInfo(sessionId, { viewerIp, viewerMac }))
+          .catch((err) => console.error("setVncSessionViewerInfo neuspešno", err));
       });
       return;
     }

@@ -15,6 +15,7 @@ import {
   pollJobsController,
   submitJobResultController,
 } from "../controllers/agentJobs.controller.js";
+import { recordVncConsentController } from "../controllers/vncSessions.controller.js";
 import {
   checkUpdateController,
   downloadUpdateController,
@@ -39,6 +40,13 @@ router.post(
   "/jobs/:jobId/result",
   authenticateAgent,
   asyncHandler(submitJobResultController),
+);
+// Agent prijavljuje ishod prozora za pristanak sa radne stanice PRE nego sto
+// digne VNC most (zabrana samoinicijativnog preuzimanja ekrana).
+router.post(
+  "/vnc-sessions/:sessionId/consent",
+  authenticateAgent,
+  asyncHandler(recordVncConsentController),
 );
 router.get("/update", authenticateAgent, asyncHandler(checkUpdateController));
 router.get(

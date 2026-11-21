@@ -8,7 +8,10 @@ import { attachVncRelay } from "../../ws/vncRelay.js";
 import { JWT_SECRET } from "../../config/env.js";
 import { insertAgent } from "../../repositories/agents.repo.js";
 import { generateApiKey, hashApiKey } from "../../utils/apiKey.js";
-import { insertVncSession } from "../../repositories/vncSessions.repo.js";
+import {
+  insertVncSession,
+  markVncSessionConsentGranted,
+} from "../../repositories/vncSessions.repo.js";
 import { pool } from "../../db/pool.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
 
@@ -41,6 +44,17 @@ function adminJwt() {
 async function deleteTestVncSession(id) {
   if (!id) return;
   await pool.execute("DELETE FROM vnc_sessions WHERE id = ?", [id]);
+}
+
+// Zabrana samoinicijativnog preuzimanja ekrana: relay odbija agent socket dok
+// korisnik na radnoj stanici nije odobrio sesiju (consent_status='granted').
+// Testovi koji vežbaju sam byte-forwarding simuliraju dati pristanak.
+async function grantTestConsent(id) {
+  await markVncSessionConsentGranted(id, {
+    approverUsername: "vitest-user",
+    agentIp: null,
+    agentMac: null,
+  });
 }
 
 function waitForOpen(ws) {
@@ -95,6 +109,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     agentUid = (await findAgentById(agentId)).agentUid;
 
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+    await grantTestConsent(sessionId);
 
     const viewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}?token=${adminJwt()}`);
     const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
@@ -138,6 +153,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     agentUid = (await findAgentById(agentId)).agentUid;
 
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+    await grantTestConsent(sessionId);
 
     const viewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}?token=${adminJwt()}`);
     const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
@@ -192,6 +208,7 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     const { findAgentById } = await import("../../repositories/agents.repo.js");
     agentUid = (await findAgentById(agentId)).agentUid;
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+    await grantTestConsent(sessionId);
 
     const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
     try {
@@ -240,5 +257,26 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
 
     const badViewerWs = new WebSocket(`${baseUrl}/api/protected/vnc-stream/${sessionId}`);
     await expect(waitForOpen(badViewerWs)).rejects.toBeTruthy();
+  });
+
+  it("rejects an agent connection when the user has not granted consent", async () => {
+    apiKey = generateApiKey();
+    agentId = await insertAgent({
+      agentUid: crypto.randomUUID(),
+      apiKeyHash: hashApiKey(apiKey),
+      hostname: testHostname(),
+      osCaption: null,
+      osVersion: null,
+      osBuild: null,
+      agentVersion: null,
+    });
+    const { findAgentById } = await import("../../repositories/agents.repo.js");
+    agentUid = (await findAgentById(agentId)).agentUid;
+    // Namerno BEZ grantTestConsent - consent_status ostaje 'pending', pa relay
+    // mora da odbije most (zabrana samoinicijativnog preuzimanja ekrana).
+    sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+
+    const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
+    await expect(waitForOpen(agentWs)).rejects.toBeTruthy();
   });
 });
