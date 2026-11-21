@@ -3,20 +3,14 @@
     <div class="vnc-toolbar flex items-center justify-between gap-3 px-4 py-2.5 bg-surface border-b border-line">
       <div class="flex items-center gap-2.5 text-ink font-medium truncate">
         <span class="vnc-dot" :class="connected ? 'vnc-dot-good' : 'vnc-dot-idle'" aria-hidden="true"></span>
-        <span class="hud-mono">{{ viewOnly ? 'PREGLED EKRANA' : 'UDALJENA KONTROLA' }}</span>
+        <span class="hud-mono">UDALJENA KONTROLA</span>
         <span class="text-ink-muted text-sm truncate font-mono">{{ agent?.hostname || agent?.agentUid || '' }}</span>
-        <span
-          v-if="viewOnly"
-          class="rounded-full border border-info/40 bg-info-subtle px-1.5 py-0.5 text-[10px] font-semibold leading-none text-info uppercase tracking-wide"
-        >
-          Samo pregled
-        </span>
       </div>
       <div class="flex items-center gap-3">
         <span v-if="isFullscreen" class="text-xs text-ink-muted hidden sm:inline">
           Drži Esc da izađeš iz punog ekrana
         </span>
-        <AppButton v-if="!viewOnly" variant="neutral" :disabled="!connected" @click="openFilePanel">
+        <AppButton variant="neutral" :disabled="!connected" @click="openFilePanel">
           Fajlovi
         </AppButton>
         <AppButton variant="neutral" @click="toggleFullscreen">
@@ -127,7 +121,6 @@ import NavIcon from '@/components/NavIcon.vue'
 
 const route = useRoute()
 const agentId = route.params.id
-const viewOnly = route.query.viewOnly === '1'
 
 const { toast, showToast, copyToClipboard } = useToast()
 const { isAdmin } = useCurrentUser()
@@ -248,7 +241,6 @@ function startRfb(session) {
     rfb = new RFB(screenEl.value, buildWsUrl(session.id), {
       credentials: { password: session.vncPassword || '' },
     })
-    rfb.viewOnly = viewOnly
     // noVNC-ova ugrađena scaleViewport logika je u ovoj verziji/okruženju
     // ostajala zaglavljena na scale=0 (canvas ispravne rezolucije, ali
     // nevidljiv) bez obzira na layout kontejnera - probano i sa i bez
@@ -304,8 +296,6 @@ function startRfb(session) {
 // clipboard bafer na udaljenoj mašini, ne izvršava sam paste ni u jednoj
 // aplikaciji tamo - otud sendPasteKeystroke() odmah posle, ista dva koraka
 // koja bi korisnik ručno uradio (kopiraj lokalno, pa Ctrl+V na udaljenom).
-// viewOnly sesije rfb sam odbija (proverava this._viewOnly interno),
-// handleGlobalKeydown ispod svejedno ne poziva ovo za tu vrstu sesije.
 async function pasteToRemote() {
   if (!rfb) return
   try {
@@ -342,7 +332,7 @@ function sendPasteKeystroke() {
 // izvršio samo po redosledu registracije, ne garantovano prvi). event.repeat
 // se ignoriše da držanje tastera ne pokrene paste u petlji na OS repeat-u.
 function handleGlobalKeydown(event) {
-  if (viewOnly || !connected.value || event.repeat) return
+  if (!connected.value || event.repeat) return
   const isPasteShortcut = (event.ctrlKey || event.metaKey) && !event.altKey && event.key?.toLowerCase() === 'v'
   if (!isPasteShortcut) return
 
