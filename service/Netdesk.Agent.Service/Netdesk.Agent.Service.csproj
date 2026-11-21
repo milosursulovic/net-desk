@@ -23,11 +23,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <!--
-      WinDivert 2.2.2, x64 samo (Win7/32-bit namerno nepodržani za ovaj
-      feature - vidi DnsLogs/WinDivertInterop.cs). WinDivert traži da ova
-      dva fajla sede u "application's home directory" (isti folder kao
-      .exe) - <Link> ih zato ravno mapira u output koren, ne u WinDivert\
-      podfolder gde fizički žive u repo-u.
+      WinDivert 2.2.2, x64 only (Win7/32-bit deliberately unsupported for this
+      feature - see DnsLogs/WinDivertInterop.cs). WinDivert requires these
+      two files to sit in the "application's home directory" (the same folder as the
+      .exe) - which is why <Link> maps them flat into the output root, not into the WinDivert\
+      subfolder where they physically live in the repo.
     -->
     <None Include="WinDivert\WinDivert.dll">
       <Link>WinDivert.dll</Link>

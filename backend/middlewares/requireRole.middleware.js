@@ -11,10 +11,10 @@ export const requireRole =
     next();
   };
 
-// Iznad same "admin" uloge - za module koje treba da vidi/koristi SAMO
-// nalog sa korisničkim imenom "admin" (Korisnici/Logovi/Konfiguracija),
-// ne bilo koji nalog sa ulogom "admin" - ta uloga može biti dodeljena više
-// naloga (vidi users.routes.js), ovo je namerno uže od toga.
+// Stricter than the "admin" role itself - for modules that ONLY the account
+// with the username "admin" may see/use (Korisnici/Logovi/Konfiguracija), not
+// any account with the "admin" role - that role can be granted to several
+// accounts (see users.routes.js); this is deliberately narrower than that.
 export const requireRootAdmin = (req, res, next) => {
   if (req.user?.role !== "admin" || req.user?.username !== "admin") {
     return next(forbidden("Nemate dozvolu za ovu akciju"));

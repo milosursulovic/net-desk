@@ -10,9 +10,9 @@ namespace NetdeskAgent.Common.Models
     }
 
     /// <summary>
-    /// Odgovara MonitoringSchema na backend-u (dtos/agents.dto.js).
-    /// AntivirusStatus/FirewallStatus ograničeni na "enabled" | "disabled" | "unknown"
-    /// (dogovor iz backend memorije - alerting pravila se oslanjaju na tačno te vrednosti).
+    /// Corresponds to MonitoringSchema on the backend (dtos/agents.dto.js).
+    /// AntivirusStatus/FirewallStatus limited to "enabled" | "disabled" | "unknown"
+    /// (an agreement from the backend memory - the alerting rules rely on exactly those values).
     /// </summary>
     public class MonitoringData
     {
@@ -41,17 +41,17 @@ namespace NetdeskAgent.Common.Models
         public string LastHeartbeatAt { get; set; }
 
         /// <summary>
-        /// "Whitelist" postavljena od admina (agent detail stranica,
-        /// PATCH /api/protected/agents/:id/process-kill-exempt) - kad je true,
-        /// ProcessMonitor i dalje detektuje/loguje watched procese na ovoj
-        /// mašini, ali ih NIKAD ne ubija (bez obzira na
-        /// AgentSettings.KillWatchedProcesses). Videti AgentWorker.
-        /// DoProcessMonitorAsync i AgentState.ProcessKillExempt.
+        /// "Whitelist" set by the admin (agent detail page,
+        /// PATCH /api/protected/agents/:id/process-kill-exempt) - when true,
+        /// ProcessMonitor still detects/logs watched processes on this
+        /// machine, but NEVER kills them (regardless of
+        /// AgentSettings.KillWatchedProcesses). See AgentWorker.
+        /// DoProcessMonitorAsync and AgentState.ProcessKillExempt.
         /// </summary>
         public bool ProcessKillExempt { get; set; }
     }
 
-    /// <summary>Odgovor GET /api/agents/ping - test konekcije bez sporednih efekata.</summary>
+    /// <summary>Response of GET /api/agents/ping - a connection test with no side effects.</summary>
     public class PingResponse
     {
         public bool Ok { get; set; }

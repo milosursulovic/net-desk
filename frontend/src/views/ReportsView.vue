@@ -54,8 +54,8 @@
         </div>
       </div>
 
-      <!-- Trendovi - stariji izveštaji (pre nego što je ovo dodato) nemaju
-           content.trends u sačuvanom JSON-u, otud opciono ulančavanje. -->
+      <!-- Trends - older reports (from before this was added) don't have
+           content.trends in the saved JSON, hence the optional chaining. -->
       <div
         v-for="group in trendGroups"
         :key="group.key"
@@ -257,8 +257,8 @@ const trendGroups = computed(() => [
     items: report.value?.content?.trends?.diskFillProjections || [],
   },
 ].filter((g) => g.items.length))
-// Optional chaining namerno - stariji izveštaji (pre nego što je ovo dodato)
-// nemaju content.blacklistedDomainHits u sačuvanom JSON-u.
+// Optional chaining on purpose - older reports (from before this was added)
+// don't have content.blacklistedDomainHits in the saved JSON.
 const blacklistedDomainHits = computed(() => report.value?.content?.blacklistedDomainHits || [])
 const loading = ref(false)
 const error = ref('')
@@ -287,10 +287,10 @@ async function loadReport() {
   }
 }
 
-// Odvojeno od loadReport (GET) - eksplicitna akcija koja se zove tek pošto je
-// izveštaj stvarno prikazan korisniku, ne pri svakom fetch-u (npr. da neki
-// budući indikator na navigaciji može da proveri status bez da ga time i
-// označi kao pročitan).
+// Separate from loadReport (GET) - an explicit action that's called only after the
+// report has actually been shown to the user, not on every fetch (e.g. so that some
+// future indicator in the navigation can check the status without thereby also
+// marking it as read).
 async function markAsRead(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/reports/${id}/mark-read`, { method: 'POST' })

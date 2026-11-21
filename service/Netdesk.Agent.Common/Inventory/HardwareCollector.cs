@@ -8,17 +8,17 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Inventory
 {
     /// <summary>
-    /// WMI-bazirano prikupljanje hardverskog/OS inventara (spec 11.3). Svaka
-    /// metoda je best-effort: WMI upit koji ne uspe (repozitorijum oštećen,
-    /// klasa ne postoji na starijem OS-u...) loguje upozorenje i vraća
-    /// null/praznu listu umesto da obori ceo inventory sync ciklus.
+    /// WMI-based collection of the hardware/OS inventory (spec 11.3). Every
+    /// method is best-effort: a WMI query that fails (damaged repository,
+    /// class doesn't exist on an older OS...) logs a warning and returns
+    /// null/an empty list instead of bringing down the whole inventory sync cycle.
     /// </summary>
     public static class HardwareCollector
     {
         public static OsInfo CollectOs()
         {
-            // OSArchitecture vraća npr. "64-bit"/"32-bit" - postoji na Win32_OperatingSystem
-            // od Windows 7/Server 2008 R2 naovamo, pa je bezbedno za celu flotu.
+            // OSArchitecture returns e.g. "64-bit"/"32-bit" - it exists on Win32_OperatingSystem
+            // from Windows 7/Server 2008 R2 onwards, so it's safe for the whole fleet.
             using (var mo = QueryFirst("SELECT Caption, Version, BuildNumber, InstallDate, OSArchitecture FROM Win32_OperatingSystem"))
             {
                 if (mo == null) return null;
@@ -204,7 +204,7 @@ namespace NetdeskAgent.Common.Inventory
             return result;
         }
 
-        /// <summary>Prva ne-loopback IPv4 adresa aktivnog adaptera - "ip" u inventory payload-u.</summary>
+        /// <summary>The first non-loopback IPv4 address of an active adapter - "ip" in the inventory payload.</summary>
         public static string GetPrimaryIPv4()
         {
             foreach (var mo in QueryAll("SELECT IPAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE"))
@@ -232,10 +232,10 @@ namespace NetdeskAgent.Common.Inventory
 
         private static List<StorageInfo> TryCollectStorageViaMsft()
         {
-            // MSFT_PhysicalDisk (root\Microsoft\Windows\Storage) postoji od
-            // Windows 8 / Server 2012 nadalje - na Windows 7 ovaj namespace ne
-            // postoji i upit baca izuzetak; tada se koristi Win32_DiskDrive
-            // fallback (bez pouzdane SSD/HDD detekcije).
+            // MSFT_PhysicalDisk (root\Microsoft\Windows\Storage) exists from
+            // Windows 8 / Server 2012 onwards - on Windows 7 this namespace doesn't
+            // exist and the query throws an exception; then the Win32_DiskDrive
+            // fallback is used (without reliable SSD/HDD detection).
             try
             {
                 var result = new List<StorageInfo>();

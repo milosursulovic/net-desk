@@ -9,17 +9,17 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstveni, minimalni HTTP klijent za TAČNO jedan poziv (POST
-    /// /api/agents/update/report) - zamena za deljeni NetdeskApiClient iz
-    /// Netdesk.Agent.Common. Manager nema potrebu za celim API klijentom
-    /// (enroll/heartbeat/inventory/jobs/...), samo za ovaj jedan javljaj-
-    /// -rezultat poziv posle install_files komande.
+    /// Its own minimal HTTP client for EXACTLY one call (POST
+    /// /api/agents/update/report) - a replacement for the shared NetdeskApiClient from
+    /// Netdesk.Agent.Common. The Manager has no need for the whole API client
+    /// (enroll/heartbeat/inventory/jobs/...), only for this one report-the-
+    /// -result call after an install_files command.
     /// </summary>
     internal static class UpdateReportClient
     {
-        // [JsonProperty] eksplicitno camelCase umesto ContractResolver-a -
-        // jednostavnije za jedan mali, fiksan payload nego uvoditi celu
-        // serializer-podešavanja mašineriju samo za ovo.
+        // [JsonProperty] explicitly camelCase instead of a ContractResolver -
+        // simpler for one small, fixed payload than introducing the whole
+        // serializer-settings machinery just for this.
         private class UpdateReportRequest
         {
             [JsonProperty("fromVersion")] public string FromVersion { get; set; }
@@ -32,11 +32,11 @@ namespace NetdeskAgent.Manager
             string serverBaseUrl, string agentId, string apiKey,
             string fromVersion, string toVersion, bool success, string reason)
         {
-            // .NET Framework 4.5.2 (net452 build ovog projekta) ne uključuje
-            // TLS 1.2 u podrazumevanom ServicePointManager.SecurityProtocol
-            // setu - ista napomena/otkriće kao Netdesk.Agent.Common/Http/
-            // NetdeskApiClient.cs, sad duplirana ovde pošto Manager više ne
-            // referencira taj fajl.
+            // .NET Framework 4.5.2 (this project's net452 build) doesn't include
+            // TLS 1.2 in the default ServicePointManager.SecurityProtocol
+            // set - the same note/discovery as Netdesk.Agent.Common/Http/
+            // NetdeskApiClient.cs, now duplicated here since the Manager no longer
+            // references that file.
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
             var request = new UpdateReportRequest

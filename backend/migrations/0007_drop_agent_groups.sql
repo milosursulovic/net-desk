@@ -1,11 +1,11 @@
--- agent_groups (arhitektura x86/x64 + proizvoljni ručni tagovi, odvojeno od
--- deployment grupa) je odbačen kao ideja - jedino deployment grupe imaju
--- ulogu za agente, pa se ovo potpuno uklanja.
+-- agent_groups (x86/x64 architecture + arbitrary manual tags, separate from
+-- deployment groups) was dropped as an idea - only deployment groups play a
+-- role for agents, so this is removed entirely.
 DROP TABLE IF EXISTS agent_groups;
 
--- 0005_agent_groups.sql je greškom ubacio 'x86'/'x64' u groups_list
--- (department listu na Home-u) - čisti se samo ako ih niko ne koristi kao
--- odeljenje (isti uslov kao app-level zaštita od brisanja grupe u upotrebi).
+-- 0005_agent_groups.sql mistakenly inserted 'x86'/'x64' into groups_list
+-- (the department list on Home) - cleaned up only if nobody uses them as a
+-- department (same condition as the app-level guard against deleting a group in use).
 DELETE FROM groups_list
 WHERE name IN ('x86', 'x64')
   AND name NOT IN (

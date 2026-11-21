@@ -6,9 +6,9 @@ import {
 } from "../repositories/appSettings.repo.js";
 import { notFound } from "../utils/httpError.js";
 
-// Zajednički helper za "sačuvana vrednost, ili default definicije ako
-// nikad nije menjana" - koriste ga i isFeatureEnabled (boolean flags) i
-// getAppLanguage (select podešavanje), bez dupliranja te logike.
+// Shared helper for "the saved value, or the definition's default if it was
+// never changed" - used by both isFeatureEnabled (boolean flags) and
+// getAppLanguage (a select setting), without duplicating that logic.
 export async function getEffectiveSettingValue(key) {
   const def = APP_SETTINGS.find((s) => s.key === key);
   const stored = await getSettingValue(key);
@@ -49,15 +49,15 @@ export async function updateSettingService(key, value, updatedByUserId) {
   return await listSettingsService();
 }
 
-// Za druge servise da provere da li je neka funkcionalnost trenutno
-// omogućena, bez prolaska kroz RBAC/HTTP sloj - čisto pitanje "da li je
-// flag uključen".
+// For other services to check whether some feature is currently
+// enabled, without going through the RBAC/HTTP layer - a pure "is the
+// flag on" question.
 export async function isFeatureEnabled(key) {
   return (await getEffectiveSettingValue(key)) === "true";
 }
 
-// Javno čitljivo (bez auth-a) preko routes/language.routes.js - ekran za
-// prijavu mora da zna jezik pre nego što uopšte postoji JWT.
+// Publicly readable (no auth) via routes/language.routes.js - the login
+// screen must know the language before a JWT even exists.
 export async function getAppLanguage() {
   return (await getEffectiveSettingValue("app_language")) || "sr";
 }

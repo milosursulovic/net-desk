@@ -4,11 +4,11 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Administrativna konfiguracija za Manager-ov NOVI, nezavisni HTTP
-    /// kanal (enroll/heartbeat/job-poll) - sopstven fajl, odvojen od Agent-a
-    /// (config.json u %ProgramData%\NetdeskAgent\), živi u
-    /// %ProgramData%\NetdeskAgentManager\ (videti Paths.cs). Admin ga
-    /// postavlja pre prvog pokretanja (isti obrazac kao Common's
+    /// Administrative configuration for the Manager's NEW, independent HTTP
+    /// channel (enroll/heartbeat/job-poll) - its own file, separate from the Agent's
+    /// (config.json in %ProgramData%\NetdeskAgent\), it lives in
+    /// %ProgramData%\NetdeskAgentManager\ (see Paths.cs). The admin
+    /// sets it before the first start (the same pattern as Common's
     /// AgentSettings.cs).
     /// </summary>
     public class ManagerConfig
@@ -16,9 +16,9 @@ namespace NetdeskAgent.Manager
         public string ServerBaseUrl { get; set; }
 
         /// <summary>
-        /// Koristi se samo za jednokratni enroll poziv - posle uspešnog
-        /// enroll-a Manager trajno koristi ManagerId+ApiKey iz
-        /// ManagerState.cs, isti obrazac kao AgentSettings.EnrollToken.
+        /// Used only for the one-time enroll call - after a successful
+        /// enroll the Manager permanently uses ManagerId+ApiKey from
+        /// ManagerState.cs, the same pattern as AgentSettings.EnrollToken.
         /// </summary>
         public string EnrollToken { get; set; }
 

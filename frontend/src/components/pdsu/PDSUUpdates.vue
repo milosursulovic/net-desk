@@ -330,7 +330,7 @@ function freshnessClass(value) {
       </div>
     </div>
 
-    <!-- Svežina update-a -->
+    <!-- Update freshness -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">{{ t('pdsu.updateFreshnessTitle') }}</h5>
@@ -398,7 +398,7 @@ function freshnessClass(value) {
       </div>
     </div>
 
-    <!-- Najčešći hotfix paketi -->
+    <!-- Most common hotfix packages -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">{{ t('pdsu.topHotfixesTitle') }}</h5>
@@ -469,7 +469,7 @@ function freshnessClass(value) {
       </div>
     </div>
 
-    <!-- Poslednji update po računaru -->
+    <!-- Last update per computer -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -551,7 +551,7 @@ function freshnessClass(value) {
       </div>
     </div>
 
-    <!-- Zastareli računari -->
+    <!-- Outdated computers -->
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>

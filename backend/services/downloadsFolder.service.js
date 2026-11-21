@@ -2,19 +2,19 @@ import fs from "fs";
 import path from "path";
 import { badRequest, notFound } from "../utils/httpError.js";
 
-// Ova fizička putanja je istovremeno i ono što se javno (bez auth-a) servira
-// preko /uploads/downloads static rute (routes/index.js) - agenti (i ovi
-// PowerShell preseti) je koriste za preuzimanje deployment fajlova (cert
-// rootCA.pem, UltraVNC zip, itd) preko HTTPS-a, bez agent kredencijala.
+// This physical path is at the same time what is served publicly (without auth)
+// via the /uploads/downloads static route (routes/index.js) - agents (and these
+// PowerShell presets) use it to download deployment files (cert
+// rootCA.pem, UltraVNC zip, etc.) over HTTPS, without agent credentials.
 const DOWNLOADS_DIR = path.join(process.cwd(), "uploads", "downloads");
 
 function ensureDownloadsDir() {
   fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
 }
 
-// Folder je javno serviran bez auth-a, pa ime fajla mora biti strogo
-// sanitizovano - path.basename uklanja i / i \ komponente puta, a dodatna
-// provera ispod je odbrana u dubinu ako se ikad promeni platforma/ponašanje.
+// The folder is served publicly without auth, so the filename must be strictly
+// sanitized - path.basename strips both / and \ path components, and the extra
+// check below is defense in depth in case the platform/behavior ever changes.
 function sanitizeFileName(rawName) {
   const name = path.basename(String(rawName || "").trim());
   if (!name || name === "." || name === "..") {

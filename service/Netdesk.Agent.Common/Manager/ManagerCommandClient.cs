@@ -9,32 +9,32 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Manager
 {
     /// <summary>
-    /// Pošiljalac strane mailbox protokola - piše ManagerCommand u
-    /// Paths.ManagerCommandFile i budi NetdeskAgentManager preko custom
-    /// service control code-a. Primalac strana (čitanje/izvršavanje) živi u
-    /// Netdesk.Agent.Manager projektu (NetdeskAgentManagerService/ManagerWorker).
+    /// The sender side of the mailbox protocol - writes a ManagerCommand to
+    /// Paths.ManagerCommandFile and wakes NetdeskAgentManager via a custom
+    /// service control code. The receiver side (reading/executing) lives in the
+    /// Netdesk.Agent.Manager project (NetdeskAgentManagerService/ManagerWorker).
     /// </summary>
     public static class ManagerCommandClient
     {
         public const string ManagerServiceName = "NetdeskAgentManager";
 
         /// <summary>
-        /// Custom service control code (mora biti u opsegu 128-255) - "probudi
-        /// se i proveri mailbox fajl". Jedan kod za sve akcije - sadržaj fajla
-        /// (Action polje) određuje šta se stvarno radi.
+        /// Custom service control code (must be in the 128-255 range) - "wake
+        /// up and check the mailbox file". One code for all actions - the file contents
+        /// (the Action field) determine what actually gets done.
         /// </summary>
         public const int CustomCommandCode = 128;
 
         private const int ServiceDoesNotExistWin32Error = 1060;
 
         /// <summary>
-        /// Piše komandu u mailbox (atomic rename) i signalizira Manager-u.
-        /// Vraća false SAMO ako sam upis fajla nije uspeo, ili ako
-        /// NetdeskAgentManager servis uopšte nije instaliran na ovoj mašini
-        /// (jasna, akcionabilna greška) - neuspeh samog ExecuteCommand poziva
-        /// (npr. Manager trenutno nije pokrenut) se loguje ali NE vraća false,
-        /// jer će Manager-ov sopstveni periodični poll ionako pokupiti komandu
-        /// čim (ponovo) proradi.
+        /// Writes the command to the mailbox (atomic rename) and signals the Manager.
+        /// Returns false ONLY if writing the file itself failed, or if the
+        /// NetdeskAgentManager service isn't installed on this machine at all
+        /// (a clear, actionable error) - a failure of the ExecuteCommand call itself
+        /// (e.g. the Manager isn't currently running) is logged but does NOT return false,
+        /// because the Manager's own periodic poll will pick up the command anyway
+        /// as soon as it's running (again).
         /// </summary>
         public static bool TrySend(ManagerCommand command, out string failureReason)
         {
@@ -91,9 +91,9 @@ namespace NetdeskAgent.Common.Manager
             }
             catch (Exception ex)
             {
-                // Manager trenutno ne radi (stopped/starting/itd) - komanda je
-                // već upisana, njegov sledeći tick poll je pokupi. Ne tretiramo
-                // kao neuspeh dispatch-a.
+                // The Manager isn't currently running (stopped/starting/etc) - the command is
+                // already written, its next tick poll will pick it up. We don't treat this
+                // as a dispatch failure.
                 FileLogger.Warn(
                     "Signal ka NetdeskAgentManager-u (ExecuteCommand) nije uspeo, komanda čeka u mailbox-u: " +
                     ex.Message);

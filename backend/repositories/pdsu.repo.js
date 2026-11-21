@@ -354,7 +354,7 @@ export async function computerUpdatesInsert(rows) {
 }
 
 // =========================
-// Printers (agent-detektovani, po računaru)
+// Printers (agent-detected, per computer)
 // =========================
 
 export async function computerPrintersList(ipEntryId) {

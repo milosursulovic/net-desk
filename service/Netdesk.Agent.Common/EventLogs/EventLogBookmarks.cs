@@ -5,11 +5,11 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Common.EventLogs
 {
     /// <summary>
-    /// Perzistira poslednji pročitani EventRecordID po log imenu (System/
-    /// Application), tako da se isti unosi ne šalju ponovo na svaki ciklus.
-    /// Backend takođe ima dedup zaštitu (INSERT IGNORE na composite unique
-    /// key), ovo je prvenstveno da agent ne šalje nepotrebno velike batch-eve
-    /// unosa koje je server već video.
+    /// Persists the last read EventRecordID per log name (System/
+    /// Application), so the same entries aren't sent again on every cycle.
+    /// The backend also has dedup protection (INSERT IGNORE on a composite unique
+    /// key), this is primarily so the agent doesn't send needlessly large batches of
+    /// entries the server has already seen.
     /// </summary>
     public class EventLogBookmarks
     {

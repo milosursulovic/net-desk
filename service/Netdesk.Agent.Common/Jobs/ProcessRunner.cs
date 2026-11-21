@@ -15,11 +15,11 @@ namespace NetdeskAgent.Common.Jobs
         }
 
         /// <summary>
-        /// Pokreće proces bez prozora, hvata stdout/stderr, čeka do timeout-a.
-        /// Ako proces ne završi na vreme, ubija se (best effort) i vraća
-        /// TimedOut=true - komanda se i dalje javlja serveru kao rezultat,
-        /// samo sa jasnom naznakom da je istekla, umesto da agent visi zauvek
-        /// na jednoj zaglavljenoj komandi.
+        /// Starts a process without a window, captures stdout/stderr, waits up to the timeout.
+        /// If the process doesn't finish in time, it's killed (best effort) and
+        /// TimedOut=true is returned - the command is still reported to the server as a result,
+        /// just with a clear indication that it timed out, instead of the agent hanging forever
+        /// on one stuck command.
         /// </summary>
         public static ProcessResult Run(string fileName, string arguments, TimeSpan timeout)
         {
@@ -49,7 +49,7 @@ namespace NetdeskAgent.Common.Jobs
 
                 if (!finished)
                 {
-                    try { process.Kill(); } catch { /* proces je možda već završio u međuvremenu */ }
+                    try { process.Kill(); } catch { /* the process may have already finished in the meantime */ }
 
                     return new ProcessResult
                     {
@@ -60,8 +60,8 @@ namespace NetdeskAgent.Common.Jobs
                     };
                 }
 
-                // WaitForExit(int) ne garantuje da su svi async output eventi
-                // stigli - dodatni bezparametarski WaitForExit() to obezbeđuje.
+                // WaitForExit(int) doesn't guarantee that all async output events
+                // have arrived - the extra parameterless WaitForExit() ensures that.
                 process.WaitForExit();
 
                 return new ProcessResult

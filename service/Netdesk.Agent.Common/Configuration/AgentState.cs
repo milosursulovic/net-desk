@@ -4,10 +4,10 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Common.Configuration
 {
     /// <summary>
-    /// Perzistirani identitet agenta (agentId + apiKey), dobijen prilikom enroll-a
-    /// i sačuvan u state.json da se agent ne registruje ponovo pri svakom restartu.
-    /// Fajl živi u ProgramData, čitljiv samo pod LocalSystem/Administrators nalozima
-    /// po default NTFS ACL-u tog foldera.
+    /// The persisted agent identity (agentId + apiKey), obtained during enroll
+    /// and saved to state.json so the agent doesn't re-register on every restart.
+    /// The file lives in ProgramData, readable only by the LocalSystem/Administrators accounts
+    /// per that folder's default NTFS ACL.
     /// </summary>
     public class AgentState
     {
@@ -18,12 +18,12 @@ namespace NetdeskAgent.Common.Configuration
         public bool IsEnrolled => !string.IsNullOrEmpty(AgentId) && !string.IsNullOrEmpty(ApiKey);
 
         /// <summary>
-        /// Osvežava se pri SVAKOM uspešnom heartbeat-u (server-side "whitelist"
-        /// postavka za ovaj agent) - namerno [JsonIgnore], NE perzistira se u
-        /// state.json. Podrazumevano false posle restarta servisa dok se ne
-        /// desi prvi uspešan heartbeat - zanemarljivo, jer je heartbeat prvi u
-        /// prioritetu tick petlje i dešava se skoro odmah pri startu, mnogo
-        /// pre prvog ProcessMonitor ciklusa (ProcessMonitorIntervalSeconds).
+        /// Refreshed on EVERY successful heartbeat (the server-side "whitelist"
+        /// setting for this agent) - deliberately [JsonIgnore], NOT persisted to
+        /// state.json. Defaults to false after a service restart until the
+        /// first successful heartbeat happens - negligible, because the heartbeat is first in
+        /// the tick loop's priority and happens almost immediately at startup, long
+        /// before the first ProcessMonitor cycle (ProcessMonitorIntervalSeconds).
         /// </summary>
         [JsonIgnore]
         public bool ProcessKillExempt { get; set; }
@@ -42,8 +42,8 @@ namespace NetdeskAgent.Common.Configuration
             }
             catch
             {
-                // Oštećen/nepotpun state fajl - tretiraj kao neregistrovanog agenta,
-                // sledeći ciklus će pokušati ponovni enroll.
+                // Damaged/incomplete state file - treat as an unregistered agent,
+                // the next cycle will attempt a re-enroll.
                 return new AgentState();
             }
         }

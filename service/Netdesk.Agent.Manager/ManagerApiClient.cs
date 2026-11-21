@@ -13,12 +13,12 @@ using Newtonsoft.Json.Serialization;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstveni, minimalni HTTP klijent za Manager-ov NOVI, nezavisni kanal
-    /// (/api/managers/*) - isti duh kao UpdateReportClient.cs (jedan mali
-    /// fajl umesto celog deljenog NetdeskApiClient-a iz Common-a), samo sa
-    /// par poziva više (enroll/heartbeat/poll/rezultat/download). Namerno
-    /// baca običan InvalidOperationException na HTTP grešku (ne uvodi novi
-    /// izuzetak tip samo za ovo, isti izbor kao UpdateReportClient.cs).
+    /// Its own minimal HTTP client for the Manager's NEW, independent channel
+    /// (/api/managers/*) - the same spirit as UpdateReportClient.cs (one small
+    /// file instead of the whole shared NetdeskApiClient from Common), just with
+    /// a few more calls (enroll/heartbeat/poll/result/download). Deliberately
+    /// throws a plain InvalidOperationException on an HTTP error (it doesn't introduce a new
+    /// exception type just for this, the same choice as UpdateReportClient.cs).
     /// </summary>
     internal class ManagerApiClient : IDisposable
     {
@@ -75,8 +75,8 @@ namespace NetdeskAgent.Manager
 
         public ManagerApiClient(string baseUrl)
         {
-            // Isti razlog kao UpdateReportClient.cs/Common's NetdeskApiClient -
-            // net452 ne uključuje TLS 1.2 u podrazumevanom setu.
+            // The same reason as UpdateReportClient.cs/Common's NetdeskApiClient -
+            // net452 doesn't include TLS 1.2 in the default set.
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
             _http = new HttpClient { BaseAddress = new Uri(baseUrl) };

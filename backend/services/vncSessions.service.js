@@ -29,11 +29,11 @@ export async function startVncSessionService(agentId, requestedByUserId) {
 
   const sessionId = await insertVncSession({ agentId, requestedByUserId });
 
-  // Isti job-poll mehanizam kao svaka druga komanda (do ~15s da agent
-  // primeti) - namerno se ne gradi posebna "probudi agenta odmah"
-  // signalizacija samo za ovo. Kanal je posle toga real-time (WebSocket
-  // byte-forwarding, vidi ws/vncRelay.js), agent samo prosleđuje sirove
-  // bajtove ka lokalnom UltraVNC-u.
+  // The same job-poll mechanism as every other command (up to ~15s for the agent
+  // to notice) - deliberately no separate "wake the agent immediately"
+  // signaling just for this. After that the channel is real-time (WebSocket
+  // byte-forwarding, see ws/vncRelay.js), the agent just forwards raw
+  // bytes to the local UltraVNC.
   await insertJob({
     agentId,
     commandType: "start_vnc_bridge",
@@ -62,11 +62,11 @@ export async function getVncSessionService(sessionId) {
   return session;
 }
 
-// Agent prijavljuje ishod prozora za pristanak sa radne stanice. Mora se
-// pozvati PRE nego sto agent digne VNC most (vidi service/.../AgentWorker.cs i
-// VncBridge gejt u ws/vncRelay.js). Trajni, neizbrisivi trag ide u
-// activity_log (append-only) - ovde je sav sadrzaj koji akt trazi osim
-// viewer IP/MAC (poznat tek kad se IKT browser zakaci, dopunjava ws/vncRelay.js).
+// The agent reports the outcome of the consent dialog from the workstation. It must be
+// called BEFORE the agent brings up the VNC bridge (see service/.../AgentWorker.cs and
+// the VncBridge gate in ws/vncRelay.js). The permanent, indelible trail goes to
+// activity_log (append-only) - here is all the content the act requires except the
+// viewer IP/MAC (known only once the IT worker's browser attaches, filled in by ws/vncRelay.js).
 export async function recordVncConsentService(
   sessionId,
   agentId,
@@ -76,7 +76,7 @@ export async function recordVncConsentService(
   if (!session) {
     throw notFound("VNC sesija nije pronađena");
   }
-  // Agent sme da prijavi pristanak samo za SOPSTVENU sesiju.
+  // The agent may report consent only for its OWN session.
   if (session.agentId !== agentId) {
     throw forbidden("Sesija ne pripada ovom agentu");
   }

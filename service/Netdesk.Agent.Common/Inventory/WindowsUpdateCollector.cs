@@ -50,12 +50,12 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// Dostupne (neinstalirane) zakrpe preko Windows Update Agent COM API-ja
-        /// (Microsoft.Update.Session) - WMI ih ne izlaže, jedino Update Agent
-        /// zna za PENDING zakrpe. Late-bound COM (dynamic) da ne zahteva WUApi
-        /// interop referencu u projektu. Pretraga može biti spora (sekunde do
-        /// desetina sekundi, zavisno od WSUS/mreže) - zato se zove na dužem
-        /// intervalu (UpdateCheckIntervalSeconds), ne na svaki heartbeat.
+        /// Available (not installed) patches via the Windows Update Agent COM API
+        /// (Microsoft.Update.Session) - WMI doesn't expose them, only the Update Agent
+        /// knows about PENDING patches. Late-bound COM (dynamic) so it doesn't require a WUApi
+        /// interop reference in the project. The search can be slow (seconds to
+        /// tens of seconds, depending on WSUS/network) - which is why it's called on a longer
+        /// interval (UpdateCheckIntervalSeconds), not on every heartbeat.
         /// </summary>
         public static List<AvailableUpdateItem> CollectAvailable()
         {
@@ -86,8 +86,8 @@ namespace NetdeskAgent.Common.Inventory
             }
             catch (Exception ex)
             {
-                // COM greške ovde (WU servis isključen, nema mreže do Windows
-                // Update-a...) su očekivane i ne smeju da obore ciklus.
+                // COM errors here (WU service disabled, no network to Windows
+                // Update...) are expected and must not bring down the cycle.
                 FileLogger.Warn("Provera dostupnih Windows update-a neuspešna: " + ex.Message);
             }
 
@@ -105,7 +105,7 @@ namespace NetdeskAgent.Common.Inventory
             }
             catch
             {
-                // ne sadrže sve stavke KB broj
+                // not every item contains a KB number
             }
 
             return null;

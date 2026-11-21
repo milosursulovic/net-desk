@@ -11,9 +11,9 @@ export const i18n = createI18n({
   messages: { sr, en },
 })
 
-// localStorage daje trenutan tačan render pri sledećem posetama istog
-// browsera; ovo ažurira i sam vrednost i18n-a i keš kad se jezik promeni
-// (na Konfiguraciji, ili kad main.js potvrdi vrednost iz baze pri pokretanju).
+// localStorage gives an immediately correct render on subsequent visits from the same
+// browser; this updates both the i18n value itself and the cache when the language changes
+// (on the Config page, or when main.js confirms the value from the DB at startup).
 export function setAppLanguage(lang) {
   if (!lang || !i18n.global.availableLocales.includes(lang)) return
   i18n.global.locale.value = lang

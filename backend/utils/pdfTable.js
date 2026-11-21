@@ -77,10 +77,10 @@ function drawTitleBlock(doc, startX, title, subtitle) {
 }
 
 /**
- * Generički pdfkit "header + tabela" export - lista bez X (bez metapodataka,
- * bez PDSU, bez agenta).
+ * Generic pdfkit "header + table" export - a list of X (no metadata,
+ * no PDSU, no agent).
  *
- * columns: [{ header, key, width }] (width u tačkama, suma <= širina strane)
+ * columns: [{ header, key, width }] (width in points, sum <= page width)
  */
 export function sendTablePdf(res, { title, subtitle, filename, columns, rows, emptyText }) {
   const doc = new PDFDocument({ margin: 40, size: "A4", layout: "landscape" });

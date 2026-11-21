@@ -41,8 +41,8 @@ router.post(
   authenticateAgent,
   asyncHandler(submitJobResultController),
 );
-// Agent prijavljuje ishod prozora za pristanak sa radne stanice PRE nego sto
-// digne VNC most (zabrana samoinicijativnog preuzimanja ekrana).
+// The agent reports the outcome of the consent dialog from the workstation BEFORE it
+// brings up the VNC bridge (unsolicited screen capture is banned).
 router.post(
   "/vnc-sessions/:sessionId/consent",
   authenticateAgent,

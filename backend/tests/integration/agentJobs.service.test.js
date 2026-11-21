@@ -342,9 +342,9 @@ describe("agentJobs.service (integration, real DB)", () => {
       });
 
       try {
-        // agentId se javlja online preko heartbeat-a, otherAgentId nikad
-        // nije - status oba ostaje "pending" (nijedan još nije poll-ovao),
-        // ali connectivityStatus treba da ih razlikuje.
+        // agentId reports online via heartbeat, otherAgentId never
+        // does - both stay "pending" (neither has polled yet),
+        // but connectivityStatus should tell them apart.
         await heartbeat(agentId, {}, "10.230.62.81");
 
         const out = await createBatchJobService(
@@ -393,11 +393,11 @@ describe("agentJobs.service (integration, real DB)", () => {
         );
         batchIds.push(out.batchId);
 
-        // agentId poll-uje i pokupi svoj posao (postaje "sent" - i dalje
-        // otkazivo, agent samo nema kanal za stvarni prekid izvršavanja).
-        // thirdAgentId poll-uje i ODMAH javlja rezultat (postaje "completed"
-        // - otkazivanje ga NE sme dirati). otherAgentId nikad ne poll-uje
-        // (ostaje "pending").
+        // agentId polls and picks up its job (becomes "sent" - still
+        // cancellable, the agent just has no channel for actually interrupting execution).
+        // thirdAgentId polls and IMMEDIATELY reports the result (becomes "completed"
+        // - cancelling must NOT touch it). otherAgentId never polls
+        // (stays "pending").
         await pollJobsService(agentId);
         const thirdJobs = await pollJobsService(thirdAgentId);
         await submitJobResultService(thirdAgentId, thirdJobs[0].id, { success: true, exitCode: 0 });
@@ -414,7 +414,7 @@ describe("agentJobs.service (integration, real DB)", () => {
         expect(pendingItem.status).toBe("cancelled");
         expect(completedItem.status).toBe("completed");
 
-        // Ponovno otkazivanje ne nalazi ništa novo za otkazivanje.
+        // Cancelling again finds nothing new to cancel.
         const again = await cancelBatchService(out.batchId);
         expect(again.cancelled).toBe(0);
       } finally {

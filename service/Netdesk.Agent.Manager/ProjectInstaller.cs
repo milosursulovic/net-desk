@@ -9,10 +9,10 @@ using System.ServiceProcess;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Omogućava instalaciju preko InstallUtil.exe:
+    /// Enables installation via InstallUtil.exe:
     ///   InstallUtil.exe Netdesk.Agent.Manager.exe
-    /// Servis se instalira pod LocalSystem nalogom, Automatic startup - isti
-    /// obrazac kao Netdesk.Agent.Service/ProjectInstaller.cs.
+    /// The service is installed under the LocalSystem account, Automatic startup - the same
+    /// pattern as Netdesk.Agent.Service/ProjectInstaller.cs.
     /// </summary>
     [RunInstaller(true)]
     public class ProjectInstaller : Installer
@@ -51,11 +51,11 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Manager pravi TAČNO jedan odlazni HTTPS poziv (javljanje rezultata
-        /// update-a serveru, posle install_files komande) - redak put, ali
-        /// pod restriktivnim GPO odlaznim politikama bi inače tiho otkazivao
-        /// bez ijedne jasne greške (isti "tihi neuspeh" razlog kao NetdeskAgent-
-        /// ov ekvivalentno pravilo).
+        /// The Manager makes EXACTLY one outbound HTTPS call (reporting the update
+        /// result to the server, after an install_files command) - a rare path, but
+        /// under restrictive GPO outbound policies it would otherwise fail silently
+        /// without a single clear error (the same "silent failure" reason as
+        /// NetdeskAgent's equivalent rule).
         /// </summary>
         private void AddOutboundFirewallRule()
         {
@@ -88,9 +88,9 @@ namespace NetdeskAgent.Manager
 
         private static void InitializeLogger()
         {
-            // ProjectInstaller radi unutar InstallUtil.exe procesa, ne unutar
-            // ManagerWorker-a, pa FileLogger nikad nije inicijalizovan ovim
-            // putem - bez ovoga bi Info/Warn pozivi ovde tiho ništa ne uradili.
+            // ProjectInstaller runs inside the InstallUtil.exe process, not inside
+            // ManagerWorker, so FileLogger is never initialized along this
+            // path - without this, the Info/Warn calls here would silently do nothing.
             FileLogger.Initialize(Paths.ManagerLogFile);
         }
 

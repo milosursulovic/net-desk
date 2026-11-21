@@ -4,12 +4,12 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Perzistirani identitet Manager-a (managerId + apiKey), sopstven i
-    /// NEZAVISAN od AgentState.cs (Common) - Manager se sad enrolluje na
-    /// backend direktno, sopstvenim kredencijalima, ne pozajmljuje Agent-ove
-    /// (videti napomenu na ManagerCommand.cs's AgentId/ApiKey polja - ta i
-    /// dalje postoje, ali SAMO za mailbox/UpdateReportClient put; ovo je
-    /// odvojen identitet za novi, nezavisni HTTP kanal).
+    /// The persisted identity of the Manager (managerId + apiKey), its own and
+    /// INDEPENDENT of AgentState.cs (Common) - the Manager now enrolls with the
+    /// backend directly, with its own credentials, it doesn't borrow the Agent's
+    /// (see the note on ManagerCommand.cs's AgentId/ApiKey fields - those still
+    /// exist, but ONLY for the mailbox/UpdateReportClient path; this is a
+    /// separate identity for the new, independent HTTP channel).
     /// </summary>
     public class ManagerState
     {
@@ -33,8 +33,8 @@ namespace NetdeskAgent.Manager
             }
             catch
             {
-                // Oštećen/nepotpun state fajl - tretiraj kao neregistrovanog
-                // Manager-a, sledeći ciklus pokušava ponovni enroll.
+                // Damaged/incomplete state file - treat as an unregistered
+                // Manager, the next cycle attempts a re-enroll.
                 return new ManagerState();
             }
         }

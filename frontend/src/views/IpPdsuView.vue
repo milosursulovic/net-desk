@@ -546,12 +546,12 @@ async function clearPdsu() {
   }
 }
 
-// "Nije neželjen na ovom računaru" - dodaje izuzetak za TAČNO pravilo koje
-// trenutno pogađa (item.matchedFlaggedId), ne briše globalni flag. Lokalno
-// ažurira dati red umesto ponovnog fetch-a cele liste - ako neko DRUGO
-// pravilo i dalje pogađa isti red, backend bi ionako vratio is_flagged=true
-// opet (vidi pdsu.service.js's mapFlaggableRow), pa je ipak najjednostavnije
-// i najtačnije samo ponovo učitati taj tab.
+// "Not unwanted on this computer" - adds an exception for EXACTLY the rule that
+// currently matches (item.matchedFlaggedId), doesn't delete the global flag. Updating the
+// given row locally instead of refetching the whole list - if some OTHER
+// rule still matches the same row, the backend would return is_flagged=true
+// again anyway (see pdsu.service.js's mapFlaggableRow), so after all it's simplest
+// and most accurate to just reload that tab.
 async function addException(kind, flaggedId) {
   if (!flaggedId) return
   try {

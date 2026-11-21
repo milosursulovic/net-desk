@@ -16,14 +16,14 @@ export default [
       import: importPlugin
     },
     rules: {
-      // neiskorišćene varijable i funkcije
+      // unused variables and functions
       "no-unused-vars": ["warn", {
         vars: "all",
         args: "after-used",
         ignoreRestSiblings: false
       }],
 
-      // neiskorišćeni exporti
+      // unused exports
       "import/no-unused-modules": ["warn", { unusedExports: true }],
 
       // bonus

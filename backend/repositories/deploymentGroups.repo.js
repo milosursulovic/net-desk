@@ -1,8 +1,8 @@
 import { pool } from "../db/pool.js";
 
-// Odvojena predefinisana lista od groups_list - groups_list ostaje samo za
-// "Odeljenje" na IP unosima, ova je samo za deployment grupe na agentima
-// (agent_deployment_groups) i release-ima (agent_release_groups).
+// A predefined list separate from groups_list - groups_list stays only for
+// "Odeljenje" (department) on IP entries, this one is only for deployment groups
+// on agents (agent_deployment_groups) and releases (agent_release_groups).
 export async function listDeploymentGroups() {
   const [rows] = await pool.execute(`SELECT name FROM deployment_groups_list ORDER BY name`);
   return rows.map((r) => r.name);
@@ -16,9 +16,9 @@ export async function insertDeploymentGroup(name) {
   return result.insertId;
 }
 
-// Korelisani sub-upiti (ne JOIN), isti obrazac kao listGroupsWithUsage -
-// broj grupa je mali, izbegava dupliranje/grupisanje preko dve nezavisne
-// tabele.
+// Correlated subqueries (not a JOIN), same pattern as listGroupsWithUsage -
+// the number of groups is small; avoids duplication/grouping across two
+// independent tables.
 export async function listDeploymentGroupsWithUsage() {
   const [rows] = await pool.execute(`
     SELECT

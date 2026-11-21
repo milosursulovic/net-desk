@@ -1,8 +1,8 @@
 /**
- * Zajednički begin/commit/rollback/release wrapper - zamenjuje ručno pisan
+ * Shared begin/commit/rollback/release wrapper - replaces the hand-written
  * try/beginTransaction/commit/catch-rollback/finally-release pattern
- * (viđen i u repositories/metadata.repo.js kao beginTx/commitTx/rollbackTx
- * trojka, i inline u utils/ipEntryService.js).
+ * (also seen in repositories/metadata.repo.js as the beginTx/commitTx/rollbackTx
+ * trio, and inline in utils/ipEntryService.js).
  */
 export async function withTransaction(pool, fn) {
   const conn = await pool.getConnection();

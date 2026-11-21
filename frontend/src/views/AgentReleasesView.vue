@@ -221,16 +221,16 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const items = ref([])
 const loading = ref(false)
 
-// Klijentska filtracija - lista se već učitava celokupno (limit=100, mala
-// tabela), nema potrebe za backend query parametrom za ovo.
+// Client-side filtering - the list is already loaded in full (limit=100, a small
+// table), no need for a backend query parameter for this.
 const onlyActive = ref(false)
 const visibleItems = computed(() =>
   onlyActive.value ? items.value.filter((r) => r.isActive) : items.value,
 )
 
-// Predlozi za DeploymentGroupPicker (klasične vrednosti + odeljenja + grupe
-// već u upotrebi) - iz istog /agents/filter-options endpoint-a koji
-// AgentsView.vue već koristi za os/version/department dropdown-ove.
+// Suggestions for DeploymentGroupPicker (classic values + departments + groups
+// already in use) - from the same /agents/filter-options endpoint that
+// AgentsView.vue already uses for the os/version/department dropdowns.
 const deploymentGroupOptions = ref([])
 
 async function fetchDeploymentGroupOptions() {
@@ -333,8 +333,8 @@ async function upload() {
   try {
     const formData = new FormData()
     formData.append('version', form.value.version.trim())
-    // JSON-encoded jer multipart/form-data (multer) inače stavlja polje kao
-    // običan string - backend parsira ovo pre Zod validacije.
+    // JSON-encoded because multipart/form-data (multer) otherwise puts the field in as
+    // a plain string - the backend parses this before Zod validation.
     formData.append('deploymentGroups', JSON.stringify(form.value.deploymentGroups))
     if (form.value.releaseNotes.trim()) {
       formData.append('releaseNotes', form.value.releaseNotes.trim())
@@ -384,9 +384,9 @@ async function toggleActive(release) {
   }
 }
 
-// Dugme je već vidljivo samo za !r.isActive (v-if u template-u), ali backend
-// (deleteReleaseService) i dalje odbija aktivnu verziju - odbrana u dubinu,
-// ne oslanja se samo na skriveno dugme.
+// The button is already visible only for !r.isActive (v-if in the template), but the backend
+// (deleteReleaseService) still rejects an active version - defense in depth,
+// it doesn't rely solely on the hidden button.
 async function deleteRelease(release) {
   const ok = await askConfirm(
     t('releases.confirmDeleteMessage', {
@@ -446,8 +446,8 @@ async function saveGroups() {
   }
 }
 
-// Napomene su, za razliku od verzije/fajla, editabilne i posle upload-a -
-// korisnik ih dopunjuje kasnije bez potrebe da ponovo otprema paket.
+// Notes, unlike the version/file, are editable after upload too -
+// the user fills them in later without having to re-upload the package.
 function openEditNotes(release) {
   editNotesForm.value = {
     releaseId: release.id,
@@ -481,17 +481,17 @@ async function saveNotes() {
   }
 }
 
-// Mora se poklopiti sa BatchCreateJobSchema.agentIds max u
-// backend/dtos/agentJobs.dto.js - deli veće ciljne grupe u više batch
-// zahteva umesto da jedan pukne na limitu.
+// Must match BatchCreateJobSchema.agentIds max in
+// backend/dtos/agentJobs.dto.js - splits larger target groups into several batch
+// requests instead of one failing at the limit.
 const BATCH_CHUNK_SIZE = 500
 
-// force_reinstall_agent ne izlazi na generički "Nova komanda" dropdown
-// (isti obrazac kao start_vnc_bridge) - ovde se šalje direktno, ka SVIM
-// aktivnim agentima u grupama koje release cilja, sa payload-om već
-// popunjenim iz podataka release-a (releaseId/version/sha256) - agent
-// preuzima preko postojeće /update/download/:releaseId rute, bez potrebe
-// za novim backend endpoint-om.
+// force_reinstall_agent doesn't appear in the generic "Nova komanda" (new command) dropdown
+// (same pattern as start_vnc_bridge) - here it's sent directly, to ALL
+// active agents in the groups the release targets, with the payload already
+// filled from the release data (releaseId/version/sha256) - the agent
+// downloads via the existing /update/download/:releaseId route, without needing
+// a new backend endpoint.
 async function forceReinstall(release) {
   if (!release.deploymentGroups.length) {
     showToast(t('releases.errorNoGroupTargeted'), { kind: 'error', duration: 3000 })
@@ -542,11 +542,11 @@ async function forceReinstall(release) {
 const diskFiles = ref([])
 const loadingDiskFiles = ref(false)
 
-// Read-only uvid u ono što je STVARNO na disku (uploads/agent-releases),
-// nezavisno od agent_releases tabele iznad - korisno da se uoči
-// neusklađenost (fajl ručno obrisan mimo aplikacije, ili "osirotela"
-// datoteka bez odgovarajućeg reda u bazi). Namerno bez upload/delete -
-// izmene idu isključivo kroz formu iznad da baza ostane izvor istine.
+// Read-only view of what is ACTUALLY on disk (uploads/agent-releases),
+// independent of the agent_releases table above - useful for spotting
+// drift (a file deleted by hand outside the app, or an "orphaned"
+// file without a matching DB row). Deliberately no upload/delete -
+// changes go exclusively through the form above so the DB stays the source of truth.
 async function fetchDiskFiles() {
   loadingDiskFiles.value = true
   try {

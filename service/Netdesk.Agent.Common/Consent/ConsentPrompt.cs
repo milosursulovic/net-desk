@@ -6,26 +6,26 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Consent
 {
     /// <summary>
-    /// Prozor za eksplicitni pristanak korisnika na radnoj stanici PRE
-    /// preuzimanja ekrana (akt o bezbednosti informacionih sistema: zabrana
-    /// samoinicijativnog preuzimanja ekrana). Servis radi kao LocalSystem u
-    /// Session 0 i nema sopstveni desktop, pa se prozor ne sme praviti obicnim
-    /// MessageBox-om (pojavio bi se na nevidljivom Session 0 desktopu). Umesto
-    /// toga koristi se WTSSendMessageW, koji prikazuje modalni dijalog na
-    /// desktopu AKTIVNE KONZOLNE sesije (prijavljeni lekar/sestra) i sinhrono
-    /// vraca koje je dugme kliknuto - ciste Session 0 -> interaktivna sesija
-    /// komunikacije, bez potrebe za zasebnim procesom u korisnickoj sesiji.
+    /// Dialog for the explicit consent of the user at the workstation BEFORE
+    /// the screen is captured (information-security act: ban on
+    /// unsolicited screen capture). The service runs as LocalSystem in
+    /// Session 0 and has no desktop of its own, so the dialog must not be created with a plain
+    /// MessageBox (it would appear on the invisible Session 0 desktop). Instead,
+    /// WTSSendMessageW is used, which shows a modal dialog on the
+    /// desktop of the ACTIVE CONSOLE session (the signed-in doctor/nurse) and synchronously
+    /// returns which button was clicked - clean Session 0 -> interactive session
+    /// communication, with no need for a separate process in the user session.
     ///
-    /// Ime odobravaoca = korisnicko ime aktivne konzolne sesije
-    /// (WTSQuerySessionInformation), bez kucanja - poklapa se sa zahtevom da
-    /// "lekar ili sestra na radnoj stanici aktivno kliknu" na odobrenje.
+    /// Approver name = the username of the active console session
+    /// (WTSQuerySessionInformation), without typing - this matches the requirement that
+    /// "the doctor or nurse at the workstation actively clicks" to approve.
     /// </summary>
     public static class ConsentPrompt
     {
         public struct Result
         {
-            // "granted" | "denied" | "timeout" | "unavailable" - poklapa se sa
-            // consent_status ENUM na backend-u (VncConsentSchema).
+            // "granted" | "denied" | "timeout" | "unavailable" - matches the
+            // consent_status ENUM on the backend (VncConsentSchema).
             public string ConsentStatus;
             public string ApproverUsername;
         }
@@ -37,9 +37,9 @@ namespace NetdeskAgent.Common.Consent
             "beleži (ko je inicirao, ko je odobrio, vreme, IP i MAC adrese).\n\n" +
             "Da li odobravate preuzimanje vašeg ekrana?";
 
-        // MessageBox stilovi (Winuser.h). DEFBUTTON2 -> podrazumevano "Ne", da
-        // slučajan Enter ne odobri sesiju. SYSTEMMODAL+TOPMOST+SETFOREGROUND ->
-        // prozor iskače ispred svega i zahteva odgovor.
+        // MessageBox styles (Winuser.h). DEFBUTTON2 -> "No" by default, so an
+        // accidental Enter doesn't approve the session. SYSTEMMODAL+TOPMOST+SETFOREGROUND ->
+        // the dialog pops up in front of everything and demands an answer.
         private const uint MB_YESNO = 0x00000004;
         private const uint MB_ICONWARNING = 0x00000030;
         private const uint MB_DEFBUTTON2 = 0x00000100;
@@ -57,7 +57,7 @@ namespace NetdeskAgent.Common.Consent
         private static readonly IntPtr WTS_CURRENT_SERVER_HANDLE = IntPtr.Zero;
         private const uint INVALID_SESSION = 0xFFFFFFFF;
 
-        /// <param name="timeoutSeconds">Koliko dugo prozor čeka odgovor pre nego što se tretira kao "timeout".</param>
+        /// <param name="timeoutSeconds">How long the dialog waits for an answer before it's treated as a "timeout".</param>
         public static Result Ask(int timeoutSeconds)
         {
             uint sessionId = WTSGetActiveConsoleSessionId();
@@ -70,8 +70,8 @@ namespace NetdeskAgent.Common.Consent
             string approver = BuildApproverName((int)sessionId);
             if (string.IsNullOrEmpty(approver))
             {
-                // Aktivna konzolna sesija bez prijavljenog korisnika (npr. logon
-                // ekran) - niko ne može da odobri, ne prikazuj prozor.
+                // An active console session with no signed-in user (e.g. the logon
+                // screen) - nobody can approve, don't show the dialog.
                 FileLogger.Warn("Pristanak za VNC: nema prijavljenog korisnika na konzolnoj sesiji - preuzimanje odbijeno.");
                 return new Result { ConsentStatus = "unavailable", ApproverUsername = null };
             }
@@ -86,7 +86,7 @@ namespace NetdeskAgent.Common.Consent
                 style,
                 timeoutSeconds,
                 out response,
-                true /* bWait - blokira dok korisnik ne odgovori ili ne istekne timeout */);
+                true /* bWait - blocks until the user answers or the timeout expires */);
 
             if (!ok)
             {

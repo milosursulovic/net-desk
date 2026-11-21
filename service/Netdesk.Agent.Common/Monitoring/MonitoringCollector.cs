@@ -8,11 +8,11 @@ using NetdeskAgent.Common.Models;
 namespace NetdeskAgent.Common.Monitoring
 {
     /// <summary>
-    /// Prikuplja MonitoringData za heartbeat payload (spec 11.8). Svaki signal
-    /// je best-effort - AV/BitLocker/temperatura posebno variraju po OEM-u/
-    /// ediciji Windows-a i očekivano je da ponekad ne uspeju.
-    /// AntivirusStatus/FirewallStatus vraćaju samo "enabled"/"disabled"/"unknown"
-    /// (dogovor sa backend alerting pravilima - videti backend memoriju).
+    /// Collects MonitoringData for the heartbeat payload (spec 11.8). Every signal
+    /// is best-effort - AV/BitLocker/temperature in particular vary by OEM/
+    /// Windows edition and are expected to fail sometimes.
+    /// AntivirusStatus/FirewallStatus return only "enabled"/"disabled"/"unknown"
+    /// (an agreement with the backend alerting rules - see the backend memory).
     /// </summary>
     public static class MonitoringCollector
     {
@@ -157,9 +157,9 @@ namespace NetdeskAgent.Common.Monitoring
             }
             catch (Exception ex)
             {
-                // root\SecurityCenter2 postoji od Vista/Win7 nadalje, ali upit
-                // može da otkaže ako nema registrovanog AV proizvoda ili je
-                // servis nedostupan.
+                // root\SecurityCenter2 exists from Vista/Win7 onwards, but the query
+                // can fail if there's no registered AV product or the
+                // service is unavailable.
                 FileLogger.Warn("Antivirus status očitavanje neuspešno: " + ex.Message);
             }
 
@@ -168,20 +168,20 @@ namespace NetdeskAgent.Common.Monitoring
 
         private static bool IsRealTimeProtectionEnabled(int productState)
         {
-            // Microsoft ovo polje ne dokumentuje zvanično, ali je uveliko
-            // ustaljeno tumačenje (sysadmin zajednica): srednji bajt WMI
-            // SecurityCenter2 productState vrednosti nosi status real-time
-            // zaštite - 0x10/0x11 = uključena. Best-effort heuristika.
+            // Microsoft doesn't officially document this field, but it's a widely
+            // established interpretation (the sysadmin community): the middle byte of the WMI
+            // SecurityCenter2 productState value carries the real-time
+            // protection status - 0x10/0x11 = enabled. A best-effort heuristic.
             var middleByte = (productState >> 8) & 0xFF;
             return middleByte == 0x10 || middleByte == 0x11;
         }
 
         /// <summary>
-        /// Čita iz registry-ja (ne 'netsh advfirewall show ... state') jer je
-        /// netsh tekstualni izlaz lokalizovan (npr. na srpskom Windows-u "ON"/
-        /// "OFF" i "State" ne bi bili ti stringovi) - registry vrednost je
-        /// stabilna nezavisno od jezika sistema. Proverava StandardProfile kao
-        /// reprezentativan profil (najčešći slučaj za mašine van domena).
+        /// Reads from the registry (not 'netsh advfirewall show ... state') because
+        /// netsh's text output is localized (e.g. on Serbian Windows "ON"/
+        /// "OFF" and "State" wouldn't be those strings) - the registry value is
+        /// stable regardless of the system language. Checks StandardProfile as the
+        /// representative profile (the most common case for machines outside a domain).
         /// </summary>
         private static string CollectFirewallStatus()
         {
@@ -231,9 +231,9 @@ namespace NetdeskAgent.Common.Monitoring
             }
             catch (Exception ex)
             {
-                // Namespace ne postoji ako BitLocker feature nije instaliran,
-                // ili upit zahteva prava koja ni LocalSystem ponekad nema na
-                // starijim/Home edicijama - očekivano na mnogim mašinama.
+                // The namespace doesn't exist if the BitLocker feature isn't installed,
+                // or the query requires rights that even LocalSystem sometimes lacks on
+                // older/Home editions - expected on many machines.
                 FileLogger.Warn("BitLocker status očitavanje neuspešno: " + ex.Message);
             }
 
@@ -262,9 +262,9 @@ namespace NetdeskAgent.Common.Monitoring
             }
             catch (Exception ex)
             {
-                // MSAcpi_ThermalZoneTemperature često nije implementiran od
-                // strane OEM-a - potpuno očekivano da ovo ne uspe na mnogim
-                // mašinama (posebno desktop/server bez ACPI termalne zone).
+                // MSAcpi_ThermalZoneTemperature is often not implemented by
+                // the OEM - it's entirely expected for this to fail on many
+                // machines (especially desktops/servers without an ACPI thermal zone).
                 FileLogger.Warn("Temperatura očitavanje neuspešna (očekivano na mnogim mašinama): " + ex.Message);
             }
 

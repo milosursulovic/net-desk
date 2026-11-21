@@ -8,32 +8,32 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.ProcessMonitor
 {
     /// <summary>
-    /// Periodično poredi trenutno pokrenute procese sa watchlist-om
-    /// (podrazumevano portable remote-access alati poput AnyDesk/TeamViewer -
-    /// vidi AgentSettings.WatchedProcessNames) - namerno OBIČNA periodična
-    /// provera (Process.GetProcesses()), NE ETW process-start/stop tracing:
-    /// process-start ETW zahteva kernel-nivo sesiju koja je singleton na
-    /// mašini (rizik sudara sa drugim alatima) i verovatno nije dostupna na
-    /// Windows 7 (deo flote) u ovoj formi, dok obična provera radi identično
-    /// na svim verzijama Windows-a bez ikakvog dodatnog rizika. Teorijski
-    /// može propustiti proces koji radi kraće od jednog ciklusa, što nije
-    /// realan scenario za dugotrajnu remote-access sesiju.
+    /// Periodically compares the currently running processes against the watchlist
+    /// (by default portable remote-access tools like AnyDesk/TeamViewer -
+    /// see AgentSettings.WatchedProcessNames) - deliberately a PLAIN periodic
+    /// check (Process.GetProcesses()), NOT ETW process-start/stop tracing:
+    /// process-start ETW requires a kernel-level session that is a singleton on the
+    /// machine (risk of colliding with other tools) and is probably not available on
+    /// Windows 7 (part of the fleet) in this form, while a plain check works identically
+    /// on all Windows versions without any additional risk. In theory it
+    /// can miss a process that runs for less than one cycle, which isn't a
+    /// realistic scenario for a long-running remote-access session.
     ///
-    /// Za razliku od DnsQueryCollector-a, nema pozadinske niti/agregacionog
-    /// rečnika ovde - svaki poziv Scan() JESTE ceo posao (jedan snapshot),
-    /// a agregacija broja detekcija KROZ VREME (koliko puta je proces
-    /// zatečen živ preko svih ciklusa) radi se na backend-u (ON DUPLICATE KEY
-    /// UPDATE), isto kao computer_dns_queries.
+    /// Unlike DnsQueryCollector, there's no background thread/aggregation
+    /// dictionary here - each Scan() call IS the whole job (one snapshot),
+    /// and the aggregation of the detection count OVER TIME (how many times the process was
+    /// found alive across all cycles) is done on the backend (ON DUPLICATE KEY
+    /// UPDATE), the same as computer_dns_queries.
     /// </summary>
     public static class ProcessWatchCollector
     {
         /// <summary>
-        /// killMatches=true ubija SVAKU instancu (ne samo jednu po imenu) svakog
-        /// pokrenutog procesa čije ime pogađa watchlist - kontejnment zahteva
-        /// gašenje svih instanci, ne samo prve na koju se naiđe (npr. TeamViewer
-        /// tipično ima i tv_w32/tv_x64 GUI proces i TeamViewer_Service.exe
-        /// istovremeno). Kill je best-effort po instanci - greška na JEDNOJ
-        /// instanci (npr. access denied) ne sme da spreči pokušaj na ostalima.
+        /// killMatches=true kills EVERY instance (not just one per name) of every
+        /// running process whose name matches the watchlist - containment requires
+        /// shutting down all instances, not just the first one encountered (e.g. TeamViewer
+        /// typically has both a tv_w32/tv_x64 GUI process and TeamViewer_Service.exe
+        /// at the same time). The kill is best-effort per instance - an error on ONE
+        /// instance (e.g. access denied) must not prevent the attempt on the others.
         /// </summary>
         public static List<ProcessDetectionItem> Scan(IEnumerable<string> watchedNames, bool killMatches = false)
         {
@@ -54,8 +54,8 @@ namespace NetdeskAgent.Common.ProcessMonitor
             {
                 try
                 {
-                    // Process.ProcessName ne uključuje ".exe" ekstenziju - watchlist
-                    // unosi su takođe bez ekstenzije (npr. "anydesk", "teamviewer").
+                    // Process.ProcessName doesn't include the ".exe" extension - watchlist
+                    // entries are also without the extension (e.g. "anydesk", "teamviewer").
                     var name = process.ProcessName;
                     if (!watchlist.Any(w => name.ToLowerInvariant().Contains(w)))
                     {
@@ -80,13 +80,13 @@ namespace NetdeskAgent.Common.ProcessMonitor
                 }
                 catch
                 {
-                    // Proces se mogao ugasiti između enumeracije i čitanja imena -
-                    // preskoči taj jedan proces, ne sme da obori ceo sken.
+                    // The process may have exited between enumeration and reading the name -
+                    // skip that one process, it must not bring down the whole scan.
                 }
                 finally
                 {
-                    // Process drži native handle - mora se Dispose-ovati, poziva se
-                    // trajno tokom života servisa.
+                    // Process holds a native handle - it must be Disposed, this is called
+                    // continuously for the lifetime of the service.
                     process.Dispose();
                 }
             }

@@ -1,33 +1,33 @@
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstvena kopija (ne referenca na Netdesk.Agent.Common.Manager.
-    /// ManagerCommand) - polja MORAJU ostati u istom obliku/nazivima kao
-    /// agent-ova verzija (service/Netdesk.Agent.Common/Manager/ManagerCommand.cs),
-    /// pošto je ovo JSON ugovor preko mailbox fajla (manager-command.json),
-    /// ne deljena klasa. Plain PascalCase (bez [JsonProperty]) i dalje
-    /// namerno - ovo nikad ne prelazi HTTP granicu ka Node backend-u.
+    /// Its own copy (not a reference to Netdesk.Agent.Common.Manager.
+    /// ManagerCommand) - the fields MUST keep the same shape/names as the
+    /// agent's version (service/Netdesk.Agent.Common/Manager/ManagerCommand.cs),
+    /// since this is a JSON contract via the mailbox file (manager-command.json),
+    /// not a shared class. Plain PascalCase (no [JsonProperty]) is still
+    /// deliberate - this never crosses the HTTP boundary to the Node backend.
     /// </summary>
     public class ManagerCommand
     {
         public string CommandId { get; set; }
         public string IssuedAtUtc { get; set; }
 
-        /// <summary>"control_service" ili "install_files".</summary>
+        /// <summary>"control_service" or "install_files".</summary>
         public string Action { get; set; }
 
         // --- control_service polja ---
         public string ServiceName { get; set; }
 
-        /// <summary>"start", "stop" ili "restart".</summary>
+        /// <summary>"start", "stop" or "restart".</summary>
         public string ServiceAction { get; set; }
 
-        // --- install_files polja - proizvoljne putanje, ne hardkodovane na
-        // bilo koji fiksni install layout. Namerno NEMA BackupDir/rollback -
-        // stop → obriši InstallDir potpuno → kopiraj StagingDir → start (vidi
+        // --- install_files fields - arbitrary paths, not hardcoded to
+        // any fixed install layout. Deliberately NO BackupDir/rollback -
+        // stop → delete InstallDir completely → copy StagingDir → start (see
         // ManagerWorker.InstallFilesAsync). ServerBaseUrl/AgentId/ApiKey/
-        // FromVersion/ToVersion su OPCIONI - ako ServerBaseUrl nije popunjen,
-        // Manager ne pokušava da javi rezultat serveru. ---
+        // FromVersion/ToVersion are OPTIONAL - if ServerBaseUrl isn't filled in,
+        // the Manager doesn't try to report the result to the server. ---
         public string StagingDir { get; set; }
         public string InstallDir { get; set; }
         public string ServerBaseUrl { get; set; }

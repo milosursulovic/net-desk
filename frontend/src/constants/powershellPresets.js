@@ -1,9 +1,9 @@
-// Preset PowerShell skripte za "run_powershell_script" job - popunjavaju
-// jobForm.script koji korisnik može slobodno da izmeni pre slanja (tako je
-// "custom" opcija besplatna: prazan izbor ili izmena preseta). Namerno samo
-// dijagnostika i niskorizično čišćenje - ništa destruktivno (bez format,
-// bez brisanja korisničkih fajlova/profila, bez menjanja mrežne/domain
-// konfiguracije).
+// Preset PowerShell scripts for the "run_powershell_script" job - they fill
+// jobForm.script, which the user can freely edit before sending (so the
+// "custom" option comes for free: an empty choice or an edited preset). Deliberately only
+// diagnostics and low-risk cleanup - nothing destructive (no format,
+// no deleting user files/profiles, no changing network/domain
+// configuration).
 export const POWERSHELL_PRESETS = [
   {
     id: 'test-script',
@@ -40,18 +40,18 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'disable-browser-secure-dns',
     label: 'Isključi Secure DNS (DoH) u Chrome/Edge/Brave/Firefox',
-    // Bez #requires -RunAsAdministrator (originalna verzija skripte ga je
-    // imala) - to je parse-time provera VAN try/catch-a, pa bi eventualni
-    // neuspeh te provere zaobišao skriptin sopstveni error-handling i javio
-    // se kao sirova PowerShell greška umesto lepe "ERROR: ..." poruke. Agent
-    // pokreće run_powershell_script jobove pod LocalSystem nalogom
-    // (JobExecutor.cs), koji već ima puna prava nad HKLM bez obzira na tu
-    // proveru - dodavala bi rizik bez stvarne dodatne zaštite u ovom
-    // kontekstu (dispatch je već admin-only na nivou same aplikacije).
-    // Registry putanje/vrednosti su stvarne, dokumentovane enterprise
-    // politike svakog browsera (Chromium trojka deli DnsOverHttpsMode šemu,
-    // Firefox ima svoju DNSOverHTTPS/Enabled+Locked šemu) - browseri
-    // moraju biti restartovani da bi promena stvarno stupila na snagu.
+    // No #requires -RunAsAdministrator (the original version of the script
+    // had it) - that's a parse-time check OUTSIDE the try/catch, so a potential
+    // failure of that check would bypass the script's own error handling and surface
+    // as a raw PowerShell error instead of a clean "ERROR: ..." message. The agent
+    // runs run_powershell_script jobs under the LocalSystem account
+    // (JobExecutor.cs), which already has full rights over HKLM regardless of that
+    // check - it would add risk without any real extra protection in this
+    // context (dispatch is already admin-only at the application level itself).
+    // The registry paths/values are the real, documented enterprise
+    // policies of each browser (the Chromium trio shares the DnsOverHttpsMode schema,
+    // Firefox has its own DNSOverHTTPS/Enabled+Locked schema) - browsers
+    // must be restarted for the change to actually take effect.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       '\n' +
@@ -121,16 +121,16 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'ram-modules',
     label: 'Prikaži RAM module (kapacitet, tip, brzina)',
-    // Bez dijakritika u samom PS stringu/izlazu (isto ograničenje kao ostali
-    // preseti ovde) - JobExecutor.cs piše skriptu preko File.WriteAllText BEZ
-    // eksplicitnog encoding-a (BOM-less UTF-8 .NET default), a Windows
-    // PowerShell 5.1 bez BOM-a čita .ps1 po sistemskoj ANSI kodnoj strani, ne
-    // UTF-8 - dijakritici (č/ć/đ/š/ž) bi se pretvorili u đubre na izlazu.
+    // No diacritics in the PS string/output itself (the same limitation as the other
+    // presets here) - JobExecutor.cs writes the script via File.WriteAllText WITHOUT
+    // an explicit encoding (the BOM-less UTF-8 .NET default), and Windows
+    // PowerShell 5.1 reads a BOM-less .ps1 using the system ANSI code page, not
+    // UTF-8 - diacritics (č/ć/đ/š/ž) would turn into garbage in the output.
     //
-    // $rezultati = foreach (...) {...} (ne bareč foreach koji implicitno
-    // ispisuje u pipeline) + eksplicitan Format-Table -AutoSize | Out-String
-    // na kraju - isti obrazac kao ostali listing preseti ovde (npr.
-    // installed-printers iznad), radi konzistentnog, čitljivog job output-a.
+    // $rezultati = foreach (...) {...} (not a bare foreach that implicitly
+    // writes to the pipeline) + an explicit Format-Table -AutoSize | Out-String
+    // at the end - the same pattern as the other listing presets here (e.g.
+    // installed-printers above), for consistent, readable job output.
     script:
       '$ramModuli = Get-CimInstance -ClassName Win32_PhysicalMemory\n' +
       '\n' +
@@ -167,11 +167,11 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'read-agent-log-full',
     label: 'Pročitaj ceo sadržaj agent.log',
-    // File.ReadAllText (ne Get-Content) namerno - agent.log piše FileLogger.cs
-    // preko File.AppendAllText bez eksplicitnog encoding-a, što je UTF-8 BEZ
-    // BOM-a po .NET default-u. Get-Content u Windows PowerShell 5.1 pravilno
-    // čita i UTF-8-bez-BOM-a, ali File.ReadAllText(path, Encoding.UTF8) je
-    // eksplicitan i ne zavisi od auto-detekcije.
+    // File.ReadAllText (not Get-Content) on purpose - agent.log is written by FileLogger.cs
+    // via File.AppendAllText without an explicit encoding, which is UTF-8 WITHOUT
+    // a BOM by the .NET default. Get-Content in Windows PowerShell 5.1 correctly
+    // reads UTF-8-without-BOM too, but File.ReadAllText(path, Encoding.UTF8) is
+    // explicit and doesn't depend on auto-detection.
     script:
       '$logPath = "$env:ProgramData\\NetdeskAgent\\logs\\agent.log"\n' +
       'if (Test-Path $logPath) {\n' +
@@ -183,12 +183,12 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'read-agent-log-tail',
     label: 'Pročitaj poslednjih 100 linija agent.log',
-    // Get-Content -Tail (ne File.ReadAllText) namerno - agent.log na
-    // produkciji vremenom naraste, a ReadAllText bi morao da učita ceo fajl
-    // u memoriju samo da bi se na kraju uzelo poslednjih par linija.
-    // -Tail čita fajl unazad i zaustavlja se čim skupi traženi broj linija.
-    // -Encoding UTF8 eksplicitan iz istog razloga kao u punom read presetu
-    // (agent.log je UTF-8 bez BOM-a).
+    // Get-Content -Tail (not File.ReadAllText) on purpose - agent.log in
+    // production grows over time, and ReadAllText would have to load the whole file
+    // into memory just to take the last few lines at the end.
+    // -Tail reads the file backwards and stops as soon as it has collected the requested number of lines.
+    // -Encoding UTF8 is explicit for the same reason as in the full read preset
+    // (agent.log is UTF-8 without a BOM).
     script:
       '$logPath = "$env:ProgramData\\NetdeskAgent\\logs\\agent.log"\n' +
       'if (Test-Path $logPath) {\n' +
@@ -200,10 +200,10 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'read-agent-config',
     label: 'Pročitaj sadržaj config.json',
-    // Isti razlog kao agent.log presetima iznad - File.ReadAllText sa
-    // eksplicitnim UTF8 (bez BOM-a), ne Get-Content, da se ne oslanja na
-    // auto-detekciju encoding-a (update-agent-config-key preset ispod piše
-    // config.json na isti način).
+    // Same reason as the agent.log presets above - File.ReadAllText with
+    // explicit UTF8 (no BOM), not Get-Content, so it doesn't rely on
+    // encoding auto-detection (the update-agent-config-key preset below writes
+    // config.json the same way).
     script:
       '$configPath = "$env:ProgramData\\NetdeskAgent\\config.json"\n' +
       'if (Test-Path $configPath) {\n' +
@@ -215,12 +215,12 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'list-agent-service-folder',
     label: 'Prikaži sadržaj foldera NetdeskAgent\\Service',
-    // Diagnostika stvarno instaliranog stanja na target mašini (fajlovi,
-    // veličine, datumi izmene) - bez potrebe za RDP/AnyDesk pristupom,
-    // korisno za poređenje sa DEPLOYMENT.md spiskom očekivanih fajlova
-    // (npr. da li je stvarno stigla nova verzija posle auto-update-a, ili
-    // da li fali neki DLL). -Recurse jer amd64\/x86\ podfolderi (TraceEvent
-    // native helperi) takođe žive unutar Service\.
+    // Diagnostics of the actually installed state on the target machine (files,
+    // sizes, modification dates) - without needing RDP/AnyDesk access,
+    // useful for comparing against the DEPLOYMENT.md list of expected files
+    // (e.g. whether the new version really arrived after an auto-update, or
+    // whether some DLL is missing). -Recurse because the amd64\/x86\ subfolders (TraceEvent
+    // native helpers) also live inside Service\.
     script:
       '$path = "C:\\Program Files\\NetdeskAgent\\Service"\n' +
       'if (Test-Path $path) {\n' +
@@ -234,26 +234,26 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'update-agent-config-key',
     label: 'Upiši key/value u config.json',
-    // Generička skripta, NE hardkodovana na jedan konkretan ključ - $key/
-    // $value na vrhu su namerno ono što se menja pre slanja (npr. za neko
-    // buduće novo AgentSettings.cs polje), ostatak skripte se ne dira.
-    // Namerno BEZ restarta servisa - to se radi posebno (drugom skriptom/
-    // preset-om), ne ovde.
+    // A generic script, NOT hardcoded to one specific key - $key/
+    // $value at the top are deliberately what gets changed before sending (e.g. for some
+    // future new AgentSettings.cs field), the rest of the script stays untouched.
+    // Deliberately WITHOUT a service restart - that's done separately (with another script/
+    // preset), not here.
     //
-    // VAŽNO - tip vrednosti zavisi od toga da li je $value pod navodnicima:
-    //   $value = 300        -> upisuje se kao BROJ u JSON (300)
-    //   $value = "300"      -> upisuje se kao STRING u JSON ("300")
-    //   $value = $true      -> upisuje se kao BOOLEAN u JSON (true)
-    // Poklopi ovo sa stvarnim tipom polja u AgentSettings.cs (npr. `int
-    // DnsLogIntervalSeconds` očekuje broj, ne string pod navodnicima).
+    // IMPORTANT - the value type depends on whether $value is quoted:
+    //   $value = 300        -> written as a NUMBER in the JSON (300)
+    //   $value = "300"      -> written as a STRING in the JSON ("300")
+    //   $value = $true      -> written as a BOOLEAN in the JSON (true)
+    // Match this to the actual field type in AgentSettings.cs (e.g. `int
+    // DnsLogIntervalSeconds` expects a number, not a quoted string).
     //
-    // Add-Member -Force namerno - radi i ako ključ već postoji u config.json
-    // (prepiše ga) i ako ne postoji (doda ga bez greške - bez -Force,
-    // Add-Member baca "Member already exists" ako ključ VEĆ postoji).
+    // Add-Member -Force on purpose - works both if the key already exists in config.json
+    // (overwrites it) and if it doesn't (adds it without an error - without -Force,
+    // Add-Member throws "Member already exists" if the key ALREADY exists).
     //
-    // File.ReadAllText/WriteAllText sa eksplicitnim UTF8 (bez BOM-a na
-    // upisu) - isti razlog kao agent.log preset: eksplicitno, ne oslanja se
-    // na auto-detekciju encoding-a.
+    // File.ReadAllText/WriteAllText with explicit UTF8 (no BOM on
+    // write) - same reason as the agent.log preset: explicit, doesn't rely
+    // on encoding auto-detection.
     script:
       '# --- Izmeni ova dva reda pre slanja ---\n' +
       '$key = "DnsLogIntervalSeconds"\n' +
@@ -276,20 +276,20 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'update-agent-config-keys',
     label: 'Upiši više key/value parova u config.json',
-    // Isto kao update-agent-config-key iznad, samo za VIŠE ključeva
-    // odjednom - $updates hashtable na vrhu je ono što se menja pre slanja
-    // (dodaj/ukloni parove po potrebi), ostatak skripte se ne dira.
+    // Same as update-agent-config-key above, just for SEVERAL keys
+    // at once - the $updates hashtable at the top is what gets changed before sending
+    // (add/remove pairs as needed), the rest of the script stays untouched.
     //
-    // VAŽNO - tip vrednosti u hashtable-u isto određuje JSON tip kao u
-    // pojedinačnom preset-u iznad:
-    //   300        -> upisuje se kao BROJ u JSON
-    //   "300"      -> upisuje se kao STRING u JSON
-    //   $true      -> upisuje se kao BOOLEAN u JSON
-    // Poklopi svaku vrednost sa stvarnim tipom tog polja u AgentSettings.cs.
+    // IMPORTANT - the value type in the hashtable determines the JSON type the same way as in
+    // the single-key preset above:
+    //   300        -> written as a NUMBER in the JSON
+    //   "300"      -> written as a STRING in the JSON
+    //   $true      -> written as a BOOLEAN in the JSON
+    // Match each value to the actual type of that field in AgentSettings.cs.
     //
-    // Add-Member -Force po ključu (ista logika kao pojedinačni preset,
-    // ponovljena za svaki par u petlji) - radi i ako ključ već postoji
-    // (prepiše ga) i ako ne postoji (doda ga bez greške).
+    // Add-Member -Force per key (the same logic as the single-key preset,
+    // repeated for each pair in the loop) - works both if the key already exists
+    // (overwrites it) and if it doesn't (adds it without an error).
     script:
       '# --- Izmeni hashtable ispod pre slanja (dodaj/ukloni koliko treba parova) ---\n' +
       '$updates = @{\n' +
@@ -317,21 +317,21 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'uninstall-program',
     label: '⚠️ Deinstaliraj program (po nazivu)',
-    // Destruktivno i teško povratno (treba ponovna instalacija) - proveri
-    // $appName i testiraj na JEDNOM agentu pre batch slanja.
+    // Destructive and hard to reverse (requires reinstalling) - check
+    // $appName and test on ONE agent before a batch send.
     //
-    // Traži po DisplayName (deo imena je dovoljan) kroz oba uninstall
-    // registry čvora (64-bit i 32-bit-na-64-bit/"WOW6432Node") - HKCU se
-    // namerno ne pretražuje, agent radi kao LocalSystem u Session 0 bez
-    // učitanog korisničkog hive-a, pa po-korisnika instalirani programi
-    // (retko, ali postoje) ionako ne bi bili vidljivi/uklonjivi odavde.
+    // Searches by DisplayName (part of the name is enough) through both uninstall
+    // registry nodes (64-bit and 32-bit-on-64-bit/"WOW6432Node") - HKCU is
+    // deliberately not searched, the agent runs as LocalSystem in Session 0 without
+    // a loaded user hive, so per-user installed programs
+    // (rare, but they exist) wouldn't be visible/removable from here anyway.
     //
-    // Prioritet metode gašenja:
-    //   1) QuietUninstallString ako ga instalater sam publikuje - najpouzdanije
-    //   2) MSI (UninstallString sadrži MsiExec.exe) - rekonstruiše se u
-    //      potpuno tih msiexec /x {GUID} /quiet /norestart poziv
-    //   3) Nepoznat EXE deinstaler bez tihe varijante - pokrene se kako jeste,
-    //      NIJE garantovano tiho (može tražiti klik) - proveri ručno posle.
+    // Uninstall method priority:
+    //   1) QuietUninstallString if the installer publishes one itself - most reliable
+    //   2) MSI (UninstallString contains MsiExec.exe) - rebuilt into a
+    //      fully silent msiexec /x {GUID} /quiet /norestart call
+    //   3) An unknown EXE uninstaller without a silent variant - run as is,
+    //      NOT guaranteed to be silent (may ask for a click) - check by hand afterwards.
     script:
       '# --- Izmeni ovaj red pre slanja (deo imena programa je dovoljan) ---\n' +
       '$appName = "Ime programa"\n' +
@@ -383,16 +383,16 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'delete-service',
     label: '⚠️ Obriši Windows servis (po nazivu)',
-    // Destruktivno i nepovratno (treba ponovna instalacija softvera koji ga
-    // je registrovao) - proveri $serviceName i testiraj na JEDNOM agentu
-    // pre batch slanja. Zaustavlja servis prvo ako radi (sc.exe delete na
-    // servisu koji radi ga samo markira "pending deletion" dok se ne
-    // zaustavi i svi handle-ovi zatvore, pa je čist zaustavi-pa-obriši
-    // pouzdaniji).
+    // Destructive and irreversible (requires reinstalling the software that
+    // registered it) - check $serviceName and test on ONE agent
+    // before a batch send. Stops the service first if it's running (sc.exe delete on
+    // a running service only marks it "pending deletion" until it
+    // stops and all handles are closed, so a clean stop-then-delete is
+    // more reliable).
     //
-    // sc.exe delete (ne Remove-Service cmdlet) namerno - Remove-Service
-    // postoji tek od PowerShell 6+, a agent cilja i starije Windows/
-    // PowerShell verzije (5.1 i niže, uključujući Windows 7).
+    // sc.exe delete (not the Remove-Service cmdlet) on purpose - Remove-Service
+    // only exists since PowerShell 6+, and the agent also targets older Windows/
+    // PowerShell versions (5.1 and below, including Windows 7).
     script:
       '# --- Izmeni ovaj red pre slanja ---\n' +
       '$serviceName = "Naziv servisa"\n' +
@@ -427,19 +427,19 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'delete-driver',
     label: '⚠️ Obriši drajver uređaja (po nazivu)',
-    // Destruktivno i teško povratno (bez originalnog instalacionog paketa
-    // teško se vraća) - proveri $driverName i testiraj na JEDNOM agentu pre
-    // batch slanja.
+    // Destructive and hard to reverse (hard to restore without the original install
+    // package) - check $driverName and test on ONE agent before a
+    // batch send.
     //
-    // Traži po DeviceName (deo imena je dovoljan) kroz Win32_PnPSignedDriver
-    // (isti WMI izvor koji koristi DriverCollector.cs na agentu za PDSU
-    // "Drajveri" tab), uzima InfName (npr. "oem12.inf") i briše ga preko
-    // pnputil-a - deinstalira i sam uređaj (/uninstall), ne samo drajver
-    // paket iz store-a.
+    // Searches by DeviceName (part of the name is enough) through Win32_PnPSignedDriver
+    // (the same WMI source DriverCollector.cs on the agent uses for the PDSU
+    // "Drajveri" (drivers) tab), takes InfName (e.g. "oem12.inf") and deletes it via
+    // pnputil - also uninstalls the device itself (/uninstall), not just the driver
+    // package from the store.
     //
-    // pnputil /delete-driver ... /uninstall /force je Windows 10 1607+
-    // sintaksa - na Windows 7/8 pnputil ima drugačiji, ograničeniji skup
-    // opcija (nema /uninstall), pa ovaj preset tamo neće raditi kako treba.
+    // pnputil /delete-driver ... /uninstall /force is Windows 10 1607+
+    // syntax - on Windows 7/8 pnputil has a different, more limited set of
+    // options (no /uninstall), so this preset won't work properly there.
     script:
       '# --- Izmeni ovaj red pre slanja (deo naziva uredjaja je dovoljan) ---\n' +
       '$driverName = "Naziv uredjaja/drajvera"\n' +
@@ -477,29 +477,29 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'deploy-trusted-root-cert',
     label: 'Preuzmi i instaliraj CA sertifikat (Trusted Root)',
-    // Skida sertifikat sa servera (stavi .pem u backend/uploads/downloads/ -
-    // ta ruta je namerno bez auth-a, isti mehanizam kao za UltraVNC
-    // deployment zip-ove, vidi routes/index.js) i uvozi ga u Local Machine
-    // "Trusted Root Certification Authorities" store - agent radi kao
-    // LocalSystem, pa certutil -addstore bez -user cilja bas taj store
-    // (potvrđeno uživo).
+    // Downloads the certificate from the server (put the .pem into backend/uploads/downloads/ -
+    // that route is deliberately without auth, the same mechanism as for the UltraVNC
+    // deployment zips, see routes/index.js) and imports it into the Local Machine
+    // "Trusted Root Certification Authorities" store - the agent runs as
+    // LocalSystem, so certutil -addstore without -user targets exactly that store
+    // (confirmed live).
     //
-    // Namenjeno pre svega za UNAPRED distribuiranje novog mkcert CA root-a
-    // na flotu PRE nego što se server-side sertifikat rotira - tako se
-    // izbegava "chicken-and-egg" period kad agent ne veruje novom
-    // sertifikatu jer mu CA nikad nije uvezen (uzivo otkriven scenario).
+    // Intended primarily for distributing a new mkcert CA root to the fleet IN ADVANCE,
+    // BEFORE the server-side certificate is rotated - this
+    // avoids a "chicken-and-egg" period when the agent doesn't trust the new
+    // certificate because its CA was never imported (a scenario discovered live).
     //
-    // TLS 1.2 se eksplicitno forsira na OVAJ PowerShell proces - on je
-    // odvojen .NET runtime od samog agent servisa (agent to postavlja samo
-    // za sebe u NetdeskApiClient.cs), pa bez ovoga isti Windows 7 problem
-    // (TLS handshake ne uspeva) pogađa i sam download unutar ove skripte.
+    // TLS 1.2 is explicitly forced for THIS PowerShell process - it's a
+    // separate .NET runtime from the agent service itself (the agent sets this only
+    // for itself in NetdeskApiClient.cs), so without this the same Windows 7 problem
+    // (the TLS handshake fails) also hits the download inside this script.
     //
-    // Windows 7 mašine u floti idu preko netdesk.local (hosts unos), a
-    // Windows 10/11 direktno preko IP-a - sertifikat trenutno pokriva oba
-    // (SAN ima i DNS Name i IP Address), ali skripta ipak bira URL po OS
-    // verziji da prati isti obrazac po kom su agenti stvarno podešeni.
-    // Win32_OperatingSystem.Version za Windows 7 je "6.1.*" (Vista je 6.0,
-    // Windows 8/8.1 su 6.2/6.3, Windows 10 i 11 su oba "10.0.*").
+    // Windows 7 machines in the fleet go through netdesk.local (a hosts entry), while
+    // Windows 10/11 go directly via IP - the certificate currently covers both
+    // (the SAN has both a DNS Name and an IP Address), but the script still picks the URL by OS
+    // version to follow the same pattern the agents are actually configured with.
+    // Win32_OperatingSystem.Version for Windows 7 is "6.1.*" (Vista is 6.0,
+    // Windows 8/8.1 are 6.2/6.3, Windows 10 and 11 are both "10.0.*").
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
       '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
@@ -539,10 +539,10 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'deploy-intermediate-cert',
     label: 'Preuzmi i instaliraj CA sertifikat (Intermediate CA)',
-    // Isto kao 'deploy-trusted-root-cert', samo cilja Local Machine
-    // "Intermediate Certification Authorities" store (certutil naziv "CA")
-    // umesto "Trusted Root Certification Authorities" - vidi taj preset za
-    // puno objašnjenje TLS 1.2 forsiranja i OS-zavisnog URL-a.
+    // Same as 'deploy-trusted-root-cert', it just targets the Local Machine
+    // "Intermediate Certification Authorities" store (certutil name "CA")
+    // instead of "Trusted Root Certification Authorities" - see that preset for
+    // the full explanation of the TLS 1.2 forcing and the OS-dependent URL.
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
       '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
@@ -582,13 +582,13 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'check-trusted-root-cert',
     label: 'Proveri instaliran CA sertifikat (Trusted Root)',
-    // Read-only dijagnostika, pandan deploy-trusted-root-cert presetu -
-    // umesto labavog pretraživanja po nazivu (moglo bi pogoditi neki STARI
-    // mkcert CA i lažno prijaviti "instaliran" iako je pogrešan), skida
-    // TRENUTNI referentni sertifikat sa servera (isti /uploads/downloads/rootCA.pem
-    // i isti OS-zavisan URL/TLS1.2 kao deploy preset) i poredi ga sa Local
-    // Machine "Trusted Root Certification Authorities" store-om (Cert:
-    // provider) TAČNO po Thumbprint-u.
+    // Read-only diagnostics, the counterpart of the deploy-trusted-root-cert preset -
+    // instead of a loose search by name (it could hit some OLD
+    // mkcert CA and falsely report "installed" even though it's the wrong one), it downloads
+    // the CURRENT reference certificate from the server (the same /uploads/downloads/rootCA.pem
+    // and the same OS-dependent URL/TLS1.2 as the deploy preset) and compares it against the Local
+    // Machine "Trusted Root Certification Authorities" store (the Cert:
+    // provider) EXACTLY by Thumbprint.
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
       '$certUrlWin7 = "https://netdesk.local:3000/uploads/downloads/rootCA.pem"\n' +
@@ -638,7 +638,7 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'check-intermediate-cert',
     label: 'Proveri instaliran CA sertifikat (Intermediate CA)',
-    // Isto kao 'check-trusted-root-cert', samo cilja Local Machine
+    // Same as 'check-trusted-root-cert', it just targets the Local Machine
     // "Intermediate Certification Authorities" store (Cert:\LocalMachine\CA).
     script:
       '# --- Izmeni ova dva reda pre slanja ako se promene ---\n' +
@@ -689,30 +689,30 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'allow-cross-subnet-icmp',
     label: 'Dozvoli ping sa druge podmreže (cross-site ICMP)',
-    // Uživo otkriven uzrok: ugrađeno "File and Printer Sharing (Echo
-    // Request - ICMPv4-In)" pravilo za Private/Domain profile ima domet
-    // (RemoteAddress) ograničen na LocalSubnet - server na drugoj lokaciji/
-    // podmreži (npr. Bolnica 10.230.62.x -> Dom zdravlja agent 10.160.64.x)
-    // se nikad ne poklopi, bez obzira što pravilo pokazuje "Enabled: True".
-    // Postoji i "restriktivna" varijanta sa dometom Any, ali je ugrađeno
-    // uključena SAMO za Public profil - zato menjanje mreže na Public
-    // "popravi" ping, a ostajanje na Private (ispravnijem, bezbednijem
-    // izboru za internu mrežu) ne radi.
+    // Cause discovered live: the built-in "File and Printer Sharing (Echo
+    // Request - ICMPv4-In)" rule for the Private/Domain profiles has its scope
+    // (RemoteAddress) limited to LocalSubnet - a server at another site/
+    // subnet (e.g. Bolnica 10.230.62.x -> Dom zdravlja agent 10.160.64.x)
+    // never matches, even though the rule shows "Enabled: True".
+    // There's also a "restrictive" variant with scope Any, but it's enabled by default
+    // ONLY for the Public profile - which is why switching the network to Public
+    // "fixes" ping, while staying on Private (the more correct, safer
+    // choice for an internal network) doesn't work.
     //
-    // Namerno netsh advfirewall umesto Get/Set-NetFirewallRule cmdleta:
-    // 1) NetSecurity modul (te cmdlete obezbeđuje) postoji tek od Windows 8/
-    //    Server 2012 - na Windows 7 bi preset tiho pao. netsh advfirewall
-    //    radi identično od Windows 7 do 11.
-    // 2) Ugrađena pravila imaju LOKALIZOVAN DisplayName (npr. "Deljenje
-    //    datoteka i štampača..." na srpskom, "File and Printer Sharing..."
-    //    na engleskom) - pokušaj da se nađe/uključi POSTOJEĆE pravilo po
-    //    imenu bio bi lomljiv na mešovitoj floti. Umesto toga, ova skripta
-    //    dodaje SOPSTVENO, potpuno novo pravilo sa fiksnim (ne-lokalizovanim)
-    //    imenom - bez zavisnosti od jezika sistema ili tačnog naziva
-    //    postojećih pravila.
+    // Deliberately netsh advfirewall instead of the Get/Set-NetFirewallRule cmdlets:
+    // 1) The NetSecurity module (which provides those cmdlets) only exists since Windows 8/
+    //    Server 2012 - on Windows 7 the preset would silently fail. netsh advfirewall
+    //    works identically from Windows 7 to 11.
+    // 2) Built-in rules have a LOCALIZED DisplayName (e.g. "Deljenje
+    //    datoteka i štampača..." in Serbian, "File and Printer Sharing..."
+    //    in English) - trying to find/enable an EXISTING rule by
+    //    name would be fragile on a mixed fleet. Instead, this script
+    //    adds its OWN, completely new rule with a fixed (non-localized)
+    //    name - with no dependency on the system language or the exact name of
+    //    existing rules.
     //
-    // Brisanje pa ponovno dodavanje na početku čini skriptu bezbednom za
-    // ponovno slanje (ne gomila duple kopije istog pravila).
+    // Deleting and then re-adding at the start makes the script safe to
+    // send again (it doesn't pile up duplicate copies of the same rule).
     script:
       '$ErrorActionPreference = "Stop"\n' +
       '$RuleName = "NetDesk - Allow ICMPv4 Echo Request (cross-subnet)"\n' +
@@ -735,20 +735,20 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'create-hidden-admin-account',
     label: '⚠️ Kreiraj skriveni admin nalog (RemoteAdmin)',
-    // Kreira lokalni admin nalog i sakriva ga sa ekrana za prijavu (upisom u
-    // Winlogon\SpecialAccounts\UserList) - nalog i dalje normalno radi za
-    // RDP/net use/itd, samo se ne nudi kao opcija na login ekranu.
-    // Idempotentno - ako korisnik već postoji, samo se preskoči kreiranje
-    // (i dalje se primeni "sakrij" korak, bezopasno ako je već sakriven).
+    // Creates a local admin account and hides it from the sign-in screen (by writing to
+    // Winlogon\SpecialAccounts\UserList) - the account still works normally for
+    // RDP/net use/etc, it just isn't offered as an option on the login screen.
+    // Idempotent - if the user already exists, creation is simply skipped
+    // (the "hide" step is still applied, harmless if it's already hidden).
     //
-    // Namerno net.exe (net user/net localgroup) umesto New-LocalUser/
-    // Get-LocalUser cmdleta - ovi poslednji dolaze iz LocalAccounts modula
-    // koji postoji tek od Windows 10/Server 2016, pa bi preset tiho pao na
-    // Windows 7 delu flote. net.exe radi identično na svim verzijama.
+    // Deliberately net.exe (net user/net localgroup) instead of the New-LocalUser/
+    // Get-LocalUser cmdlets - the latter come from the LocalAccounts module,
+    // which only exists since Windows 10/Server 2016, so the preset would silently fail on the
+    // Windows 7 part of the fleet. net.exe works identically on all versions.
     //
-    // Napomena: lozinka je vidljiva u tekstu skripte (i u job output/istoriji
-    // na serveru) - isto kao i sa ConvertTo-SecureString varijantom, samo je
-    // ovde dodatno kratko vidljiva i kao CLI argument dok net.exe radi.
+    // Note: the password is visible in the script text (and in the job output/history
+    // on the server) - same as with the ConvertTo-SecureString variant, it's just
+    // additionally visible briefly as a CLI argument while net.exe runs.
     script:
       '# --- OBAVEZNO izmeni korisnicko ime i lozinku pre slanja! ---\n' +
       '$Username = "RemoteAdmin"\n' +
@@ -794,23 +794,23 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'install-netdesk-agent-manager',
     label: 'Instaliraj/ažuriraj NetdeskAgent Manager servis',
-    // Bootstrap rollout za NetdeskAgentManager (nov, nezavisan servis - vidi
-    // service/README.md) - "kokoška i jaje" problem, prva instalacija na
-    // flotu ide baš preko ovog run_powershell_script mehanizma. Idempotentan
-    // (bezbedan za ponovno slanje/buduće ručne update-ove Manager-a samog) -
-    // ako servis već postoji, prvo se KOMPLETNO ukloni (zaustavi, deinstalira
-    // preko InstallUtil /u, PA JOŠ eksplicitno sc.exe delete kao siguran
-    // fallback - InstallUtil-ovo /u ume da ostavi servis u "marked for
-    // deletion" limbu u SCM-u dok se ne zatvori poslednji handle, umesto da
-    // odmah stvarno nestane, što bi kasniji fresh InstallUtil Install() pozvao
-    // "servis već postoji" grešku) PRE nego što se bilo šta od starih
-    // fajlova/foldera dirne. Isti obrazac preuzimanja kao deploy-trusted-root-cert
-    // preset (OS-zavisan URL, TLS 1.2 forsiran, WebClient.DownloadFile) i
-    // isti InstallUtil/OS-bitness/sc failure recept kao ručna Service
-    // instalacija u DEPLOYMENT.md. Takođe briše manager-state.json na svaki
-    // run (namerno bezuslovno, videti napomenu unutar skripte) - Manager se
-    // sam nikad ne oporavlja ako server izgubi/invalidira njegov identitet,
-    // ovaj preset je i taj "force fresh re-enroll" recept.
+    // Bootstrap rollout for NetdeskAgentManager (a new, independent service - see
+    // service/README.md) - a "chicken and egg" problem, the first install on the
+    // fleet goes precisely through this run_powershell_script mechanism. Idempotent
+    // (safe to resend/for future manual updates of the Manager itself) -
+    // if the service already exists, it is first COMPLETELY removed (stopped, uninstalled
+    // via InstallUtil /u, AND THEN additionally sc.exe delete as a safe
+    // fallback - InstallUtil's /u can leave the service in a "marked for
+    // deletion" limbo in the SCM until the last handle is closed, instead of
+    // really disappearing right away, which would make a later fresh InstallUtil Install() hit a
+    // "service already exists" error) BEFORE any of the old
+    // files/folders are touched. The same download pattern as the deploy-trusted-root-cert
+    // preset (OS-dependent URL, TLS 1.2 forced, WebClient.DownloadFile) and
+    // the same InstallUtil/OS-bitness/sc failure recipe as the manual Service
+    // install in DEPLOYMENT.md. Also deletes manager-state.json on every
+    // run (deliberately unconditional, see the note inside the script) - the Manager
+    // never recovers on its own if the server loses/invalidates its identity,
+    // so this preset is also the "force fresh re-enroll" recipe.
     script:
       '# --- Izmeni ove redove pre slanja ako se promene ---\n' +
       '$pkgUrlWin7 = "https://netdesk.local:3000/uploads/downloads/NetdeskAgentManager.zip"\n' +
@@ -930,35 +930,35 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'force-stop-windivert-driver',
     label: 'Prinudno zaustavi WinDivert drajver (ako blokira update fajlova)',
-    // Ne oslanja se na hardkodovan naziv servisa drajvera ("WinDivert" je
-    // ono što stvarna instalacija koristi, ali NIJE deo zvanično
-    // dokumentovanog ugovora u WinDivert biblioteci, i teoretski se menja
-    // između verzija/fork-ova) - umesto toga, nalazi drajver PO PUTANJI do
-    // WinDivert64.sys preko Win32_SystemDriver (WMI klasa za kernel-mode
-    // drajvere/servise, RAZLIČITA od Win32_PnPSignedDriver koji koristi
-    // "Obriši drajver uređaja" preset iznad - taj je za PnP hardver uređaje,
-    // WinDivert nije PnP uređaj, ne bi se ni pojavio tamo).
+    // Doesn't rely on a hardcoded driver service name ("WinDivert" is
+    // what the actual install uses, but it's NOT part of the officially
+    // documented contract of the WinDivert library, and could theoretically change
+    // between versions/forks) - instead, it finds the driver BY THE PATH to
+    // WinDivert64.sys via Win32_SystemDriver (the WMI class for kernel-mode
+    // drivers/services, DIFFERENT from Win32_PnPSignedDriver used by the
+    // "delete device driver" preset above - that one is for PnP hardware devices,
+    // WinDivert isn't a PnP device, it wouldn't even show up there).
     //
-    // Isti motiv kao retry-with-backoff u DirectorySync.cs (Manager/Common)
-    // - WinDivert64.sys ume da ostane zaključan kratko VREME i POSLE što je
-    // NetdeskAgent proces (koji ga je otvorio) već potvrđeno zaustavljen,
-    // jer driver-unload nije garantovano sinhron sa gašenjem user-mode
-    // procesa. Taj retry pasivno ČEKA da se otključa; ovaj preset je
-    // AKTIVNIJI korak - eksplicitno zaustavlja sam drajver servis (sc stop),
-    // za slučajeve kad je pasivno čekanje (do ~6s, 8 pokušaja/750ms) i dalje
-    // nedovoljno na nekoj konkretnoj mašini. NAMERNO ne pokušava
-    // deinstalaciju (sc delete) - drajver se ponovo automatski učita na
-    // sledećem WinDivertOpen() pozivu (isti "dinamički instaliran, ne
-    // trajno registrovan" obrazac dokumentovan u WinDivertInterop.cs), pa
-    // samo zaustavljanje je dovoljno i manje rizično od brisanja servisa.
+    // Same motive as the retry-with-backoff in DirectorySync.cs (Manager/Common)
+    // - WinDivert64.sys can stay locked for a short TIME even AFTER the
+    // NetdeskAgent process (which opened it) has been confirmed stopped,
+    // because driver unload isn't guaranteed to be synchronous with the shutdown of the user-mode
+    // process. That retry passively WAITS for the unlock; this preset is a
+    // MORE ACTIVE step - it explicitly stops the driver service itself (sc stop),
+    // for cases where passive waiting (up to ~6s, 8 attempts/750ms) is still
+    // not enough on some particular machine. It deliberately does NOT attempt
+    // an uninstall (sc delete) - the driver is automatically reloaded on the
+    // next WinDivertOpen() call (the same "dynamically installed, not
+    // permanently registered" pattern documented in WinDivertInterop.cs), so
+    // just stopping it is enough and less risky than deleting the service.
     //
-    // Redosled u odnosu na NetdeskAgent servis NIJE bitan - uživo potvrđeno
-    // da sc.exe stop uspeva i dok agent proces još drži otvoren
-    // WinDivertOpen() handle. DnsQueryCollector.cs's capture petlja to
-    // preživi bez pada (WinDivertRecv počne da vraća grešku, petlja samo
-    // loguje upozorenje i pokušava dalje - videti CaptureLoop) - eventualni
-    // kratak niz "WinDivertRecv neuspešan" linija u agent logu je bezopasan
-    // i traje samo dok se agent ionako ne zaustavi kao deo istog update toka.
+    // The order relative to the NetdeskAgent service does NOT matter - confirmed live
+    // that sc.exe stop succeeds even while the agent process still holds an open
+    // WinDivertOpen() handle. DnsQueryCollector.cs's capture loop
+    // survives that without crashing (WinDivertRecv starts returning an error, the loop just
+    // logs a warning and keeps trying - see CaptureLoop) - a possible
+    // short run of "WinDivertRecv failed" lines in the agent log is harmless
+    // and only lasts until the agent stops anyway as part of the same update flow.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       '$results = New-Object System.Collections.Generic.List[string]\n' +
@@ -1002,26 +1002,26 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'enable-wake-on-lan',
     label: 'Uključi Wake-on-LAN na mrežnim karticama',
-    // OS-nivo deo Wake-on-LAN podešavanja (Device Manager "Allow this device
-    // to wake the computer" + "Wake on Magic Packet" napredno podešavanje) -
-    // BIOS/UEFI "Wake on LAN"/"Power On By PCI-E" mora ostati ručno uključen
-    // po mašini, to se ne može podesiti daljinski preko OS-a.
+    // The OS-level part of the Wake-on-LAN setup (Device Manager "Allow this device
+    // to wake the computer" + the "Wake on Magic Packet" advanced setting) -
+    // the BIOS/UEFI "Wake on LAN"/"Power On By PCI-E" must stay enabled by hand
+    // per machine, that can't be configured remotely through the OS.
     //
-    // powercfg /deviceenablewake (ne WMI/registry direktno) namerno - radi
-    // identično od Windows 7 do 11, dok je NetAdapter modul (Set-
-    // NetAdapterPowerManagement / Set-NetAdapterAdvancedProperty, dodatno
-    // uključuje konkretno "Wake on Magic Packet" napredno svojstvo umesto
-    // samo opšteg "dozvoli buđenje") dostupan tek od Windows 8/Server 2012 -
-    // na Windows 7 se taj deo tiho preskoči, powercfg korak iznad je tamo
-    // jedini dostupan mehanizam.
+    // powercfg /deviceenablewake (not WMI/registry directly) on purpose - it works
+    // identically from Windows 7 to 11, while the NetAdapter module (Set-
+    // NetAdapterPowerManagement / Set-NetAdapterAdvancedProperty, which additionally
+    // enables the specific "Wake on Magic Packet" advanced property instead of
+    // just the general "allow wake") is only available since Windows 8/Server 2012 -
+    // on Windows 7 that part is silently skipped, the powercfg step above is the
+    // only available mechanism there.
     //
-    // Win32_NetworkAdapter (WMI, ne Get-NetAdapter -Physical) za listu
-    // fizičkih kartica - dostupno i na Windows 7, gde Get-NetAdapter ne
-    // postoji. "Wake on Magic Packet" DisplayName je uobičajen naziv kod
-    // većine mrežnih drajvera (Intel/Realtek/Broadcom), ali nije garantovano
-    // identičan na svakom - Get-NetAdapterAdvancedProperty pre toga proverava
-    // da li svojstvo uopšte postoji pod tim imenom, pa se preskače bez greške
-    // ako drajver koristi drugačiji naziv.
+    // Win32_NetworkAdapter (WMI, not Get-NetAdapter -Physical) for the list of
+    // physical adapters - also available on Windows 7, where Get-NetAdapter doesn't
+    // exist. "Wake on Magic Packet" is the usual DisplayName for
+    // most network drivers (Intel/Realtek/Broadcom), but it isn't guaranteed to be
+    // identical on every one - Get-NetAdapterAdvancedProperty first checks
+    // whether the property exists under that name at all, so it's skipped without an error
+    // if the driver uses a different name.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       '$results = New-Object System.Collections.Generic.List[string]\n' +
@@ -1083,26 +1083,26 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'fix-antivirus-defender',
     label: '🔧 Popravi: Antivirus (Windows Defender realtime)',
-    // "Popravi" dugme na AgentDetailView (pored Antivirus statusa) šalje baš
-    // ovaj preset po id-ju - vidi fixJobPresetId() u toj komponenti. Best-
-    // effort, NE garantovana popravka: agent.monitoring.antivirusStatus se
-    // računa iz WMI root\SecurityCenter2\AntiVirusProduct (vidi
-    // MonitoringCollector.cs CollectAntivirusStatus) - ako je registrovani AV
-    // proizvod treći-strani (ne Windows Defender), ova skripta nema šta da
-    // uključi i to jasno prijavljuje umesto lažnog "uspeha".
+    // The "Popravi" (fix) button on AgentDetailView (next to the Antivirus status) sends exactly
+    // this preset by id - see fixJobPresetId() in that component. Best-
+    // effort, NOT a guaranteed fix: agent.monitoring.antivirusStatus is
+    // computed from WMI root\SecurityCenter2\AntiVirusProduct (see
+    // MonitoringCollector.cs CollectAntivirusStatus) - if the registered AV
+    // product is third-party (not Windows Defender), this script has nothing to
+    // enable and reports that clearly instead of a false "success".
     //
-    // Set-MpPreference/Get-MpComputerStatus dolaze iz Defender PowerShell
-    // modula, koji postoji tek od Windows 8.1/Server 2012 R2 nadalje - stari
-    // Windows Defender na Windows 7 (anti-spyware alat pre modernog AV
-    // engine-a) te cmdlete uopšte nema, bez obzira na PowerShell verziju
-    // (WMF 5.1 upgrade-uje samo sam PowerShell engine, ne i module vezane za
-    // OS komponente) - uživo potvrđeno na Windows 7 SP1 ("term not
-    // recognized"). -ErrorAction SilentlyContinue na SAMOM pozivu tu ne
-    // pomaže - "term not recognized" je CommandNotFoundException koji
-    // $ErrorActionPreference = "Stop" tretira kao terminating GRESKU pre
-    // nego što cmdlet-ov sopstveni -ErrorAction uopšte stigne do izražaja.
-    // Zato se dostupnost modula proverava PRE poziva (Get-Command), umesto
-    // da se osloni na try/catch da uhvati grešku.
+    // Set-MpPreference/Get-MpComputerStatus come from the Defender PowerShell
+    // module, which only exists from Windows 8.1/Server 2012 R2 onwards - the old
+    // Windows Defender on Windows 7 (an anti-spyware tool predating the modern AV
+    // engine) doesn't have those cmdlets at all, regardless of the PowerShell version
+    // (the WMF 5.1 upgrade only upgrades the PowerShell engine itself, not modules tied to
+    // OS components) - confirmed live on Windows 7 SP1 ("term not
+    // recognized"). -ErrorAction SilentlyContinue on the call ITSELF doesn't
+    // help there - "term not recognized" is a CommandNotFoundException that
+    // $ErrorActionPreference = "Stop" treats as a terminating ERROR before
+    // the cmdlet's own -ErrorAction even comes into play.
+    // That's why module availability is checked BEFORE the call (Get-Command), instead of
+    // relying on try/catch to catch the error.
     script:
       '$ErrorActionPreference = "Stop"\n' +
       'try {\n' +
@@ -1141,14 +1141,14 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'fix-firewall',
     label: '🔧 Popravi: Windows Firewall',
-    // "Popravi" dugme na AgentDetailView (pored Firewall statusa) šalje baš
-    // ovaj preset po id-ju. agent.monitoring.firewallStatus se čita direktno
-    // iz registry-ja (StandardProfile\EnableFirewall - vidi
-    // MonitoringCollector.cs CollectFirewallStatus), zato "netsh advfirewall
-    // set allprofiles state on" (menja tu istu registry vrednost za sve
-    // profile, uključujući StandardProfile) - ne Set-NetFirewallProfile
-    // cmdlet, isti razlog kao allow-cross-subnet-icmp preset iznad (NetSecurity
-    // modul tek od Windows 8, netsh radi identično od XP SP2 do Windows 11).
+    // The "Popravi" (fix) button on AgentDetailView (next to the Firewall status) sends exactly
+    // this preset by id. agent.monitoring.firewallStatus is read directly
+    // from the registry (StandardProfile\EnableFirewall - see
+    // MonitoringCollector.cs CollectFirewallStatus), hence "netsh advfirewall
+    // set allprofiles state on" (changes that same registry value for all
+    // profiles, including StandardProfile) - not the Set-NetFirewallProfile
+    // cmdlet, same reason as the allow-cross-subnet-icmp preset above (the NetSecurity
+    // module only since Windows 8, netsh works identically from XP SP2 to Windows 11).
     script:
       '$ErrorActionPreference = "Stop"\n' +
       'try {\n' +
@@ -1172,13 +1172,13 @@ export const POWERSHELL_PRESETS = [
   {
     id: 'fix-windows-update-service',
     label: '🔧 Popravi: Windows Update servis (wuauserv)',
-    // "Popravi" dugme na AgentDetailView (pored Windows Update statusa) šalje
-    // baš ovaj preset po id-ju. agent.windowsUpdateStatus je Status wuauserv
-    // servisa (vidi WindowsUpdateCollector.CollectServiceInfo/GetWuauservState)
-    // - ako je StartType "Disabled" (npr. neka GPO/tweak alatka ga je
-    // onemogućila), samo Start-Service ne bi upalio (baca gresku), zato prvo
-    // StartupType Manual (Windows default za wuauserv - namerno NE Automatic,
-    // da se ne menja ponašanje van onoga što je OS podrazumevano).
+    // The "Popravi" (fix) button on AgentDetailView (next to the Windows Update status) sends
+    // exactly this preset by id. agent.windowsUpdateStatus is the Status of the wuauserv
+    // service (see WindowsUpdateCollector.CollectServiceInfo/GetWuauservState)
+    // - if StartType is "Disabled" (e.g. some GPO/tweak tool has
+    // disabled it), Start-Service alone wouldn't start it (it throws an error), so first
+    // StartupType Manual (the Windows default for wuauserv - deliberately NOT Automatic,
+    // so behavior isn't changed beyond what the OS default is).
     script:
       '$ErrorActionPreference = "Stop"\n' +
       'try {\n' +

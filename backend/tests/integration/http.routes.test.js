@@ -135,8 +135,8 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty("os");
         expect(Array.isArray(res.body.os)).toBe(true);
-        // deploymentGroups je slobodan tekst sada (ne fiksna 4-vrednosna
-        // lista) - i dalje mora sadržati bar klasične vrednosti kao predloge.
+        // deploymentGroups is free text now (not a fixed 4-value
+        // list) - it must still contain at least the classic values as suggestions.
         expect(Array.isArray(res.body.deploymentGroups)).toBe(true);
         expect(res.body.deploymentGroups).toEqual(expect.arrayContaining(["test", "it", "pilot", "rest"]));
       });
@@ -327,9 +327,9 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
     it("generates a report, fetches it by id, and lists it", async () => {
       const token = adminToken();
 
-      // Generisanje izveštaja više nema HTTP rutu (samo cron, videti
-      // dailyReportScheduler.js) - ovi testovi testiraju GET/mark-read/pdf
-      // rute, ne generisanje samo, pa pozivaju servis direktno za setup.
+      // Report generation no longer has an HTTP route (cron only, see
+      // dailyReportScheduler.js) - these tests test the GET/mark-read/pdf
+      // routes, not the generation itself, so they call the service directly for setup.
       const generated = await generateDailyReportsForAllSites();
       reportIds = generated.map((r) => r.id);
       reportId = reportIds[0];

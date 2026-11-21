@@ -13,19 +13,19 @@ const router = express.Router();
 router.use("/api/auth", authRoutes);
 router.use("/api/agents", agentsRoutes);
 router.use("/api/managers", managersRoutes);
-// Namerno bez auth-a (izvan /api/protected) - ekran za prijavu treba jezik
-// aplikacije PRE nego što uopšte postoji JWT, pa ovo mora biti javno čitljivo
-// (samo čitanje trenutne vrednosti; izmena i dalje ide kroz
+// Deliberately without auth (outside /api/protected) - the login screen needs the
+// app language BEFORE a JWT even exists, so this must be publicly readable
+// (only reading the current value; changing it still goes through
 // /api/protected/settings, root-admin-only).
 router.use("/api/language", languageRoutes);
 router.use("/api/protected", authenticateToken, auditLog, protectedRoutes);
 
-// Namerno bez auth-a (izvan /api/protected) - interni deployment binarni
-// fajlovi (npr. UltraVNC zip-ovi za Deploy-NetdeskVnc.ps1), preuzimaju se sa
-// upravljanih mašina preko HTTPS-a umesto SMB share-a jer LocalSystem nema
-// pravu "logon session" za eksplicitne network kredencijale na Windows 7
-// (System error 1312, otkriveno uživo) - obična HTTPS konekcija tu nema
-// isto ograničenje, isti mehanizam agent već koristi za sve ostalo.
+// Deliberately without auth (outside /api/protected) - internal deployment binary
+// files (e.g. UltraVNC zips for Deploy-NetdeskVnc.ps1), downloaded from
+// managed machines over HTTPS instead of an SMB share because LocalSystem has no
+// real "logon session" for explicit network credentials on Windows 7
+// (System error 1312, discovered live) - a plain HTTPS connection doesn't have
+// the same limitation, the same mechanism the agent already uses for everything else.
 router.use("/uploads/downloads", express.static(path.join(process.cwd(), "uploads", "downloads")));
 
 export default router;

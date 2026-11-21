@@ -210,7 +210,7 @@ function driverAgeLabel(value) {
       </div>
     </div>
 
-    <!-- Top proizvođači -->
+    <!-- Top manufacturers -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header">
         <h5 class="pdsu-card-title">{{ t('pdsu.topDriverManufacturers') }}</h5>
@@ -354,7 +354,7 @@ function driverAgeLabel(value) {
       </div>
     </div>
 
-    <!-- Više verzija -->
+    <!-- Multiple versions -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -430,7 +430,7 @@ function driverAgeLabel(value) {
       </div>
     </div>
 
-    <!-- Računari sa najviše drajvera -->
+    <!-- Computers with the most drivers -->
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between">
         <div>

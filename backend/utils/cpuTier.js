@@ -1,8 +1,8 @@
-// computer_metadata.cpu_name je sirov Win32_Processor.Name string, bez
-// strukturisanog polja za "tier" - klasifikacija se izvodi iz teksta.
-// Isti obrazac kao printerManufacturer.js (redosled bitan, prvo poklapanje
-// pobeđuje), ovde su samo dva ishoda + null (neklasifikovano - Xeon i sl. se
-// namerno NE gura ni u jednu kategoriju, dvosmisleno je).
+// computer_metadata.cpu_name is the raw Win32_Processor.Name string, with no
+// structured "tier" field - the classification is derived from the text.
+// Same pattern as printerManufacturer.js (order matters, the first match
+// wins), here there are just two outcomes + null (unclassified - Xeon and the like are
+// deliberately NOT pushed into either category, it's ambiguous).
 const WEAK_PATTERN = /\bceleron\b|\bpentium\b|\bathlon\b|\bamd\s+a\d/i;
 const STRONG_PATTERN = /\bcore\b.*\bi[3579]\b|\bi[3579][- ]|\bryzen\b/i;
 

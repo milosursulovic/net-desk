@@ -18,8 +18,8 @@ const router = express.Router();
 router.use(cacheNoStore);
 
 router.get("/", asyncHandler(listReleasesController));
-// Read-only uvid u fajlove na disku (uploads/agent-releases) - admin-only,
-// isti nivo kao upload/is-active dole.
+// Read-only view of the files on disk (uploads/agent-releases) - admin-only,
+// same level as upload/is-active below.
 router.get("/files", requireRole("admin"), asyncHandler(listReleaseFilesController));
 // Admin-only, not just operator - a bad release affects every managed
 // machine that auto-updates, bigger blast radius than routine agent/IP ops.
@@ -30,14 +30,14 @@ router.post(
   asyncHandler(createReleaseController),
 );
 router.patch("/:id", requireRole("admin"), asyncHandler(setReleaseActiveController));
-// Isti admin-only nivo - napomene su editabilne i posle upload-a (za razliku
-// od verzije/fajla), isti obrazac kao /:id/deployment-groups ispod.
+// Same admin-only level - notes stay editable after upload (unlike
+// the version/file), same pattern as /:id/deployment-groups below.
 router.patch("/:id/notes", requireRole("admin"), asyncHandler(updateReleaseNotesController));
-// Isti admin-only nivo - namerno samo za VEĆ deaktivirane verzije
-// (deleteReleaseService odbija aktivnu), vidi napomenu tamo.
+// Same admin-only level - deliberately only for ALREADY deactivated versions
+// (deleteReleaseService rejects an active one), see the note there.
 router.delete("/:id", requireRole("admin"), asyncHandler(deleteReleaseController));
-// Isti admin-only nivo kao upload/is-active - "širenje" rollout-a na nove
-// grupe je isti blast-radius rizik kao sam upload.
+// Same admin-only level as upload/is-active - "widening" a rollout to new
+// groups carries the same blast-radius risk as the upload itself.
 router.patch("/:id/deployment-groups", requireRole("admin"), asyncHandler(updateReleaseGroupsController));
 
 export default router;

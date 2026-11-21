@@ -23,24 +23,24 @@ using NetdeskAgent.Common.FileTransfer;
 namespace NetdeskAgent.Service
 {
     /// <summary>
-    /// Glavna radna petlja agenta, nezavisna od ServiceBase da bi mogla da se
-    /// pokrene i u konzolnom (debug) i u pravom Windows Service modu.
+    /// The agent's main work loop, independent of ServiceBase so it can
+    /// run both in console (debug) mode and in real Windows Service mode.
     ///
-    /// Kompletna radna petlja: registracija (enroll), periodičan heartbeat (sa
-    /// monitoring podacima), periodičan inventory sync, job polling/
-    /// izvršavanje, periodičan event log sync, i periodična provera nove
-    /// verzije agenta (auto-update - videti NetdeskAgent.Common.Update).
+    /// The complete work loop: registration (enroll), periodic heartbeat (with
+    /// monitoring data), periodic inventory sync, job polling/
+    /// execution, periodic event log sync, and a periodic check for a new
+    /// agent version (auto-update - see NetdeskAgent.Common.Update).
     /// </summary>
     public class AgentWorker
     {
         private static readonly TimeSpan LoopTick = TimeSpan.FromSeconds(5);
 
-        // Environment.TickCount je 32-bit signed - prelama se u negativnu
-        // vrednost posle ~24.9 dana rada mašine bez restarta, što je
-        // realističan slučaj za produkcione mašine. GetTickCount64 (dostupan
-        // od Windows Vista) je 64-bit i praktično se nikad ne prelama -
-        // otkriveno uživo: backend odbija heartbeat sa HTTP 400 čim
-        // uptimeSeconds postane negativan (zod schema zahteva >= 0).
+        // Environment.TickCount is a 32-bit signed value - it wraps to a negative
+        // value after ~24.9 days of machine uptime without a restart, which is a
+        // realistic case for production machines. GetTickCount64 (available
+        // since Windows Vista) is 64-bit and practically never wraps -
+        // discovered live: the backend rejects the heartbeat with HTTP 400 as soon as
+        // uptimeSeconds becomes negative (the zod schema requires >= 0).
         [DllImport("kernel32.dll")]
         private static extern ulong GetTickCount64();
 
@@ -65,10 +65,10 @@ namespace NetdeskAgent.Service
             using (var client = new NetdeskApiClient(settings.ServerBaseUrl))
             using (var dnsCollector = new DnsQueryCollector())
             {
-                // Pokreće se JEDNOM ovde (ne po tick-u) - ETW sesija mora da
-                // radi kontinuirano da ne propusti upite između ciklusa.
-                // TryStart() interno guta grešku i vraća false ako otkaže -
-                // agent nastavlja normalno, samo bez DNS logovanja ovog rada.
+                // Started ONCE here (not per tick) - the capture session has to
+                // run continuously so it doesn't miss queries between cycles.
+                // TryStart() swallows the error internally and returns false if it fails -
+                // the agent carries on normally, just without DNS logging for this run.
                 dnsCollector.TryStart();
 
                 var lastHeartbeat = DateTime.MinValue;
@@ -125,8 +125,8 @@ namespace NetdeskAgent.Service
                     }
                     catch (Exception ex)
                     {
-                        // Petlja mora da preživi bilo koju grešku iz jednog ciklusa -
-                        // sledeći tick pokušava ponovo.
+                        // The loop must survive any error from a single cycle -
+                        // the next tick tries again.
                         FileLogger.Error("Neočekivana greška u radnoj petlji", ex);
                     }
 
@@ -136,7 +136,7 @@ namespace NetdeskAgent.Service
                     }
                     catch (TaskCanceledException)
                     {
-                        // OnStop je pozvao Cancel - normalan izlaz iz petlje.
+                        // OnStop called Cancel - a normal exit from the loop.
                     }
                 }
             }
@@ -154,9 +154,9 @@ namespace NetdeskAgent.Service
 
             try
             {
-                // Ista WMI kolekcija kao inventory sync (HardwareCollector.CollectOs) -
-                // izbegava duplo query-ovanje Win32_OperatingSystem sa dva različita
-                // helper-a za isti podatak.
+                // The same WMI collection as the inventory sync (HardwareCollector.CollectOs) -
+                // avoids querying Win32_OperatingSystem twice with two different
+                // helpers for the same data.
                 var os = HardwareCollector.CollectOs();
 
                 var request = new EnrollRequest
@@ -209,8 +209,8 @@ namespace NetdeskAgent.Service
             }
             catch (NetdeskApiException apiEx) when (apiEx.StatusCode == 403)
             {
-                // Agent je revoked na serveru ili je apiKey nevažeći - nema smisla
-                // dalje pokušavati sa istim kredencijalima bez ljudske intervencije.
+                // The agent is revoked on the server or the apiKey is invalid - there's no point
+                // in continuing to try with the same credentials without human intervention.
                 FileLogger.Error("Server je odbio heartbeat (403) - agent je verovatno povučen (revoked).", apiEx);
             }
             catch (Exception ex)
@@ -236,10 +236,10 @@ namespace NetdeskAgent.Service
                     return;
                 }
 
-                // Namerno lagan zahtev - samo ip + eventLogs, bez punog hardverskog
-                // snapshot-a. Backend meta-podatke ažurira preko merge (patch)
-                // semantike, ne overwrite-a, pa izostavljena polja ostaju netaknuta
-                // (videti backend memoriju o patchMetadataForIpEntry).
+                // A deliberately light request - only ip + eventLogs, without the full hardware
+                // snapshot. The backend updates metadata with merge (patch)
+                // semantics, not overwrite, so omitted fields stay untouched
+                // (see the backend memory on patchMetadataForIpEntry).
                 var request = new InventoryRequest { Ip = ip, EventLogs = entries };
                 await client.PostInventoryAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
 
@@ -273,9 +273,9 @@ namespace NetdeskAgent.Service
                     return;
                 }
 
-                // Isti obrazac kao DoEventLogSyncAsync - lagan zahtev, samo ip +
-                // dnsQueries, merge (patch) semantika na backend-u ne dira
-                // ostale metapodatke.
+                // The same pattern as DoEventLogSyncAsync - a light request, only ip +
+                // dnsQueries, the merge (patch) semantics on the backend don't touch
+                // the other metadata.
                 var request = new InventoryRequest { Ip = ip, DnsQueries = entries };
                 await client.PostInventoryAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
 
@@ -295,10 +295,10 @@ namespace NetdeskAgent.Service
         {
             try
             {
-                // state.ProcessKillExempt - server-side "whitelist" osvežena pri
-                // svakom heartbeat-u (videti DoHeartbeatAsync) - ova mašina i dalje
-                // detektuje/loguje, ali se NIKAD ne ubija na njoj, bez obzira na
-                // globalni settings.KillWatchedProcesses.
+                // state.ProcessKillExempt - the server-side "whitelist" refreshed on
+                // every heartbeat (see DoHeartbeatAsync) - this machine still
+                // detects/logs, but nothing is EVER killed on it, regardless of
+                // the global settings.KillWatchedProcesses.
                 var killMatches = settings.KillWatchedProcesses && !state.ProcessKillExempt;
                 var entries = ProcessWatchCollector.Scan(settings.WatchedProcessNames, killMatches);
                 if (entries.Count == 0)
@@ -313,18 +313,18 @@ namespace NetdeskAgent.Service
                     return;
                 }
 
-                // Isti obrazac kao DoDnsLogSyncAsync - lagan zahtev, samo ip +
-                // processDetections, merge (patch) semantika na backend-u ne dira
-                // ostale metapodatke.
+                // The same pattern as DoDnsLogSyncAsync - a light request, only ip +
+                // processDetections, the merge (patch) semantics on the backend don't touch
+                // the other metadata.
                 var request = new InventoryRequest { Ip = ip, ProcessDetections = entries };
                 await client.PostInventoryAsync(state.AgentId, state.ApiKey, request).ConfigureAwait(false);
 
-                // Imena procesa direktno u log liniju (ne samo broj) - odmah vidljivo
-                // u agent.log bez čekanja na DB/frontend, s obzirom na hitnost ovog
-                // konkretnog security scenarija (portable remote-access alat u radu).
-                // Pojedinačne "ubijen sumnjiv proces"/"neuspešan pokušaj ubijanja"
-                // linije već je ispisao ProcessWatchCollector.Scan() po instanci -
-                // ovo je samo sumarni pregled ciklusa.
+                // Process names directly in the log line (not just a count) - immediately visible
+                // in agent.log without waiting for the DB/frontend, given the urgency of this
+                // particular security scenario (a portable remote-access tool running).
+                // The individual "killed suspicious process"/"failed kill attempt"
+                // lines were already written per instance by ProcessWatchCollector.Scan() -
+                // this is just the cycle's summary.
                 var names = string.Join(", ", entries.Select(e => e.ProcessName));
                 var exemptNote = settings.KillWatchedProcesses && state.ProcessKillExempt
                     ? " (ubijanje preskočeno - ova mašina je na whitelist-i)"
@@ -345,15 +345,15 @@ namespace NetdeskAgent.Service
         {
             try
             {
-                // WMI/registry kolekcija je sinhrona i blokira ovu nit dok traje
-                // (uključujući sporiju COM pretragu za dostupnim zakrpama) - to je
-                // prihvatljivo ovde jer je ovo posvećena background nit, ne UI/
-                // dispatcher nit, a inventory sync se poziva retko
-                // (InventoryIntervalSeconds, podrazumevano 1h).
+                // WMI/registry collection is synchronous and blocks this thread while it runs
+                // (including the slower COM search for available patches) - that's
+                // acceptable here because this is a dedicated background thread, not a UI/
+                // dispatcher thread, and the inventory sync is called rarely
+                // (InventoryIntervalSeconds, 1h by default).
                 var request = InventoryCollector.Collect(Environment.MachineName, department: null, includeAvailableUpdates: true, serverBaseUrl: client.BaseUrl);
                 if (request == null)
                 {
-                    // InventoryCollector je već ulogovao razlog (npr. nema IPv4 adrese).
+                    // InventoryCollector has already logged the reason (e.g. no IPv4 address).
                     return;
                 }
 
@@ -401,21 +401,21 @@ namespace NetdeskAgent.Service
 
             if (IsNetdeskAgentServiceControl(job.CommandType, job.Payload))
             {
-                // NetdeskAgent ne sme sam sebe da (re)startuje kroz JobExecutor
-                // (sinhrono na istoj petlji koja treba da prijavi rezultat
-                // serveru - servis bi se ugasio pre nego što stigne da javi
-                // uspeh, job bi ostao zauvek zaglavljen na "sent"). Umesto
-                // toga, prosledi NetdeskAgentManager-u (odvojen, trajan servis)
-                // preko mailbox-a i ODMAH prijavi dispatch, ne completion -
-                // isti fire-and-forget oblik kao start_vnc_bridge ispod. Dva
-                // puta dovode ovde: eksplicitne start_netdesk_agent/
-                // stop_netdesk_agent/restart_netdesk_agent komande (glavni,
-                // preporučen put za ručno upravljanje), ILI generičke
-                // restart_service/start_service/stop_service sa
-                // payload.serviceName="NetdeskAgent" (odbrana u dubinu, ako
-                // neko ipak pošalje generičku komandu na ovaj cilj).
-                // JobExecutor.ControlService i dalje radi nepromenjeno za SVAKI
-                // DRUGI naziv servisa (npr. Spooler).
+                // NetdeskAgent must not (re)start itself through JobExecutor
+                // (synchronously on the same loop that has to report the result to the
+                // server - the service would shut down before it could report
+                // success, and the job would stay stuck on "sent" forever). Instead,
+                // hand it off to NetdeskAgentManager (a separate, persistent service)
+                // via the mailbox and IMMEDIATELY report the dispatch, not the completion -
+                // the same fire-and-forget shape as start_vnc_bridge below. Two
+                // paths lead here: the explicit start_netdesk_agent/
+                // stop_netdesk_agent/restart_netdesk_agent commands (the main,
+                // recommended path for manual control), OR the generic
+                // restart_service/start_service/stop_service with
+                // payload.serviceName="NetdeskAgent" (defense in depth, in case
+                // someone sends a generic command at this target anyway).
+                // JobExecutor.ControlService still works unchanged for EVERY
+                // OTHER service name (e.g. Spooler).
                 var serviceAction = ServiceActionFor(job.CommandType);
                 var command = new ManagerCommand
                 {
@@ -440,10 +440,10 @@ namespace NetdeskAgent.Service
 
             if (job.CommandType == "force_reinstall_agent")
             {
-                // Ne ide kroz JobExecutor - treba mu NetdeskApiClient/AgentState
-                // pristup (isti razlog kao collect_inventory/refresh_software_list
-                // ispod), i sam update handoff (preuzmi→verifikuj→pošalji
-                // Manager-u) je async.
+                // Doesn't go through JobExecutor - it needs NetdeskApiClient/AgentState
+                // access (the same reason as collect_inventory/refresh_software_list
+                // below), and the update handoff itself (download→verify→send to
+                // the Manager) is async.
                 var forceResult = await RunForceReinstallJobAsync(client, state, job.Payload).ConfigureAwait(false);
                 await ReportJobResultAsync(client, state, job.Id, forceResult).ConfigureAwait(false);
                 return;
@@ -451,12 +451,12 @@ namespace NetdeskAgent.Service
 
             if (job.CommandType == "start_vnc_bridge")
             {
-                // Zabrana samoinicijativnog preuzimanja ekrana: pre nego što se
-                // digne most, korisnik na radnoj stanici MORA eksplicitno da
-                // odobri sesiju (ConsentPrompt). Ceo tok (pristanak koji blokira
-                // do timeout-a + mostovi koji traju celu sesiju) ide
-                // fire-and-forget da ne zaustavi poll petlju - ovde se odmah
-                // prijavljuje samo dispatch, ne completion.
+                // Ban on unsolicited screen capture: before the bridge
+                // comes up, the user at the workstation MUST explicitly
+                // approve the session (ConsentPrompt). The whole flow (the consent that blocks
+                // until the timeout + bridges that last the whole session) runs
+                // fire-and-forget so it doesn't stall the poll loop - only the dispatch is
+                // reported here right away, not the completion.
                 var sessionId = ExtractSessionId(job.Payload);
                 RunVncSessionWithConsentFireAndForget(client, state, settings, sessionId);
 
@@ -474,9 +474,9 @@ namespace NetdeskAgent.Service
 
             if (job.CommandType == "collect_inventory" || job.CommandType == "refresh_software_list")
             {
-                // Ove dve komande ne prolaze kroz JobExecutor - njima treba
-                // NetdeskApiClient/AgentState pristup koji executor namerno nema
-                // (drži OS-nivo komande i mrežni/state sloj razdvojenim).
+                // These two commands don't go through JobExecutor - they need
+                // NetdeskApiClient/AgentState access that the executor deliberately doesn't have
+                // (it keeps OS-level commands and the network/state layer separate).
                 result = await RunInventoryJobAsync(client, state, job.CommandType).ConfigureAwait(false);
             }
             else
@@ -495,16 +495,16 @@ namespace NetdeskAgent.Service
             return payload != null ? (long)payload["sessionId"] : 0;
         }
 
-        // Prikaz prozora za pristanak korisniku na radnoj stanici, prijava
-        // ishoda backend-u, pa most SAMO ako je odobreno. async void jer je
-        // fire-and-forget iz poll petlje (vidi start_vnc_bridge handler) -
-        // ConsentPrompt.Ask blokira do timeout-a i ne sme da zadrži polling.
+        // Shows the consent dialog to the user at the workstation, reports the
+        // outcome to the backend, then the bridge ONLY if approved. async void because it's
+        // fire-and-forget from the poll loop (see the start_vnc_bridge handler) -
+        // ConsentPrompt.Ask blocks until the timeout and must not hold up polling.
         private static async void RunVncSessionWithConsentFireAndForget(
             NetdeskApiClient client, AgentState state, AgentSettings settings, long sessionId)
         {
             try
             {
-                // IP + MAC agentove (korisnikove) radne stanice za audit trag.
+                // IP + MAC of the agent's (user's) workstation for the audit trail.
                 string agentIp = null, agentMac = null;
                 try
                 {
@@ -530,8 +530,8 @@ namespace NetdeskAgent.Service
                 catch (Exception ex)
                 {
                     FileLogger.Error("VNC sesija #" + sessionId + " - prijava pristanka backend-u neuspešna", ex);
-                    // Bez potvrđenog 'granted' na backend-u, relay ionako odbija
-                    // most (odbrana u dubinu) - ne diži ga ni sa ove strane.
+                    // Without a confirmed 'granted' on the backend, the relay rejects the
+                    // bridge anyway (defense in depth) - don't bring it up from this side either.
                     return;
                 }
 
@@ -542,8 +542,8 @@ namespace NetdeskAgent.Service
                     return;
                 }
 
-                // Odavde identično starom toku: dva nezavisna kanala (VNC most i
-                // prenos fajlova), svaki na sopstvenom CancellationTokenSource-u.
+                // From here on identical to the old flow: two independent channels (the VNC bridge and
+                // file transfer), each on its own CancellationTokenSource.
                 var cts = new CancellationTokenSource();
                 RunVncBridgeFireAndForget(sessionId, settings, state, cts.Token);
 
@@ -575,9 +575,9 @@ namespace NetdeskAgent.Service
             }
         }
 
-        // Isti fire-and-forget razlog kao RunVncBridgeFireAndForget iznad -
-        // FileTransferBridge.RunAsync ne treba lokalni TCP port (radi direktno
-        // sa fajl sistemom, ne proksira ka lokalnom servisu kao VncBridge).
+        // The same fire-and-forget reason as RunVncBridgeFireAndForget above -
+        // FileTransferBridge.RunAsync doesn't need a local TCP port (it works directly
+        // with the file system, it doesn't proxy to a local service like VncBridge).
         private static async void RunFileTransferBridgeFireAndForget(
             long sessionId, AgentSettings settings, AgentState state, CancellationToken token)
         {
@@ -700,11 +700,11 @@ namespace NetdeskAgent.Service
         }
 
         /// <summary>
-        /// force_reinstall_agent job - admin je eksplicitno izabrao TAČAN
-        /// release (releaseId/version/sha256 stižu u payload-u iz
-        /// AgentReleasesView.vue), pa se instalira BEZ isNewerVersion provere
-        /// (može "reinstalirati" i istu verziju - popravka oštećene
-        /// instalacije). Vidi UpdateManager.ForceInstallAsync.
+        /// force_reinstall_agent job - the admin explicitly picked the EXACT
+        /// release (releaseId/version/sha256 arrive in the payload from
+        /// AgentReleasesView.vue), so it's installed WITHOUT the isNewerVersion check
+        /// (it can "reinstall" the same version too - repairing a damaged
+        /// install). See UpdateManager.ForceInstallAsync.
         /// </summary>
         private static async Task<JobExecutor.ExecutionResult> RunForceReinstallJobAsync(
             NetdeskApiClient client, AgentState state, Newtonsoft.Json.Linq.JObject payload)

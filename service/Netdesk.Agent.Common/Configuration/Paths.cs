@@ -3,7 +3,7 @@ using System.IO;
 
 namespace NetdeskAgent.Common.Configuration
 {
-    /// <summary>Standardne putanje za config/state/log fajlove, u %ProgramData%\NetdeskAgent.</summary>
+    /// <summary>Standard paths for the config/state/log files, in %ProgramData%\NetdeskAgent.</summary>
     public static class Paths
     {
         public static readonly string DataDir = Path.Combine(
@@ -16,17 +16,17 @@ namespace NetdeskAgent.Common.Configuration
         public static string LogFile => Path.Combine(DataDir, "logs", "agent.log");
 
         /// <summary>
-        /// "Mailbox" fajl kojim NetdeskAgent.Service.exe naručuje akciju od
-        /// NetdeskAgentManager-a (restart/stop/start sebe, ili instalacija
-        /// update-a) - vidi NetdeskAgent.Common.Manager.ManagerCommandClient.
-        /// Jedna pending komanda odjednom, ne red čekanja.
+        /// The "mailbox" file through which NetdeskAgent.Service.exe requests an action from
+        /// NetdeskAgentManager (restart/stop/start itself, or install an
+        /// update) - see NetdeskAgent.Common.Manager.ManagerCommandClient.
+        /// One pending command at a time, not a queue.
         /// </summary>
         public static string ManagerCommandFile => Path.Combine(DataDir, "manager-command.json");
 
         /// <summary>
-        /// Odvojen log fajl od LogFile - oba servisa (NetdeskAgent i
-        /// NetdeskAgentManager) rade istovremeno, FileLogger nema cross-process
-        /// koordinaciju pa ne sme da dele isti fajl.
+        /// A log file separate from LogFile - both services (NetdeskAgent and
+        /// NetdeskAgentManager) run at the same time, FileLogger has no cross-process
+        /// coordination, so they must not share the same file.
         /// </summary>
         public static string ManagerLogFile => Path.Combine(DataDir, "logs", "manager.log");
     }

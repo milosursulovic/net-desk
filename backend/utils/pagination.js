@@ -1,8 +1,8 @@
 import { clamp } from "./numbers.js";
 
 /**
- * Zajednička paginacija: clamp-uje traženu stranu na opseg [1, totalPages],
- * i vraća totalPages === 0 kad nema rezultata (umesto NaN/negativnih vrednosti).
+ * Shared pagination: clamps the requested page to the range [1, totalPages],
+ * and returns totalPages === 0 when there are no results (instead of NaN/negative values).
  */
 export function paginate({ page, limit, total }) {
   const safeTotal = Number(total) || 0;

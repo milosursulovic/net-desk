@@ -4,10 +4,10 @@ using System.IO;
 namespace NetdeskAgent.Common.Logging
 {
     /// <summary>
-    /// Prost thread-safe append-only logger u tekstualni fajl. Namerno bez
-    /// eksterne logging biblioteke (manje zavisnosti za servis koji mora da
-    /// radi i na Windows 7 sa .NET Framework 4.5.2).
-    /// Greške pri pisanju loga se gutaju - logovanje nikad ne sme da obori servis.
+    /// A simple thread-safe append-only logger to a text file. Deliberately without an
+    /// external logging library (fewer dependencies for a service that must
+    /// also run on Windows 7 with .NET Framework 4.5.2).
+    /// Errors while writing the log are swallowed - logging must never bring down the service.
     /// </summary>
     public static class FileLogger
     {
@@ -28,12 +28,12 @@ namespace NetdeskAgent.Common.Logging
             }
             catch
             {
-                // Isti ugovor kao Write() ispod - logovanje nikad ne sme da
-                // obori pozivaoca. Ova grana je bila propust (uživo otkriveno:
-                // proces čiji korisnički profil možda nije potpuno učitan -
-                // Directory.CreateDirectory je pucao OVDE, pre nego što je
-                // ijedna Write() uopšte pozvana, gaseći ceo pozivajući proces
-                // potpuno tiho).
+                // The same contract as Write() below - logging must never
+                // bring down the caller. This branch was an oversight (discovered live:
+                // a process whose user profile may not be fully loaded -
+                // Directory.CreateDirectory threw HERE, before
+                // a single Write() had even been called, killing the whole calling process
+                // completely silently).
             }
         }
 
@@ -62,7 +62,7 @@ namespace NetdeskAgent.Common.Logging
                 }
                 catch
                 {
-                    // logovanje ne sme da obori servis
+                    // logging must not bring down the service
                 }
             }
         }

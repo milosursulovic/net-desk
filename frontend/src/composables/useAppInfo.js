@@ -1,8 +1,8 @@
 import { computed } from 'vue'
 
-// __APP_VERSION__ dolazi iz vite.config.js `define` - injektuje se u
-// build-time, izveden iz broja commit-ova u git istoriji, ne ručno
-// održavan broj.
+// __APP_VERSION__ comes from vite.config.js `define` - it's injected at
+// build time, derived from the number of commits in the git history, not a
+// hand-maintained number.
 export function useAppInfo() {
   const year = computed(() => new Date().getFullYear())
   const copyright = 'Informacioni sistem Zdravstvenog centra Bor'

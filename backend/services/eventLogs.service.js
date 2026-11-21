@@ -5,12 +5,12 @@ export async function ingestEventLogs(ipEntryId, entries) {
   if (!entries.length) return true;
 
   const rows = entries.map((item) => {
-    // new Date(...) je namerno, ne sirov string - agent šalje ISO 8601 sa
-    // 7 decimala sekunde i "Z" sufiksom (C#-ov DateTime.ToString("o")), što
-    // MySQL DATETIME odbija direktno ("Incorrect datetime value" - Z sufiks
-    // se nikad ne prihvata, a >6 decimala takođe ne - videti isti fix u
-    // dnsLogs.service.js, otkriveno uživo baš na toj grani prvo). new Date()
-    // parsira string ispravno, mysql2 zatim sam serijalizuje Date objekat.
+    // new Date(...) on purpose, not a raw string - the agent sends ISO 8601 with
+    // 7 fractional-second digits and a "Z" suffix (C#'s DateTime.ToString("o")), which
+    // MySQL DATETIME rejects directly ("Incorrect datetime value" - the Z suffix
+    // is never accepted, and neither are >6 decimals - see the same fix in
+    // dnsLogs.service.js, discovered live on exactly that branch first). new Date()
+    // parses the string correctly, mysql2 then serializes the Date object on its own.
     const loggedAt = item.loggedAt ? new Date(item.loggedAt) : new Date();
 
     return {

@@ -6,9 +6,9 @@ const dateOnly = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
   .optional();
 
-// Deljeno izmedju liste i export-a. category grupise `action` u smislene grupe
-// (vidi activityLog.repo.js). dateFrom/dateTo filtriraju po created_at (ceo dan,
-// inkluzivno). .catch("all") - nepoznata kategorija pada na "all" umesto greske.
+// Shared between the list and the export. category groups `action` into meaningful
+// buckets (see activityLog.repo.js). dateFrom/dateTo filter on created_at (whole day,
+// inclusive). .catch("all") - an unknown category falls back to "all" instead of an error.
 const baseFilters = {
   username: z.string().trim().optional(),
   action: z.string().trim().optional(),

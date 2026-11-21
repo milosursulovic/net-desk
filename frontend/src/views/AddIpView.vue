@@ -106,7 +106,7 @@ const currentSite = useCurrentSite()
 const { isAdmin } = useCurrentUser()
 const error = ref('')
 const form = ref(createIpEntryForm({ site: currentSite.value }))
-// 'department' se renderuje posebno iznad (GroupSelect), ne u generičkoj petlji.
+// 'department' is rendered separately above (GroupSelect), not in the generic loop.
 const optionalFields = IP_OPTIONAL_FIELDS.filter((f) => f.name !== 'department')
 const groupOptions = ref([])
 

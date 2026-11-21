@@ -149,13 +149,13 @@ describe("dnsLogs.service (integration, real DB)", () => {
       expect(out.affected).toBe(1);
     });
 
-    // Regresioni test za uzivo otkriveno kočenje DNS Logs strane -
-    // flagged_domains ima ~88k redova otkad se dnevno sinhronizuje sa
-    // spoljnim izvorima, listFlaggedDomainsService MORA da paginira, ne da
-    // vrati sve odjednom (frontend bi renderovao 88k <tr> elemenata).
-    // Samostalan (ne oslanja se na ambijentalne podatke) - dodaje SVOJA dva
-    // domena da bi total/totalPages bili proverljivi bez obzira na stanje
-    // ostatka tabele.
+    // Regression test for the live-discovered slowdown of the DNS Logs page -
+    // flagged_domains has ~88k rows since it started syncing daily with
+    // external sources, listFlaggedDomainsService MUST paginate, not
+    // return everything at once (the frontend would render 88k <tr> elements).
+    // Self-contained (doesn't rely on ambient data) - adds ITS OWN two
+    // domains so total/totalPages are verifiable regardless of the state of
+    // the rest of the table.
     it("listFlaggedDomainsService paginates instead of returning every row", async () => {
       const domainA = `vitest-blacklisted-a-${Date.now()}.example.com`;
       const domainB = `vitest-blacklisted-b-${Date.now()}.example.com`;

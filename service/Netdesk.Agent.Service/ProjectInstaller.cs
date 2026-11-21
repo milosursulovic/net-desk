@@ -11,12 +11,12 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Service
 {
     /// <summary>
-    /// Omogućava instalaciju preko InstallUtil.exe:
+    /// Enables installation via InstallUtil.exe:
     ///   InstallUtil.exe Netdesk.Agent.Service.exe
-    /// Servis se instalira pod LocalSystem nalogom, Automatic startup - u skladu
-    /// sa zahtevima 11.1 iz specifikacije (rad bez prijavljenog korisnika,
-    /// automatski restart konfiguriše se posebno preko Recovery tab-a / sc.exe,
-    /// InstallUtil to ne pokriva).
+    /// The service is installed under the LocalSystem account, Automatic startup - in line
+    /// with requirement 11.1 of the specification (running without a signed-in user;
+    /// automatic restart is configured separately via the Recovery tab / sc.exe,
+    /// InstallUtil doesn't cover that).
     /// </summary>
     [RunInstaller(true)]
     public class ProjectInstaller : Installer
@@ -55,16 +55,16 @@ namespace NetdeskAgent.Service
         }
 
         /// <summary>
-        /// Agent radi isključivo odlazne HTTPS pozive (heartbeat/inventory/jobs/
-        /// event log/update) - nikad ne osluškuje na portu, pa Windows Firewall
-        /// pod default podešavanjima (odlazno dozvoljeno) ne pravi problem -
-        /// ovo je potvrđeno uživo na Win7/10/11 bez ijedne firewall izmene.
-        /// Ovo pravilo je dodatno pojačanje za okruženja gde je GPO promenio
-        /// podrazumevanu odlaznu politiku na "Block": bez eksplicitnog
-        /// dozvoljavanja po tačnoj .exe putanji, agent bi u takvom okruženju
-        /// tiho prestao da radi bez ijedne greške koja bi jasno ukazala na
-        /// firewall kao uzrok (isti "tihi neuspeh" obrazac kao i metadata bug -
-        /// videti windows-service memoriju).
+        /// The agent makes only outbound HTTPS calls (heartbeat/inventory/jobs/
+        /// event log/update) - it never listens on a port, so Windows Firewall
+        /// with default settings (outbound allowed) isn't a problem -
+        /// this was confirmed live on Win7/10/11 without a single firewall change.
+        /// This rule is an extra hardening for environments where a GPO has changed
+        /// the default outbound policy to "Block": without explicitly
+        /// allowing the exact .exe path, the agent would in such an environment
+        /// silently stop working without a single error that would clearly point to
+        /// the firewall as the cause (the same "silent failure" pattern as the metadata bug -
+        /// see the windows-service memory).
         /// </summary>
         private void AddOutboundFirewallRule()
         {
@@ -97,9 +97,9 @@ namespace NetdeskAgent.Service
 
         private static void InitializeLogger()
         {
-            // ProjectInstaller radi unutar InstallUtil.exe procesa, ne unutar
-            // AgentWorker-a, pa FileLogger nikad nije inicijalizovan ovim putem -
-            // bez ovoga bi Info/Warn pozivi ovde tiho ništa ne uradili.
+            // ProjectInstaller runs inside the InstallUtil.exe process, not inside
+            // AgentWorker, so FileLogger is never initialized along this path -
+            // without this, the Info/Warn calls here would silently do nothing.
             FileLogger.Initialize(Paths.LogFile);
         }
 

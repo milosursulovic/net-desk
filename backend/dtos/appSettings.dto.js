@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-// Registry svih poznatih podešavanja - dodaj ovde kad god treba novi
-// checkbox na Config strani, ostalo (repo/service/controller/frontend
-// lista) je generičko i automatski ga podigne.
+// Registry of all known settings - add an entry here whenever a new
+// checkbox is needed on the Config page; everything else (repo/service/controller/
+// frontend list) is generic and picks it up automatically.
 export const APP_SETTINGS = [
   {
     key: "vnc_enabled",

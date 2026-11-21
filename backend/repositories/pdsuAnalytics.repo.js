@@ -2,7 +2,7 @@ import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
 /**
- * Zajednička pokrivenost inventarom.
+ * Shared inventory coverage.
  */
 export async function getPdsuCoverage(site) {
   const siteSql = site ? "AND ie.site = ?" : "";
@@ -62,9 +62,9 @@ export async function getPdsuCoverage(site) {
   };
 }
 
-// "Bez PDSU" = nema baš nijedan zapis ni u jednoj od 5 tabela (stroži
-// kriterijum od "nedostaje bar jedna kategorija") - videti getPdsuCoverage
-// za per-tabelu brojeve.
+// "No PDSU" = not a single record in any of the 5 tables (a stricter
+// criterion than "at least one category missing") - see getPdsuCoverage
+// for the per-table counts.
 export async function listComputersWithoutPdsu(site) {
   const [rows] = await pool.execute(
     `
@@ -84,13 +84,13 @@ export async function listComputersWithoutPdsu(site) {
   return rows || [];
 }
 
-// "Bez UltraVNC" = nema nijedan servis u servis-inventaru čiji naziv liči na
-// UltraVNC (uvnc_service je stvarni naziv servisa koji registruje
-// Deploy-NetdeskVnc.ps1, winvnc/ultravnc su dodatni obrasci za starije/ručne
-// instalacije) - koristi se da se pronađu računari na kojima deploy skriptu
-// treba (ponovo) pokrenuti. hasServiceData razlikuje "potvrđeno nema
-// UltraVNC" od "nemamo uopšte servis-inventar za ovaj računar" (agent
-// možda nikad nije sinhronizovao servise), pošto oba slučaja padaju u isti
+// "No UltraVNC" = no service in the service inventory whose name looks like
+// UltraVNC (uvnc_service is the real service name registered by
+// Deploy-NetdeskVnc.ps1, winvnc/ultravnc are extra patterns for older/manual
+// installs) - used to find computers where the deploy script needs to be
+// (re)run. hasServiceData distinguishes "confirmed no
+// UltraVNC" from "we have no service inventory for this computer at all" (the agent
+// may never have synced services), since both cases fall into the same
 // NOT EXISTS.
 export async function listComputersWithoutUltravnc(site) {
   const [rows] = await pool.execute(
@@ -122,14 +122,14 @@ export async function listComputersWithoutUltravnc(site) {
   return rows || [];
 }
 
-// "Bez NetdeskAgentManager-a" - isti obrazac kao listComputersWithoutUltravnc
-// iznad, samo za NetdeskAgentManager servis (service/Netdesk.Agent.Manager -
-// videti ManagerCommandClient.ManagerServiceName za tačan naziv servisa).
-// Servis se pojavljuje u computer_services kroz REDOVAN inventory sync
-// (ServiceCollector na agentu), isto kao bilo koji drugi Windows servis -
-// nema potrebe za posebnim mehanizmom detekcije. hasServiceData razlikuje
-// "potvrđeno nema Manager-a" od "nemamo uopšte servis-inventar", isti razlog
-// kao kod UltraVNC provere.
+// "No NetdeskAgentManager" - same pattern as listComputersWithoutUltravnc
+// above, just for the NetdeskAgentManager service (service/Netdesk.Agent.Manager -
+// see ManagerCommandClient.ManagerServiceName for the exact service name).
+// The service shows up in computer_services through the REGULAR inventory sync
+// (ServiceCollector on the agent), like any other Windows service -
+// no need for a separate detection mechanism. hasServiceData distinguishes
+// "confirmed no Manager" from "no service inventory at all", the same reason
+// as for the UltraVNC check.
 export async function listComputersWithoutNetdeskAgentManager(site) {
   const [rows] = await pool.execute(
     `
@@ -1322,14 +1322,14 @@ export async function getComputersWithMostPrinters(limit = 10, site) {
   }));
 }
 
-// Štampači po računaru za "aktivni štampač" izveštaj. Win32_Printer.Default
-// (WMI) je jedini realan signal koji Windows daje za "trenutno se koristi" -
-// nema "poslednji put korišćen" podatak - ali dosta mašina nema NIJEDAN
-// štampač markiran kao default, ili je default ispao neki softverski/
-// virtuelni štampač (Print to PDF, AnyDesk...). Zato ovo namerno vraća SVE
-// sinhronizovane štampače po računaru (ne samo default), da nijedan računar
-// ne ispadne iz izveštaja - isDefault na svakom redu govori da li je taj
-// konkretan štampač Windows-ov podrazumevani.
+// Printers per computer for the "active printer" report. Win32_Printer.Default
+// (WMI) is the only realistic signal Windows gives for "currently in use" -
+// there's no "last used" data - but many machines have NO printer marked as
+// default, or the default ended up being some software/virtual printer
+// (Print to PDF, AnyDesk...). So this deliberately returns ALL synced
+// printers per computer (not just the default), so no computer drops out of the
+// report - isDefault on each row says whether that specific printer is
+// Windows' default.
 export async function getActivePrinterPerComputer(site) {
   const [rows] = await pool.execute(
     `
@@ -1367,7 +1367,7 @@ export async function getActivePrinterPerComputer(site) {
 }
 
 /* =========================================================
-   EXPORT (pune liste, bez limita/top-N kurirovanja)
+   EXPORT (full lists, no limit/top-N curation)
    ========================================================= */
 
 export async function getAllSoftwareForExport(site) {
@@ -1490,8 +1490,8 @@ export async function getAllPrintersForExport(site) {
 }
 
 /* =========================================================
-   SEARCH (prava pretraga cele baze, ne samo kurirane top-N/retke
-   tabele koje se prikazuju na dashboard-u)
+   SEARCH (a real search across the whole database, not just the curated
+   top-N/sparse tables shown on the dashboard)
    ========================================================= */
 
 export async function searchSoftwareRows(term, limit = 100, site) {

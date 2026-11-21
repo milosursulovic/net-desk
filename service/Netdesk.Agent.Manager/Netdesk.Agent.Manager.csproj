@@ -3,11 +3,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <!--
-      Namerno JEDINI net-target (ne prati Common/Service dual-tier) - Manager
-      je od ove izmene potpuno samostalan, nula zavisnosti od
-      Netdesk.Agent.Common, pa nema ni razloga da prati agent-ov net452/net472
-      split. Ostaje net452 čisto zbog Win7 podrške (isti razlog kao pre),
-      nezavisno od toga koji tier Service/Agent koristi na istoj mašini.
+      Deliberately the ONLY net target (it doesn't follow the Common/Service dual tier) - since this
+      change the Manager is completely standalone, with zero dependencies on
+      Netdesk.Agent.Common, so there's no reason to follow the agent's net452/net472
+      split either. It stays net452 purely for Win7 support (the same reason as before),
+      regardless of which tier the Service/Agent uses on the same machine.
     -->
     <TargetFramework>net452</TargetFramework>
     <LangVersion>7.3</LangVersion>
@@ -19,27 +19,27 @@
   <ItemGroup>
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Configuration.Install" />
-    <!-- UpdateReportClient.cs (mailbox put) i ManagerApiClient.cs (novi,
-         nezavisni HTTP kanal) - oba mrežna poziva Manager ikad pravi. -->
+    <!-- UpdateReportClient.cs (the mailbox path) and ManagerApiClient.cs (the new,
+         independent HTTP channel) - all the network calls the Manager ever makes. -->
     <Reference Include="System.Net.Http" />
     <!-- InstallUpdateFromServerAsync (ManagerWorker.cs) - ZipFile.ExtractToDirectory
-         za install_update komande sa novog kanala, isti par referenci kao
+         for install_update commands from the new channel, the same pair of references as
          Netdesk.Agent.Common.csproj. -->
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <!-- StopWinDivertDriverIfPresent (ManagerWorker.cs) - Win32_SystemDriver
-         preko WMI, ista tehnika kao "Prinudno zaustavi WinDivert drajver"
+         via WMI, the same technique as the "Prinudno zaustavi WinDivert drajver" (force-stop WinDivert driver)
          PowerShell preset (powershellPresets.js). -->
     <Reference Include="System.Management" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      Direktna zavisnost (ne više tranzitivna preko Netdesk.Agent.Common) -
-      samo za ManagerCommand JSON (de)serijalizaciju i UpdateReportClient
-      payload. websocket-sharp NIJE ovde - to je bilo čisto tranzitivno
-      smeće preko stare Common reference (Manager nikad nije koristio VNC
-      bridge), sad ispravno odsutno.
+      A direct dependency (no longer transitive via Netdesk.Agent.Common) -
+      only for ManagerCommand JSON (de)serialization and the UpdateReportClient
+      payload. websocket-sharp is NOT here - that was purely transitive
+      junk via the old Common reference (the Manager never used the VNC
+      bridge), now correctly absent.
     -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>

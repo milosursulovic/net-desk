@@ -9,10 +9,10 @@ export async function ingestProcessDetections(ipEntryId, entries) {
       const processName = String(item.processName || "").trim().toLowerCase();
       if (!processName) return null;
 
-      // new Date(...) je namerno, ne sirov string - isti razlog kao DNS
-      // logovi (dnsLogs.service.js): agent šalje ISO 8601 sa 7 decimala
-      // sekunde i "Z" sufiksom (C#-ov DateTime.ToString("o")), što MySQL
-      // DATETIME odbija direktno.
+      // new Date(...) on purpose, not a raw string - same reason as the DNS
+      // logs (dnsLogs.service.js): the agent sends ISO 8601 with 7 fractional-second
+      // digits and a "Z" suffix (C#'s DateTime.ToString("o")), which MySQL
+      // DATETIME rejects directly.
       const firstSeen = item.firstSeen ? new Date(item.firstSeen) : new Date();
       const lastSeen = item.lastSeen ? new Date(item.lastSeen) : new Date();
 
@@ -22,9 +22,9 @@ export async function ingestProcessDetections(ipEntryId, entries) {
         first_seen: isNaN(firstSeen) ? new Date() : firstSeen,
         last_seen: isNaN(lastSeen) ? new Date() : lastSeen,
         detection_count: Number(item.count) > 0 ? Number(item.count) : 1,
-        // Agent šalje killed=1 SAMO kad je AgentSettings.KillWatchedProcesses
-        // uključen i bar jedna instanca ovog procesa uspešno ubijena ovog
-        // ciklusa - Number(item.killed) > 0 pokriva i broj i truthy JSON bool.
+        // The agent sends killed=1 ONLY when AgentSettings.KillWatchedProcesses
+        // is enabled and at least one instance of this process was successfully killed this
+        // cycle - Number(item.killed) > 0 covers both a number and a truthy JSON bool.
         kill_count: Number(item.killed) > 0 ? 1 : 0,
       };
     })
@@ -34,9 +34,9 @@ export async function ingestProcessDetections(ipEntryId, entries) {
   return true;
 }
 
-// sortBy interpoluje se direktno u ORDER BY u repo-u (kolona ne može biti
-// bound parametar) - ova whitelist JESTE SQL injection zaštita, isti
-// obrazac kao dnsLogs.service.js/inventory.dto.js's SORT_FIELDS.
+// sortBy is interpolated directly into ORDER BY in the repo (a column can't be
+// a bound parameter) - this whitelist IS the SQL injection protection, same
+// pattern as dnsLogs.service.js/inventory.dto.js's SORT_FIELDS.
 const SORT_FIELDS = {
   processName: "cpd.process_name",
   firstSeen: "cpd.first_seen",

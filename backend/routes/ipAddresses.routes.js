@@ -25,8 +25,8 @@ router.get("/scan-ports", asyncHandler(scanPortsController));
 router.get("/duplicates", asyncHandler(duplicatesController));
 router.get("/export-xlsx", asyncHandler(exportXlsxController));
 router.get("/filter-options", asyncHandler(filterOptionsController));
-// Mora biti registrovano PRE "/:id" ispod - isti razlog kao ostale rute
-// iznad, "/:id" bi inače "free" protumačio kao id.
+// Must be registered BEFORE "/:id" below - same reason as the other routes
+// above, "/:id" would otherwise interpret "free" as an id.
 router.get("/free", asyncHandler(freeIpAddressesController));
 router.get("/repack-recommendations", asyncHandler(repackRecommendationsController));
 

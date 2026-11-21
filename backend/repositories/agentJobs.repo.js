@@ -1,13 +1,13 @@
 import { pool } from "../db/pool.js";
 import { CONNECTIVITY_STATUS_SQL } from "./agents.repo.js";
 
-// mysql2 auto-parsira `payload` u objekat SAMO ako je kolona pravi MariaDB
-// JSON tip (CHECK (json_valid(...))) - na okruženjima gde je kolona obična
-// LONGTEXT (šema se primenjuje ručno po serveru, bez migracionog alata, pa
-// se ovo lako razmimoiđe) mysql2 vraća sirov JSON string. Otkriveno uživo:
-// agent je dobijao string umesto objekta za payload i padao na
-// deserijalizaciji (Newtonsoft JObject vs JValue). Ova funkcija radi
-// ispravno u oba slučaja.
+// mysql2 auto-parses `payload` into an object ONLY if the column is a real
+// MariaDB JSON type (CHECK (json_valid(...))) - in environments where the column
+// is a plain LONGTEXT (the schema was applied by hand per server, without a
+// migration tool, so this drifts easily) mysql2 returns the raw JSON string.
+// Discovered live: the agent received a string instead of an object for the
+// payload and failed deserializing it (Newtonsoft JObject vs JValue). This
+// function works correctly in both cases.
 function parsePayload(value) {
   if (value == null) return null;
   if (typeof value !== "string") return value;
@@ -67,11 +67,11 @@ export async function insertJob({ agentId, batchId, commandType, payload, create
   return result.insertId;
 }
 
-// job_batches.id je CHAR(36) UUID (crypto.randomUUID(), generisan u
-// agentJobs.service.js) - jedan red po batch pozivu, deca su agent_jobs
-// redovi povezani preko batch_id FK-a. Odvojena tabela (ne samo GROUP BY
-// po agent_jobs.batch_id) namerno - lista istorije ostaje brz indeksovan
-// lookup i kad agent_jobs naraste.
+// job_batches.id is a CHAR(36) UUID (crypto.randomUUID(), generated in
+// agentJobs.service.js) - one row per batch call, the children are agent_jobs
+// rows linked through the batch_id FK. A separate table (not just GROUP BY
+// on agent_jobs.batch_id) on purpose - the history list stays a fast indexed
+// lookup even as agent_jobs grows.
 export async function insertJobBatch({ id, commandType, createdByUserId }) {
   await pool.execute(
     `
@@ -83,13 +83,13 @@ export async function insertJobBatch({ id, commandType, createdByUserId }) {
   return id;
 }
 
-// Koristi downloadReleaseService (agentReleases.service.js) da dozvoli
-// preuzimanje release-a koji NE cilja agentovu trenutnu deployment grupu,
-// ako postoji skorašnji EKSPLICITAN force_reinstall_agent job baš za tog
-// agenta i baš taj release - admin je svesno zaobišao normalno grupno
-// ciljanje (npr. instalacija starije verzije preko Agent Detail strane),
-// to ne sme da bude blokirano istom proverom koja štiti normalan
-// auto-update tok (agent da ne "pogodi" tuđi releaseId).
+// Used by downloadReleaseService (agentReleases.service.js) to allow
+// downloading a release that does NOT target the agent's current deployment
+// group, if there is a recent EXPLICIT force_reinstall_agent job for exactly
+// that agent and exactly that release - the admin knowingly bypassed normal
+// group targeting (e.g. installing an older version from the Agent Detail
+// page), and that must not be blocked by the same check that protects the
+// normal auto-update flow (so an agent can't "guess" someone else's releaseId).
 export async function findRecentForceReinstallJob(agentId, releaseId, withinMinutes = 60) {
   const [rows] = await pool.execute(
     `
@@ -155,19 +155,19 @@ export async function listJobsForBatch(batchId) {
     ...mapRow(r),
     hostname: r.hostname,
     agentUid: r.agentUid,
-    // Da se na "na čekanju" stavkama vidi da li je agent uopšte online -
-    // pending komanda može čekati zauvek ako je agent offline, ne samo dok
-    // dođe na red na sledećem poll ciklusu.
+    // So "pending" items show whether the agent is online at all - a pending
+    // command can wait forever if the agent is offline, not just until its
+    // turn comes on the next poll cycle.
     connectivityStatus: r.connectivityStatus,
   }));
 }
 
 export async function listJobBatches({ limit, offset, onlyUnfinished }) {
-  // "Unfinished" = bar jedna stavka u batch-u je jos pending/sent - ne
-  // moze se izraziti kao WHERE (status jos nije agregiran po batch-u u tom
-  // trenutku), pa ide kao HAVING nakon GROUP BY. Isti uslov se ponavlja u
-  // count upitu (obavijen u podupit) da paginacija racuna tacan total nad
-  // filtriranim skupom, ne nad svim batch-evima.
+  // "Unfinished" = at least one item in the batch is still pending/sent - can't
+  // be expressed as a WHERE (status isn't aggregated per batch at that point),
+  // so it goes into HAVING after GROUP BY. The same condition is repeated in
+  // the count query (wrapped in a subquery) so pagination computes the correct
+  // total over the filtered set, not over all batches.
   const having = onlyUnfinished ? "HAVING SUM(j.status IN ('pending', 'sent')) > 0" : "";
 
   const [[{ total }]] = await pool.execute(
@@ -243,13 +243,13 @@ export async function findPendingJobsForAgent(agentId) {
   return rows.map(mapRow);
 }
 
-// Otkazuje sve komande koje JOŠ NISU u završnom stanju ('pending' ili
-// 'sent') - ne samo 'pending'. Agent i dalje nema kanal za prekid usred
-// izvršavanja, pa se već poslata ('sent') komanda može fizički izvršiti na
-// mašini i posle ovoga; otkazivanje ovde markira nameru korisnika i
-// sprečava da kasniji rezultat prepiše status - kad agent pokuša da pošalje
-// rezultat, submitJobResultService ga odbija (completeJob-ov WHERE
-// status='sent' više ne pogađa), pa status ostaje 'cancelled'.
+// Cancels every command NOT YET in a final state ('pending' or 'sent') - not
+// just 'pending'. The agent still has no channel for interrupting mid-execution,
+// so an already sent ('sent') command may physically run on the machine even
+// after this; cancelling here records the user's intent and prevents a later
+// result from overwriting the status - when the agent tries to submit the
+// result, submitJobResultService rejects it (completeJob's WHERE status='sent'
+// no longer matches), so the status stays 'cancelled'.
 export async function cancelActiveJobsInBatch(batchId) {
   const [result] = await pool.execute(
     `
@@ -262,9 +262,9 @@ export async function cancelActiveJobsInBatch(batchId) {
   return result.affectedRows;
 }
 
-// Isto pravilo kao cancelActiveJobsInBatch, ali za pojedinačnu komandu (van
-// batch konteksta ili jednu stavku iz batch-a) - Agent Detail "Komande" tab
-// i pojedinačne stavke na Batch Job Detail strani.
+// Same rule as cancelActiveJobsInBatch, but for a single command (outside a
+// batch context, or one item of a batch) - the Agent Detail "Komande" tab and
+// individual items on the Batch Job Detail page.
 export async function cancelJob(jobId) {
   const [result] = await pool.execute(
     `

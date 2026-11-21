@@ -44,14 +44,14 @@ export async function findManagerById(id) {
   return rows?.[0] || null;
 }
 
-// Za AgentDetailView.vue korelaciju - Manager i Agent na istoj mašini dele
-// isti ip_entry_id (oboje ga razrešavaju nezavisno, svaki svojim putem), pa
-// je ovo jedini spoj koji postoji između njih (nema direktnog agent_id/
-// manager_id para bilo gde).
-// ORDER BY id DESC je odbrana u dubinu, ne oslanja se samo na
-// revokeOtherActiveManagers (enrollManager) da nikad ne dozvoli da 2+ reda
-// budu 'active' istovremeno za isti ip_entry_id - da ODJE i dalje bira
-// najnoviji ako se to ikad desi.
+// For the AgentDetailView.vue correlation - the Manager and the Agent on the same
+// machine share the same ip_entry_id (each resolves it independently, in its own
+// way), so this is the only link between them (there's no direct agent_id/
+// manager_id pair anywhere).
+// ORDER BY id DESC is defense in depth, it doesn't rely solely on
+// revokeOtherActiveManagers (enrollManager) to never let 2+ rows be
+// 'active' at once for the same ip_entry_id - so that HERE it still picks
+// the newest one if that ever happens.
 export async function findManagerByIpEntryId(ipEntryId) {
   if (!ipEntryId) return null;
   const [rows] = await pool.execute(
@@ -100,12 +100,12 @@ export async function revokeManagerById(id) {
   return result.affectedRows;
 }
 
-// Poziva se odmah posle enroll-a (vidi enrollManager) da NIKAD ne ostanu 2+
-// 'active' redova za isti ip_entry_id - Manager servis se ponovo enroll-uje
-// kad god je reinstaliran/reprovizovan (ne može da obnovi stari, samo-hash
-// sačuvan API key), pa nova registracija zamenjuje staru umesto da joj se
-// pridoda. Bez ovoga listAgents-ov LEFT JOIN na managers duplira red agenta
-// u listi (uživo potvrđeno - viđeno na najnovije upisanim agentima).
+// Called right after enroll (see enrollManager) so that there are NEVER 2+
+// 'active' rows for the same ip_entry_id - the Manager service re-enrolls
+// whenever it's reinstalled/reprovisioned (it can't recover the old, hash-only
+// stored API key), so the new registration replaces the old one instead of being
+// added next to it. Without this, listAgents's LEFT JOIN on managers duplicates
+// the agent's row in the list (confirmed live - seen on the most recently written agents).
 export async function revokeOtherActiveManagers(ipEntryId, exceptManagerId) {
   if (!ipEntryId) return 0;
   const [result] = await pool.execute(

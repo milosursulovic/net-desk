@@ -61,8 +61,8 @@
         </button>
       </div>
 
-      <!-- Aktivni filteri kao chip-ovi - vidljivo bez obzira na
-           detailedFiltersOpen, brzi pregled šta trenutno filtrira listu. -->
+      <!-- Active filters as chips - visible regardless of
+           detailedFiltersOpen, a quick overview of what is currently filtering the list. -->
       <div v-if="activeFilterChips.length" class="flex flex-wrap items-center gap-1.5">
         <TagChip v-for="chip in activeFilterChips" :key="chip.key" :label="chip.label" removable @remove="chip.clear" />
         <button type="button" class="text-xs text-ink-muted hover:text-ink hover:underline" @click="clearAllFilters">
@@ -70,7 +70,7 @@
         </button>
       </div>
 
-      <!-- Detaljni filteri - skupljeno na mobilnom po difoltu -->
+      <!-- Detailed filters - collapsed on mobile by default -->
       <div :class="detailedFiltersOpen ? 'block' : 'hidden sm:block'">
         <div class="flex flex-wrap items-center gap-2">
           <select v-model="connectivityStatus" class="app-input w-auto max-w-full min-w-0 truncate" :aria-label="t('agents.connectivityFilterAriaLabel')">
@@ -307,7 +307,7 @@
       </div>
     </div>
 
-    <!-- Batch komanda - vidljivo samo kad je bar 1 agent selektovan -->
+    <!-- Batch command - visible only when at least 1 agent is selected -->
     <div v-if="selectedIds.size" class="rounded-xl border border-info/30 bg-info-subtle p-4 space-y-3">
       <div class="font-medium text-info">
         {{ t('agents.sendCommandTo', { count: selectedIds.size }) }}
@@ -353,8 +353,8 @@
       </div>
     </div>
 
-    <!-- Masovna dodela deployment grupe - admin-only, isto kao pojedinačna
-         dodela na Agent Detail strani. -->
+    <!-- Bulk deployment group assignment - admin-only, same as the individual
+         assignment on the Agent Detail page. -->
     <div v-if="selectedIds.size && isAdmin" class="rounded-xl border border-accent/30 bg-accent-subtle p-4 space-y-3">
       <div class="font-medium text-accent-emphasis">
         {{ t('agents.assignGroupTo', { count: selectedIds.size }) }}
@@ -546,7 +546,7 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { getSignal, abort } = useAbortableFetch()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-// Isti limit kao BatchCreateJobSchema.agentIds max u backend/dtos/agentJobs.dto.js.
+// Same limit as BatchCreateJobSchema.agentIds max in backend/dtos/agentJobs.dto.js.
 const MAX_BATCH_AGENTS = 500
 
 const {
@@ -618,9 +618,9 @@ const {
       omitIfEmpty: true,
       oneOf: ['', 'true', 'false'],
     },
-    // Slobodan tekst (isto tretiranje kao os/version/department ispod) -
-    // grupe više nisu ograničene na fiksnu listu, pa nema oneOf ovde (inače
-    // bi bilo koja vrednost van stare liste od 4 bila tiho resetovana).
+    // Free text (the same treatment as os/version/department below) -
+    // groups are no longer limited to a fixed list, so there's no oneOf here (otherwise
+    // any value outside the old list of 4 would be silently reset).
     deploymentGroup: { type: 'array', default: [] },
     os: { type: 'array', default: [] },
     osArchitecture: { type: 'string', default: '', omitIfEmpty: true },
@@ -714,10 +714,10 @@ watch(
 )
 
 watch(site, () => {
-  // os/version/department/osArchitecture dropdown vrednosti su vezane za
-  // PRETHODNU lokaciju - ako ostanu postavljene posle promene lokacije,
-  // filtriraju na vrednost koja verovatno ne postoji na novoj (prazna lista
-  // rezultata).
+  // The os/version/department/osArchitecture dropdown values are tied to the
+  // PREVIOUS site - if they stay set after the site changes,
+  // they filter on a value that probably doesn't exist at the new one (an empty result
+  // list).
   os.value = []
   osArchitecture.value = ''
   version.value = []
@@ -731,9 +731,9 @@ watch(site, () => {
 const items = ref([])
 const total = ref(0)
 const totalPages = ref(0)
-// Stat tile brojevi - stvarni upiti (isti /agents/ids endpoint kao
-// selectAllMatching(), samo sa jednim filterom prepisanim po pločici), ne
-// izvedeno samo iz trenutne (paginirane) strane - videti napomenu u
+// Stat tile numbers - real queries (the same /agents/ids endpoint as
+// selectAllMatching(), just with one filter overridden per tile), not
+// derived only from the current (paginated) page - see the note in
 // fetchStatTiles().
 const statOnline = ref(0)
 const statOffline = ref(0)
@@ -747,9 +747,9 @@ const managerVersionOptions = ref([])
 const departmentOptions = ref([])
 const deploymentGroupOptions = ref([])
 
-// Detaljni filteri su na mobilnom skupljeni po difoltu (ispod sm) - broj na
-// dugmetu je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i
-// dok je panel zatvoren.
+// Detailed filters are collapsed by default on mobile (below sm) - the number on
+// the button is a visual reminder that something is NOT at its default value, even
+// while the panel is closed.
 const detailedFiltersOpen = ref(false)
 const activeDetailedFilterCount = computed(() => {
   let n = 0
@@ -779,10 +779,10 @@ const activeDetailedFilterCount = computed(() => {
   return n
 })
 
-// Vizuelni prikaz "šta trenutno filtrira" kao chip-ovi - ne uvodi novo
-// stanje, samo čita/piše iste refs kao detaljni filter panel iznad. Svaki
-// chip nosi svoju clear() funkciju (za nizovne filtere briše SAMO tu jednu
-// vrednost, ne ceo filter).
+// Visual display of "what is currently filtering" as chips - doesn't introduce new
+// state, it only reads/writes the same refs as the detailed filter panel above. Each
+// chip carries its own clear() function (for array filters it removes ONLY that one
+// value, not the whole filter).
 const STATUS_LABELS = computed(() => ({ active: t('agents.statusActive'), revoked: t('agents.statusRevoked') }))
 const CONNECTIVITY_FILTER_LABELS = computed(() => ({
   online: t('common.online'),
@@ -900,9 +900,9 @@ function clearDetailedFilters() {
   secureDnsDisabled.value = ''
 }
 
-// Deljeno između fetchData() (dodaje page/limit) i selectAllMatching()
-// (šalje na /agents/ids bez page/limit - svi id-jevi koji odgovaraju
-// filterima, ne samo trenutna strana) - isti set filtera na oba mesta.
+// Shared between fetchData() (adds page/limit) and selectAllMatching()
+// (sends to /agents/ids without page/limit - all ids matching the
+// filters, not just the current page) - the same filter set in both places.
 function buildFilterParams() {
   const params = new URLSearchParams({ search: search.value, status: status.value, site: site.value })
   if (connectivityStatus.value) params.set('connectivityStatus', connectivityStatus.value)
@@ -937,15 +937,15 @@ function buildFilterParams() {
   return params
 }
 
-// Mreža (ping-based ipIsOnline) kaže da je računar gore, ali agent se ne
-// javlja online - isti uslov kao backend agentOfflineIpOnline filter.
-// Number(...) namerno - mysql2 vraća TINYINT(1) kao 0/1, ne pravi bool.
+// The network (ping-based ipIsOnline) says the computer is up, but the agent isn't
+// reporting online - the same condition as the backend's agentOfflineIpOnline filter.
+// Number(...) on purpose - mysql2 returns TINYINT(1) as 0/1, not a real bool.
 function isAgentMismatch(a) {
   return a.connectivityStatus !== 'online' && Number(a.ipIsOnline) === 1
 }
 
-// deploymentGroups dolazi kao GROUP_CONCAT string sa backend-a
-// (agents.repo.js), ne niz - videti napomenu tamo.
+// deploymentGroups comes as a GROUP_CONCAT string from the backend
+// (agents.repo.js), not an array - see the note there.
 function agentDeploymentGroups(a) {
   return a.deploymentGroups ? a.deploymentGroups.split(', ').filter(Boolean) : []
 }
@@ -976,11 +976,11 @@ async function fetchData() {
   }
 }
 
-// Tri lagana poziva na /agents/ids (isti endpoint kao selectAllMatching(),
-// samo id-jevi bez page/limit) sa po jednim filterom prepisanim - daje
-// TAČAN broj po celom filtriranom skupu, ne samo trenutnu stranicu. Ista
-// cena kao selectAllMatching(), pucanje jednog poziva ne sme da obori
-// ostale (Promise.allSettled).
+// Three light calls to /agents/ids (the same endpoint as selectAllMatching(),
+// just ids without page/limit), each with one filter overridden - gives the
+// EXACT count over the whole filtered set, not just the current page. The same
+// cost as selectAllMatching(), one call failing must not bring down
+// the others (Promise.allSettled).
 async function fetchStatTiles() {
   const onlineParams = buildFilterParams()
   onlineParams.set('connectivityStatus', 'online')
@@ -1048,8 +1048,8 @@ async function confirmRevoke(a) {
   }
 }
 
-// Selekcija za batch komande - samo trenutno prikazana (paginirana) strana,
-// ne prelazi kroz stranice automatski.
+// Selection for batch commands - only the currently displayed (paginated) page,
+// it doesn't carry across pages automatically.
 const selectedIds = ref(new Set())
 const allVisibleSelected = computed(
   () => items.value.length > 0 && items.value.every((a) => selectedIds.value.has(a.id)),
@@ -1203,12 +1203,12 @@ onBeforeUnmount(() => {
   clearTimeout(searchT)
 })
 
-// "Ponovi sa novom komandom" sa BatchJobDetailView.vue - preuzima ciljane
-// agente iz TOG batch-a (svež upit, ne stara snimljena lista) i predpuni
-// formu njegovom komandom kao polaznu tačku, ali ostaje potpuno izmenljivo
-// pre slanja (ovo NIJE "pošalji isti batch ponovo" - selekcija agenata je
-// ista, komanda ne mora biti). Query param se čisti posle čitanja da
-// osvežavanje strane ne ponavlja selekciju iznova.
+// "Ponovi sa novom komandom" (repeat with a new command) from BatchJobDetailView.vue - takes the targeted
+// agents from THAT batch (a fresh query, not an old saved list) and prefills the
+// form with its command as a starting point, but it stays fully editable
+// before sending (this is NOT "send the same batch again" - the agent selection is
+// the same, the command doesn't have to be). The query param is cleared after reading so
+// a page refresh doesn't repeat the selection all over again.
 async function loadRepeatBatch(batchId) {
   try {
     const res = await fetchWithAuth(`/api/protected/agents/jobs/batch/${batchId}`)
@@ -1234,12 +1234,12 @@ async function loadRepeatBatch(batchId) {
   }
 }
 
-// Dolazak sa PDSU strane - "selektuj agente koji imaju ovaj neželjeni
-// program/servis/drajver" (PDSUFlagged.vue). Za razliku od repeatBatchId,
-// ovde su id-jevi već poznati (server ih je izračunao preko flagged
-// pattern-a), pa se samo direktno postave kao selekcija - nema dodatnog
-// fetch-a agenata, i oni se prikazuju izabrani i kad nisu na trenutnoj
-// stranici liste (isti obrazac kao selectAllMatching).
+// Arriving from the PDSU page - "select agents that have this unwanted
+// program/service/driver" (PDSUFlagged.vue). Unlike repeatBatchId,
+// the ids are already known here (the server computed them via the flagged
+// pattern), so they're just set directly as the selection - no extra
+// agent fetch, and they show as selected even when they aren't on the current
+// page of the list (same pattern as selectAllMatching).
 function loadPreselectedAgentIds(raw) {
   const ids = String(raw)
     .split(',')

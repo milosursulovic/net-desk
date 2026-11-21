@@ -31,15 +31,15 @@ const SELECT_FIELDS = `
   created_at AS createdAt
 `;
 
-// Regex koji prepoznaje auto HTTP audit upise (auditLog.middleware.js belezi
-// "GET /api/..." kao action) - koristi se da ih odvoji od semantickih
-// dogadjaja (login_*, vnc_*, ...).
+// Regex that recognizes the automatic HTTP audit entries (auditLog.middleware.js
+// records "GET /api/..." as the action) - used to separate them from semantic
+// events (login_*, vnc_*, ...).
 const HTTP_ACTION_REGEXP = "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) ";
 
-// Kategorije grupisu visoko-kardinalni `action` string u smislene grupe, da
-// se audit (npr. VNC pristanak) ne mesa sa opstim HTTP/login upisima.
-// Escape '_' u LIKE ('vnc\_%') jer je '_' wildcard; podrazumevani MySQL escape
-// je backslash. Jedno mesto definicije - deli ga i lista i export.
+// Categories group the high-cardinality `action` string into meaningful buckets,
+// so the audit trail (e.g. VNC consent) doesn't mix with general HTTP/login entries.
+// '_' is escaped in LIKE ('vnc\_%') because '_' is a wildcard; MySQL's default
+// escape character is backslash. Single place of definition - shared by the list and the export.
 function categoryClause(category) {
   switch (category) {
     case "vnc":
@@ -109,9 +109,9 @@ export async function listActivityLog({ limit, offset, username, action, categor
   return { items: rows, total: Number(total) || 0 };
 }
 
-// Export honori iste filtere kao lista, ali bez paginacije. Hard cap stiti
-// od OOM-a pri gradnji XLSX-a u memoriji (exceljs) na vrlo velikoj tabeli -
-// vraca najskorijih `cap` redova; filteri (kategorija/datum) suze rezultat.
+// The export honors the same filters as the list, but without pagination. A hard
+// cap guards against OOM when building the XLSX in memory (exceljs) on a very large
+// table - returns the newest `cap` rows; the filters (category/date) narrow the result.
 export async function fetchActivityLogForExport({ username, action, category, dateFrom, dateTo, cap = 100000 }) {
   const { whereSql, params } = buildWhere({ username, action, category, dateFrom, dateTo });
 

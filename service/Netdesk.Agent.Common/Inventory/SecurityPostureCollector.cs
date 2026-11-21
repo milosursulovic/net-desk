@@ -7,13 +7,13 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Inventory
 {
     /// <summary>
-    /// Proverava dva bezbednosna preduslova koje org zahteva na svakoj mašini:
-    /// da su org-specifični CA sertifikati instalirani u odgovarajuće Local
-    /// Machine store-ove, i da je Secure DNS (DNS-over-HTTPS) isključen u
-    /// pregledačima preko iste registry politike koju postavlja
-    /// "Isključi Secure DNS" preset. Sve povratne vrednosti su nullable -
-    /// null znači da provera nije mogla da se izvrši ovog ciklusa (npr.
-    /// server sa referentnim sertifikatom nedostupan), ne "sigurno nedostaje".
+    /// Checks two security prerequisites the org requires on every machine:
+    /// that the org-specific CA certificates are installed in the appropriate Local
+    /// Machine stores, and that Secure DNS (DNS-over-HTTPS) is disabled in
+    /// browsers via the same registry policy set by the
+    /// "Isključi Secure DNS" (disable Secure DNS) preset. All return values are nullable -
+    /// null means the check couldn't run this cycle (e.g. the
+    /// server with the reference certificate was unreachable), not "definitely missing".
     /// </summary>
     public static class SecurityPostureCollector
     {
@@ -26,14 +26,14 @@ namespace NetdeskAgent.Common.Inventory
         public static bool? CheckIntermediateCertInstalled(string serverBaseUrl)
             => CheckCertInstalled(serverBaseUrl, IntermediateCertFileName, StoreName.CertificateAuthority);
 
-        // Razdvojeno u tri koraka (download / parse / store-read) sa
-        // sopstvenim WARN po koraku - uživo na Windows 7 su OBA sertifikata
-        // padala sa istom generičkom "Cannot find the requested object"
-        // (CryptographicException) porukom, koja sama ne kaže da li puca
-        // parsiranje preuzetog fajla ili čitanje Local Machine store-a
-        // (poznat, dokumentovan .NET/Windows 7 problem baš sa
-        // StoreName.Root/CertificateAuthority - vidi DescribeException za
-        // HResult koji to razlikuje: CRYPT_E_NOT_FOUND=0x80092004 od npr.
+        // Split into three steps (download / parse / store-read) with
+        // their own WARN per step - live on Windows 7 BOTH certificates
+        // failed with the same generic "Cannot find the requested object"
+        // (CryptographicException) message, which by itself doesn't say whether it's
+        // parsing the downloaded file or reading the Local Machine store that fails
+        // (a known, documented .NET/Windows 7 problem precisely with
+        // StoreName.Root/CertificateAuthority - see DescribeException for the
+        // HResult that tells them apart: CRYPT_E_NOT_FOUND=0x80092004 vs e.g.
         // access-denied=0x80070005).
         private static bool? CheckCertInstalled(string serverBaseUrl, string fileName, StoreName storeName)
         {
@@ -58,9 +58,9 @@ namespace NetdeskAgent.Common.Inventory
                 return null;
             }
 
-            // X509Certificate2/X509Store ne implementiraju IDisposable pre
-            // .NET 4.6 (agent cilja net452) - try/finally + .Reset()/.Close()
-            // umesto "using", isti obrazac kao UpdateManager.cs.
+            // X509Certificate2/X509Store don't implement IDisposable before
+            // .NET 4.6 (the agent targets net452) - try/finally + .Reset()/.Close()
+            // instead of "using", the same pattern as UpdateManager.cs.
             X509Certificate2 refCert = null;
             string thumbprint;
             try
@@ -103,12 +103,12 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// true samo ako su SVA četiri pregledača (Chrome/Edge/Brave preko
-        /// DnsOverHttpsMode="off", Firefox preko DNSOverHTTPS\Enabled=0)
-        /// potvrđeno isključena - ista registry politika koju postavlja
-        /// "Isključi Secure DNS" preset. Registry čitanje nema mrežnu
-        /// zavisnost pa uvek daje određen odgovor (false, ne null) kad
-        /// bar jedan pregledač nije isključen ili nije konfigurisan.
+        /// true only if ALL four browsers (Chrome/Edge/Brave via
+        /// DnsOverHttpsMode="off", Firefox via DNSOverHTTPS\Enabled=0)
+        /// are confirmed disabled - the same registry policy set by the
+        /// "Isključi Secure DNS" (disable Secure DNS) preset. The registry read has no network
+        /// dependency, so it always gives a definite answer (false, not null) when
+        /// at least one browser isn't disabled or isn't configured.
         /// </summary>
         public static bool? CheckSecureDnsDisabled()
         {

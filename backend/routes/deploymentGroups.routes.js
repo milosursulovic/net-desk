@@ -10,9 +10,9 @@ import {
 
 const router = express.Router();
 
-// Isti obrazac kao groups.routes.js - GET otvoren svim ulogovanim, POST
-// nasleđuje writeRequiresOperator (dodavanje predefinisane vrednosti je
-// niskorizično), DELETE je admin-only.
+// Same pattern as groups.routes.js - GET open to all signed-in users, POST
+// inherits writeRequiresOperator (adding a predefined value is
+// low-risk), DELETE is admin-only.
 router.get("/", asyncHandler(listDeploymentGroupsController));
 router.get("/usage", asyncHandler(listDeploymentGroupsUsageController));
 router.post("/", asyncHandler(createDeploymentGroupController));

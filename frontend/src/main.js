@@ -5,16 +5,16 @@ import App from './App.vue'
 import router from './router'
 import { i18n, setAppLanguage } from './i18n/index.js'
 
-// Vite hešuje imena JS chunk-ova pri svakom build-u (npr. AgentsView-XXXX.js).
-// Ako korisnik ostavi tab otvoren preko redeploy-a pa klikne na lenjo
-// učitanu rutu, dynamic import() pokuša da preuzme STARI, više nepostojeći
-// fajl - server (SPA catch-all u app.js) na to odgovara sa index.html (200,
-// text/html) umesto 404, a browser odbije da izvrši JS sa MIME tipom
-// text/html ("Failed to load module script..."). Stranica ostane
-// zaglavljena dok korisnik ručno ne osveži - ovo isto uradi automatski.
-// sessionStorage flag sprečava beskonačnu petlju ako je server stvarno
-// pokvaren (ne samo stale keš posle redeploy-a); briše se čim app uspešno
-// montira, da sledeći PRAVI redeploy opet dobije svoj jedan reload.
+// Vite hashes JS chunk names on every build (e.g. AgentsView-XXXX.js).
+// If a user leaves a tab open across a redeploy and then clicks a lazily
+// loaded route, dynamic import() tries to fetch the OLD, no longer existing
+// file - the server (the SPA catch-all in app.js) answers that with index.html (200,
+// text/html) instead of a 404, and the browser refuses to execute JS with the MIME type
+// text/html ("Failed to load module script..."). The page stays
+// stuck until the user refreshes by hand - this does the same automatically.
+// A sessionStorage flag prevents an infinite loop if the server is really
+// broken (not just a stale cache after a redeploy); it's cleared as soon as the app successfully
+// mounts, so the next REAL redeploy again gets its one reload.
 window.addEventListener('vite:preloadError', () => {
   if (!sessionStorage.getItem('netdesk-reload-on-preload-error')) {
     sessionStorage.setItem('netdesk-reload-on-preload-error', '1')
@@ -30,10 +30,10 @@ app.mount('#app')
 
 sessionStorage.removeItem('netdesk-reload-on-preload-error')
 
-// Jezik iz localStorage-a (ili srpski default) se primeni odmah gore da prvi
-// render ne "trepne" - ovaj fetch samo potvrdi/ispravi tu vrednost prema bazi
-// (npr. prvi put u ovom browseru, ili posle promene sa drugog uređaja).
-// Namerno bez auth-a - ekran za prijavu takođe treba pravi jezik.
+// The language from localStorage (or the Serbian default) is applied right above so the first
+// render doesn't "flicker" - this fetch only confirms/corrects that value against the DB
+// (e.g. the first time in this browser, or after a change from another device).
+// Deliberately without auth - the login screen needs the right language too.
 fetch(`${import.meta.env.VITE_API_URL}/api/language`)
   .then((res) => (res.ok ? res.json() : null))
   .then((data) => data?.language && setAppLanguage(data.language))

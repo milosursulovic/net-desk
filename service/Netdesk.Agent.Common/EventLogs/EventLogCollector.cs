@@ -7,19 +7,19 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.EventLogs
 {
     /// <summary>
-    /// Čita System i Application event log preko EventLogReader (spec 11.9 -
-    /// Security log je opciono po specifikaciji i namerno izostavljen za sada,
-    /// obično zahteva posebno uključen auditing i nosi osetljivije podatke).
-    /// Samo Critical/Error/Warning nivoi - Information je previše šuma za
-    /// centralizovano prikupljanje. Inkrementalno preko EventLogBookmarks.
+    /// Reads the System and Application event logs via EventLogReader (spec 11.9 -
+    /// the Security log is optional per the specification and deliberately left out for now,
+    /// it usually requires separately enabled auditing and carries more sensitive data).
+    /// Only the Critical/Error/Warning levels - Information is too much noise for
+    /// centralized collection. Incremental via EventLogBookmarks.
     /// </summary>
     public static class EventLogCollector
     {
         private static readonly string[] LogNames = { "System", "Application" };
 
-        // Gornja granica po logu po ciklusu - ako je nakupljeno više (npr. posle
-        // dužeg prekida veze), šalje se u narednim ciklusima umesto jednog
-        // ogromnog batch-a.
+        // Upper limit per log per cycle - if more has accumulated (e.g. after
+        // a longer connection outage), it's sent in subsequent cycles instead of one
+        // huge batch.
         private const int MaxEntriesPerLog = 200;
 
         public static List<EventLogItem> Collect(EventLogBookmarks bookmarks)
@@ -97,9 +97,9 @@ namespace NetdeskAgent.Common.EventLogs
             }
             catch
             {
-                // FormatDescription može da baci ako provider manifest nije
-                // lokalno dostupan (npr. driver koji više nije instaliran) -
-                // nije kritično, samo preskoči poruku.
+                // FormatDescription can throw if the provider manifest isn't
+                // available locally (e.g. a driver that's no longer installed) -
+                // not critical, just skip the message.
                 return null;
             }
         }

@@ -3,16 +3,16 @@ import crypto from "crypto";
 import { AGENT_SIGNING_CERT_PATH, AGENT_SIGNING_KEY_PATH } from "../config/env.js";
 
 /**
- * Potpisivanje release paketa (spec 7 - "mogućnost provere digitalnog
- * potpisa"). Server potpisuje SHA-256/RSA preko sertifikata izdatog od
- * interne CA koja je već distribuirana u trusted root store svih upravljanih
- * računara - agent proverava potpis I da sertifikat vodi do te iste trusted
- * root preko System.Security.Cryptography.X509Certificates.X509Chain (videti
+ * Signing of release packages (spec 7 - "ability to verify the digital
+ * signature"). The server signs SHA-256/RSA with a certificate issued by the
+ * internal CA that is already distributed into the trusted root store of all managed
+ * computers - the agent verifies the signature AND that the certificate chains to that same trusted
+ * root via System.Security.Cryptography.X509Certificates.X509Chain (see
  * service/Netdesk.Agent.Common/Update/UpdateManager.cs).
  *
- * Namerno opciono: ako AGENT_SIGNING_CERT_PATH/AGENT_SIGNING_KEY_PATH nisu
- * podešeni, release-i se i dalje mogu otpremati - samo bez potpisa (agent
- * tada samo proveri SHA-256, kao i do sada).
+ * Deliberately optional: if AGENT_SIGNING_CERT_PATH/AGENT_SIGNING_KEY_PATH aren't
+ * configured, releases can still be uploaded - just without a signature (the agent
+ * then only checks SHA-256, as before).
  */
 
 let loaded = false;

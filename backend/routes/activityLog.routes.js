@@ -11,13 +11,13 @@ const router = express.Router();
 
 router.use(cacheNoStore);
 
-// Samo nalog "admin", including reads - ko je šta radio je samo po sebi
-// osetljivo, ista logika kao users.routes.js.
+// Only the "admin" account, including reads - who did what is inherently
+// sensitive, same logic as users.routes.js.
 router.use(requireRootAdmin);
 
 router.get("/", asyncHandler(listActivityLogController));
-// XLSX export istih filtera (kategorija/datum/korisnik/akcija), bez paginacije.
-// requireRootAdmin iznad vazi i ovde - audit export je samo za nalog "admin".
+// XLSX export with the same filters (category/date/user/action), no pagination.
+// requireRootAdmin above applies here too - the audit export is only for the "admin" account.
 router.get("/export", asyncHandler(exportActivityLogController));
 
 export default router;

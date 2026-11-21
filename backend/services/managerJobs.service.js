@@ -25,10 +25,10 @@ export async function createManagerJobService(managerId, dto, createdByUserId) {
 
   let payload = dto.payload ?? null;
 
-  // "servisName" default se popunjava OVDE (server-side), ne u DTO refine-u -
-  // najčešći slučaj (kontrola samog NetdeskAgent servisa) tako zahteva nula
-  // polja od admina, isto opravdanje kao AgentDetailView.vue-ov postojeći
-  // "Nova komanda" default.
+  // The "serviceName" default is filled in HERE (server-side), not in the DTO refine -
+  // that way the most common case (controlling the NetdeskAgent service itself) requires zero
+  // fields from the admin, same justification as AgentDetailView.vue's existing
+  // "Nova komanda" (new command) default.
   if (SERVICE_COMMANDS.has(dto.commandType) && !payload?.serviceName) {
     payload = { ...payload, serviceName: "NetdeskAgent" };
   }
@@ -38,9 +38,9 @@ export async function createManagerJobService(managerId, dto, createdByUserId) {
     if (!release) {
       throw badRequest("Izabrana verzija nije pronađena");
     }
-    // sha256 se popunjava OVDE (server-side, iz baze), ne oslanja se na ono
-    // što je frontend eventualno poslao - Manager mora imati pouzdan hash za
-    // proveru preuzetog paketa (InstallUpdateFromServerAsync na C# strani).
+    // sha256 is filled in HERE (server-side, from the DB), not relying on whatever
+    // the frontend may have sent - the Manager must have a reliable hash to
+    // verify the downloaded package (InstallUpdateFromServerAsync on the C# side).
     payload = { ...payload, version: release.version, sha256: release.sha256 };
   }
 

@@ -4,17 +4,17 @@ export function emptyToNull(v) {
   return s === "" ? null : s;
 }
 
-// Otkriveno uživo: neki drajver instaleri (npr. BIXOLON štampački drajver)
-// pišu fiksne-veličine bafere u registry bez pravog null-terminatora na
-// kraju iskorišćenog dela - .NET-ova RegistryKey.GetValue() skida SAMO
-// JEDAN trailing null karakter, pa ostatak (stotine "\0" bajtova) stiže
-// agentu, pa ovde, kao deo "stringa". Rezultat: display_version od >1000
-// karaktera protiv varchar(100) kolone - "Data too long" je srušio CEO
-// insert (i time celu inventory sinhronizaciju za tu mašinu, zauvek dok
-// se ne popravi). Sve posle PRVOG null bajta se odbacuje (ne samo
-// poslednji), plus tvrdo sečenje na maxLength kao mreža za bilo koju drugu
-// neočekivano dugu vrednost - isti "ne sme da obori insert" princip kao
-// ParseInstallDate u SoftwareCollector.cs (agent) i parseDateMaybe (ovde).
+// Discovered live: some driver installers (e.g. the BIXOLON printer driver)
+// write fixed-size buffers into the registry without a proper null terminator at
+// the end of the used part - .NET's RegistryKey.GetValue() strips ONLY
+// ONE trailing null character, so the rest (hundreds of "\0" bytes) reaches the
+// agent, and then here, as part of the "string". Result: a display_version of >1000
+// characters against a varchar(100) column - "Data too long" broke the WHOLE
+// insert (and with it the whole inventory sync for that machine, forever until
+// it's fixed). Everything after the FIRST null byte is discarded (not just the
+// last one), plus a hard cut at maxLength as a safety net for any other
+// unexpectedly long value - the same "must not break the insert" principle as
+// ParseInstallDate in SoftwareCollector.cs (agent) and parseDateMaybe (here).
 export function sanitizeText(v, maxLength) {
   if (v == null) return null;
   const nulIndex = String(v).indexOf("\0");

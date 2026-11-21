@@ -33,8 +33,8 @@ export const uploadMiddleware = multer({
 // =========================
 
 export async function createReleaseController(req, res) {
-  // multer stavlja ne-file polja iz multipart/form-data kao string - niz
-  // grupa stiže kao JSON-encoded string, mora se parsirati PRE Zod validacije.
+  // multer delivers non-file multipart/form-data fields as strings - the
+  // groups array arrives as a JSON-encoded string and must be parsed BEFORE Zod validation.
   let deploymentGroups;
   try {
     deploymentGroups = JSON.parse(req.body?.deploymentGroups || "[]");

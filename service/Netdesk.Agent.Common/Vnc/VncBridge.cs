@@ -11,30 +11,30 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Vnc
 {
     /// <summary>
-    /// Tanak TCP&lt;-&gt;WebSocket "byte forwarder" - povezuje se na lokalni
-    /// UltraVNC server (127.0.0.1:VncLocalPort) i na backend relay preko
-    /// WebSocket-a, pa samo prosleđuje sirove bajtove u oba smera. Ne
-    /// parsira, ne dekoduje, ne dodiruje ni jedan bajt pravog RFB protokola
-    /// - to rade UltraVNC (server strana) i noVNC (browser strana). Za
-    /// razliku od stare VncStreamer/ScreenCaptureService/InputInjector
-    /// trojke, ovde nema GDI-ja, SendInput-a ni WTS/Session 0 logike -
-    /// obična loopback TCP konekcija radi identično u Session 0 (LocalSystem)
-    /// kao u bilo kojoj drugoj sesiji, jer nije desktop/GDI resurs.
+    /// A thin TCP&lt;-&gt;WebSocket "byte forwarder" - connects to the local
+    /// UltraVNC server (127.0.0.1:VncLocalPort) and to the backend relay over
+    /// WebSocket, then just forwards raw bytes in both directions. It doesn't
+    /// parse, decode, or touch a single byte of the actual RFB protocol
+    /// - UltraVNC (server side) and noVNC (browser side) do that. Unlike
+    /// the old VncStreamer/ScreenCaptureService/InputInjector
+    /// trio, there's no GDI, SendInput or WTS/Session 0 logic here -
+    /// a plain loopback TCP connection works identically in Session 0 (LocalSystem)
+    /// as in any other session, because it isn't a desktop/GDI resource.
     ///
-    /// Koristi WebSocketSharp (ne System.Net.WebSockets.ClientWebSocket) -
-    /// otkriveno uživo na Windows 7: ClientWebSocket baca
-    /// PlatformNotSupportedException tamo jer zavisi od WinHTTP WebSocket
-    /// API-ja koji ne postoji pre Windows 8. websocket-sharp implementira
-    /// RFB 6455 sam, nad sirovim soketima, bez te OS zavisnosti - a upravo
-    /// Windows 7 podrška je razlog zašto ovaj projekat cilja net452.
+    /// Uses WebSocketSharp (not System.Net.WebSockets.ClientWebSocket) -
+    /// discovered live on Windows 7: ClientWebSocket throws
+    /// PlatformNotSupportedException there because it depends on the WinHTTP WebSocket
+    /// API, which doesn't exist before Windows 8. websocket-sharp implements
+    /// RFC 6455 itself, over raw sockets, without that OS dependency - and
+    /// Windows 7 support is exactly why this project targets net452.
     ///
-    /// Ova biblioteka nema javni API za proizvoljne custom request header-e
-    /// (nema npr. CustomHeaders svojstvo), pa se agent-side auth
-    /// (agentId/apiKey) šalje kao query string, isto kao što viewer-side
-    /// (browser WebSocket API) već mora da šalje JWT kao query param umesto
-    /// header-a - isti obrazac, isti razlog (WS klijent koji ne dozvoljava
-    /// custom header-e), i isti sigurnosni kontekst (ovo je server.on("upgrade")
-    /// ruta, ne prolazi kroz Express/morgan access log).
+    /// This library has no public API for arbitrary custom request headers
+    /// (no e.g. CustomHeaders property), so the agent-side auth
+    /// (agentId/apiKey) is sent as a query string, just as the viewer side
+    /// (the browser WebSocket API) already has to send the JWT as a query param instead of a
+    /// header - the same pattern, the same reason (a WS client that doesn't allow
+    /// custom headers), and the same security context (this is a server.on("upgrade")
+    /// route, it doesn't go through the Express/morgan access log).
     /// </summary>
     public static class VncBridge
     {
@@ -76,8 +76,8 @@ namespace NetdeskAgent.Common.Vnc
                 {
                     if (wsUrl.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Ista TLS 1.2 napomena kao NetdeskApiClient.cs - .NET
-                        // Framework 4.5.2 ne uključuje je po default-u.
+                        // The same TLS 1.2 note as NetdeskApiClient.cs - .NET
+                        // Framework 4.5.2 doesn't enable it by default.
                         ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
                     }
 
@@ -144,7 +144,7 @@ namespace NetdeskAgent.Common.Vnc
                     }
                     catch
                     {
-                        /* best effort - server je verovatno već zatvorio vezu */
+                        /* best effort - the server has probably already closed the connection */
                     }
 
                     FileLogger.Info("VNC sesija #" + sessionId + " - most zatvoren.");
@@ -152,11 +152,11 @@ namespace NetdeskAgent.Common.Vnc
             }
         }
 
-        // Radi na sopstvenoj pozadinskoj niti (Task.Run) - websocket-sharp
-        // nema async ReceiveAsync-stil API kao ClientWebSocket, pa se
-        // dolazna strana (UltraVNC -> WS) obrađuje preko OnMessage eventa
-        // (koji websocket-sharp sam pokreće na svojoj internoj niti posle
-        // Connect()-a), a ova petlja pokriva samo TCP -> WS smer.
+        // Runs on its own background thread (Task.Run) - websocket-sharp
+        // has no async ReceiveAsync-style API like ClientWebSocket, so
+        // the incoming side (UltraVNC -> WS) is handled via the OnMessage event
+        // (which websocket-sharp fires itself on its internal thread after
+        // Connect()), and this loop covers only the TCP -> WS direction.
         private static void PumpTcpToWebSocket(
             System.Net.Sockets.NetworkStream stream, WebSocket ws, long sessionId,
             CancellationToken token, TaskCompletionSource<bool> closedSignal)
@@ -181,7 +181,7 @@ namespace NetdeskAgent.Common.Vnc
 
                 if (read == 0)
                 {
-                    break; // UltraVNC je zatvorio konekciju
+                    break; // UltraVNC closed the connection
                 }
 
                 try
@@ -200,21 +200,21 @@ namespace NetdeskAgent.Common.Vnc
             closedSignal.TrySetResult(true);
         }
 
-        // websocket-sharp ima javni API samo za slanje/primanje poruka, ne i
-        // za konfigurisanje soketa ispod - nema svojstvo tipa "NoDelay" niti
-        // način da se prosledi već konfigurisan TcpClient u konstruktor. Bez
-        // ovoga, Nagle-ov algoritam (uključen po default-u, grupiše male
-        // pisanja do ~40ms) i dalje deluje baš na ovoj grani - agent -> backend
-        // WebSocket konekcija koja nosi inkrementalna ažuriranja ekrana
-        // (najveći deo saobraćaja) - iako je NoDelay već postavljen na
-        // lokalnom TCP-u ka UltraVNC-u (iznad) i na oba kraja backend relay-a
-        // (vncRelay.js). Reflection na privatno "_tcpClient" polje je jedini
-        // način da se to zatvori bez zamene cele WS biblioteke (websocket-sharp
-        // je izabran baš zbog Windows 7 podrške - videti napomenu na vrhu
-        // fajla). Namerno best-effort: ako se polje ikad promeni/ukloni u
-        // budućoj verziji paketa, ovo samo tiho ne uspe (VNC most i dalje radi
-        // ispravno, samo bez ovog dodatnog podešavanja) - ne sme da obori
-        // sesiju zbog jedne optimizacije.
+        // websocket-sharp has a public API only for sending/receiving messages, not
+        // for configuring the socket underneath - there's no "NoDelay"-type property nor
+        // a way to pass an already configured TcpClient into the constructor. Without
+        // this, Nagle's algorithm (enabled by default, it batches small
+        // writes for up to ~40ms) still applies on exactly this leg - the agent -> backend
+        // WebSocket connection that carries incremental screen updates
+        // (most of the traffic) - even though NoDelay is already set on the
+        // local TCP to UltraVNC (above) and on both ends of the backend relay
+        // (vncRelay.js). Reflection on the private "_tcpClient" field is the only
+        // way to close that gap without replacing the whole WS library (websocket-sharp
+        // was chosen precisely for Windows 7 support - see the note at the top of the
+        // file). Deliberately best-effort: if the field ever changes/disappears in
+        // a future version of the package, this just silently fails (the VNC bridge still works
+        // correctly, just without this extra tweak) - it must not bring down the
+        // session because of one optimization.
         private static void DisableNagleOnWebSocketSocket(WebSocket ws, long sessionId)
         {
             try

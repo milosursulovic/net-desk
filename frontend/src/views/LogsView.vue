@@ -123,7 +123,7 @@ const totalPages = ref(0)
 const loading = ref(false)
 const exporting = ref(false)
 
-// Deljeno izmedju liste i export-a - isti filteri idu na oba endpointa.
+// Shared between the list and the export - the same filters go to both endpoints.
 function filterParams() {
   const p = new URLSearchParams()
   if (username.value) p.set('username', username.value)

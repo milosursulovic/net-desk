@@ -1,9 +1,9 @@
-// Centralizovano mapiranje status-vrednosti na semantičke "tonove"
-// (good/bad/warn/info/neutral) koje StatusPill.vue crta - pre ovoga je
-// svaki view imao sopstvenu copy-pasted verziju (connectivityBadgeClass u
-// AgentsView.vue, ista logika duplirana u AgentDetailView.vue, itd).
-// "Manager" se namerno mapira na "info" svuda (bedž/tab/panel) umesto
-// zasebne indigo boje - drži se u istom skupu od 4 semantičke boje.
+// Centralized mapping of status values to the semantic "tones"
+// (good/bad/warn/info/neutral) that StatusPill.vue draws - before this,
+// every view had its own copy-pasted version (connectivityBadgeClass in
+// AgentsView.vue, the same logic duplicated in AgentDetailView.vue, etc.).
+// "Manager" is deliberately mapped to "info" everywhere (badge/tab/panel) instead of
+// a separate indigo color - it stays within the same set of 4 semantic colors.
 
 export const CONNECTIVITY_LABELS = {
   online: 'Online',

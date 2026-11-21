@@ -15,12 +15,12 @@ using NetdeskAgent.Common.Update;
 namespace NetdeskAgent.Common.Http
 {
     /// <summary>
-    /// Tanak wrapper oko HttpClient-a za /api/agents/* endpoint-e. Auth šema
-    /// prati backend konvenciju (middlewares/agentAuth.middleware.js):
+    /// A thin wrapper around HttpClient for the /api/agents/* endpoints. The auth scheme
+    /// follows the backend convention (middlewares/agentAuth.middleware.js):
     ///   - enroll:      Authorization: Bearer <enrollToken>
-    ///   - sve ostalo:  Authorization: Bearer <agentId>:<apiKey>
-    /// JSON (de)serijalizacija ide preko camelCase contract resolvera da se
-    /// poklopi sa backend DTO poljima bez ručnog [JsonProperty] po svakom polju.
+    ///   - everything else:  Authorization: Bearer <agentId>:<apiKey>
+    /// JSON (de)serialization goes through a camelCase contract resolver to
+    /// match the backend DTO fields without a manual [JsonProperty] on every field.
     /// </summary>
     public class NetdeskApiClient : IDisposable
     {
@@ -36,11 +36,11 @@ namespace NetdeskAgent.Common.Http
 
         public NetdeskApiClient(string baseUrl)
         {
-            // .NET Framework 4.5.2 ne uključuje TLS 1.2 u podrazumevanom
-            // ServicePointManager.SecurityProtocol setu (za razliku od 4.6+) -
-            // bez ovoga HTTPS pozivi ka modernom serveru (Node/Express ovde)
-            // otkazuju sa "Could not create SSL/TLS secure channel." Otkriveno
-            // uživo na Windows mašini - videti backend memoriju za detalje.
+            // .NET Framework 4.5.2 doesn't include TLS 1.2 in the default
+            // ServicePointManager.SecurityProtocol set (unlike 4.6+) -
+            // without this, HTTPS calls to a modern server (Node/Express here)
+            // fail with "Could not create SSL/TLS secure channel." Discovered
+            // live on a Windows machine - see the backend memory for details.
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
             BaseUrl = baseUrl;
@@ -64,13 +64,13 @@ namespace NetdeskAgent.Common.Http
         }
 
         /// <summary>
-        /// InventoryRequest ima sopstvene eksplicitne [JsonProperty] nazive
-        /// (PascalCase/akronimska polja poput "NICs" moraju tačno da se poklope
-        /// sa backend pick() alternativama - videti InventoryModels.cs), pa se
-        /// namerno NE serijalizuje preko JsonSettings nego preko RawJsonSettings
-        /// (poseban DefaultContractResolver koji eksplicitno čuva te nazive -
-        /// videti napomenu uz RawJsonSettings za detalje o uživo otkrivenom
-        /// bug-u koji je ovo motivisao).
+        /// InventoryRequest has its own explicit [JsonProperty] names
+        /// (PascalCase/acronym fields like "NICs" must exactly match
+        /// the backend pick() alternatives - see InventoryModels.cs), so it's
+        /// deliberately NOT serialized via JsonSettings but via RawJsonSettings
+        /// (a separate DefaultContractResolver that explicitly preserves those names -
+        /// see the note on RawJsonSettings for details about the live-discovered
+        /// bug that motivated this).
         /// </summary>
         public Task<InventoryResponse> PostInventoryAsync(string agentId, string apiKey, InventoryRequest request)
         {
@@ -88,10 +88,10 @@ namespace NetdeskAgent.Common.Http
         }
 
         /// <summary>
-        /// Prijavljuje ishod prozora za pristanak sa radne stanice PRE nego sto
-        /// se digne VNC most (zabrana samoinicijativnog preuzimanja ekrana).
+        /// Reports the outcome of the consent dialog from the workstation BEFORE
+        /// the VNC bridge comes up (ban on unsolicited screen capture).
         /// consentStatus: "granted" | "denied" | "timeout" | "unavailable".
-        /// Polja se preko camelCase resolvera poklapaju sa VncConsentSchema.
+        /// The fields match VncConsentSchema via the camelCase resolver.
         /// </summary>
         public Task ReportVncConsentAsync(
             string agentId, string apiKey, long sessionId,
@@ -170,23 +170,23 @@ namespace NetdeskAgent.Common.Http
             }
         }
 
-        // NAPOMENA (ispravljeno posle uživo otkrivenog bug-a): obična
-        // CamelCasePropertyNamesContractResolver OVERRIDE-UJE eksplicitne
-        // [JsonProperty] nazive (npr. "OS" postaje "os") - suprotno ranijoj
-        // pretpostavci da eksplicitni atribut uvek pobeđuje resolver. Ovo je
-        // potvrđeno uživo (izolovan test sa istom Newtonsoft.Json 13.0.3
-        // verzijom) i uzrokovalo je tih bug: InventoryRequest šalje "os"/
-        // "system"/... umesto "OS"/"System"/..., a backend-ov merge (
-        // patchMetadataForIpEntry) prvo proverava PascalCase ključ - kad
-        // metadata red već postoji (drugi i svaki sledeći sync), taj stari
-        // PascalCase ključ (prazan/null) "senči" sveže camelCase podatke pre
-        // nego što se uopšte stigne do njih, pa metapodaci ostaju trajno
-        // prazni posle prvog sync-a. Fix: eksplicitan DefaultContractResolver
-        // sa CamelCaseNamingStrategy { OverrideSpecifiedNames = false } -
-        // ovo ČUVA eksplicitne [JsonProperty] nazive (OS/System/NICs/GPUs/...)
-        // NETAKNUTE, dok i dalje camelCase-uje ugnježdene liste bez atributa
-        // (SoftwareItem/PrinterItem/EventLogItem/...) - verifikovano
-        // izolovanim testom da oba slučaja rade ispravno istovremeno.
+        // NOTE (fixed after a live-discovered bug): a plain
+        // CamelCasePropertyNamesContractResolver OVERRIDES explicit
+        // [JsonProperty] names (e.g. "OS" becomes "os") - contrary to the earlier
+        // assumption that an explicit attribute always wins over the resolver. This was
+        // confirmed live (an isolated test with the same Newtonsoft.Json 13.0.3
+        // version) and caused a silent bug: InventoryRequest sends "os"/
+        // "system"/... instead of "OS"/"System"/..., and the backend's merge (
+        // patchMetadataForIpEntry) checks the PascalCase key first - when the
+        // metadata row already exists (the second and every subsequent sync), that old
+        // PascalCase key (empty/null) "shadows" the fresh camelCase data before
+        // it's even reached, so the metadata stays permanently
+        // empty after the first sync. Fix: an explicit DefaultContractResolver
+        // with CamelCaseNamingStrategy { OverrideSpecifiedNames = false } -
+        // this KEEPS explicit [JsonProperty] names (OS/System/NICs/GPUs/...)
+        // UNTOUCHED, while still camelCasing nested lists without attributes
+        // (SoftwareItem/PrinterItem/EventLogItem/...) - verified with an
+        // isolated test that both cases work correctly at the same time.
         private static readonly JsonSerializerSettings RawJsonSettings = new JsonSerializerSettings
         {
             ContractResolver = new DefaultContractResolver

@@ -82,7 +82,7 @@ const router = createRouter({
             titleKey: 'routes.editIp',
             breadcrumbKey: 'routes.editIp',
             breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
-            // Konkretan postojeći unos, sopstveni site već poznat iz baze.
+            // A specific existing entry, its own site already known from the DB.
             requiresSite: false,
           },
           component: EditIpView,
@@ -94,8 +94,8 @@ const router = createRouter({
             titleKey: 'nav.metadata',
             breadcrumbKey: 'nav.metadata',
             breadcrumbParent: { labelKey: 'nav.ipAddresses', to: '/' },
-            // Per-računar detalj strana - lokacija je već implicitna kroz
-            // taj jedan IP unos (svoj site u bazi), ne treba filter.
+            // Per-computer detail page - the site is already implicit through
+            // that single IP entry (its own site in the DB), no filter needed.
             requiresSite: false,
           },
           component: IpMetaView,
@@ -209,7 +209,7 @@ const router = createRouter({
             titleKey: 'routes.agentDetail',
             breadcrumbKey: 'routes.agentDetail',
             breadcrumbParent: { labelKey: 'nav.agents', to: '/agents' },
-            // Konkretan agent, vezan za jedan računar čiji je site već poznat.
+            // A specific agent, tied to one computer whose site is already known.
             requiresSite: false,
           },
           component: AgentDetailView,
@@ -241,8 +241,8 @@ const router = createRouter({
             titleKey: 'routes.batchStatus',
             breadcrumbKey: 'routes.batchStatus',
             breadcrumbParent: { labelKey: 'agents.batchCommands', to: '/agent-batches' },
-            // Konkretan batch po id-ju, može obuhvatati agente sa obe
-            // lokacije - nema smisla vezivati ga za jednu.
+            // A specific batch by id, it can include agents from both
+            // sites - it makes no sense to tie it to one.
             requiresSite: false,
           },
           component: BatchJobDetailView,
@@ -329,20 +329,20 @@ const router = createRouter({
       component: LoginView,
     },
     {
-      // Van MainLayout-a namerno, isti obrazac kao /login - kartice za izbor
-      // lokacije (Bolnica/Dom zdravlja), pre nego što se nastavi na traženu
-      // stranu. requiresSite: false da guard ne uđe u beskonačnu petlju
-      // preusmeravanja na samog sebe.
+      // Outside MainLayout on purpose, same pattern as /login - cards for picking the
+      // site (Bolnica/Dom zdravlja), before continuing to the requested
+      // page. requiresSite: false so the guard doesn't enter an infinite loop
+      // redirecting to itself.
       path: '/select-site',
       name: 'select-site',
       meta: { requiresAuth: true, requiresSite: false, titleKey: 'selectSite.title' },
       component: SelectSiteView,
     },
     {
-      // Van MainLayout-a namerno - otvara se u posebnom browser prozoru
-      // (window.open iz VncViewer.vue), pa ne treba nav/sidebar hromiranje.
-      // requiresSite: false - samostalna po-agentu strana, ne filtrira po
-      // lokaciji, pa ne treba da bude preusmerena na /select-site.
+      // Outside MainLayout on purpose - it opens in a separate browser window
+      // (window.open from VncViewer.vue), so it needs no nav/sidebar chrome.
+      // requiresSite: false - a standalone per-agent page, it doesn't filter by
+      // site, so it shouldn't be redirected to /select-site.
       path: '/agents/:id/screen',
       name: 'agent-vnc-session',
       meta: { requiresAuth: true, requiresSite: false, titleKey: 'routes.vncSession' },
@@ -370,8 +370,8 @@ router.beforeEach((to, from, next) => {
     if (to.meta.requiresAdmin && decodeJwt(token)?.role !== 'admin') {
       return next('/')
     }
-    // Iznad requiresAdmin - samo nalog sa korisničkim imenom "admin" (ne bilo
-    // koji admin-role nalog), isti razlog kao backend-ov requireRootAdmin.
+    // Above requiresAdmin - only the account with the username "admin" (not any
+    // admin-role account), same reason as the backend's requireRootAdmin.
     if (
       to.meta.requiresRootAdmin &&
       (decodeJwt(token)?.role !== 'admin' || decodeJwt(token)?.username !== 'admin')
@@ -382,14 +382,14 @@ router.beforeEach((to, from, next) => {
       return next('/')
     }
 
-    // Lokacija (Bolnica/Dom zdravlja) se nosi kao URL query param na svakoj
-    // strani (korisnikova eksplicitna odluka, linkovi ostaju deljivi/tačni) -
-    // ovo je isti "guard-injektuje-state" pristup kao auth provera iznad,
-    // samo jedno mesto za izmenu umesto diranja desetina postojećih
-    // router-link/router.push poziva. localStorage (preko siteStorage.js) je
-    // fallback ISPOD from.query.site - rešava svež tab/bookmark bez ?site=
-    // koji je ranije uvek bacao na /select-site čak i kad je korisnik uvek
-    // na istoj lokaciji.
+    // The site (Bolnica/Dom zdravlja) is carried as a URL query param on every
+    // page (the user's explicit decision, links stay shareable/accurate) -
+    // this is the same "guard-injects-state" approach as the auth check above,
+    // just one place to change instead of touching dozens of existing
+    // router-link/router.push calls. localStorage (via siteStorage.js) is the
+    // fallback BELOW from.query.site - it handles a fresh tab/bookmark without ?site=,
+    // which previously always threw the user to /select-site even when they were always
+    // at the same site.
     if (to.meta.requiresSite !== false) {
       if (!isValidSite(to.query.site)) {
         const fallbackSite = isValidSite(from.query.site) ? from.query.site : getRememberedSite()

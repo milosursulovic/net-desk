@@ -45,12 +45,12 @@ function logout() {
   router.push('/login')
 }
 
-// Meni se teleportuje na <body> i pozicionira preko getBoundingClientRect()
-// jer je trigger unutar header-a koji ima overflow-x-auto (za horizontalni
-// skrol na uskim ekranima) - overflow-x na bilo šta osim "visible" primorava
-// browser da isto tako seče i overflow-y, pa bi apsolutno pozicioniran meni
-// UNUTAR tog header-a bio odsečen. Teleport van header-a taj problem
-// zaobilazi u potpunosti, nezavisno od header-ovog overflow ponašanja.
+// The menu is teleported to <body> and positioned via getBoundingClientRect()
+// because the trigger is inside a header that has overflow-x-auto (for horizontal
+// scrolling on narrow screens) - overflow-x set to anything other than "visible" forces
+// the browser to clip overflow-y the same way, so an absolutely positioned menu
+// INSIDE that header would be clipped. Teleporting outside the header avoids
+// that problem entirely, regardless of the header's overflow behavior.
 async function updatePosition() {
   await nextTick()
   const rect = triggerEl.value?.getBoundingClientRect()
@@ -74,9 +74,9 @@ function onClickOutside(e) {
   open.value = false
 }
 
-// Zatvori na skrol (bilo koje scrollable ancestor-a, capture:true hvata sve)
-// umesto da prati poziciju - jednostavnije i dovoljno dobro za kratkotrajno
-// otvoren meni.
+// Close on scroll (of any scrollable ancestor, capture:true catches all of them)
+// instead of tracking the position - simpler and good enough for a briefly
+// open menu.
 function onScroll() {
   if (open.value) open.value = false
 }

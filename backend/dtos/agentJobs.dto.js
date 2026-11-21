@@ -7,12 +7,12 @@ export const COMMAND_TYPES = [
   "restart_service",
   "start_service",
   "stop_service",
-  // Ekvivalent restart_service/start_service/stop_service sa
-  // payload.serviceName="NetdeskAgent", ali kao eksplicitan, odvojen tip
-  // komande (ne oslanja se na string-poklapanje imena servisa) - agent i
-  // ovako i onako preusmerava na NetdeskAgentManager (videti
-  // AgentWorker.ProcessJobAsync), jer NetdeskAgent ne sme sam sebe da
-  // (re)startuje sinhrono kroz JobExecutor.
+  // Equivalent of restart_service/start_service/stop_service with
+  // payload.serviceName="NetdeskAgent", but as an explicit, separate command
+  // type (doesn't rely on string-matching the service name) - the agent
+  // redirects to NetdeskAgentManager either way (see
+  // AgentWorker.ProcessJobAsync), because NetdeskAgent must not (re)start
+  // itself synchronously through JobExecutor.
   "start_netdesk_agent",
   "stop_netdesk_agent",
   "restart_netdesk_agent",
@@ -20,13 +20,13 @@ export const COMMAND_TYPES = [
   "collect_inventory",
   "refresh_software_list",
   "delete_temp_files",
-  // Kreira se programski (services/vncSessions.service.js), ne izlazi na
-  // frontend "Nova komanda" dropdown ručnog biranja tipa komande.
+  // Created programmatically (services/vncSessions.service.js), not offered in
+  // the frontend "New command" dropdown for manually picking a command type.
   "start_vnc_bridge",
-  // Kreira se programski iz AgentReleasesView.vue-ovog "Forsiraj
-  // reinstalaciju" dugmeta (payload već popunjen iz izabranog release-a),
-  // isto kao start_vnc_bridge - ne izlazi na generički dropdown ručnog
-  // biranja tipa komande.
+  // Created programmatically from AgentReleasesView.vue's "Force
+  // reinstall" button (payload pre-filled from the selected release), same
+  // as start_vnc_bridge - not offered in the generic dropdown for manually
+  // picking a command type.
   "force_reinstall_agent",
 ];
 
@@ -99,9 +99,9 @@ export const CreateJobSchema = withCommandRefinements(JobCommandFields);
 export const BatchCreateJobSchema = withCommandRefinements(
   JobCommandFields.extend({
     agentIds: z.array(z.coerce.number().int().positive()).min(1).max(500),
-    // Kad je true, agenti koji trenutno nisu "online" (ista definicija kao
-    // computeConnectivityStatus u agents.service.js) se preskaču umesto da
-    // im se pošalje komanda koju možda neće pokupiti još dugo.
+    // When true, agents that aren't currently "online" (same definition as
+    // computeConnectivityStatus in agents.service.js) are skipped instead of
+    // being sent a command they may not pick up for a long time.
     onlyOnline: z.boolean().optional().default(false),
   }),
 );

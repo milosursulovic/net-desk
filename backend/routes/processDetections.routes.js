@@ -5,8 +5,8 @@ import { listProcessDetectionsController } from "../controllers/processDetection
 
 const router = express.Router();
 
-// Isti razlog kao dnsLogs.routes.js (osetljiv employee-monitoring podatak) -
-// čitanje ograničeno na admin+operator, ne i viewer.
+// Same reason as dnsLogs.routes.js (sensitive employee-monitoring data) -
+// reading is restricted to admin+operator, not viewer.
 router.use(readRequiresOperator);
 
 router.get("/", asyncHandler(listProcessDetectionsController));

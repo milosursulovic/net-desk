@@ -5,21 +5,21 @@ using System.Threading;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstvena kopija (ne referenca na Netdesk.Agent.Common.Update.
-    /// DirectorySync) - rekurzivno kopiranje foldera za instalaciju.
-    /// Retry logika ispod postoji zbog uživo otkrivenog incidenta: WinDivert
-    /// (kernel drajver koji Service koristi za DNS logging, vidi
-    /// Netdesk.Agent.Common/DnsLogs/WinDivertInterop.cs) ume da drži
-    /// WinDivert64.sys zaključan kratko VREME I POSLE što je NetdeskAgent
-    /// servis (proces koji ga je otvorio) već potvrđeno zaustavljen - driver
-    /// unload nije garantovano sinhron sa gašenjem user-mode procesa koji ga
-    /// je koristio. Isti simptom/mitigacija važi i ako neki AV/EDR privremeno
-    /// skenira/drži otvoren novo-kopiran fajl. Hvata i IOException
-    /// (ERROR_SHARING_VIOLATION) i UnauthorizedAccessException
-    /// (ERROR_ACCESS_DENIED) - Windows vraća JEDNU ili DRUGU za isti uzrok
-    /// (drajver-fajl još učitan) zavisno od trenutka, .NET ih baca kao dva
-    /// nepovezana tipa (UnauthorizedAccessException NE nasleđuje
-    /// IOException) - hvatanje samo prvog je uživo propustilo drugi.
+    /// Its own copy (not a reference to Netdesk.Agent.Common.Update.
+    /// DirectorySync) - recursive folder copying for installation.
+    /// The retry logic below exists because of a live-discovered incident: WinDivert
+    /// (the kernel driver the Service uses for DNS logging, see
+    /// Netdesk.Agent.Common/DnsLogs/WinDivertInterop.cs) can keep
+    /// WinDivert64.sys locked for a short TIME even AFTER the NetdeskAgent
+    /// service (the process that opened it) has been confirmed stopped - driver
+    /// unload isn't guaranteed to be synchronous with the shutdown of the user-mode process that
+    /// used it. The same symptom/mitigation applies if some AV/EDR temporarily
+    /// scans/holds open a newly copied file. Catches both IOException
+    /// (ERROR_SHARING_VIOLATION) and UnauthorizedAccessException
+    /// (ERROR_ACCESS_DENIED) - Windows returns ONE or THE OTHER for the same cause
+    /// (the driver file still loaded) depending on timing, .NET throws them as two
+    /// unrelated types (UnauthorizedAccessException does NOT inherit from
+    /// IOException) - catching only the first one missed the second live.
     /// </summary>
     internal static class DirectorySync
     {
@@ -27,11 +27,11 @@ namespace NetdeskAgent.Manager
         private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(750);
 
         /// <summary>
-        /// Isti retry razlog kao CopyFileWithRetry ispod - brisanje foldera
-        /// nailazi na identičan prolazan lock (npr. WinDivert64.sys) kao
-        /// kopiranje. Directory.Delete(path, true) se sme pozvati ponovo bez
-        /// posledica i posle delimičnog uspeha - već obrisane stavke prosto
-        /// više ne postoje, retry samo nastavlja na ono što je ostalo.
+        /// The same retry reason as CopyFileWithRetry below - deleting a folder
+        /// runs into the identical transient lock (e.g. WinDivert64.sys) as
+        /// copying. Directory.Delete(path, true) can be called again without
+        /// consequences even after a partial success - already deleted items simply
+        /// no longer exist, the retry just continues with what's left.
         /// </summary>
         public static void DeleteDirectoryWithRetry(string path)
         {
@@ -94,9 +94,9 @@ namespace NetdeskAgent.Manager
                 }
             }
 
-            // Poslednji pokušaj - propušta grešku dalje ako i dalje ne uspe
-            // (InstallFilesAsync ovo hvata i javlja neuspeh preko
-            // ReportResultIfConfiguredAsync - nema više rollback-a).
+            // Last attempt - lets the error propagate if it still fails
+            // (InstallFilesAsync catches this and reports the failure via
+            // ReportResultIfConfiguredAsync - there's no rollback anymore).
             File.Copy(sourcePath, destPath, true);
         }
 

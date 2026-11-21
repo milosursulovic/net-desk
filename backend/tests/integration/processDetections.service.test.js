@@ -91,10 +91,10 @@ describe("processDetections.service (integration, real DB)", () => {
     expect(out.items.every((i) => i.ipEntryId !== ipEntryId)).toBe(true);
   });
 
-  // Regresioni test za bug upravo popravljen na DNS Logovima (search je
-  // isprva pokrivao samo domain kolonu, pa je pretraga po hostname-u
-  // vraćala 0 rezultata iako su podaci postojali) - ovde search mora od
-  // početka da pogađa i po imenu računara, ne samo po imenu procesa.
+  // Regression test for the bug just fixed on DNS Logs (search initially
+  // covered only the domain column, so searching by hostname
+  // returned 0 results even though the data existed) - here search must from
+  // the start match by computer name too, not only by process name.
   it("listProcessDetectionsService search also matches by computer name, not just process name", async () => {
     const uniqueHostname = `VITEST-PROC-PC-${Date.now()}`;
     const processName = "anydesk";

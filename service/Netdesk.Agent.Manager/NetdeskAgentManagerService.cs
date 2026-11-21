@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Windows Service omotač - sav stvaran rad je u ManagerWorker-u tako da
-    /// isti kod radi i pod ServiceBase i u konzolnom debug modu (Program.cs).
+    /// Windows Service wrapper - all the real work is in ManagerWorker so that
+    /// the same code runs both under ServiceBase and in console debug mode (Program.cs).
     /// </summary>
     public class NetdeskAgentManagerService : ServiceBase
     {
@@ -28,8 +28,8 @@ namespace NetdeskAgent.Manager
             _cts = new CancellationTokenSource();
             _worker = new ManagerWorker();
 
-            // Task.Run umesto blokiranja OnStart-a - SCM očekuje brz povratak
-            // iz OnStart, inače Windows javlja "servis se nije na vreme pokrenuo".
+            // Task.Run instead of blocking OnStart - the SCM expects a quick return
+            // from OnStart, otherwise Windows reports "the service did not start in a timely fashion".
             _runTask = Task.Run(() => _worker.RunAsync(_cts.Token));
         }
 
@@ -48,9 +48,9 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Mora BRZO da vrati kontrolu SCM-u - samo signalizira event koji
-        /// ManagerWorker čeka, ne sme sinhrono da izvrši stop/copy/start ovde
-        /// (isti razlog kao "OnStart mora brzo da vrati" iznad).
+        /// Must return control to the SCM QUICKLY - it only signals the event
+        /// ManagerWorker is waiting on, it must not synchronously perform stop/copy/start here
+        /// (the same reason as "OnStart must return quickly" above).
         /// </summary>
         protected override void OnCustomCommand(int command)
         {

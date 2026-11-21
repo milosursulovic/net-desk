@@ -14,8 +14,8 @@ defineProps({
     type: Boolean,
     default: true,
   },
-  // Kad je prosleđena, zamenjuje dot indikator ikonicom (NavIcon name) -
-  // za pill-ove gde je konkretna ikona informativnija od generičke tačkice.
+  // When passed, replaces the dot indicator with an icon (NavIcon name) -
+  // for pills where a specific icon is more informative than a generic dot.
   icon: {
     type: String,
     default: '',

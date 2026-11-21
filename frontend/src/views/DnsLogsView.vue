@@ -306,9 +306,9 @@ const newBlacklistDomain = ref('')
 const newBlacklistReason = ref('')
 const savingBlacklist = ref(false)
 
-// flagged_domains ima ~88k redova (dnevna sinhronizacija sa spoljnim
-// izvorima, domainBlacklistSync.service.js) - paginirano, ne sve odjednom
-// (renderovanje 88k <tr> elemenata je i bilo uzrok kočenja ove strane).
+// flagged_domains has ~88k rows (daily sync with external
+// sources, domainBlacklistSync.service.js) - paginated, not all at once
+// (rendering 88k <tr> elements was in fact the cause of this page's slowdown).
 async function fetchBlacklist() {
   try {
     const params = new URLSearchParams({
@@ -383,8 +383,8 @@ async function removeFromBlacklist(id) {
   try {
     const res = await fetchWithAuth(`/api/protected/dns-logs/blacklist/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error(await parseError(res, t('dnsLogs.errorRemove')))
-    // Ako je ovo bio poslednji unos na trenutnoj strani (a nije prva), vrati
-    // se na prethodnu - inače bi ostala prazna strana posle brisanja.
+    // If this was the last entry on the current page (and it isn't the first page), go back
+    // to the previous one - otherwise an empty page would remain after the delete.
     if (blacklist.value.length === 1 && blacklistPage.value > 1) {
       blacklistPage.value -= 1
     }

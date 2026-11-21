@@ -7,14 +7,14 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Inventory
 {
     /// <summary>
-    /// Spaja sve pojedinačne kolektore u jedan InventoryRequest za
-    /// POST /api/agents/inventory. Svaki korak je best-effort - jedan
-    /// neuspeli kolektor ne sme da sprovede ceo sync (svaki collector
-    /// metod već sam po sebi guta sopstvene WMI/registry greške).
+    /// Combines all the individual collectors into one InventoryRequest for
+    /// POST /api/agents/inventory. Every step is best-effort - one
+    /// failed collector must not bring down the whole sync (every collector
+    /// method already swallows its own WMI/registry errors).
     ///
-    /// includeAvailableUpdates je odvojen jer je COM pretraga za dostupnim
-    /// zakrpama sporija - poziva se ređe (UpdateCheckIntervalSeconds), ne na
-    /// svaki InventoryIntervalSeconds ciklus.
+    /// includeAvailableUpdates is separate because the COM search for available
+    /// patches is slower - it's called less often (UpdateCheckIntervalSeconds), not on
+    /// every InventoryIntervalSeconds cycle.
     /// </summary>
     public static class InventoryCollector
     {
@@ -64,11 +64,11 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// Popisuje sopstveni Service instalacioni folder (isti direktorijum
-        /// gde živi ovaj .exe, preko Assembly.GetExecutingAssembly().Location -
-        /// ista tehnika kao UpdateManager.ResolveUpdaterExePath) - relativna
-        /// putanja + veličina po fajlu, rekurzivno (uključuje amd64\/x86\
-        /// podfoldere). Backend poredi ovo sa manifestom release-a.
+        /// Lists its own Service install folder (the same directory
+        /// where this .exe lives, via Assembly.GetExecutingAssembly().Location -
+        /// the same technique as UpdateManager.ResolveUpdaterExePath) - relative
+        /// path + size per file, recursively (includes the amd64\/x86\
+        /// subfolders). The backend compares this against the release manifest.
         /// </summary>
         private static List<InstalledFileItem> CollectServiceFiles()
         {

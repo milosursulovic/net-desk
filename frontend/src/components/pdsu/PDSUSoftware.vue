@@ -136,7 +136,7 @@ const maxPublisherInstallations = computed(() => {
       </div>
     </div>
 
-    <!-- Top programi i izdavači -->
+    <!-- Top programs and publishers -->
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-12 mb-4">
       <div class="xl:col-span-7">
         <div class="pdsu-card h-full">
@@ -255,7 +255,7 @@ const maxPublisherInstallations = computed(() => {
       </div>
     </div>
 
-    <!-- Programi sa više verzija -->
+    <!-- Programs with multiple versions -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -394,7 +394,7 @@ const maxPublisherInstallations = computed(() => {
       </div>
     </div>
 
-    <!-- Računari sa najviše programa -->
+    <!-- Computers with the most programs -->
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between">
         <div>

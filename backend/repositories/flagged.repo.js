@@ -77,9 +77,9 @@ export async function findAgentIdsForFlaggedSoftware(id, site) {
 }
 
 // =========================
-// Izuzeci po računaru - "ovo NIJE neželjeno na OVOM računaru", global flag
-// ostaje netaknut za sve ostale. Jedna tabela po entitetu (0008 migracija),
-// isti CRUD obrazac za sva tri (software/services/drivers).
+// Per-computer exceptions - "this is NOT unwanted on THIS computer", the global
+// flag stays intact for everyone else. One table per entity (migration 0008),
+// the same CRUD pattern for all three (software/services/drivers).
 // =========================
 
 export async function addFlaggedSoftwareException(flaggedSoftwareId, ipEntryId, createdByUserId) {

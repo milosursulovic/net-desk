@@ -4,14 +4,14 @@ using System.IO;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstvena kopija (namerno, ne referenca na Netdesk.Agent.Common) -
-    /// Manager je od ove izmene potpuno samostalan servis, nula deljenog
-    /// koda sa Netdesk Agent-om, da bi mogao da se update-uje/instalira
-    /// nezavisno bez rizika da mu zajednička biblioteka zaostane iza (vidi
-    /// WinDivert64.sys lock incident koji je ovo motivisao - Manager je
-    /// dugo delio Common.dll sa Service-om ali se sam nikad nije
-    /// auto-update-ovao, pa je popravka morala ručno da se gura preko
-    /// posebnog preseta).
+    /// Its own copy (deliberately, not a reference to Netdesk.Agent.Common) -
+    /// since this change the Manager is a completely standalone service, zero shared
+    /// code with the Netdesk Agent, so it can be updated/installed
+    /// independently without the risk of a shared library lagging behind (see
+    /// the WinDivert64.sys lock incident that motivated this - the Manager
+    /// shared Common.dll with the Service for a long time but never
+    /// auto-updated itself, so the fix had to be pushed by hand via
+    /// a separate preset).
     /// </summary>
     internal static class FileLogger
     {
@@ -54,7 +54,7 @@ namespace NetdeskAgent.Manager
                 }
                 catch
                 {
-                    // logovanje ne sme da obori servis
+                    // logging must not bring down the service
                 }
             }
         }

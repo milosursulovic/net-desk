@@ -23,15 +23,15 @@
     </div>
 
     <!--
-      min-h-0 je namerno - bez njega, flex stavka sa overflow-auto po
-      default-u računa min-height na osnovu sadržaja (flexbox min-height:auto
-      pravilo), umesto na osnovu dodeljenog flex prostora. To pravi cirkularan
-      problem baš u trenutku kad noVNC meri veličinu ovog kontejnera da
-      izračuna scaleViewport skaliranje (kontejner čeka sadržaj, sadržaj čeka
-      kontejner -> izmereno 0, canvas ostaje "sa scale 0" tj. nevidljiv).
-      Sci-fi dekoracija je namerno SAMO na ovom kontejneru (border/box-shadow,
-      ne menja box model) i unutar "!connected" overlay-a (poseban sibling,
-      ne utiče na screenEl-ovo merenje) - screenEl sam ostaje netaknut.
+      min-h-0 is deliberate - without it, a flex item with overflow-auto by
+      default computes min-height from its content (the flexbox min-height:auto
+      rule), instead of from the assigned flex space. That creates a circular
+      problem exactly when noVNC measures the size of this container to
+      compute the scaleViewport scaling (the container waits for the content, the content waits for the
+      container -> measured 0, the canvas stays "at scale 0", i.e. invisible).
+      The sci-fi decoration is deliberately ONLY on this container (border/box-shadow,
+      doesn't change the box model) and inside the "!connected" overlay (a separate sibling,
+      doesn't affect screenEl's measurement) - screenEl itself stays untouched.
     -->
     <div class="relative flex-1 min-h-0 overflow-auto bg-black vnc-frame">
       <div v-if="!connected" class="absolute inset-0 flex flex-col items-center justify-center gap-4 text-sm overflow-hidden">
@@ -129,9 +129,9 @@ const agent = ref(null)
 const connected = ref(false)
 const starting = ref(false)
 const stopping = ref(false)
-// Zabrana samoinicijativnog preuzimanja ekrana: dok korisnik na radnoj
-// stanici ne odobri, most se ne diže. awaitingConsent = čekamo odgovor;
-// rejected = odbijen/istekao, prestajemo da pokušavamo konekciju.
+// Ban on unsolicited screen capture: until the user at the
+// workstation approves, the bridge doesn't come up. awaitingConsent = waiting for the answer;
+// rejected = denied/timed out, we stop trying to connect.
 const awaitingConsent = ref(false)
 const rejected = ref(false)
 const rejectedMessage = ref('')
@@ -189,9 +189,9 @@ async function start() {
     const session = await res.json()
     sessionId = session.id
     awaitingConsent.value = true
-    // Viewer WS se kači odmah (relay čeka agenta i beleži IP/MAC IKT stanice
-    // za audit), ali agent diže most tek kad korisnik odobri. Zato paralelno
-    // poll-ujemo status sesije da prepoznamo odbijanje/istek i prestanemo.
+    // The viewer WS attaches immediately (the relay waits for the agent and records the IT workstation's IP/MAC
+    // for the audit), but the agent brings up the bridge only once the user approves. That's why we
+    // poll the session status in parallel, to detect a denial/timeout and stop.
     startRfb(session)
     startConsentPolling(session.id)
   } catch (e) {
@@ -211,8 +211,8 @@ function stopConsentPolling() {
 function startConsentPolling(id) {
   stopConsentPolling()
   consentPollTimer = setInterval(async () => {
-    // Kad se RFB poveže, sesija je odobrena i aktivna - nema više šta da se
-    // čeka. 'granted' samo znači da smo prestali da čekamo odgovor korisnika.
+    // Once RFB connects, the session is approved and active - there's nothing left to
+    // wait for. 'granted' only means we've stopped waiting for the user's answer.
     if (connected.value) {
       awaitingConsent.value = false
       stopConsentPolling()
@@ -241,15 +241,15 @@ function startRfb(session) {
     rfb = new RFB(screenEl.value, buildWsUrl(session.id), {
       credentials: { password: session.vncPassword || '' },
     })
-    // noVNC-ova ugrađena scaleViewport logika je u ovoj verziji/okruženju
-    // ostajala zaglavljena na scale=0 (canvas ispravne rezolucije, ali
-    // nevidljiv) bez obzira na layout kontejnera - probano i sa i bez
-    // display:none tajminga i flexbox min-h-0 fix-a, ništa nije pomoglo.
-    // Umesto toga, skaliranje računamo sami preko iste Display.scale
-    // metode koju noVNC interno koristi (ista _rescale() logika, isti
-    // efekat na mapiranje mišnih koordinata preko _display.absX/absY),
-    // samo je pozivamo MI, u trenutku kad smo sigurni da je kontejner
-    // stvarno izmeren - videti applyManualScale().
+    // noVNC's built-in scaleViewport logic in this version/environment
+    // kept getting stuck at scale=0 (a canvas with the correct resolution, but
+    // invisible) regardless of the container layout - tried both with and without
+    // display:none timing and the flexbox min-h-0 fix, nothing helped.
+    // Instead, we compute the scaling ourselves via the same Display.scale
+    // method noVNC uses internally (the same _rescale() logic, the same
+    // effect on mouse coordinate mapping via _display.absX/absY),
+    // we just call it OURSELVES, at a moment when we're sure the container has
+    // really been measured - see applyManualScale().
     rfb.scaleViewport = false
     rfb.resizeSession = false
     // noVNC internally watches its own wrapper div (_screen, NOT screenEl)
@@ -261,7 +261,7 @@ function startRfb(session) {
     // scrollbar disappearing changes _screen's measured content-box size,
     // which re-triggers the observer -> resets scale to 1.0 -> canvas back
     // at full remote resolution -> scrollbars reappear. That feedback loop
-    // (not the scale math itself) is what caused "puno se skrolla" on
+    // (not the scale math itself) is what caused heavy scrolling on
     // higher-resolution targets. Overriding _updateScale as a no-op on this
     // instance neutralizes every internal reset path (ResizeObserver AND
     // the direct call from _resize() during the initial handshake), leaving
@@ -284,18 +284,18 @@ function startRfb(session) {
     rfb.addEventListener('credentialsrequired', () => {
       rfb.sendCredentials({ password: '' })
     })
-    // RFB ClientCutText/ServerCutText - noVNC ovo već parsira i emituje kao
-    // "clipboard" event (core/rfb.js), samo nije bilo ožičeno nigde do sada.
+    // RFB ClientCutText/ServerCutText - noVNC already parses this and emits it as a
+    // "clipboard" event (core/rfb.js), it just wasn't wired up anywhere until now.
     rfb.addEventListener('clipboard', (e) => {
       copyToClipboard(e.detail.text, 'Kopirano sa udaljenog računara')
     })
 }
 
-// clipboardPasteFrom je noVNC-ova ugrađena metoda (core/rfb.js) - šalje
-// ClientCutText/extended-clipboard poruku RFB serveru, samo AŽURIRA
-// clipboard bafer na udaljenoj mašini, ne izvršava sam paste ni u jednoj
-// aplikaciji tamo - otud sendPasteKeystroke() odmah posle, ista dva koraka
-// koja bi korisnik ručno uradio (kopiraj lokalno, pa Ctrl+V na udaljenom).
+// clipboardPasteFrom is noVNC's built-in method (core/rfb.js) - it sends a
+// ClientCutText/extended-clipboard message to the RFB server, it only UPDATES the
+// clipboard buffer on the remote machine, it doesn't perform the paste itself in any
+// application there - hence sendPasteKeystroke() right after, the same two steps
+// the user would do by hand (copy locally, then Ctrl+V on the remote side).
 async function pasteToRemote() {
   if (!rfb) return
   try {
@@ -308,29 +308,29 @@ async function pasteToRemote() {
   }
 }
 
-// XK_v=0x0076 (core/input/keysym.js) - ne uvozi se direktno jer
-// @novnc/novnc paket preko "exports" polja u package.json izlaže SAMO
-// core/rfb.js, dublje putanje se ne mogu import-ovati kroz Vite. sendKey()
-// je ista javna metoda koju RFB.sendCtrlAltDel() interno koristi. NAMERNO
-// se ovde ne šalje i sintetički Control down/up - fizički Ctrl/Cmd taster
-// koji je korisnik već pritisnuo (da bi uopšte stigao do handleGlobalKeydown)
-// se normalno prosleđuje udaljenoj mašini preko noVNC-ovog sopstvenog
-// keyboard handler-a (presrećemo/zaustavljamo SAMO 'v' keydown, ne i
-// modifikator), pa je slanje samo V down+up dovoljno da se na udaljenoj
-// strani sastavi kompletna Ctrl+V kombinacija.
+// XK_v=0x0076 (core/input/keysym.js) - not imported directly because
+// the @novnc/novnc package, via the "exports" field in package.json, exposes ONLY
+// core/rfb.js, deeper paths can't be imported through Vite. sendKey()
+// is the same public method RFB.sendCtrlAltDel() uses internally. We DELIBERATELY
+// don't also send a synthetic Control down/up here - the physical Ctrl/Cmd key
+// the user already pressed (to reach handleGlobalKeydown at all)
+// is forwarded normally to the remote machine via noVNC's own
+// keyboard handler (we intercept/stop ONLY the 'v' keydown, not the
+// modifier), so sending just V down+up is enough for a complete Ctrl+V
+// combination to be assembled on the remote side.
 function sendPasteKeystroke() {
   if (!rfb) return
   rfb.sendKey(0x0076, 'KeyV', true)
   rfb.sendKey(0x0076, 'KeyV', false)
 }
 
-// Presreće Ctrl+V/Cmd+V PRE nego što noVNC-ov sopstveni keydown handler
-// (zakačen direktno na screenEl.value - vidi core/input/keyboard.js) stigne
-// da ga vidi - otud capture:true na document-u (ancestor capture-fazu
-// izvršava PRE nego što event uopšte stigne do target elementa), ne na
-// screenEl.value samom (listener na ISTOM elementu kao noVNC-ov bi se
-// izvršio samo po redosledu registracije, ne garantovano prvi). event.repeat
-// se ignoriše da držanje tastera ne pokrene paste u petlji na OS repeat-u.
+// Intercepts Ctrl+V/Cmd+V BEFORE noVNC's own keydown handler
+// (attached directly to screenEl.value - see core/input/keyboard.js) gets
+// to see it - hence capture:true on document (an ancestor's capture phase
+// runs BEFORE the event even reaches the target element), not on
+// screenEl.value itself (a listener on the SAME element as noVNC's would
+// run only in registration order, not guaranteed first). event.repeat
+// is ignored so holding the key doesn't trigger paste in a loop on OS key repeat.
 function handleGlobalKeydown(event) {
   if (!connected.value || event.repeat) return
   const isPasteShortcut = (event.ctrlKey || event.metaKey) && !event.altKey && event.key?.toLowerCase() === 'v'
@@ -376,13 +376,13 @@ function cleanup() {
   fileWs = null
 }
 
-// Ručno "fit to window" skaliranje - vidi napomenu uz rfb.scaleViewport
-// iznad. rfb._display je isti (samo ne-zvanično izložen, single underscore)
-// Display objekat čiji public scale setter noVNC sam koristi interno
-// (core/display.js - set scale(scale) { this._rescale(scale); }); ovde ga
-// zovemo direktno sa faktorom koji SAMI izračunamo iz stvarne, već
-// izmerene veličine kontejnera i canvas-a, čime zaobilazimo autoscale()
-// računicu koja je ostajala zaglavljena na 0.
+// Manual "fit to window" scaling - see the note on rfb.scaleViewport
+// above. rfb._display is the same (just unofficially exposed, single underscore)
+// Display object whose public scale setter noVNC itself uses internally
+// (core/display.js - set scale(scale) { this._rescale(scale); }); here we
+// call it directly with a factor WE compute from the actual, already
+// measured size of the container and canvas, thereby bypassing the autoscale()
+// calculation that kept getting stuck at 0.
 function applyManualScale() {
   if (!rfb || !screenEl.value) return
   const canvas = screenEl.value.querySelector('canvas')
@@ -402,12 +402,12 @@ function handleWindowResize() {
   requestAnimationFrame(applyManualScale)
 }
 
-// Poseban WS kanal od RFB-a (vidi backend/ws/fileTransferRelay.js) - RFB
-// ClientCutText/ServerCutText nema koncept fajla, otud sasvim odvojen
-// mehanizam. Konekcija se pravi lenjo, tek kad korisnik prvi put otvori
-// panel, i drži se otvorena dok traje VNC sesija (zatvaranje/otvaranje
-// panela samo sakriva/prikazuje UI, ne dira konekciju) - namerno, da
-// otvaranje panela više puta ne pravi novu WS konekciju svaki put.
+// A WS channel separate from RFB (see backend/ws/fileTransferRelay.js) - RFB
+// ClientCutText/ServerCutText has no concept of a file, hence an entirely separate
+// mechanism. The connection is created lazily, only when the user first opens the
+// panel, and kept open for as long as the VNC session lasts (closing/opening the
+// panel only hides/shows the UI, it doesn't touch the connection) - on purpose, so that
+// opening the panel several times doesn't create a new WS connection each time.
 function buildFileWsUrl(id) {
   const token = localStorage.getItem('token')
   const base = window.location.origin.replace(/^http/, 'ws')
@@ -478,9 +478,9 @@ function closeFilePanel() {
   filePanelOpen.value = false
 }
 
-// Root ("Diskovi") vraća DriveInfo unose sa punim imenom (npr. "C:\\") -
-// otud join samo za ne-root nivoe, gde agent šalje goli naziv fajla/foldera
-// (DirectoryInfo/FileInfo.Name), ne punu putanju - videti HandleList u
+// The root ("Diskovi" / drives) returns DriveInfo entries with the full name (e.g. "C:\\") -
+// hence the join only for non-root levels, where the agent sends the bare file/folder name
+// (DirectoryInfo/FileInfo.Name), not the full path - see HandleList in
 // FileTransferBridge.cs.
 function joinFilePath(base, name) {
   if (!base) return name
@@ -532,11 +532,11 @@ async function downloadEntry(entry) {
   }
 }
 
-// 64KB - isti chunk size kao FileTransferBridge.cs's ChunkSize na agent
-// strani (nema funkcionalnog razloga da se poklapaju, samo dosledna
-// konvencija). "upload_end" je informativna potvrda za agenta (vidi
-// komentar u FileTransferBridge.cs) - stvarna finalizacija se dešava tamo
-// čim primljeni bajtovi dostignu najavljenu veličinu.
+// 64KB - the same chunk size as FileTransferBridge.cs's ChunkSize on the agent
+// side (there's no functional reason for them to match, just a consistent
+// convention). "upload_end" is an informational confirmation for the agent (see the
+// comment in FileTransferBridge.cs) - the actual finalization happens there
+// as soon as the received bytes reach the announced size.
 const UPLOAD_CHUNK_SIZE = 65536
 
 async function handleFileUpload(event) {
@@ -583,12 +583,12 @@ async function handleFileUpload(event) {
   }
 }
 
-// OS-rezervisane kombinacije (Win+R, Win+L, Alt+Tab, Ctrl+Alt+Del...) ne
-// može da presretne obična web stranica - to je namerno browser
-// ograničenje, ne bag. Fullscreen + Keyboard Lock API je standardan način
-// da se to zaobiđe (isti mehanizam koristi npr. Chrome Remote Desktop),
-// ali radi pouzdano samo u Chromium browserima (Chrome/Edge), ne u
-// Firefox-u - zato je feature-detected, ne pretpostavljeno dostupno.
+// OS-reserved combinations (Win+R, Win+L, Alt+Tab, Ctrl+Alt+Del...) can't
+// be intercepted by an ordinary web page - that's a deliberate browser
+// limitation, not a bug. Fullscreen + the Keyboard Lock API is the standard way
+// to get around it (the same mechanism is used by e.g. Chrome Remote Desktop),
+// but it only works reliably in Chromium browsers (Chrome/Edge), not in
+// Firefox - which is why it's feature-detected, not assumed to be available.
 async function toggleFullscreen() {
   if (!document.fullscreenElement) {
     try {
@@ -638,17 +638,17 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Sci-fi HUD skin, isti trik kao AgentDetailView.vue - redefiniše app-ove
-   token CSS promenljive samo na ovom korenu, pa se ceo child stablo
-   (StatusPill, AppButton, SlideOverPanel, .app-input...) automatski
-   re-teksturira preko obične CSS kaskade. Fiksna tamna paleta bez obzira na
-   app-ov svetla/tamna prekidač (isti razlog kao tamo - i ovde nema koncepta
-   "sci-fi HUD na beloj pozadini").
-   VAŽNO: sva dekoracija ispod je ograničena na .vnc-toolbar i na sadržaj
-   ".vnc-frame ::before" / "!connected" overlay-a - NIKAD na screenEl samom
-   ili na njegov roditeljev box model (border/box-shadow ne menjaju layout,
-   overlay je poseban absolute sibling) - noVNC-ovo merenje kontejnera
-   (vidi komentar u template-u) ostaje netaknuto. */
+/* Sci-fi HUD skin, the same trick as AgentDetailView.vue - redefines the app's
+   token CSS variables only on this root, so the whole child tree
+   (StatusPill, AppButton, SlideOverPanel, .app-input...) is automatically
+   re-textured via the ordinary CSS cascade. A fixed dark palette regardless of the
+   app's light/dark toggle (same reason as there - here too there's no concept of
+   "a sci-fi HUD on a white background").
+   IMPORTANT: all the decoration below is limited to .vnc-toolbar and to the content of
+   the ".vnc-frame ::before" / "!connected" overlay - NEVER to screenEl itself
+   or to its parent's box model (border/box-shadow don't change the layout, the
+   overlay is a separate absolute sibling) - noVNC's container measurement
+   (see the comment in the template) stays untouched. */
 .vnc-hud {
   --surface-canvas: #050b0d;
   --surface-card: #0a1619;
@@ -722,9 +722,9 @@ onBeforeUnmount(() => {
   50% { opacity: 0.4; transform: scale(0.75); }
 }
 
-/* Ugaoni "viewport frame" oko video kontejnera - border/box-shadow na
-   samom kontejneru + pseudo-element za bracket uglove, pointer-events:none
-   tako da nikad ne blokira klik na udaljeni ekran ispod. */
+/* A corner "viewport frame" around the video container - border/box-shadow on
+   the container itself + a pseudo-element for the bracket corners, pointer-events:none
+   so it never blocks a click on the remote screen beneath. */
 .vnc-frame {
   box-shadow:
     inset 0 0 0 1px rgba(0, 230, 200, 0.18),

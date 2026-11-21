@@ -36,11 +36,11 @@ function ensureReleasesDir() {
   fs.mkdirSync(RELEASES_DIR, { recursive: true });
 }
 
-// Read-only uvid u šta je STVARNO na disku (za razliku od listReleasesService
-// koje čita agent_releases tabelu) - koristan da se uoči neusklađenost, npr.
-// fajl obrisan ručno mimo aplikacije dok baza i dalje misli da postoji, ili
-// obrnuto. Namerno bez upload/delete ovde - ta dva moraju ići kroz
-// uploadReleaseService/setReleaseActiveService da baza ostane izvor istine.
+// Read-only view of what is ACTUALLY on disk (unlike listReleasesService,
+// which reads the agent_releases table) - useful for spotting drift, e.g. a
+// file deleted by hand outside the app while the DB still thinks it exists, or
+// the other way around. Deliberately no upload/delete here - those two must go through
+// uploadReleaseService/setReleaseActiveService so the DB stays the source of truth.
 export async function listReleaseFilesOnDiskService() {
   ensureReleasesDir();
 
@@ -66,8 +66,8 @@ export async function uploadReleaseService(
 
   const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
   const safeExt = path.extname(originalName || "") || ".zip";
-  // Ime fajla na disku više ne uključuje grupu (release sada može ciljati
-  // više grupa - agent_release_groups je izvor istine za to, ne slug u imenu).
+  // The filename on disk no longer includes the group (a release can now target
+  // several groups - agent_release_groups is the source of truth for that, not a slug in the name).
   const storedFileName = `${version}-${Date.now()}${safeExt}`;
   const filePath = path.join(RELEASES_DIR, storedFileName);
 
@@ -86,20 +86,20 @@ export async function uploadReleaseService(
     createdByUserId,
   });
 
-  // Dedup u JS (case-sensitive - "IT" i "it" se tretiraju kao različite
-  // grupe, isto kao slobodan tekst svuda drugde u ovoj promeni).
+  // Dedup in JS (case-sensitive - "IT" and "it" are treated as different
+  // groups, same as free text everywhere else in this change).
   const uniqueGroups = [...new Set(deploymentGroups.map((g) => g.trim()).filter(Boolean))];
   await insertReleaseGroups(id, uniqueGroups);
 
-  // Manifest fajlova unutar zip-a (ime + veličina) - JEDNOM ovde, iz buffer-a
-  // direktno (bez raspakivanja na disk), da checkServiceFilesMismatchService
-  // kasnije ima sa čim da poredi ono što agent stvarno prijavi da ima
-  // instalirano. Fascikle (isDirectory) se preskaču - zanima nas samo
-  // sadržaj fajlova, isto što agent skenira na svojoj strani. Best-effort
-  // (try/catch) namerno - upload ne sme da propadne samo zato što manifest
-  // nije mogao da se pročita (npr. paket koji nije standardan zip); poređenje
-  // kasnije jednostavno nema manifest za taj release i tiho se preskače
-  // (isti "nema sa čim da se poredi" put kao release bez uploadovanog manifesta).
+  // Manifest of the files inside the zip (name + size) - ONCE here, straight from the
+  // buffer (without extracting to disk), so checkServiceFilesMismatchService
+  // later has something to compare against what the agent actually reports having
+  // installed. Folders (isDirectory) are skipped - we only care about
+  // file contents, the same thing the agent scans on its side. Best-effort
+  // (try/catch) on purpose - the upload must not fail just because the manifest
+  // couldn't be read (e.g. a package that isn't a standard zip); the comparison
+  // later simply has no manifest for that release and is silently skipped
+  // (the same "nothing to compare against" path as a release without an uploaded manifest).
   try {
     const zip = new AdmZip(buffer);
     const files = zip
@@ -108,7 +108,7 @@ export async function uploadReleaseService(
       .map((e) => ({ path: e.entryName.replace(/\\/g, "/"), size: e.header.size }));
     await insertReleaseFiles(id, files);
   } catch {
-    // Vidi komentar iznad - upload ostaje uspešan bez manifesta.
+    // See the comment above - the upload still succeeds without a manifest.
   }
 
   return await findReleaseById(id);
@@ -130,9 +130,9 @@ export async function setReleaseActiveService(id, isActive) {
   return await findReleaseById(id);
 }
 
-// Napomene se, za razliku od ostalih polja upload-a (verzija, fajl, sha256),
-// mogu naknadno dopuniti/ispraviti - nema poslovnog razloga da ostanu
-// zaključane posle upload-a kao ostatak reda (koji je vezan za sam fajl).
+// Notes, unlike the other upload fields (version, file, sha256),
+// can be amended/corrected later - there's no business reason for them to stay
+// locked after upload like the rest of the row (which is tied to the file itself).
 export async function updateReleaseNotesService(id, releaseNotes) {
   const affected = await updateReleaseNotes(id, releaseNotes ?? null);
   if (!affected) {
@@ -141,13 +141,13 @@ export async function updateReleaseNotesService(id, releaseNotes) {
   return await findReleaseById(id);
 }
 
-// Namerno SAMO za deaktivirane release-e - brisanje aktivne verzije bi
-// moglo da obori auto-update za agente koji je trenutno ciljaju (isti
-// razlog kao zašto se najpre traži eksplicitna deaktivacija, ne jedan
-// nepovratan korak). agent_release_groups/agent_release_files se čiste
-// automatski preko ON DELETE CASCADE (migracije 0006/0003) - ne moraju
-// posebno da se brišu ovde. Fizički fajl na disku se briše best-effort
-// (ne obara ceo zahtev ako fajl već ne postoji/ručno obrisan mimo baze).
+// Deliberately ONLY for deactivated releases - deleting an active version could
+// break auto-update for agents currently targeting it (the same
+// reason an explicit deactivation is required first, not one
+// irreversible step). agent_release_groups/agent_release_files are cleaned up
+// automatically via ON DELETE CASCADE (migrations 0006/0003) - they don't need
+// to be deleted separately here. The physical file on disk is deleted best-effort
+// (doesn't fail the whole request if the file is already gone/deleted by hand outside the DB).
 export async function deleteReleaseService(id) {
   const release = await findReleaseById(id);
   if (!release) {
@@ -162,8 +162,8 @@ export async function deleteReleaseService(id) {
   try {
     fs.unlinkSync(path.join(RELEASES_DIR, release.filePath));
   } catch {
-    // Fajl već ne postoji ili je ručno obrisan - baza je posle DELETE-a
-    // iznad ionako izvor istine, ovo je samo best-effort čišćenje diska.
+    // The file no longer exists or was deleted by hand - after the DELETE
+    // above the DB is the source of truth anyway, this is just best-effort disk cleanup.
   }
 }
 
@@ -199,13 +199,13 @@ export async function checkForUpdateService(agent) {
   };
 }
 
-// Poredi šta agent PRIJAVI da ima u svom Service folderu (ime + veličina, iz
-// InventoryCollector.CollectServiceFiles na C# strani) sa manifestom release-a
-// koji odgovara verziji koju agent SAM izveštava (agent.agentVersion) - hvata
-// pokvaren/delimičan update (fajlovi ostali stari/nedostaju iako agent misli
-// da je na novoj verziji), ne "agent je zastareo" (to je već vidljivo preko
-// verzije same). Bez hash-a namerno - ime+veličina je dovoljno za ovu svrhu
-// i ne zahteva da agent čita/heš-uje svaki fajl na svakom inventory sync-u.
+// Compares what the agent REPORTS having in its Service folder (name + size, from
+// InventoryCollector.CollectServiceFiles on the C# side) with the manifest of the release
+// matching the version the agent ITSELF reports (agent.agentVersion) - catches a
+// broken/partial update (files left old/missing even though the agent thinks
+// it's on the new version), not "the agent is outdated" (that's already visible from
+// the version itself). No hash on purpose - name+size is enough for this purpose
+// and doesn't require the agent to read/hash every file on every inventory sync.
 export async function checkServiceFilesMismatchService(agentVersion, reportedFiles) {
   if (!agentVersion || !Array.isArray(reportedFiles) || !reportedFiles.length) {
     return { mismatch: false, details: null };
@@ -213,9 +213,9 @@ export async function checkServiceFilesMismatchService(agentVersion, reportedFil
 
   const releaseId = await findReleaseIdByVersion(agentVersion);
   if (!releaseId) {
-    // Verzija bez poznatog release-a u bazi (npr. ručno instalirana, ili
-    // otpremljena pre nego što je ovaj manifest mehanizam postojao) - nema sa
-    // čim da se poredi, ne tretiramo kao neusklađenost.
+    // A version with no known release in the DB (e.g. installed by hand, or
+    // uploaded before this manifest mechanism existed) - nothing to
+    // compare against, not treated as a mismatch.
     return { mismatch: false, details: null };
   }
 
@@ -252,12 +252,12 @@ export async function downloadReleaseService(releaseId, agent) {
   const release = await findReleaseById(releaseId);
   const groups = agent.deploymentGroups?.length ? agent.deploymentGroups : ["rest"];
   const targeted = release ? await isReleaseTargetingAnyGroup(releaseId, groups) : false;
-  // Ako release ne cilja agentovu grupu (normalan slučaj za auto-update),
-  // ipak dozvoli preuzimanje kad postoji skorašnji, eksplicitan
-  // force_reinstall_agent job baš za ovog agenta i baš ovaj release - admin
-  // je svesno zaobišao grupno ciljanje (npr. "Instaliraj određenu verziju"
-  // na Agent Detail strani), ne sme se blokirati istom zaštitom koja
-  // sprečava agenta da sam "pogodi" releaseId van svoje grupe.
+  // If the release doesn't target the agent's group (the normal case for auto-update),
+  // still allow the download when there's a recent, explicit
+  // force_reinstall_agent job for exactly this agent and exactly this release - the admin
+  // knowingly bypassed group targeting (e.g. "Install a specific version"
+  // on the Agent Detail page), which must not be blocked by the same protection that
+  // prevents the agent from "guessing" a releaseId outside its group on its own.
   const forcedJob =
     !targeted && release && agent?.id
       ? await findRecentForceReinstallJob(agent.id, releaseId)
@@ -274,11 +274,11 @@ export async function downloadReleaseService(releaseId, agent) {
   return { filePath, fileName: release.fileName };
 }
 
-// Manager nema deployment grupe (nije Agent koncept) - jedini put ovde je
-// eksplicitan, admin-pokrenut install_update manager_jobs red za baš ovaj
-// releaseId. Bez fallback grupe ("rest") kao kod downloadReleaseService -
-// Manager instalacije su UVEK eksplicitne, nikad "auto-detektuj šta mi
-// treba" (vidi plan §"Scope decisions").
+// The Manager has no deployment groups (not an Agent concept) - the only path here is an
+// explicit, admin-triggered install_update manager_jobs row for exactly this
+// releaseId. No fallback group ("rest") like downloadReleaseService -
+// Manager installs are ALWAYS explicit, never "auto-detect what I
+// need" (see the plan §"Scope decisions").
 export async function downloadReleaseForManagerService(releaseId, manager) {
   const release = await findReleaseById(releaseId);
   const job = release ? await findRecentInstallUpdateJob(manager.id, releaseId) : null;
@@ -294,9 +294,9 @@ export async function downloadReleaseForManagerService(releaseId, manager) {
   return { filePath, fileName: release.fileName };
 }
 
-// "Širenje" rollout-a - menja SET ciljanih grupa na već otpremljenom
-// release-u BEZ ponovnog upload-a paketa. Pun replace (ne append) - frontend
-// šalje ceo novi set (stare + nove grupe za širenje).
+// "Widening" a rollout - changes the SET of targeted groups on an already uploaded
+// release WITHOUT re-uploading the package. Full replace (not append) - the frontend
+// sends the whole new set (old + new groups to widen to).
 export async function updateReleaseGroupsService(id, deploymentGroups) {
   const release = await findReleaseById(id);
   if (!release) {
@@ -328,11 +328,11 @@ export async function reportUpdateResultService(agent, dto) {
   return { ok: true };
 }
 
-// Manager (managers.repo.js) je povezan preko istog ip_entry_id kao agent,
-// ne agent_id direktno - Manager i Agent nemaju direktnu vezu, samo dele
-// mašinu (isti obrazac kao getAgentManagerStatusController). Rezultat je
-// oblikovan da liči na agent_update_log red (fromVersion/toVersion/success/
-// reason/reportedAt), plus channel:'manager' za razlikovanje u UI-u.
+// The Manager (managers.repo.js) is linked via the same ip_entry_id as the agent,
+// not agent_id directly - the Manager and the Agent have no direct link, they just share the
+// machine (same pattern as getAgentManagerStatusController). The result is
+// shaped to resemble an agent_update_log row (fromVersion/toVersion/success/
+// reason/reportedAt), plus channel:'manager' to tell them apart in the UI.
 async function listManagerInstallLogForAgent(agentId, limit) {
   const agent = await findAgentById(agentId);
   if (!agent?.ipEntryId) return [];
@@ -363,22 +363,22 @@ async function listManagerInstallLogForAgent(agentId, limit) {
   );
 }
 
-// Spaja DVA odvojena izvora - agent_update_log (stari put, agent sam sebe
-// javlja preko POST /api/agents/update/report) i manager_jobs install_update
-// poslove (novi, JEDINI put od kad je force-install po agentu uklonjen -
-// vidi ManagerWorker.cs InstallUpdateFromServerAsync, koji NAMERNO ostavlja
-// ServerBaseUrl prazan pa ReportResultIfConfiguredAsync nikad ne piše u
-// agent_update_log). Bez ovog spajanja, Update log tab bi ostao trajno prazan
-// za svaki update urađen preko Manager-a - uživo potvrđeno: agent_update_log
-// poslednji red 2026-08-22 pre nego što je Manager kanal preuzeo instalacije,
-// manager_jobs ima stvarne install_update redove posle tog trenutka.
+// Merges TWO separate sources - agent_update_log (the old path, the agent reports on itself
+// via POST /api/agents/update/report) and manager_jobs install_update
+// jobs (the new, ONLY path since per-agent force-install was removed -
+// see ManagerWorker.cs InstallUpdateFromServerAsync, which DELIBERATELY leaves
+// ServerBaseUrl empty so ReportResultIfConfiguredAsync never writes to
+// agent_update_log). Without this merge, the Update log tab would stay permanently empty
+// for every update done through the Manager - confirmed live: agent_update_log's
+// last row is 2026-08-22, before the Manager channel took over installs,
+// manager_jobs has real install_update rows after that point.
 //
-// Pravo cross-source pagination nije vredno komplikacije za ovu tabelu (po
-// agentu, retko više od par desetina pokušaja ukupno) - umesto toga, uzima se
-// do `limit` redova iz SVAKOG izvora, spaja, sortira po vremenu, i seče na
-// `limit`. `total`/`totalPages` su najbolja procena (zbir oba izvora), ne
-// tačna cross-source vrednost - dovoljno za "ima još/nema još" osećaj bez
-// tačne stranice N.
+// Real cross-source pagination isn't worth the complexity for this table (per
+// agent, rarely more than a few dozen attempts in total) - instead, it takes
+// up to `limit` rows from EACH source, merges them, sorts by time, and cuts to
+// `limit`. `total`/`totalPages` are a best estimate (the sum of both sources), not
+// an exact cross-source value - enough for a "more/no more" feel without
+// an exact page N.
 export async function listUpdateLogService(agentId, { page, limit }) {
   const offset = (page - 1) * limit;
   const [{ items: agentItems, total: agentTotal }, managerItems] = await Promise.all([

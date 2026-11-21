@@ -1,23 +1,23 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
-// Poklapa cdq.domain sa fd.domain kad je isti ILI kad je cdq.domain
-// poddomen fd.domain-a (npr. cdq="a.example.com" poklapa fd="example.com").
-// Namerno 6x EXISTS sa OR umesto "EXISTS (... WHERE fd.domain IN (cdq.domain,
-// SUBSTRING_INDEX(...), ...))" (prethodni oblik) - taj IN-oblik je bio
-// dovoljno brz DOK se koristio samo u SELECT listi (računa se samo za
-// LIMIT-ovanih ~50 redova), ali kad je isti izraz iskorišćen i kao WHERE
-// filter (blacklistedOnly - vidi listDnsQueries ispod), EXPLAIN je pokazao
-// da MariaDB za IN-oblik NE radi indeksirani lookup po iteraciji, nego pun
-// scan celog uq_flagged_domain indeksa PO SVAKOM REDU computer_dns_queries
-// (DEPENDENT SUBQUERY, type=index, ne ref/unique_subquery) - uživo testirano
-// sa ~90k sintetičkih flagged_domains redova, upit nije završio ni posle
-// 120s. 6x EXISTS sa jednakošću (fd.domain = <jedan izraz>) po grani
-// omogućava MariaDB-u da svaku granu MATERIJALIZUJE JEDNOM (temp tabela sa
-// indeksom, izgrađena samo jednom za ceo upit, ne po redu) i onda radi
-// indeksiran lookup po redu - isti rezultat (proveren identičan broj
-// poklapanja), ali suštinski druga (i jedina održiva na ovoj skali)
-// vremenska složenost.
+// Matches cdq.domain against fd.domain when they're equal OR when cdq.domain
+// is a subdomain of fd.domain (e.g. cdq="a.example.com" matches fd="example.com").
+// Deliberately 6x EXISTS with OR instead of "EXISTS (... WHERE fd.domain IN (cdq.domain,
+// SUBSTRING_INDEX(...), ...))" (the previous shape) - that IN shape was fast
+// enough WHILE it was only used in the SELECT list (computed only for the
+// ~50 LIMITed rows), but when the same expression was also used as a WHERE
+// filter (blacklistedOnly - see listDnsQueries below), EXPLAIN showed that
+// for the IN shape MariaDB does NOT do an indexed lookup per iteration, but a full
+// scan of the whole uq_flagged_domain index FOR EVERY ROW of computer_dns_queries
+// (DEPENDENT SUBQUERY, type=index, not ref/unique_subquery) - tested live
+// with ~90k synthetic flagged_domains rows, the query didn't finish even after
+// 120s. 6x EXISTS with equality (fd.domain = <a single expression>) per branch
+// lets MariaDB MATERIALIZE each branch ONCE (a temp table with an index,
+// built only once for the whole query, not per row) and then do an
+// indexed lookup per row - the same result (verified identical match
+// count), but a fundamentally different (and the only sustainable one at this
+// scale) time complexity.
 export const FLAGGED_DOMAIN_MATCH_SQL = `
   (
     EXISTS (SELECT 1 FROM flagged_domains fd WHERE fd.domain = cdq.domain)
@@ -29,13 +29,13 @@ export const FLAGGED_DOMAIN_MATCH_SQL = `
   )
 `;
 
-// Za razliku od insertEventLogsBulk (INSERT IGNORE - event logovi su
-// append-only distinktni redovi), DNS upiti se agregiraju PO (ip_entry_id,
-// domain) - broj distinktnih domena po računaru je ograničen (hiljade
-// tokom meseci), dok bi jedan red po pojedinačnom upitu (desetine hiljada
-// dnevno po mašini) neograničeno rastao. UNIQUE KEY na (ip_entry_id,
-// domain) čini ovo idempotentnim - agent koji ponovo pošalje isti batch
-// posle prekinute veze samo dodaje na postojeći count, ne duplira.
+// Unlike insertEventLogsBulk (INSERT IGNORE - event logs are append-only
+// distinct rows), DNS queries are aggregated PER (ip_entry_id, domain) - the
+// number of distinct domains per computer is bounded (thousands over months),
+// while one row per individual query (tens of thousands per machine per day)
+// would grow without bound. The UNIQUE KEY on (ip_entry_id, domain) makes this
+// idempotent - an agent that resends the same batch after a dropped
+// connection only adds to the existing count, it doesn't duplicate.
 export async function upsertDnsQueriesBulk(rows) {
   if (!rows.length) return;
 
@@ -84,17 +84,17 @@ export async function listDnsQueries({ search, site, ipEntryId, blacklistedOnly,
     params.push(site);
   }
   if (ipEntryId) {
-    // Za "DNS" tab na Agent Detail strani - istorija upita SAMO za tog
-    // agentovog računara, isti obrazac kao PDSU event log tab (fetchuje po
-    // ipEntryId, ne po agentId - DNS podaci su u bazi vezani za ip_entries,
-    // ne za agents).
+    // For the "DNS" tab on the Agent Detail page - query history ONLY for that
+    // agent's computer, same pattern as the PDSU event log tab (fetched by
+    // ipEntryId, not agentId - DNS data in the database is tied to ip_entries,
+    // not to agents).
     whereParts.push("cdq.ip_entry_id = ?");
     params.push(ipEntryId);
   }
   if (blacklistedOnly) {
-    // Isti FLAGGED_DOMAIN_MATCH_SQL izraz kao isBlacklisted kolona ispod -
-    // jedno mesto za definiciju "poklapanja", ne duplirana logika koja bi
-    // mogla da se razmimoiđe.
+    // The same FLAGGED_DOMAIN_MATCH_SQL expression as the isBlacklisted column below -
+    // one place defining "a match", not duplicated logic that could
+    // drift apart.
     whereParts.push(FLAGGED_DOMAIN_MATCH_SQL);
   }
 
@@ -138,16 +138,16 @@ export async function listDnsQueries({ search, site, ipEntryId, blacklistedOnly,
 }
 
 // =========================
-// Crna lista domena (flagged_domains) - isti CRUD obrazac kao
-// flagged.repo.js (software/services), ali smešten ovde (ne u flagged.repo.js)
-// jer je namerno admin-only (isto kao DNS logovi sami), ne operator-writable
-// kao flagged_software/flagged_services.
+// Domain blacklist (flagged_domains) - the same CRUD pattern as
+// flagged.repo.js (software/services), but placed here (not in flagged.repo.js)
+// because it is deliberately admin-only (just like the DNS logs themselves), not
+// operator-writable like flagged_software/flagged_services.
 // =========================
 
-// Paginirano - flagged_domains ima ~88k redova otkad se dnevno sinhronizuje
-// sa spoljnim izvorima (domainBlacklistSync.service.js), vraćanje SVIH
-// odjednom je bilo renderovalo 88k <tr> elemenata na DNS Logs strani i
-// kočilo je (otkriveno uživo).
+// Paginated - flagged_domains has ~88k rows since it started syncing daily
+// with external sources (domainBlacklistSync.service.js); returning ALL of them
+// at once rendered 88k <tr> elements on the DNS Logs page and made it
+// sluggish (discovered live).
 export async function listFlaggedDomains({ search, page, limit }) {
   const { where, params } = buildLikeSearch(["domain"], search);
   const whereSql = where ? `WHERE ${where}` : "";
@@ -200,11 +200,11 @@ export async function deleteFlaggedDomain(id) {
   return result.affectedRows;
 }
 
-// Masovno seed-ovanje iz spoljnih izvora (domainBlacklistSync.service.js) -
-// INSERT IGNORE (isti uq_flagged_domain kao pojedinačan insertFlaggedDomain
-// iznad) znači da se ručno dodati/već postojeći domeni nikad ne prepisuju
-// niti brišu, samo se dodaju novi. Deljeno u manje batch-eve (ne jedan
-// insert od desetina hiljada redova) da se izbegne max_allowed_packet rizik.
+// Bulk seeding from external sources (domainBlacklistSync.service.js) -
+// INSERT IGNORE (the same uq_flagged_domain as the single insertFlaggedDomain
+// above) means manually added/already existing domains are never overwritten
+// or deleted, only new ones are added. Split into smaller batches (not one
+// insert of tens of thousands of rows) to avoid the max_allowed_packet risk.
 const BULK_INSERT_CHUNK_SIZE = 1000;
 
 export async function bulkInsertFlaggedDomains(rows) {

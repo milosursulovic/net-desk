@@ -9,11 +9,11 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Jobs
 {
     /// <summary>
-    /// Izvršava komande iz dozvoljene liste (spec 11.10 / backend
-    /// dtos/agentJobs.dto.js COMMAND_TYPES). "collect_inventory" i
-    /// "refresh_software_list" NISU ovde - njima treba NetdeskApiClient/
-    /// AgentState pristup koji ovaj executor namerno nema, pa ih AgentWorker
-    /// obrađuje posebno (poziva InventoryCollector direktno).
+    /// Executes commands from the allowed list (spec 11.10 / backend
+    /// dtos/agentJobs.dto.js COMMAND_TYPES). "collect_inventory" and
+    /// "refresh_software_list" are NOT here - they need NetdeskApiClient/
+    /// AgentState access that this executor deliberately doesn't have, so AgentWorker
+    /// handles them separately (it calls InventoryCollector directly).
     /// </summary>
     public static class JobExecutor
     {
@@ -102,10 +102,10 @@ namespace NetdeskAgent.Common.Jobs
 
         private static ProcessRunner.ProcessResult RunShutdownExe(string arguments)
         {
-            // /t 15 daje 15 sekundi da HTTP izveštaj o uspehu ove komande stigne
-            // do servera pre nego što se računar stvarno restartuje/ugasi -
-            // shutdown.exe samo ZAKAZUJE akciju i odmah vraća exit kod, pa se
-            // ovaj proces poziv završava skoro trenutno.
+            // /t 15 gives 15 seconds for the HTTP report of this command's success to reach
+            // the server before the computer actually restarts/shuts down -
+            // shutdown.exe only SCHEDULES the action and returns an exit code immediately, so
+            // this process call finishes almost instantly.
             return ProcessRunner.Run("shutdown.exe", arguments, DefaultTimeout);
         }
 
@@ -132,14 +132,14 @@ namespace NetdeskAgent.Common.Jobs
         private const int WTSActive = 0;
 
         /// <summary>
-        /// "shutdown.exe /l" odjavljuje TRENUTNU sesiju pozivaoca - ali servis
-        /// pod LocalSystem nalogom radi u Session 0, koja nema svoju
-        /// interaktivnu korisničku sesiju, pa poziv odmah puca (ExitCode=1),
-        /// bez obzira na argumente. Otkriveno uživo. Ispravan način da servis
-        /// odjavi PRIJAVLJENOG korisnika je preko WTS (Windows Terminal
-        /// Services) API-ja - nabroji aktivne sesije i eksplicitno odjavi
-        /// svaku sa stanjem WTSActive (interaktivno prijavljen korisnik,
-        /// ne disconnected/listening/itd).
+        /// "shutdown.exe /l" logs off the caller's CURRENT session - but a service
+        /// under the LocalSystem account runs in Session 0, which has no
+        /// interactive user session of its own, so the call fails immediately (ExitCode=1),
+        /// regardless of the arguments. Discovered live. The correct way for a service to
+        /// log off the SIGNED-IN user is via the WTS (Windows Terminal
+        /// Services) API - enumerate the active sessions and explicitly log off
+        /// each one in the WTSActive state (an interactively signed-in user,
+        /// not disconnected/listening/etc).
         /// </summary>
         private static ProcessRunner.ProcessResult LogoffActiveSessions()
         {
@@ -244,10 +244,10 @@ namespace NetdeskAgent.Common.Jobs
         }
 
         /// <summary>
-        /// Skripta se piše u privremeni .ps1 fajl i pokreće preko -File (ne
-        /// -Command) da se izbegnu problemi sa escape-ovanjem višelinijskih
-        /// skripti. ExecutionPolicy Bypass važi samo za ovaj proces poziv, ne
-        /// menja mašinsku politiku trajno.
+        /// The script is written to a temporary .ps1 file and run via -File (not
+        /// -Command) to avoid problems with escaping multi-line
+        /// scripts. ExecutionPolicy Bypass applies only to this process call, it doesn't
+        /// change the machine policy permanently.
         /// </summary>
         private static ProcessRunner.ProcessResult RunPowerShellScript(string script)
         {
@@ -262,7 +262,7 @@ namespace NetdeskAgent.Common.Jobs
             }
             finally
             {
-                try { File.Delete(scriptPath); } catch { /* best effort čišćenje */ }
+                try { File.Delete(scriptPath); } catch { /* best-effort cleanup */ }
             }
         }
 
@@ -283,7 +283,7 @@ namespace NetdeskAgent.Common.Jobs
                     }
                     catch
                     {
-                        // Fajl u upotrebi ili bez dozvole - preskoči, ne prekidaj ostatak čišćenja.
+                        // File in use or no permission - skip, don't abort the rest of the cleanup.
                         skipped++;
                     }
                 }

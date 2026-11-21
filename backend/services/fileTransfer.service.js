@@ -3,11 +3,11 @@ import { streamDownloadToResponse } from "../ws/fileTransferRelay.js";
 import { insertActivityLog } from "../repositories/activityLog.repo.js";
 import { notFound } from "../utils/httpError.js";
 
-// Hibridni put (vidi napomenu na vrhu ws/fileTransferRelay.js) - list/upload
-// idu preko viewer-ovog WS-a direktno (čist passthrough u relay-u, ne
-// zahtevaju ovaj servisni sloj), SAMO download prolazi kroz običnu
-// Express rutu jer nam treba pravi HTTP response da bismo browseru dali
-// obično "download" ponašanje (`<a href>`) umesto ručnog Blob sastavljanja.
+// Hybrid path (see the note at the top of ws/fileTransferRelay.js) - list/upload
+// go over the viewer's WS directly (pure passthrough in the relay, they don't
+// need this service layer), ONLY download goes through a regular
+// Express route because we need a real HTTP response to give the browser
+// ordinary "download" behavior (`<a href>`) instead of manual Blob assembly.
 export async function downloadFileFromAgentService(agentId, sessionId, filePath, user, res) {
   const session = await findVncSessionById(sessionId);
   if (!session || session.agentId !== agentId) {

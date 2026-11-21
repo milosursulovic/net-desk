@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace NetdeskAgent.Common.Jobs
 {
-    /// <summary>Jedna stavka iz GET /api/agents/jobs odgovora.</summary>
+    /// <summary>A single item from the GET /api/agents/jobs response.</summary>
     public class JobItem
     {
         public long Id { get; set; }

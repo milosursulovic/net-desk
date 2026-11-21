@@ -1,9 +1,9 @@
 import { pool } from "../db/pool.js";
 
-// Isti razlog kao parsePayload u agentJobs.repo.js - payload kolona može biti
-// obična TEXT/LONGTEXT (ne pravi JSON MariaDB tip) na okruženjima gde je šema
-// primenjena ručno, pa mysql2 ume da vrati sirov string umesto već-parsiranog
-// objekta.
+// Same reason as parsePayload in agentJobs.repo.js - the payload column may be a
+// plain TEXT/LONGTEXT (not a real MariaDB JSON type) in environments where the
+// schema was applied by hand, so mysql2 may return a raw string instead of an
+// already-parsed object.
 function parsePayload(value) {
   if (value == null) return null;
   if (typeof value !== "string") return value;

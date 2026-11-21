@@ -14,11 +14,11 @@ dotenv.config()
 const ip = process.env.VITE_HOST_IP_ADDRESS || 'localhost'
 const port = process.env.VITE_HOST_PORT || 5173
 
-// "Logička" verzija - broj commit-ova umesto ručno biranog semver broja, da
-// se sama pomera na svaki sledeći commit bez ikakvog održavanja (package.json
-// verzija je odavno zaostala - 1.0.15 posle 260+ commit-ova stvarnog rada).
-// git komanda je best-effort (build ne sme da padne van git repo-a, npr. u
-// nekom čistom Docker kontekstu bez .git foldera).
+// A "logical" version - the commit count instead of a hand-picked semver number, so
+// it moves on its own with every subsequent commit with no maintenance at all (the package.json
+// version fell behind long ago - 1.0.15 after 260+ commits of real work).
+// The git command is best-effort (the build must not fail outside a git repo, e.g. in
+// some clean Docker context without a .git folder).
 function gitCommitCount() {
   try {
     return execSync('git rev-list --count HEAD').toString().trim()
@@ -80,9 +80,9 @@ export default defineConfig({
     },
   },
   server: {
-    // https samo kad su sertifikati zadati (lokalni dev) - u CI/build okruženju
-    // ovih env varijabli nema, i vite.config.js se učitava i za `vite build`,
-    // ne samo `vite dev`, pa bezuslovni readFileSync ruši build.
+    // https only when certificates are provided (local dev) - in a CI/build environment
+    // these env variables don't exist, and vite.config.js is loaded for `vite build` too,
+    // not just `vite dev`, so an unconditional readFileSync breaks the build.
     ...(process.env.VITE_SSL_KEY_PATH && process.env.VITE_SSL_CERT_PATH
       ? {
           https: {

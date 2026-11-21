@@ -487,7 +487,7 @@ watch(site, loadStats)
         </div>
       </div>
 
-      <!-- Rezultati pretrage - cela baza, sve 4 kategorije -->
+      <!-- Search results - whole database, all 4 categories -->
       <div v-if="search.trim()">
         <div v-if="searchLoading" class="pdsu-state-card mb-4">
           <div class="pdsu-spinner pdsu-spinner-lg mb-3" role="status">
@@ -596,7 +596,7 @@ watch(site, loadStats)
         </template>
       </div>
 
-      <!-- Normalan dashboard prikaz kad se ne pretražuje -->
+      <!-- Normal dashboard view when not searching -->
       <template v-else>
         <nav class="pdsu-tabs" :aria-label="t('pdsu.categoriesAriaLabel')">
           <button

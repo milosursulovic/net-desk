@@ -12,41 +12,41 @@ using static NetdeskAgent.Common.DnsLogs.WinDivertInterop;
 namespace NetdeskAgent.Common.DnsLogs
 {
     /// <summary>
-    /// Prati DNS upite ove mašine preko WinDivert-a (WinDivert.dll +
-    /// WinDivert64.sys, obe pored .exe-a u Service folderu) - druga zamena za
-    /// raniju ETW Microsoft-Windows-DNS-Client verziju.
+    /// Monitors this machine's DNS queries via WinDivert (WinDivert.dll +
+    /// WinDivert64.sys, both next to the .exe in the Service folder) - the second replacement for
+    /// the earlier ETW Microsoft-Windows-DNS-Client version.
     ///
-    /// PRVA zamena je bila Npcap (uživo isprobana), ali njen tihi (/S)
-    /// instalacioni mod je dostupan SAMO uz plaćeno "Npcap OEM" izdanje -
-    /// besplatna verzija instalera se, i pored /S, ponašala kao da čeka
-    /// interaktivnu potvrdu koju Session 0 (gde servis radi) nikad ne može da
-    /// da, pa je 'install-npcap' preset job na pravoj mašini pukao na
-    /// 10-minutni JobExecutor timeout. WinDivert nema taj problem - drajver
-    /// se automatski i TIHO instalira pri prvom WinDivertOpen() pozivu, bez
-    /// ikakvog posebnog instalacionog koraka/preseta.
+    /// The FIRST replacement was Npcap (tried live), but its silent (/S)
+    /// install mode is available ONLY with the paid "Npcap OEM" edition -
+    /// the free version of the installer, despite /S, behaved as if it were waiting for
+    /// an interactive confirmation that Session 0 (where the service runs) can never
+    /// give, so the 'install-npcap' preset job on a real machine hit the
+    /// 10-minute JobExecutor timeout. WinDivert doesn't have that problem - the driver
+    /// installs itself automatically and SILENTLY on the first WinDivertOpen() call, without
+    /// any separate install step/preset.
     ///
-    /// RAZLOG MIGRACIJE OD ETW-a (isti kao i za Npcap pokušaj): ETW
-    /// DNS-Client provajder vidi SAMO upite kroz Windows OS resolver API.
-    /// Aplikacija (ili malware) koja sama otvori UDP socket i pošalje sirov
-    /// DNS upit na port 53 - tačan obrazac za C2 beaconing/DNS tunneling,
-    /// baš ono što ovaj feature treba da uhvati - ETW-u je nevidljiva.
-    /// WinDivert (kao i Npcap) vidi svaki paket na žici, nezavisno od API-ja
-    /// koji ga je poslao.
+    /// REASON FOR MIGRATING FROM ETW (the same as for the Npcap attempt): the ETW
+    /// DNS-Client provider sees ONLY queries through the Windows OS resolver API.
+    /// An application (or malware) that opens a UDP socket itself and sends a raw
+    /// DNS query to port 53 - exactly the pattern of C2 beaconing/DNS tunneling,
+    /// precisely what this feature is meant to catch - is invisible to ETW.
+    /// WinDivert (like Npcap) sees every packet on the wire, regardless of the API
+    /// that sent it.
     ///
-    /// OGRANIČENJE (namerno prihvaćeno): WinDivert zvanično podržava samo
-    /// Windows 10/11/Server, NE Windows 7 - Windows 7 mašine u floti ostaju
-    /// bez DNS packet-capture vidljivosti za ovaj feature (TryStart() samo
-    /// tiho vrati false, ostatak agenta radi normalno).
+    /// LIMITATION (deliberately accepted): WinDivert officially supports only
+    /// Windows 10/11/Server, NOT Windows 7 - Windows 7 machines in the fleet are left
+    /// without DNS packet-capture visibility for this feature (TryStart() just
+    /// silently returns false, the rest of the agent works normally).
     ///
     /// Filter "outbound and udp and udp.DstPort == 53" + WINDIVERT_FLAG_SNIFF
-    /// - isti dizajn kao Npcap verzija: samo ODLAZNI UDP upiti OVE mašine
-    /// (ne i DNS odgovori - dupliralo bi brojanje), i SNIFF mod znači kopija
-    /// paketa bez ikakve obaveze/mogućnosti da se nešto pravo na mreži
-    /// slučajno izmeni/blokira (WinDivert inače MOŽE da modifikuje/dropuje
-    /// saobraćaj - sniff mod tu mogućnost namerno isključuje na nivou
-    /// handle-a, čisto pasivno posmatranje). TCP DNS i IPv6 su van obima v1
-    /// (isti razlog kao Npcap verzija - redak slučaj u praksi, TCP bi
-    /// zahtevao stream reassembly).
+    /// - the same design as the Npcap version: only OUTBOUND UDP queries of THIS machine
+    /// (not DNS responses too - that would double the count), and SNIFF mode means a copy of
+    /// the packet with no obligation/ability to accidentally modify/block anything
+    /// on the network (WinDivert otherwise CAN modify/drop
+    /// traffic - sniff mode deliberately disables that ability at the
+    /// handle level, purely passive observation). TCP DNS and IPv6 are out of scope for v1
+    /// (the same reason as the Npcap version - a rare case in practice, TCP would
+    /// require stream reassembly).
     /// </summary>
     public sealed class DnsQueryCollector : IDisposable
     {
@@ -68,11 +68,11 @@ namespace NetdeskAgent.Common.DnsLogs
                 if (_handle == InvalidHandleValue)
                 {
                     var errorCode = Marshal.GetLastWin32Error();
-                    // Najčešći očekivani slučajevi uživo: 2 (ERROR_FILE_NOT_FOUND -
-                    // WinDivert64.sys ne postoji pored .exe-a), 5 (ERROR_ACCESS_DENIED -
-                    // ne radi kao Administrator/LocalSystem), 1275
-                    // (ERROR_DRIVER_BLOCKED - IPS/EDR blokira drajver, isti obrazac
-                    // problema kao stari "restart-service" IPS blokiranje).
+                    // The most common expected cases live: 2 (ERROR_FILE_NOT_FOUND -
+                    // WinDivert64.sys doesn't exist next to the .exe), 5 (ERROR_ACCESS_DENIED -
+                    // not running as Administrator/LocalSystem), 1275
+                    // (ERROR_DRIVER_BLOCKED - an IPS/EDR is blocking the driver, the same pattern of
+                    // problem as the old "restart-service" IPS blocking).
                     FileLogger.Warn("WinDivertOpen neuspešan (Win32 greška " + errorCode + ") - DNS logging ostaje isključen ovog rada agenta.");
                     return false;
                 }
@@ -108,8 +108,8 @@ namespace NetdeskAgent.Common.DnsLogs
                 }
                 catch (Exception ex)
                 {
-                    // Isti "preživi grešku po ciklusu" ugovor kao ostatak agenta -
-                    // ne sme da obori pozadinsku nit trajno.
+                    // The same "survive an error per cycle" contract as the rest of the agent -
+                    // it must not bring down the background thread permanently.
                     FileLogger.Error("WinDivert capture greška", ex);
                     Thread.Sleep(500);
                     continue;
@@ -122,10 +122,10 @@ namespace NetdeskAgent.Common.DnsLogs
 
                 if (!ok)
                 {
-                    // WinDivertClose() (pozvan iz Dispose na drugoj niti) čini da
-                    // blokirajući WinDivertRecv odmah vrati grešku - to je normalan
-                    // put gašenja, ne stvarna greška, ako je _stopping već true
-                    // (provereno iznad). Ako NIJE gašenje, loguj i probaj dalje.
+                    // WinDivertClose() (called from Dispose on another thread) makes the
+                    // blocking WinDivertRecv return an error immediately - that's the normal
+                    // shutdown path, not a real error, if _stopping is already true
+                    // (checked above). If it is NOT a shutdown, log and keep trying.
                     var errorCode = Marshal.GetLastWin32Error();
                     FileLogger.Warn("WinDivertRecv neuspešan (Win32 greška " + errorCode + ")");
                     continue;
@@ -163,16 +163,16 @@ namespace NetdeskAgent.Common.DnsLogs
             }
             catch
             {
-                // Parsiranje pojedinačnog paketa ne sme da obori capture petlju -
-                // preskoči taj jedan paket.
+                // Parsing an individual packet must not bring down the capture loop -
+                // skip that one packet.
             }
         }
 
         /// <summary>
-        /// WinDivert (za razliku od Npcap) isporučuje paket OD IP nivoa
-        /// naviše - nema Ethernet/VLAN zaglavlja o kome treba voditi računa.
-        /// Samo IPv4 u v1 (isti razlog kao Npcap verzija - IPv6 DNS je redak
-        /// u praksi ovde, van obima za sada).
+        /// WinDivert (unlike Npcap) delivers the packet FROM the IP layer
+        /// upwards - there's no Ethernet/VLAN header to take care of.
+        /// Only IPv4 in v1 (the same reason as the Npcap version - IPv6 DNS is rare
+        /// in practice here, out of scope for now).
         /// </summary>
         private static string TryExtractQueryName(byte[] buf, int length)
         {
@@ -206,11 +206,11 @@ namespace NetdeskAgent.Common.DnsLogs
         }
 
         /// <summary>
-        /// Dužinom-prefiksovane DNS labele (npr. 3www6google3com0) - ne prati
-        /// compression pokazivače (0xC0 bit) u Question sekciji, jer tu
-        /// legitimno gotovo nikad ne postoje - ako se ipak pojave, prosto
-        /// stani (bolje kraće/nepotpuno ime nego beskonačna petlja nad
-        /// zlonamerno građenim paketom).
+        /// Length-prefixed DNS labels (e.g. 3www6google3com0) - doesn't follow
+        /// compression pointers (the 0xC0 bit) in the Question section, because there
+        /// they legitimately almost never exist - if they do show up, simply
+        /// stop (better a shorter/incomplete name than an infinite loop over a
+        /// maliciously crafted packet).
         /// </summary>
         private static string ReadDnsName(byte[] buf, int length, int start)
         {
@@ -253,9 +253,9 @@ namespace NetdeskAgent.Common.DnsLogs
         }
 
         /// <summary>
-        /// Atomski uzima trenutno nakupljeno stanje i prazni ga za sledeći
-        /// prozor (drain-and-replace) - poziva AgentWorker periodično
-        /// (DnsLogIntervalSeconds), ne capture niti.
+        /// Atomically takes the currently accumulated state and clears it for the next
+        /// window (drain-and-replace) - called periodically by AgentWorker
+        /// (DnsLogIntervalSeconds), not by the capture thread.
         /// </summary>
         public List<DnsQueryItem> Snapshot()
         {
@@ -287,10 +287,10 @@ namespace NetdeskAgent.Common.DnsLogs
             {
                 if (_handle != InvalidHandleValue)
                 {
-                    // Zatvaranje handle-a čini da blokirajući WinDivertRecv na
-                    // capture niti odmah otkaže sa greškom - CaptureLoop tad vidi
-                    // _stopping=true i mirno izađe, umesto da visi na WinDivertRecv
-                    // koji inače blokira dok ne stigne sledeći paket.
+                    // Closing the handle makes the blocking WinDivertRecv on the
+                    // capture thread fail immediately with an error - CaptureLoop then sees
+                    // _stopping=true and exits quietly, instead of hanging on WinDivertRecv,
+                    // which otherwise blocks until the next packet arrives.
                     WinDivertClose(_handle);
                     _handle = InvalidHandleValue;
                 }

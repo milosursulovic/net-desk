@@ -146,9 +146,9 @@ const router = useRouter()
 const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 
-// Vodi na Agenti stranicu, koja učitava ciljane agente ovog batch-a preko
-// repeatBatchId query param-a i predpuni formu (ali ostaje izmenljivo -
-// ovo NIJE "pošalji isti batch ponovo").
+// Leads to the Agents page, which loads this batch's targeted agents via the
+// repeatBatchId query param and prefills the form (but it stays editable -
+// this is NOT "send the same batch again").
 function repeatWithNewCommand() {
   router.push({ path: '/agents', query: { site: route.query.site, repeatBatchId: route.params.batchId } })
 }
@@ -171,11 +171,11 @@ const counts = computed(() => {
   return out
 })
 
-// Sve što nije Završeno ili Neuspešno - agent nema kanal za prekid usred
-// izvršavanja, pa se već poslata ("sent") komanda i dalje može fizički
-// izvršiti na mašini, ali otkazivanje ovde markira nameru korisnika i
-// sprečava da kasniji rezultat prepiše status (backend odbija rezultat za
-// komandu koja više nije "sent" - vidi cancelJob u agentJobs.repo.js).
+// Everything that isn't Completed or Failed - the agent has no channel for interrupting
+// mid-execution, so an already sent ("sent") command may still physically
+// run on the machine, but cancelling here records the user's intent and
+// prevents a later result from overwriting the status (the backend rejects a result for
+// a command that is no longer "sent" - see cancelJob in agentJobs.repo.js).
 const cancellableCount = computed(() => counts.value.pending + counts.value.sent)
 
 const statusFilter = ref('')
@@ -189,8 +189,8 @@ const filteredItems = computed(() => {
   })
 })
 
-// Otkazuje sve stavke koje nisu Završeno/Neuspešno (pending + sent) - vidi
-// komentar uz cancellableCount.
+// Cancels every item that isn't Completed/Failed (pending + sent) - see
+// the comment on cancellableCount.
 async function cancelBatch() {
   const ok = await askConfirm(
     `Otkazati ${cancellableCount.value} komandi koje nisu završene? Već poslate komande (${counts.value.sent}) agent možda i dalje izvrši (nema kanal za prekid usred izvršavanja), ali status će biti markiran kao otkazan.`,

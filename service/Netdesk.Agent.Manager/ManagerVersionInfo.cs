@@ -1,10 +1,10 @@
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstvena verzija Manager-a (ne agentova) - sad je stvarno praćeno
-    /// polje na serveru (managers.manager_version, prijavljeno na enroll-u i
-    /// svakom heartbeat-u), pa bump-agent-version disciplina važi i ovde:
-    /// bumpuj pri svakoj izmeni fajla pod Netdesk.Agent.Manager/.
+    /// The Manager's own version (not the agent's) - it's now a really tracked
+    /// field on the server (managers.manager_version, reported at enroll and
+    /// on every heartbeat), so the bump-agent-version discipline applies here too:
+    /// bump it on every change to a file under Netdesk.Agent.Manager/.
     /// </summary>
     public static class ManagerVersionInfo
     {

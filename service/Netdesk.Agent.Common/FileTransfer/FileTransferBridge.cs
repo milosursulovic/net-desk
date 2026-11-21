@@ -10,29 +10,29 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.FileTransfer
 {
     /// <summary>
-    /// AnyDesk-stil transfer fajlova tokom VNC sesije (kopiraj sa udaljene
-    /// mašine / otpremi na nju) - odvojen kanal od VncBridge.cs, pošto RFB/
-    /// VNC protokol nema koncept fajla (ClientCutText/ServerCutText su
-    /// tekst-only). Za razliku od VncBridge-a (slep TCP&lt;-&gt;WS bajt-pumpanje),
-    /// ova klasa STVARNO parsira poruke - prima JSON komande preko WS-a i
-    /// odgovara lokalnim čitanjem/pisanjem fajlova, jer nema lokalni UltraVNC
-    /// ekvivalent koji bi to radio umesto nje.
+    /// AnyDesk-style file transfer during a VNC session (copy from the remote
+    /// machine / upload to it) - a channel separate from VncBridge.cs, since the RFB/
+    /// VNC protocol has no concept of a file (ClientCutText/ServerCutText are
+    /// text-only). Unlike VncBridge (blind TCP&lt;-&gt;WS byte pumping),
+    /// this class ACTUALLY parses messages - it receives JSON commands over WS and
+    /// answers by reading/writing files locally, because there's no local UltraVNC
+    /// equivalent that would do it instead.
     ///
-    /// Radi direktno u Netdesk.Agent.Service (LocalSystem, Session 0) procesu,
-    /// BEZ potrebe za interaktivnom korisničkom sesijom - za razliku od
-    /// DXGI capture-a/SendInput-a (stari WebRTC pokušaj, uklonjen), obično
-    /// čitanje/pisanje fajlova na disku ne zahteva pristup interaktivnom
-    /// desktop-u, LocalSystem ima pun pristup fajl sistemu.
+    /// Runs directly in the Netdesk.Agent.Service (LocalSystem, Session 0) process,
+    /// WITHOUT needing an interactive user session - unlike
+    /// DXGI capture/SendInput (the old WebRTC attempt, removed), plain
+    /// reading/writing of files on disk doesn't require access to the interactive
+    /// desktop, LocalSystem has full access to the file system.
     ///
-    /// Namerno JEDAN transfer (download ILI upload) odjednom po sesiji - isto
-    /// pojednostavljenje kao backend/ws/fileTransferRelay.js's
-    /// streamDownloadToResponse (interni RMM alat, nizak realan konkurentni
-    /// pristup za jednog admina koji gleda jednog agenta).
+    /// Deliberately ONE transfer (download OR upload) at a time per session - the same
+    /// simplification as backend/ws/fileTransferRelay.js's
+    /// streamDownloadToResponse (an internal RMM tool, low real concurrent
+    /// access for one admin looking at one agent).
     /// </summary>
     public sealed class FileTransferBridge
     {
         private const int ChunkSize = 65536; // 64KB
-        private const long MaxFileSizeBytes = 750L * 1024 * 1024; // 750MB - vidi napomenu uz Download/HandleUploadStart
+        private const long MaxFileSizeBytes = 750L * 1024 * 1024; // 750MB - see the note at Download/HandleUploadStart
 
         private long _sessionId;
         private WebSocket _ws;
@@ -56,8 +56,8 @@ namespace NetdeskAgent.Common.FileTransfer
                 _ws = ws;
                 if (wsUrl.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Ista TLS 1.2 napomena kao VncBridge.cs/NetdeskApiClient.cs -
-                    // .NET Framework 4.5.2 ne uključuje je po default-u.
+                    // The same TLS 1.2 note as VncBridge.cs/NetdeskApiClient.cs -
+                    // .NET Framework 4.5.2 doesn't enable it by default.
                     ws.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12;
                 }
 
@@ -121,7 +121,7 @@ namespace NetdeskAgent.Common.FileTransfer
                 }
                 catch
                 {
-                    /* best effort - server je verovatno već zatvorio vezu */
+                    /* best effort - the server has probably already closed the connection */
                 }
 
                 FileLogger.Info("Fajl-transfer sesija #" + _sessionId + " - konekcija zatvorena.");
@@ -174,10 +174,10 @@ namespace NetdeskAgent.Common.FileTransfer
             }
         }
 
-        // Prazna/null putanja = listaj dostupne diskove (DriveInfo), ne
-        // sadržaj tekućeg direktorijuma - browser strana počinje "praznu"
-        // navigaciju od korena, ne od agent-ovog cwd-a koji korisniku ništa
-        // ne znači.
+        // An empty/null path = list the available drives (DriveInfo), not the
+        // contents of the current directory - the browser side starts an "empty"
+        // navigation from the root, not from the agent's cwd, which means nothing
+        // to the user.
         private void HandleList(string path)
         {
             try
@@ -296,10 +296,10 @@ namespace NetdeskAgent.Common.FileTransfer
             return result;
         }
 
-        // Piše u "<putanja>.part" dok traje, preimenuje u konačnu putanju TEK
-        // kad broj primljenih bajtova dostigne najavljenu veličinu (vidi
-        // HandleUploadChunk) - polovičan/prekinut transfer nikad ne ostaje
-        // pod konačnim imenom fajla.
+        // Writes to "<path>.part" while in progress, renames to the final path ONLY
+        // once the number of received bytes reaches the announced size (see
+        // HandleUploadChunk) - a half-done/interrupted transfer never remains
+        // under the final file name.
         private void HandleUploadStart(JObject msg)
         {
             var requestId = (string)msg["requestId"];
@@ -353,7 +353,7 @@ namespace NetdeskAgent.Common.FileTransfer
         private void HandleUploadChunk(byte[] data)
         {
             var upload = _pendingUpload;
-            if (upload == null) return; // binarni frejm bez aktivnog upload-a - ignoriši
+            if (upload == null) return; // binary frame without an active upload - ignore
 
             try
             {
@@ -372,13 +372,13 @@ namespace NetdeskAgent.Common.FileTransfer
             }
         }
 
-        // "upload_end" je informativna potvrda sa browser strane - stvarna
-        // finalizacija se dešava čim broj primljenih bajtova dostigne
-        // najavljenu veličinu (HandleUploadChunk), pošto je WS poredak
-        // garantovan (nema reordering-a na jednoj konekciji). Ako "upload_end"
-        // stigne dok je upload i dalje nepotpun (browser prekinuo ranije),
-        // tretira se kao neuspeh - briše ".part" umesto da ostavi polovičan
-        // fajl.
+        // "upload_end" is an informational confirmation from the browser side - the actual
+        // finalization happens as soon as the number of received bytes reaches the
+        // announced size (HandleUploadChunk), since WS ordering is
+        // guaranteed (no reordering on a single connection). If "upload_end"
+        // arrives while the upload is still incomplete (the browser stopped early),
+        // it's treated as a failure - deletes the ".part" instead of leaving a half-done
+        // file.
         private void HandleUploadEnd(string requestId)
         {
             var upload = _pendingUpload;

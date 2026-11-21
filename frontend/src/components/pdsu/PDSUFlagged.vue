@@ -63,11 +63,11 @@ const filteredDrivers = computed(() => {
 
 const selectingAgentsFor = ref(null)
 
-// Jednim klikom: nadji sve agente (na trenutnom sajtu) na kojima je
-// instaliran/prisutan ovaj konkretan neželjeni program/servis/drajver
-// (isti LIKE-substring pattern match kao is_flagged kolona), pa ih
-// prosledi na stranicu Agenti kao već selektovane za batch komandu -
-// isti obrazac kao "Ponovi batch" (?repeatBatchId=), samo sa ?agentIds=.
+// One click: find all agents (on the current site) on which this specific
+// unwanted program/service/driver is installed/present
+// (the same LIKE-substring pattern match as the is_flagged column), then
+// pass them to the Agents page as already selected for a batch command -
+// same pattern as "Ponovi batch" (repeat batch, ?repeatBatchId=), just with ?agentIds=.
 async function selectAgentsFor(kind, id) {
   const key = `${kind}-${id}`
   selectingAgentsFor.value = key

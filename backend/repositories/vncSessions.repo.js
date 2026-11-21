@@ -35,10 +35,10 @@ export async function findVncSessionById(id) {
   return rows?.[0] || null;
 }
 
-// Korisnik na radnoj stanici odobrio preuzimanje - zabelezi ko (approver) i
-// kada (consent_at), plus IP/MAC agentove radne stanice (jedina strana koja
-// pouzdano zna svoj MAC). Samo iz 'pending' - stiti od dvostruke/zakasnele
-// prijave pristanka na vec razresenoj sesiji.
+// The user at the workstation approved the takeover - record who (approver) and
+// when (consent_at), plus the IP/MAC of the agent's workstation (the only side that
+// reliably knows its own MAC). Only from 'pending' - guards against a duplicate/late
+// consent report on an already resolved session.
 export async function markVncSessionConsentGranted(id, { approverUsername, agentIp, agentMac }) {
   const [result] = await pool.execute(
     `
@@ -55,8 +55,8 @@ export async function markVncSessionConsentGranted(id, { approverUsername, agent
   return result.affectedRows;
 }
 
-// Pristanak nije dat (odbijen / istekao / nema aktivne sesije) - sesija
-// postaje neupotrebljiva. consent_status nosi tacan razlog za audit.
+// Consent was not given (denied / timed out / no active session) - the session
+// becomes unusable. consent_status carries the exact reason for the audit.
 export async function markVncSessionConsentDenied(
   id,
   consentStatus,
@@ -78,9 +78,9 @@ export async function markVncSessionConsentDenied(
   return result.affectedRows;
 }
 
-// IP/MAC IKT (viewer) radne stanice - MAC se ne moze dobiti iz browsera, pa
-// ga pozivalac razresava preko ip_entries (moze biti null ako stanica nije
-// upravljana). Postavlja se kad se viewer WebSocket zakaci na relay.
+// IP/MAC of the IT worker's (viewer) workstation - the MAC can't be obtained from the browser, so
+// the caller resolves it through ip_entries (may be null if the workstation isn't
+// managed). Set when the viewer WebSocket attaches to the relay.
 export async function setVncSessionViewerInfo(id, { viewerIp, viewerMac }) {
   const [result] = await pool.execute(
     `UPDATE vnc_sessions SET viewer_ip = ?, viewer_mac = ? WHERE id = ?`,
@@ -91,8 +91,8 @@ export async function setVncSessionViewerInfo(id, { viewerIp, viewerMac }) {
 
 export async function markVncSessionActive(id) {
   const [result] = await pool.execute(
-    // Aktivira se samo ako je pristanak dat - odbrana u dubinu uz proveru u
-    // ws/vncRelay.js (agent most se ne sme uspostaviti bez 'granted').
+    // Activates only if consent was given - defense in depth alongside the check in
+    // ws/vncRelay.js (the agent bridge must not be established without 'granted').
     `UPDATE vnc_sessions SET status = 'active', started_at = NOW()
      WHERE id = ? AND status = 'pending' AND consent_status = 'granted'`,
     [id],

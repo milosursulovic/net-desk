@@ -1,6 +1,6 @@
 namespace NetdeskAgent.Common.Update
 {
-    /// <summary>Odgovor GET /api/agents/update.</summary>
+    /// <summary>Response of GET /api/agents/update.</summary>
     public class UpdateCheckResponse
     {
         public bool UpdateAvailable { get; set; }
@@ -9,9 +9,9 @@ namespace NetdeskAgent.Common.Update
         public string Signature { get; set; }
 
         /// <summary>
-        /// PEM sertifikat kojim je paket potpisan (RSA-SHA256 preko sirovih
-        /// bajtova .zip fajla). Null ako server nema podešeno potpisivanje
-        /// za ovaj release - videti UpdateManager.VerifySignatureIfPresent.
+        /// The PEM certificate the package was signed with (RSA-SHA256 over the raw
+        /// bytes of the .zip file). Null if the server has no signing configured
+        /// for this release - see UpdateManager.VerifySignatureIfPresent.
         /// </summary>
         public string SignatureCertificatePem { get; set; }
 

@@ -32,9 +32,9 @@ export const HeartbeatSchema = z.object({
   monitoring: MonitoringSchema.nullable().optional(),
 });
 
-// OS/System/Motherboard/BIOS/CPU/RAMModules/Storage/GPUs/NICs su namerno
-// nevalidirani ovde - upsertMetadataForIpEntry (metadata.service.js) ih
-// tolerantno parsira (pick po Pascal/camelCase), isto kao postojeći
+// OS/System/Motherboard/BIOS/CPU/RAMModules/Storage/GPUs/NICs are deliberately
+// unvalidated here - upsertMetadataForIpEntry (metadata.service.js) parses
+// them tolerantly (pick by Pascal/camelCase), same as the existing
 // /ip-addresses/:ip/metadata upsert flow.
 export const InventorySyncSchema = z
   .object({

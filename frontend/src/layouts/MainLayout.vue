@@ -22,13 +22,13 @@
       </div>
     </header>
 
-    <!-- Sidebar i header ostaju uvek na ekranu (fiksna visina shell-a, samo
-         <main> skroluje) - ranije je ceo shell rastao sa sadržajem
-         (min-h-screen), pa je sidebar (nema svoj sticky/fixed) odlazio van
-         ekrana zajedno sa ostatkom stranice čim je sadržaj bio duži od
-         viewport-a, ostavljajući samo tanak header bez jasnog "gde sam"
-         indikatora - Sidebar.vue je već imao overflow-y-auto pripremljen za
-         ovo, samo mu roditelj nikad nije davao ograničenu visinu. -->
+    <!-- The sidebar and header always stay on screen (fixed shell height, only
+         <main> scrolls) - previously the whole shell grew with the content
+         (min-h-screen), so the sidebar (which has no sticky/fixed of its own) went off
+         screen together with the rest of the page as soon as the content was longer than the
+         viewport, leaving only a thin header with no clear "where am I"
+         indicator - Sidebar.vue already had overflow-y-auto prepared for
+         this, its parent just never gave it a bounded height. -->
     <div class="flex min-h-0 flex-1">
       <Sidebar class="hidden md:flex" />
 
@@ -41,8 +41,8 @@
       </main>
     </div>
 
-    <!-- Sidebar kao off-canvas panel ispod md - isti SlideOverPanel koji app
-         već koristi za druge overlay-e, umesto izmišljanja drugog obrasca. -->
+    <!-- The sidebar as an off-canvas panel below md - the same SlideOverPanel the app
+         already uses for other overlays, instead of inventing another pattern. -->
     <SlideOverPanel :open="mobileNavOpen" title="Navigacija" width-class="w-72" @close="mobileNavOpen = false">
       <Sidebar class="w-full! border-0!" @click="mobileNavOpen = false" />
     </SlideOverPanel>

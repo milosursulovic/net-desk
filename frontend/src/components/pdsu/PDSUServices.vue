@@ -238,7 +238,7 @@ function shortenPath(value, maxLength = 90) {
       </div>
     </div>
 
-    <!-- Automatski servisi koji ne rade -->
+    <!-- Automatic services that aren't running -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -330,7 +330,7 @@ function shortenPath(value, maxLength = 90) {
       </div>
     </div>
 
-    <!-- Neuobičajene putanje -->
+    <!-- Unusual paths -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>

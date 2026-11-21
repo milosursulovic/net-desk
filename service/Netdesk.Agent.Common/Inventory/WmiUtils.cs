@@ -6,13 +6,13 @@ namespace NetdeskAgent.Common.Inventory
     internal static class WmiUtils
     {
         /// <summary>
-        /// Neki WMI provajderi (npr. Win32_PnPSignedDriver/Win32_Service, koji su
-        /// u osnovi backed-ovani registry vrednostima nekih drajver instalera)
-        /// mogu vratiti string sa embedded null ('\0') bajtovima posle prave
-        /// vrednosti - viđeno uživo za registry-direktne čitanja u
-        /// SoftwareCollector-u (fiksni bafer upisan bez pravog terminatora).
-        /// Sve posle PRVOG null bajta se odbacuje pre slanja backend-u, koji ima
-        /// uske varchar kolone - "Data too long" bi inače srušio ceo insert.
+        /// Some WMI providers (e.g. Win32_PnPSignedDriver/Win32_Service, which are
+        /// essentially backed by registry values written by some driver installers)
+        /// can return a string with embedded null ('\0') bytes after the real
+        /// value - seen live for direct registry reads in
+        /// SoftwareCollector (a fixed buffer written without a proper terminator).
+        /// Everything after the FIRST null byte is discarded before sending to the backend, which has
+        /// narrow varchar columns - "Data too long" would otherwise break the whole insert.
         /// </summary>
         public static string GetString(ManagementBaseObject mo, string prop)
         {
@@ -46,9 +46,9 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// WMI datumi su u CIM_DATETIME formatu. Vraćamo ISO 8601 string jer
-        /// backend polja poput OS.InstallDate/BIOS.ReleaseDate parsira preko
-        /// new Date(...) (parseDateMaybe u metadata.service.js).
+        /// WMI dates are in CIM_DATETIME format. We return an ISO 8601 string because
+        /// the backend parses fields like OS.InstallDate/BIOS.ReleaseDate via
+        /// new Date(...) (parseDateMaybe in metadata.service.js).
         /// </summary>
         public static string GetDateTimeIso(ManagementBaseObject mo, string prop)
         {

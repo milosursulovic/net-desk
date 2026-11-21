@@ -14,11 +14,11 @@ using Newtonsoft.Json.Linq;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Glavna radna petlja - proverava mailbox (Paths.ManagerCommandFile) na
-    /// svaki tick, ali se budi RANIJE ako NetdeskAgentManagerService.
-    /// OnCustomCommand signalizira WakeEvent (nizak latency put), tako da
-    /// periodični tick ostaje čisto safety-net (custom command signal
-    /// izgubljen npr. jer je Manager bio ugašen kad je komanda upisana).
+    /// The main work loop - checks the mailbox (Paths.ManagerCommandFile) on
+    /// every tick, but wakes up EARLIER if NetdeskAgentManagerService.
+    /// OnCustomCommand signals WakeEvent (the low-latency path), so the
+    /// periodic tick remains purely a safety net (the custom command signal
+    /// lost e.g. because the Manager was stopped when the command was written).
     /// </summary>
     public class ManagerWorker
     {
@@ -27,13 +27,13 @@ namespace NetdeskAgent.Manager
 
         private readonly object _executeLock = new object();
 
-        // Novi, nezavisni HTTP kanal (enroll/heartbeat/job-poll ka backend-u,
-        // NE mailbox) - _client ostaje null (kanal se tiho preskače na
-        // svakom tick-u) ako config.json ne postoji ili je neispravan.
-        // Mailbox put ispod (ProcessMailboxIfPresentAsync) radi NEZAVISNO od
-        // ovoga i nikad se ne gasi zbog problema sa ovim kanalom - to je
-        // čitava poenta ove izmene (Manager ostaje upravljiv preko mailbox-a
-        // čak i ako HTTP kanal nikad ne proradi na nekoj mašini).
+        // The new, independent HTTP channel (enroll/heartbeat/job-poll to the backend,
+        // NOT the mailbox) - _client stays null (the channel is silently skipped on
+        // every tick) if config.json doesn't exist or is invalid.
+        // The mailbox path below (ProcessMailboxIfPresentAsync) works INDEPENDENTLY of
+        // this and is never shut down because of problems with this channel - that's
+        // the whole point of this change (the Manager stays manageable via the mailbox
+        // even if the HTTP channel never works on some machine).
         private ManagerConfig _config;
         private ManagerState _state;
         private ManagerApiClient _client;
@@ -46,8 +46,8 @@ namespace NetdeskAgent.Manager
 
             InitializeHttpChannel();
 
-            // Proveri mailbox JEDNOM pre ulaska u petlju - hvata slučaj
-            // "komanda stigla dok je Manager bio ugašen".
+            // Check the mailbox ONCE before entering the loop - catches the
+            // "command arrived while the Manager was stopped" case.
             await ProcessMailboxIfPresentAsync().ConfigureAwait(false);
 
             var lastHeartbeat = DateTime.MinValue;
@@ -87,8 +87,8 @@ namespace NetdeskAgent.Manager
                 }
                 catch (Exception ex)
                 {
-                    // Petlja mora da preživi bilo koju grešku iz jednog ciklusa -
-                    // sledeći tick pokušava ponovo.
+                    // The loop must survive any error from a single cycle -
+                    // the next tick tries again.
                     FileLogger.Error("Neočekivana greška u Manager radnoj petlji", ex);
                 }
             }
@@ -98,11 +98,11 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Best-effort - config.json ne mora postojati (mašina još nije
-        /// dobila ažuriran bootstrap preset, ili admin svesno ne želi novi
-        /// kanal na ovoj mašini) - u tom slučaju _client ostaje null i
-        /// gornja petlja tiho preskače sve HTTP korake zauvek (dok se servis
-        /// sledeći put ne pokrene, npr. posle instaliranja config.json-a).
+        /// Best-effort - config.json doesn't have to exist (the machine hasn't yet
+        /// received the updated bootstrap preset, or the admin knowingly doesn't want the new
+        /// channel on this machine) - in that case _client stays null and
+        /// the loop above silently skips all HTTP steps forever (until the service
+        /// is next started, e.g. after config.json is installed).
         /// </summary>
         private void InitializeHttpChannel()
         {
@@ -191,12 +191,12 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Izvršavanje NIJE odvojenim zaključavanjem serijalizovano protiv
-        /// ProcessMailboxIfPresentAsync-a - namerno nepotrebno, obe petlje
-        /// (mailbox tick gore i ovaj poll) su deo ISTOG sekvencijalnog
-        /// RunAsync tick-a na jednoj async petlji (NetdeskAgentManagerService.
-        /// OnCustomCommand samo signalizira WakeEvent, ne pokreće posebnu
-        /// obradu) - stvarna konkurentnost između dva puta ne postoji.
+        /// Execution is NOT serialized against
+        /// ProcessMailboxIfPresentAsync with a separate lock - deliberately unnecessary, both loops
+        /// (the mailbox tick above and this poll) are part of the SAME sequential
+        /// RunAsync tick on a single async loop (NetdeskAgentManagerService.
+        /// OnCustomCommand only signals WakeEvent, it doesn't start separate
+        /// processing) - real concurrency between the two paths doesn't exist.
         /// </summary>
         private async Task ExecuteManagerJobAsync(ManagerApiClient.ManagerJobItem job)
         {
@@ -277,19 +277,19 @@ namespace NetdeskAgent.Manager
             }
             catch
             {
-                // Servis nije instaliran na ovoj mašini, ili upit nije uspeo -
-                // "Unknown" je ispravan odgovor u oba slučaja, ne greška koja
-                // sme da obori ceo heartbeat.
+                // The service isn't installed on this machine, or the query failed -
+                // "Unknown" is the correct answer in both cases, not an error that
+                // may bring down the whole heartbeat.
                 return "Unknown";
             }
         }
 
         /// <summary>
-        /// ServiceController nema "startup type" svojstvo (samo run-time
-        /// status) - čita se direktno iz registry Start DWORD vrednosti,
-        /// isti izvor koji SCM sam koristi (2=Automatic, 3=Manual,
-        /// 4=Disabled; 0/1=Boot/System drajveri, ne primenjivo na obične
-        /// servise poput NetdeskAgent-a).
+        /// ServiceController has no "startup type" property (only the run-time
+        /// status) - it's read directly from the registry Start DWORD value,
+        /// the same source the SCM itself uses (2=Automatic, 3=Manual,
+        /// 4=Disabled; 0/1=Boot/System drivers, not applicable to ordinary
+        /// services like NetdeskAgent).
         /// </summary>
         private static string GetNetdeskAgentStartMode()
         {
@@ -316,10 +316,10 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Menja startup tip preko sc.exe (ne P/Invoke ChangeServiceConfig) -
-        /// retka, admin-pokrenuta akcija, ne hot path; sc.exe je standardan,
-        /// auditable sysadmin alat, isti nivo poverenja kao InstallUtil.exe
-        /// koji se već koristi u instalacionim koracima.
+        /// Changes the startup type via sc.exe (not P/Invoke ChangeServiceConfig) -
+        /// a rare, admin-triggered action, not a hot path; sc.exe is a standard,
+        /// auditable sysadmin tool, the same trust level as InstallUtil.exe,
+        /// which is already used in the install steps.
         /// </summary>
         private static void SetServiceStartMode(string serviceName, string startMode)
         {
@@ -365,13 +365,13 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// install_update sa novog kanala - za razliku od mailbox install_files
-        /// (gde Agent VEĆ preuzme/raspakuje paket pre nego što preda
-        /// StagingDir), ovde Manager SAM preuzima paket (sopstvenim
-        /// kredencijalima - nikad Agent-ovim, videti ManagerApiClient.cs), pa
-        /// tek onda poziva postojeći InstallFilesAsync sa sintetizovanim,
-        /// isključivo-u-memoriji ManagerCommand objektom (nikad zapisan u
-        /// mailbox fajl).
+        /// install_update from the new channel - unlike the mailbox install_files
+        /// (where the Agent ALREADY downloads/extracts the package before handing over
+        /// StagingDir), here the Manager downloads the package ITSELF (with its own
+        /// credentials - never the Agent's, see ManagerApiClient.cs), and
+        /// only then calls the existing InstallFilesAsync with a synthesized,
+        /// memory-only ManagerCommand object (never written to the
+        /// mailbox file).
         /// </summary>
         private async Task<InstallResult> InstallUpdateFromServerAsync(JObject payload)
         {
@@ -422,9 +422,9 @@ namespace NetdeskAgent.Manager
                     ServiceName = serviceName,
                     StagingDir = extractDir,
                     InstallDir = installDir,
-                    // ServerBaseUrl namerno prazan - ReportResultIfConfiguredAsync
-                    // (unutar InstallFilesAsync) zato tiho preskače UpdateReportClient
-                    // poziv, rezultat se javlja OVDE preko novog kanala umesto toga.
+                    // ServerBaseUrl deliberately empty - ReportResultIfConfiguredAsync
+                    // (inside InstallFilesAsync) therefore silently skips the UpdateReportClient
+                    // call, the result is reported HERE via the new channel instead.
                 };
 
                 return await InstallFilesAsync(command).ConfigureAwait(false);
@@ -448,11 +448,11 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// "Gde ovaj servis stvarno živi" po SCM-u samom (ImagePath) - jedina
-        /// istina koja nikad ne može biti zastarela u odnosu na ono što je
-        /// stvarno pokrenuto, ne zahteva admin unos, i NIJE "komunikacija sa
-        /// Agent procesom" (čitanje OS-održavane registry vrednosti, ne IPC
-        /// sa samim procesom).
+        /// "Where this service actually lives" according to the SCM itself (ImagePath) - the only
+        /// truth that can never be stale relative to what is
+        /// actually running, it doesn't require admin input, and it is NOT "communication with
+        /// the Agent process" (reading an OS-maintained registry value, not IPC
+        /// with the process itself).
         /// </summary>
         private static string ResolveInstallDirFromRegistry(string serviceName)
         {
@@ -465,10 +465,10 @@ namespace NetdeskAgent.Manager
                         "Ne mogu da nađem ImagePath za servis '" + serviceName + "' u registry-ju.");
                 }
 
-                // ImagePath je obično navodnicima obavijena putanja, opciono
-                // praćena argumentima (npr. "\"C:\Program Files\...\X.exe\" -arg") -
-                // uzima se samo prvi navodnicima-obavijeni (ili prvi
-                // razmakom-odvojeni, ako nema navodnika) token.
+                // ImagePath is usually a quoted path, optionally
+                // followed by arguments (e.g. "\"C:\Program Files\...\X.exe\" -arg") -
+                // only the first quoted (or the first
+                // space-separated, if there are no quotes) token is taken.
                 var exePath = imagePath.Trim();
                 if (exePath.StartsWith("\""))
                 {
@@ -527,8 +527,8 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Single-shot: fajl se ODMAH briše čim je pročitan (pre izvršavanja),
-        /// sprečava duplo izvršavanje ako i tick i WakeEvent stignu blizu.
+        /// Single-shot: the file is deleted IMMEDIATELY once it's read (before execution),
+        /// prevents double execution if both the tick and WakeEvent arrive close together.
         /// </summary>
         private static ManagerCommand Dequeue()
         {
@@ -607,33 +607,33 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// stop servisa → obriši InstallDir POTPUNO → kopiraj StagingDir u
-        /// InstallDir (rekurzivno, DirectorySync - ispravlja stari Updater
-        /// bug sa amd64\/x86\ podfolderima, i sad ima retry na zaključane
-        /// fajlove - videti DirectorySync komentar) → start servisa.
-        /// GARANCIJA: fajlovi se NIKAD ne diraju ako stop nije uspeo -
-        /// proverava se eksplicitno PRE bilo kakvog brisanja/kopiranja.
+        /// stop the service → delete InstallDir COMPLETELY → copy StagingDir into
+        /// InstallDir (recursively, DirectorySync - fixes the old Updater
+        /// bug with the amd64\/x86\ subfolders, and now has retry on locked
+        /// files - see the DirectorySync comment) → start the service.
+        /// GUARANTEE: files are NEVER touched if the stop didn't succeed -
+        /// this is checked explicitly BEFORE any deleting/copying.
         ///
-        /// NEMA backup-a/rollback-a - namerna pojednostavitev posle uživo
-        /// incidenta gde je i sam rollback (kopiranje unazad) pao na istom
-        /// razlogu kao originalni update (zaključan WinDivert64.sys),
-        /// ostavljajući mašinu u konfuznom "i update i rollback neuspešni"
-        /// stanju. Prost "obriši pa instaliraj" nema tu drugu tačku otkaza -
-        /// na grešku, InstallDir može ostati delimično popunjen/prazan,
-        /// servis ostaje zaustavljen, i to je čitljivo/predvidivo stanje za
-        /// sledeći pokušaj (novi update ili force_reinstall_agent), ne
-        /// skriveno "izgleda oporavljeno ali nije" stanje. InstallDir/
-        /// StagingDir/ServiceName su proizvoljne putanje/naziv - ovaj metod
-        /// nije vezan za NetdeskAgent specifično. Config.json NIJE dirnut u
-        /// trenutnoj (NetdeskAgent) upotrebi - živi van InstallDir-a.
+        /// NO backup/rollback - a deliberate simplification after a live
+        /// incident where the rollback itself (copying back) failed for the same
+        /// reason as the original update (a locked WinDivert64.sys),
+        /// leaving the machine in a confusing "both the update and the rollback failed"
+        /// state. A simple "delete then install" doesn't have that second point of failure -
+        /// on an error, InstallDir may be left partially filled/empty,
+        /// the service stays stopped, and that's a readable/predictable state for
+        /// the next attempt (a new update or force_reinstall_agent), not a
+        /// hidden "looks recovered but isn't" state. InstallDir/
+        /// StagingDir/ServiceName are arbitrary paths/name - this method
+        /// isn't tied to NetdeskAgent specifically. Config.json is NOT touched in
+        /// the current (NetdeskAgent) usage - it lives outside InstallDir.
         /// </summary>
         /// <summary>
-        /// Vraća InstallResult (umesto void) da pozivalac sa NOVOG kanala
-        /// (InstallUpdateFromServerAsync) može da javi ishod preko
-        /// manager_jobs rezultata - stari mailbox pozivalac
-        /// (ProcessMailboxIfPresentAsync) i dalje samo odbacuje povratnu
-        /// vrednost (ReportResultIfConfiguredAsync ispod ostaje NJEGOV jedini
-        /// put javljanja, nepromenjen).
+        /// Returns an InstallResult (instead of void) so the caller from the NEW channel
+        /// (InstallUpdateFromServerAsync) can report the outcome via the
+        /// manager_jobs result - the old mailbox caller
+        /// (ProcessMailboxIfPresentAsync) still just discards the return
+        /// value (ReportResultIfConfiguredAsync below remains ITS only
+        /// reporting path, unchanged).
         /// </summary>
         private static async Task<InstallResult> InstallFilesAsync(ManagerCommand command)
         {
@@ -673,22 +673,22 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Aktivno zaustavlja WinDivert kernel drajver (WinDivert64.sys, deo
-        /// DnsQueryCollector-a - vidi Netdesk.Agent.Common/DnsLogs/WinDivertInterop.cs)
-        /// pre brisanja/kopiranja install foldera - ista tehnika kao
-        /// "Prinudno zaustavi WinDivert drajver" PowerShell preset
-        /// (powershellPresets.js), portovana ovde da update preko Manager-a
-        /// ne mora da se oslanja SAMO na pasivni retry u
-        /// DirectorySync.DeleteDirectoryWithRetry (8 pokušaja/750ms, ~6s) -
-        /// taj retry i dalje ostaje kao safety-net ako je drajver zaključan
-        /// iz nekog DRUGOG razloga, ne samo sporog unload-a.
+        /// Actively stops the WinDivert kernel driver (WinDivert64.sys, part of
+        /// DnsQueryCollector - see Netdesk.Agent.Common/DnsLogs/WinDivertInterop.cs)
+        /// before deleting/copying the install folder - the same technique as the
+        /// "Prinudno zaustavi WinDivert drajver" (force-stop WinDivert driver) PowerShell preset
+        /// (powershellPresets.js), ported here so an update via the Manager
+        /// doesn't have to rely SOLELY on the passive retry in
+        /// DirectorySync.DeleteDirectoryWithRetry (8 attempts/750ms, ~6s) -
+        /// that retry still remains as a safety net if the driver is locked
+        /// for some OTHER reason, not just a slow unload.
         ///
-        /// Ne oslanja se na hardkodovan naziv servisa ("WinDivert" nije deo
-        /// zvaničnog ugovora biblioteke) - nalazi drajver PO PUTANJI preko
-        /// Win32_SystemDriver (WMI, kernel-mode drajveri/servisi). Best-effort:
-        /// ako WMI upit ili sc stop ne uspeju, samo se loguje upozorenje -
-        /// pasivni retry u DeleteDirectoryWithRetry ostaje poslednja linija
-        /// odbrane, ne sme da obori ceo update.
+        /// Doesn't rely on a hardcoded service name ("WinDivert" isn't part of
+        /// the library's official contract) - finds the driver BY PATH via
+        /// Win32_SystemDriver (WMI, kernel-mode drivers/services). Best-effort:
+        /// if the WMI query or sc stop fails, only a warning is logged -
+        /// the passive retry in DeleteDirectoryWithRetry remains the last line
+        /// of defense, it must not bring down the whole update.
         /// </summary>
         private static void StopWinDivertDriverIfPresent()
         {
@@ -754,9 +754,9 @@ namespace NetdeskAgent.Manager
             }
             catch (Exception ex)
             {
-                // Best-effort - WMI nedostupan/upit neuspešan ne sme da obori
-                // update, DeleteDirectoryWithRetry-ev pasivni retry ostaje
-                // safety-net.
+                // Best-effort - WMI unavailable/query failed must not bring down the
+                // update, DeleteDirectoryWithRetry's passive retry remains the
+                // safety net.
                 FileLogger.Warn("Provera WinDivert drajvera neuspešna: " + ex.Message);
             }
         }
@@ -777,13 +777,13 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// ServerBaseUrl je OPCIONO - komanda ne mora poticati iz agent-update
-        /// flow-a (videti ManagerCommand.cs). Ako nije popunjeno, tiho se
-        /// preskače (nema rezultat kome bi se javio). Kad JE popunjeno, ovo je
-        /// jedini mrežni poziv koji Manager ikad pravi - ako i on ne uspe,
-        /// nema šta više da se uradi ovde (sledeći heartbeat sa, nadamo se,
-        /// ponovo pokrenutog servisa ionako odražava stvarno stanje
-        /// agent_version na serveru).
+        /// ServerBaseUrl is OPTIONAL - the command doesn't have to originate from the agent-update
+        /// flow (see ManagerCommand.cs). If it isn't filled in, it's silently
+        /// skipped (there's no result to report to anyone). When it IS filled in, this is
+        /// the only network call the Manager ever makes - if that fails too,
+        /// there's nothing more to do here (the next heartbeat from the, hopefully,
+        /// restarted service reflects the real agent_version state on the
+        /// server anyway).
         /// </summary>
         private static async Task ReportResultIfConfiguredAsync(ManagerCommand command, bool success, string reason)
         {

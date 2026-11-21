@@ -111,7 +111,7 @@
         </button>
       </div>
 
-      <!-- Statistika i paginacija - uvek vidljivo, nije deo filter panela -->
+      <!-- Stats and pagination - always visible, not part of the filter panel -->
       <div class="flex flex-wrap items-center gap-3">
         <StatusPill status="good" :label="t('home.online', { n: counts.online })" />
         <StatusPill status="bad" :label="t('home.offline', { n: counts.offline })" />
@@ -397,9 +397,9 @@ const total = ref(0)
 const totalPages = ref(0)
 const counts = ref({ online: 0, offline: 0, pendingRepack: 0 })
 
-// Filter panel je na mobilnom skupljen po difoltu (ispod sm) - broj na dugmetu
-// je vizuelni podsetnik da nešto NIJE na difoltnoj vrednosti, čak i dok je
-// panel zatvoren.
+// The filter panel is collapsed by default on mobile (below sm) - the number on the button
+// is a visual reminder that something is NOT at its default value, even while the
+// panel is closed.
 const filtersOpen = ref(false)
 const activeFilterCount = computed(() => {
   let n = 0
@@ -540,9 +540,9 @@ onUnmounted(() => {
 })
 
 watch(site, () => {
-  // department/os su dropdown vrednosti preuzete iz PRETHODNE lokacije -
-  // ostavljanje stare vrednosti posle promene lokacije bi filtriralo na
-  // vrednost koja verovatno ne postoji na novoj lokaciji (prazna lista).
+  // department/os are dropdown values taken from the PREVIOUS site -
+  // leaving the old value after a site change would filter on a
+  // value that probably doesn't exist at the new site (an empty list).
   department.value = []
   os.value = []
   fetchDuplicateNames()

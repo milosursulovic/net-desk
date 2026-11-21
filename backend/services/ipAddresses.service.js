@@ -24,10 +24,10 @@ import { findMacsForIpEntry } from "../repositories/metadata.repo.js";
 import { classifyCpuTier } from "../utils/cpuTier.js";
 import { sendMagicPacket } from "../utils/wakeOnLan.js";
 
-// Mrežna i broadcast adresa lokalnog segmenta svake lokacije - i za WOL
-// (magic paket ide direktno na broadcast ciljne mreže, ne rutira se) i za
-// "slobodne IP adrese" ispod (opseg = mrežna+1 do broadcast-1, te dve
-// adrese same nisu upotrebljive za hostove).
+// Network and broadcast address of each site's local segment - used both for WOL
+// (the magic packet goes directly to the target network's broadcast, it isn't routed) and for
+// the "free IP addresses" below (range = network+1 to broadcast-1, those two
+// addresses themselves aren't usable for hosts).
 const SITE_NETWORK_ADDRESS = {
   bolnica: "10.230.62.0", // 10.230.62.0/23
   dom_zdravlja: "10.160.64.0", // 10.160.64.0/21
@@ -244,21 +244,21 @@ export async function setPendingRepackService(id, value) {
   return await findIpEntryById(id);
 }
 
-// WMI Win32_ComputerSystem.TotalPhysicalMemory je USABLE RAM, uvek nešto
-// ispod nominalne veličine (BIOS/firmware rezervacija) - uživo izmereno na
-// ovoj floti, "pravih" 8GB mašina se prijavljuje kao 7.4-7.9, "pravih" 4GB
-// kao 3.4-3.9, sa čistim razmakom između te dve grupe (ništa između 4 i
-// 7.4). Prag od 7 GB namerno pada u taj razmak - hvata sve "manje od 8GB"
-// mašine (4GB i niže) bez lažnog pogotka na mašine koje STVARNO imaju 8GB
-// (koje bi doslovno "< 8" pogrešno uhvatio zbog rezervacije).
+// WMI Win32_ComputerSystem.TotalPhysicalMemory is USABLE RAM, always somewhat
+// below the nominal size (BIOS/firmware reservation) - measured live on
+// this fleet, "real" 8GB machines report as 7.4-7.9, "real" 4GB ones
+// as 3.4-3.9, with a clean gap between those two groups (nothing between 4 and
+// 7.4). The 7 GB threshold deliberately falls into that gap - it catches all "less than 8GB"
+// machines (4GB and below) without a false hit on machines that REALLY have 8GB
+// (which a literal "< 8" would wrongly catch because of the reservation).
 const LOW_RAM_THRESHOLD_GB = 7;
 
-// "Preporuka za pakovanje" - računari na Windows 10/11 čiji hardver (slab
-// CPU po cpuTier.js, malo RAM-a, običan HDD umesto SSD-a, i/ili Lexar SSD -
-// poznat red flag) ukazuje da su kandidati za reimage/upgrade. Namerno se NE
-// čuva u bazi (za razliku od ručnog pending_repack flag-a) - računa se uživo
-// na svaki zahtev, da ostane tačno i posle nadogradnje hardvera/OS-a bez
-// posebnog koraka za "osvežavanje preporuke".
+// "Repack recommendation" - Windows 10/11 computers whose hardware (weak
+// CPU per cpuTier.js, little RAM, a plain HDD instead of an SSD, and/or a Lexar SSD -
+// a known red flag) suggests they're candidates for a reimage/upgrade. Deliberately NOT
+// stored in the DB (unlike the manual pending_repack flag) - computed live
+// on every request, so it stays accurate even after a hardware/OS upgrade without
+// a separate "refresh the recommendation" step.
 export async function repackRecommendationsService(site) {
   const candidates = await listRepackCandidates(site);
 
@@ -284,18 +284,18 @@ export async function filterOptionsService(site) {
     listDistinctOs(site),
     listDistinctOsArchitectures(site),
   ]);
-  // rdpApps je fiksna poznata lista (RDP_APP_PATTERNS), ne "distinct" upit -
-  // ip_entries.rdp_app čuva SPOJENE kombinacije (npr. "AnyDesk, TeamViewer"),
-  // pa bi distinct nad tom kolonom vratio kombinacije, ne pojedinačne alate.
+  // rdpApps is a fixed known list (RDP_APP_PATTERNS), not a "distinct" query -
+  // ip_entries.rdp_app stores JOINED combinations (e.g. "AnyDesk, TeamViewer"),
+  // so a distinct over that column would return combinations, not individual tools.
   const rdpApps = RDP_APP_PATTERNS.map((p) => p.label);
   return { departments, os, osArchitectures, rdpApps };
 }
 
-// Opseg = mrežna adresa + 1 do broadcast adresa - 1 (te dve granične adrese
-// same nisu upotrebljive za hostove). Malo dovoljno (bolnica /23 = 510
-// upotrebljivih, dom_zdravlja /21 = 2046) da se generiše i vrati ceo
-// spisak slobodnih odjednom - bez potrebe za server-side paginacijom kao
-// kod flagged_domains (koja ima ~88k redova, sasvim druga razmera).
+// Range = network address + 1 to broadcast address - 1 (those two boundary addresses
+// themselves aren't usable for hosts). Small enough (bolnica /23 = 510
+// usable, dom_zdravlja /21 = 2046) to generate and return the whole
+// list of free ones at once - no need for server-side pagination as
+// with flagged_domains (which has ~88k rows, a completely different scale).
 export async function freeIpAddressesService(site) {
   const networkAddress = SITE_NETWORK_ADDRESS[site];
   const broadcastAddress = SITE_BROADCAST_ADDRESS[site];

@@ -1,19 +1,19 @@
 import { z } from "zod";
 import { isValidIPv4 } from "../utils/ip.js";
 
-// Dve fizičke lokacije - Bolnica (10.230.62.0/23) i Dom zdravlja
-// (10.160.64.0/21). Lokacija se NAMERNO uvek bira ručno (dropdown), nikad
-// ne izvodi automatski iz IP opsega, iako se opsezi ne preklapaju -
-// korisnikova eksplicitna odluka pri planiranju ovog feature-a.
+// Two physical sites - Bolnica (10.230.62.0/23) and Dom zdravlja
+// (10.160.64.0/21). The site is DELIBERATELY always picked manually (dropdown),
+// never derived from the IP range, even though the ranges don't overlap -
+// the user's explicit decision when this feature was planned.
 export const SITES = ["bolnica", "dom_zdravlja"];
 
-// Poznati/prepoznati remote-access alati (agents.service.js's detectRdpApps
-// ih traži po imenu servisa) - ip_entries.rdp_app čuva SPOJEN string labela
-// (npr. "AnyDesk, TeamViewer", jedan računar može imati i do sve četiri),
-// pa filter na listi treba da poredi PO POJEDINAČNOJ labeli (contains-match,
-// ne exact-equals) - vidi listIpEntries's "rdp_app LIKE" filter. Ovde živi
-// (ne u agents.service.js) jer je rdp_app ip_entries kolona - jedan izvor
-// istine za i detekciju i filter-options predloge.
+// Known/recognized remote-access tools (agents.service.js's detectRdpApps
+// looks them up by service name) - ip_entries.rdp_app stores a JOINED string of
+// labels (e.g. "AnyDesk, TeamViewer"; one computer can have all four), so the
+// list filter must compare PER INDIVIDUAL label (contains-match, not
+// exact-equals) - see listIpEntries's "rdp_app LIKE" filter. It lives here
+// (not in agents.service.js) because rdp_app is an ip_entries column - a single
+// source of truth for both detection and the filter-options suggestions.
 export const RDP_APP_PATTERNS = [
   { label: "AnyDesk", patterns: ["anydesk"] },
   { label: "TeamViewer", patterns: ["teamviewer"] },
@@ -47,12 +47,12 @@ export const UpsertIpSchema = z.object({
   entryType: EntryTypeEnum.nullable().optional(),
 });
 
-// department/os/rdpApp filteri su sad multiselect na frontend-u -
-// URLSearchParams.append-ovan isti ključ više puta stiže Express-u kao niz
-// (qs-style parsing), ali TAČNO JEDNA vrednost stiže kao goli string, ne
-// niz od jednog elementa - z.union prihvata oba oblika, transform ih uvek
-// normalizuje u niz (prazan kad filter uopšte nije poslat) da repo/servis
-// sloj nikad ne mora da grana na "je li ovo string ili niz".
+// The department/os/rdpApp filters are now multiselects on the frontend -
+// the same key URLSearchParams.append-ed several times reaches Express as an
+// array (qs-style parsing), but EXACTLY ONE value arrives as a bare string, not
+// a one-element array - z.union accepts both shapes, the transform always
+// normalizes them to an array (empty when the filter wasn't sent at all) so the
+// repo/service layer never has to branch on "is this a string or an array".
 const multiValueFilter = () =>
   z
     .union([z.string(), z.array(z.string())])
@@ -78,19 +78,19 @@ export const ListSchema = z.object({
   osArchitecture: z.string().optional(),
   rdpApp: multiValueFilter(),
   site: z.enum(SITES).optional(),
-  // Isti obrazac kao pendingRepack ispod - query string uvek stiže kao
-  // string, pa se eksplicitno poredi sa "istinitim" vrednostima umesto
-  // z.coerce.boolean() (koje bi tretiralo i "0"/"false" kao true).
-  // Filtrira ko NEMA Izvolte folder (ne ko ga ima) - to je akciono stanje za
-  // admina (treba doterati tu mašinu), za razliku od "ima ga" koje ne
-  // zahteva nikakvu akciju.
+  // Same pattern as pendingRepack below - the query string always arrives as a
+  // string, so it's compared explicitly against "truthy" values instead of
+  // z.coerce.boolean() (which would treat "0"/"false" as true too).
+  // Filters for machines WITHOUT the Izvolte folder (not those with it) - that's
+  // the actionable state for the admin (that machine needs fixing), unlike "has
+  // it", which needs no action.
   missingIzvolteFolder: z
     .string()
     .optional()
     .transform((v) => v === "1" || v === "true"),
-  // z.coerce.boolean() bi tretiralo BILO KOJI neprazan string (i "0"/"false")
-  // kao true - query string uvek stiže kao string, pa se namerno poredi sa
-  // eksplicitnom listom "istinitih" vrednosti umesto toga.
+  // z.coerce.boolean() would treat ANY non-empty string (including "0"/"false")
+  // as true - the query string always arrives as a string, so it's deliberately
+  // compared against an explicit list of "truthy" values instead.
   pendingRepack: z
     .string()
     .optional()

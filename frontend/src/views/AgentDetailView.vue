@@ -310,7 +310,7 @@
         </div>
       </div>
 
-      <!-- Netdesk Agent Manager - nezavisni kanal, radi i kad je NetdeskAgent ugašen -->
+      <!-- Netdesk Agent Manager - an independent channel, works even when NetdeskAgent is stopped -->
       <div v-else-if="tab === 'manager'" class="space-y-3">
         <div class="hud-panel rounded-lg border border-info/30 bg-info-subtle p-3 space-y-2">
           <div class="text-sm font-medium text-info">{{ t('agentDetail.managerChannelTitle') }}</div>
@@ -492,9 +492,9 @@ const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 const fmtPct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`)
 const fmtGb = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)} GB`)
 
-// HUD monitoring prstenovi (CPU/RAM/Disk) - conic-gradient krug čiji je
-// popunjen luk procenat opterećenja, boja po pragu (isti prag kao StatusPill
-// bi koristio za "upozorenje"), samo vizuelno - ništa se ne šalje/menja.
+// HUD monitoring rings (CPU/RAM/Disk) - a conic-gradient circle whose
+// filled arc is the load percentage, colored by threshold (the same threshold StatusPill
+// would use for a "warning"), purely visual - nothing is sent/changed.
 function gaugeDeg(pct) {
   const v = Math.max(0, Math.min(100, Number(pct) || 0))
   return `${v * 3.6}deg`
@@ -512,9 +512,9 @@ const { toast, showToast, copyToClipboard } = useToast()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
 
-// Deployment grupe se biraju iz SVOJE predefinisane liste
-// (backend/routes/deploymentGroups.routes.js) - odvojena od odeljenja
-// (groups_list, koja ostaje samo za Home).
+// Deployment groups are picked from THEIR OWN predefined list
+// (backend/routes/deploymentGroups.routes.js) - separate from departments
+// (groups_list, which stays only for Home).
 const deploymentGroupOptions = ref([])
 
 async function fetchDeploymentGroupOptions() {
@@ -537,9 +537,9 @@ const TAB_LABELS = computed(() => ({
   dns: 'DNS',
 }))
 
-// "manager" tab koristi "info" ton (isti kao Manager bedž/panel) umesto
-// generičkog akcenta - vizuelna veza sa panelom koji taj tab otvara. Drži
-// se u istom skupu od 4 semantičke boje umesto posebne indigo palete.
+// The "manager" tab uses the "info" tone (same as the Manager badge/panel) instead of
+// the generic accent - a visual link to the panel that tab opens. It stays
+// within the same set of 4 semantic colors instead of a separate indigo palette.
 function tabButtonClass(t) {
   if (t === 'manager') {
     return tab.value === t ? 'bg-info text-white' : 'bg-info-subtle text-info hover:brightness-95'
@@ -569,8 +569,8 @@ const updateLogLoading = ref(false)
 const updateLogLoaded = ref(false)
 
 const releaseOptions = ref([])
-// Boolean(...) namerno - backend vraća mysql2-ovu sirovu TINYINT(1)
-// vrednost (0/1) za is_active, ne pravi JS boolean.
+// Boolean(...) on purpose - the backend returns mysql2's raw TINYINT(1)
+// value (0/1) for is_active, not a real JS boolean.
 const activeReleaseOptions = computed(() => releaseOptions.value.filter((r) => Boolean(r.isActive)))
 const selectedReleaseId = ref('')
 
@@ -647,8 +647,8 @@ async function loadAgent() {
       return
     }
     agent.value = await res.json()
-    // Boolean(...) namerno - backend vraća mysql2-ovu sirovu TINYINT(1)
-    // vrednost (0/1) za ovo polje, ne pravi JSON boolean.
+    // Boolean(...) on purpose - the backend returns mysql2's raw TINYINT(1)
+    // value (0/1) for this field, not a real JSON boolean.
     processKillExemptInput.value = Boolean(agent.value.processKillExempt)
   } catch (err) {
     console.error(err)
@@ -747,9 +747,9 @@ function stopJobsPolling() {
   jobsPolling.value = false
 }
 
-// isBackgroundPoll=true (automatski osvežavanje dok ima pending/sent komandi,
-// isti obrazac kao BatchJobDetailView.vue) namerno ne dira jobsLoading - inače
-// bi se "Učitavanje…" tekst treperio na svakih 4s dok se čeka rezultat.
+// isBackgroundPoll=true (automatic refresh while there are pending/sent commands,
+// same pattern as BatchJobDetailView.vue) deliberately doesn't touch jobsLoading - otherwise
+// the "Učitavanje…" (loading) text would flicker every 4s while waiting for the result.
 async function loadJobs(isBackgroundPoll = false) {
   stopJobsPolling()
   if (!isBackgroundPoll) jobsLoading.value = true
@@ -774,8 +774,8 @@ async function loadJobs(isBackgroundPoll = false) {
   }
 }
 
-// Otkazuje pojedinačnu komandu koja još nije Završena/Neuspešna (pending
-// ili sent) - isti backend endpoint kao "Otkaži" na Batch Job Detail strani.
+// Cancels a single command that isn't Completed/Failed yet (pending
+// or sent) - the same backend endpoint as "Otkaži" (cancel) on the Batch Job Detail page.
 async function cancelJob(job) {
   const ok = await askConfirm(
     t('agentDetail.confirmCancelCommandMessage', { command: commandLabel(job.commandType, t) }),
@@ -813,12 +813,12 @@ async function confirmClearJobs() {
   }
 }
 
-// "Popravi" dugmad pored Antivirus/Firewall/Windows Update statusa u
-// Monitoring kartici - šalju fiksan run_powershell_script preset po id-ju
-// (vidi fix-antivirus-defender/fix-firewall/fix-windows-update-service u
-// powershellPresets.js), isti /jobs endpoint kao ručni "Nova komanda" forma,
-// samo bez ulaska u tab. Best-effort popravka, ne garantovana - detalji
-// zašto u samim skriptama.
+// The "Popravi" (fix) buttons next to the Antivirus/Firewall/Windows Update status in
+// the Monitoring card - they send a fixed run_powershell_script preset by id
+// (see fix-antivirus-defender/fix-firewall/fix-windows-update-service in
+// powershellPresets.js), the same /jobs endpoint as the manual "Nova komanda" (new command) form,
+// just without entering the tab. A best-effort fix, not guaranteed - details on
+// why are in the scripts themselves.
 async function sendFixJob(presetId) {
   const preset = POWERSHELL_PRESETS.find((p) => p.id === presetId)
   if (!preset) return
@@ -891,13 +891,13 @@ async function loadManagerStatus() {
   }
 }
 
-// Trajna istorija SVIH Manager poslova (ne samo poslednjeg poslatog) - bez
-// ovoga, ishod komande (posebno install_update) je bio vidljiv SAMO u
-// trenutku dispečovanja (jednokratan toast u reportManagerJobOutcome), i
-// zauvek nestaje čim se izađe sa stranice ili se posao završi dok niko ne
-// gleda - uživo potvrđeno kao pravi problem (manager_jobs ima stvarne
-// install_update redove, uključujući neuspehe, koje niko nikad nije video u
-// UI-u).
+// Persistent history of ALL Manager jobs (not just the last one sent) - without
+// this, a command's outcome (especially install_update) was visible ONLY at the
+// moment of dispatch (a one-off toast in reportManagerJobOutcome), and
+// vanished forever as soon as you left the page or the job finished while nobody was
+// watching - confirmed live as a real problem (manager_jobs has real
+// install_update rows, including failures, that nobody had ever seen in the
+// UI).
 async function loadManagerJobHistory() {
   if (!managerStatus.value?.managerId) {
     managerJobHistory.value = []
@@ -917,10 +917,10 @@ async function loadManagerJobHistory() {
   }
 }
 
-// Manager svoj job-poll ciklus radi na sopstvenom tajmeru (podrazumevano
-// do 30s, JobsPollIntervalSeconds u config.json), plus stvarno vreme
-// izvršavanja - poll ovde traje dovoljno dugo (do ~60s) da pokrije taj
-// realan najgori slučaj pre nego što odustane i prizna da ne zna ishod.
+// The Manager runs its job-poll cycle on its own timer (by default
+// up to 30s, JobsPollIntervalSeconds in config.json), plus the actual
+// execution time - the poll here lasts long enough (up to ~60s) to cover that
+// realistic worst case before giving up and admitting it doesn't know the outcome.
 const MANAGER_JOB_POLL_INTERVAL_MS = 3000
 const MANAGER_JOB_POLL_MAX_ATTEMPTS = 20
 const managerJobStatusText = ref('')
@@ -929,10 +929,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Vraća ceo job red kad pređe u završno stanje (completed/failed/cancelled),
-// ili null ako Manager ne potvrdi izvršenje u očekivanom roku (i dalje
-// pending/sent - npr. Manager trenutno offline). Bez ovoga, dugmad su samo
-// javljala da je komanda POSLATA, ne da li je STVARNO uspela.
+// Returns the whole job row once it reaches a final state (completed/failed/cancelled),
+// or null if the Manager doesn't confirm execution within the expected time (still
+// pending/sent - e.g. the Manager is currently offline). Without this, the buttons only
+// reported that the command was SENT, not whether it ACTUALLY succeeded.
 async function waitForManagerJobResult(managerId, jobId, maxAttempts = MANAGER_JOB_POLL_MAX_ATTEMPTS) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await sleep(MANAGER_JOB_POLL_INTERVAL_MS)
@@ -945,7 +945,7 @@ async function waitForManagerJobResult(managerId, jobId, maxAttempts = MANAGER_J
         return job
       }
     } catch {
-      // Best-effort - probaj ponovo sledeći ciklus umesto da odmah odustaneš.
+      // Best-effort - try again next cycle instead of giving up right away.
     }
   }
   return null
@@ -1040,8 +1040,8 @@ async function installViaManager() {
     })
     if (!res.ok) throw new Error(await parseError(res, t('agentDetail.errorSendCommand')))
     const job = await res.json()
-    // Duži rok od servisnih akcija - preuzimanje+raspakivanje paketa realno
-    // može trajati duže od jednostavnog start/stop/restart poziva.
+    // A longer deadline than service actions - downloading+extracting the package can realistically
+    // take longer than a simple start/stop/restart call.
     managerJobStatusText.value = t('agentDetail.waitingForManagerInstall')
     const result = await waitForManagerJobResult(managerStatus.value.managerId, job.id, 40)
     await reportManagerJobOutcome(result)
@@ -1114,8 +1114,8 @@ function selectTab(name) {
     if (!jobsLoaded.value) {
       loadJobs()
     } else if (!jobsPollTimer) {
-      // Vraćanje na tab dok nešto još čeka - nastavi osvežavanje umesto da
-      // ostane zauvek na starom snimku.
+      // Returning to the tab while something is still pending - resume refreshing instead of
+      // staying on the old snapshot forever.
       const stillGoing = jobs.value.some((j) => j.status === 'pending' || j.status === 'sent')
       if (stillGoing) {
         jobsPolling.value = true
@@ -1123,7 +1123,7 @@ function selectTab(name) {
       }
     }
   } else {
-    // Ne osvežavaj u pozadini dok korisnik ne gleda ovaj tab.
+    // Don't refresh in the background while the user isn't looking at this tab.
     stopJobsPolling()
     if (name === 'updates' && !updateLogLoaded.value) loadUpdateLog()
     else if (name === 'events' && !eventLogsLoaded.value) loadEventLogs()
@@ -1146,17 +1146,17 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Sci-fi HUD skin - samo za ovu stranu (agent single view), po eksplicitnom
-   zahtevu. Trik: cela paleta app-a je već izgrađena kao CSS custom
-   properties (main.css :root/.dark) koje token-utility klase (bg-surface,
-   text-ink, bg-accent, StatusPill-ovi bg-good/bad/warn/info...) čitaju
-   direktno preko var(--surface-card) itd. Redefinisanjem tih ISTIH
-   promenljivih na .agent-hud koren-u, ceo child stablo (uključujući
-   StatusPill/TagChip/AppButton/GroupSelect/.app-input, sve deljene
-   komponente) se automatski re-teksturira u neon-HUD paletu preko obične
-   CSS kaskade - bez ijedne izmene u tim deljenim fajlovima i bez rizika da
-   se nešto propusti. Fiksna tamna paleta bez obzira na app-ov svetla/tamna
-   prekidač - sci-fi HUD na beloj pozadini ne postoji kao koncept.
+/* Sci-fi HUD skin - only for this page (agent single view), at the explicit
+   request. The trick: the app's whole palette is already built as CSS custom
+   properties (main.css :root/.dark) which the token utility classes (bg-surface,
+   text-ink, bg-accent, StatusPill's bg-good/bad/warn/info...) read
+   directly via var(--surface-card) etc. By redefining those SAME
+   variables on the .agent-hud root, the whole child tree (including
+   StatusPill/TagChip/AppButton/GroupSelect/.app-input, all the shared
+   components) is automatically re-textured into the neon-HUD palette via the ordinary
+   CSS cascade - without a single change to those shared files and without the risk of
+   missing something. A fixed dark palette regardless of the app's light/dark
+   toggle - a sci-fi HUD on a white background doesn't exist as a concept.
 */
 .agent-hud {
   --surface-canvas: #050b0d;
@@ -1191,8 +1191,8 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   background-color: var(--surface-canvas);
-  /* Fin grid ispod skenirajućih linija - klasična HUD/blueprint podloga,
-     statična (skenline sloj preko nje se pomera, ovaj ne). */
+  /* A fine grid under the scan lines - a classic HUD/blueprint backdrop,
+     static (the scanline layer above it moves, this one doesn't). */
   background-image:
     linear-gradient(rgba(0, 230, 200, 0.06) 1px, transparent 1px),
     linear-gradient(to right, rgba(0, 230, 200, 0.06) 1px, transparent 1px);
@@ -1204,7 +1204,7 @@ onBeforeUnmount(() => {
     0 0 0 1px rgba(0, 230, 200, 0.08),
     0 0 40px rgba(0, 230, 200, 0.06),
     inset 0 0 60px rgba(0, 230, 200, 0.03);
-  /* Jednokratan "power-on" blesak pri ulasku na stranu - ne ponavlja se. */
+  /* A one-off "power-on" flash when entering the page - it doesn't repeat. */
   animation: hud-boot 0.7s ease-out;
 }
 
@@ -1214,8 +1214,8 @@ onBeforeUnmount(() => {
   100% { opacity: 1; filter: brightness(1); }
 }
 
-/* Fina skenirajuća linija preko cele konzole - klasičan HUD/CRT motiv,
-   dovoljno suptilna da ne smeta čitljivosti teksta ispod. */
+/* A fine scan line across the whole console - a classic HUD/CRT motif,
+   subtle enough not to hurt the readability of the text beneath. */
 .hud-scanlines {
   position: absolute;
   inset: 0;
@@ -1277,15 +1277,15 @@ onBeforeUnmount(() => {
   color: var(--ink-secondary);
 }
 
-/* Ugaone "bracket" konzole - 8 solid-color gradient slojeva (2 po uglu, L
-   oblik), bez dodatnog markup-a po panelu. */
+/* Corner "bracket" consoles - 8 solid-color gradient layers (2 per corner, L
+   shape), with no extra markup per panel. */
 .hud-panel {
   position: relative;
-  /* Manji radijus od Tailwind-ovog rounded-xl (12px) - uglovi na 8px krivini
-     su dovoljno blagi da bracket-i ispod ne moraju daleko od ivice, a
-     dovoljno oštri da ne seku pravougaoni bracket oblik (kod 12px krivine,
-     bracket postavljen blizu ivice fizički probija zaobljenje i "štrči" kao
-     fluorescentna linija van konture - to je bio bug). */
+  /* A smaller radius than Tailwind's rounded-xl (12px) - corners with an 8px curve
+     are gentle enough that the brackets below don't have to sit far from the edge, and
+     sharp enough not to cut the rectangular bracket shape (with a 12px curve, a
+     bracket placed near the edge physically pokes through the rounding and "sticks out" as a
+     fluorescent line outside the outline - that was a bug). */
   border-radius: 0.5rem;
   background-image:
     linear-gradient(var(--accent-default), var(--accent-default)),
@@ -1333,11 +1333,11 @@ onBeforeUnmount(() => {
   text-shadow: 0 0 8px rgba(0, 230, 200, 0.5);
 }
 
-/* Radijalni gauge prsten (CPU/RAM/Disk) - conic-gradient popunjen do
-   procenta opterećenja preko --gauge-deg/--gauge-color inline promenljivih
-   (postavljenih iz gaugeDeg()/gaugeColor() u skripti), ostatak kruga u
-   liniji boji. ::before seče sredinu da ostane samo prsten (donut), broj
-   ide preko toga. */
+/* Radial gauge ring (CPU/RAM/Disk) - a conic-gradient filled up to the
+   load percentage via the --gauge-deg/--gauge-color inline variables
+   (set from gaugeDeg()/gaugeColor() in the script), the rest of the circle in
+   the line color. ::before cuts out the middle so only the ring (donut) remains, the number
+   goes on top of that. */
 .hud-gauge-tile {
   display: flex;
   flex-direction: column;

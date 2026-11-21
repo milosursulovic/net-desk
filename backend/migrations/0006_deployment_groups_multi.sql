@@ -1,7 +1,8 @@
--- Deployment grupe postaju odvojena lista od groups_list (koja ostaje samo
--- za "Odeljenje" na Home-u) i agent sad može imati VIŠE deployment grupa
--- (umesto jedne skalarne vrednosti) - pogađa auto-update targeting, koji se
--- menja da gleda presek agent-ovih grupa i grupa koje release cilja.
+-- Deployment groups become a list separate from groups_list (which stays only
+-- for "Odeljenje" (department) on Home) and an agent can now have SEVERAL
+-- deployment groups (instead of one scalar value) - affects auto-update
+-- targeting, which changes to look at the intersection of the agent's groups
+-- and the groups a release targets.
 
 CREATE TABLE deployment_groups_list (
   id INT NOT NULL AUTO_INCREMENT,
@@ -26,9 +27,9 @@ CREATE TABLE agent_deployment_groups (
   CONSTRAINT fk_agent_deployment_groups_agent FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Svaki agent zadržava svoju trenutnu (jedinu) deployment grupu kao prvi
--- unos u novom multi-value sistemu - "rest" isti podrazumevani fallback
--- kao stari `agent.deploymentGroup || "rest"` u kodu.
+-- Every agent keeps its current (single) deployment group as the first entry
+-- in the new multi-value system - "rest" is the same default fallback as the
+-- old `agent.deploymentGroup || "rest"` in code.
 INSERT IGNORE INTO agent_deployment_groups (agent_id, group_name)
 SELECT id, COALESCE(NULLIF(TRIM(deployment_group), ''), 'rest') FROM agents;
 

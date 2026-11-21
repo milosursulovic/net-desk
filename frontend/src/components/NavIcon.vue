@@ -1,7 +1,7 @@
 <script setup>
-// Nema icon biblioteke u package.json - namerno mali, statičan set inline
-// SVG-ova umesto nove zavisnosti. Nijedan v-html, sve grane su doslovan
-// šablon (ništa dinamički ubačeno kao HTML).
+// No icon library in package.json - deliberately a small, static set of inline
+// SVGs instead of a new dependency. No v-html, every branch is a literal
+// template (nothing dynamically injected as HTML).
 defineProps({
   name: {
     type: String,

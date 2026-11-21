@@ -7,8 +7,8 @@ import NavGroup from '@/components/NavGroup.vue'
 
 const { t } = useI18n()
 
-// Isti route spisak i role-gating logika kao staro AppNav.vue - samo
-// grupisano po sekcijama umesto ravne trake, ništa dodato/oduzeto.
+// Same route list and role-gating logic as the old AppNav.vue - just
+// grouped by section instead of a flat bar, nothing added/removed.
 const monitoringLinks = computed(() => [
   { to: '/', label: t('nav.ipAddresses'), icon: 'home' },
   { to: '/metadata', label: t('nav.metadata'), icon: 'metadata' },

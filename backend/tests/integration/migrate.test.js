@@ -44,9 +44,9 @@ describe("runMigrations (integration, real DB)", () => {
     ]);
     expect(rows).toHaveLength(1);
 
-    // Ponovno pokretanje nad ISTIM folderom ne sme opet da izvrši isti fajl
-    // (CREATE TABLE bez IF NOT EXISTS bi drugi put bacio grešku da se
-    // pogrešno ponovo pokrenulo).
+    // Re-running over the SAME folder must not execute the same file again
+    // (CREATE TABLE without IF NOT EXISTS would throw the second time if it
+    // were wrongly re-run).
     const second = await runMigrations(tmpDir);
     expect(second.applied).toEqual([]);
   });

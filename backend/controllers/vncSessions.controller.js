@@ -23,11 +23,11 @@ export async function endVncSessionController(req, res) {
   res.json(session);
 }
 
-// Admin/operator (JWT) — frontend poll-uje status dok ceka pristanak korisnika
-// (da prepozna 'rejected' i prestane da pokusava konekciju). NAMERNO vraca samo
-// status, ne i audit polja (approver, consent_at, IP/MAC) - ti podaci su
-// osetljiv audit trag dostupan iskljucivo root admin-u ("admin") preko
-// /api/protected/activity-log (requireRootAdmin), ne operatoru koji vodi sesiju.
+// Admin/operator (JWT) — the frontend polls the status while waiting for user
+// consent (to detect 'rejected' and stop trying to connect). Deliberately returns
+// only the status, not the audit fields (approver, consent_at, IP/MAC) - those
+// are a sensitive audit trail available only to the root admin ("admin") via
+// /api/protected/activity-log (requireRootAdmin), not to the operator running the session.
 export async function getVncSessionController(req, res) {
   const sessionId = parseIdParam(req, "sessionId", "ID sesije");
   const session = await getVncSessionService(sessionId);
@@ -38,7 +38,7 @@ export async function getVncSessionController(req, res) {
   });
 }
 
-// Agent (agent auth) — prijava ishoda prozora za pristanak.
+// Agent (agent auth) — reports the outcome of the consent dialog.
 export async function recordVncConsentController(req, res) {
   const sessionId = parseIdParam(req, "sessionId", "ID sesije");
 

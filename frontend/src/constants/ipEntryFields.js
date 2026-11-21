@@ -11,8 +11,8 @@ export const IP_ENTRY_DEFAULTS = {
   entryType: null,
 }
 
-// labelKey umesto label - prevod se radi u komponenti (t(field.labelKey)),
-// ovaj fajl je plain JS bez pristupa i18n instanci.
+// labelKey instead of label - translation happens in the component (t(field.labelKey)),
+// this file is plain JS with no access to the i18n instance.
 export const IP_ENTRY_FIELDS = [
   { name: 'ip', labelKey: 'ipFields.ip', required: true },
   { name: 'computerName', labelKey: 'ipFields.computerName' },
@@ -28,8 +28,8 @@ export function createIpEntryForm(overrides = {}) {
   return { ...IP_ENTRY_DEFAULTS, ...overrides }
 }
 
-// `t` (vue-i18n) se prosleđuje iz komponente - ova funkcija je plain JS bez
-// pristupa i18n instanci.
+// `t` (vue-i18n) is passed in from the component - this function is plain JS with no
+// access to the i18n instance.
 export function validateIpv4(ip, { required = false, t } = {}) {
   if (!ip) return required ? t('ipFields.required') : null
   return IPV4_REGEX.test(ip) ? null : t('ipFields.invalid')

@@ -76,13 +76,13 @@ export async function inventoryController(req, res) {
   res.json(out);
 }
 
-// Deljeno između listAgentsController (paginirano) i listAgentIdsController
-// ("selektuj sve po filteru") - isti query-param oblik, jedno mesto za izmenu.
-// department/os/version/deploymentGroup su multiselect na frontend-u -
-// URLSearchParams.append-ovan isti ključ više puta stiže Express-u kao niz
-// (qs-style parsing), tačno jedna vrednost kao goli string - uvek se
-// normalizuje u niz (prazan kad filter nije poslat) da repo sloj nikad ne
-// mora da grana na "je li ovo string ili niz".
+// Shared between listAgentsController (paginated) and listAgentIdsController
+// ("select all matching the filter") - same query-param shape, one place to change.
+// department/os/version/deploymentGroup are multiselects on the frontend -
+// the same key URLSearchParams.append-ed several times reaches Express as an
+// array (qs-style parsing), exactly one value as a bare string - it is always
+// normalized to an array (empty when the filter wasn't sent) so the repo
+// layer never has to branch on "is this a string or an array".
 function toFilterArray(raw) {
   if (raw == null) return [];
   const arr = Array.isArray(raw) ? raw : [raw];
@@ -96,8 +96,8 @@ function parseAgentListFilters(query) {
     connectivityStatus: CONNECTIVITY_FILTERS.has(query.connectivityStatus)
       ? query.connectivityStatus
       : undefined,
-    // Slobodan tekst (isti tretman kao os/version/department ispod) - grupe
-    // više nisu ograničene na fiksnu 4-vrednosnu listu.
+    // Free text (same treatment as os/version/department below) - groups
+    // are no longer limited to a fixed 4-value list.
     deploymentGroup: toFilterArray(query.deploymentGroup),
     os: toFilterArray(query.os),
     osArchitecture: String(query.osArchitecture || "").trim() || undefined,
@@ -188,9 +188,9 @@ export async function getAgentController(req, res) {
   res.json(agent);
 }
 
-// Odvojeno od getAgentController-a (ne ugrađeno u njegov odgovor) da se ne
-// dira oblik tog već korišćenog endpoint-a/testova - Manager panel na
-// AgentDetailView.vue ga zove kao poseban poziv.
+// Kept separate from getAgentController (not folded into its response) so
+// the shape of that already-used endpoint/its tests isn't touched - the
+// Manager panel on AgentDetailView.vue calls it as a separate request.
 export async function getAgentManagerStatusController(req, res) {
   const id = parseIdParam(req, "id", "ID agenta");
   const agent = await getAgentService(id);

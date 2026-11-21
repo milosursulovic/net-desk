@@ -44,9 +44,9 @@ import {
 import { badRequest } from "../utils/httpError.js";
 import { classifyPrinterManufacturer, groupByManufacturer } from "../utils/printerManufacturer.js";
 
-// Anotira "aktivni štampač po računaru" red proizvođačem izvedenim iz
-// drajvera/naziva - jedno mesto koje koriste i stats (grupisanje) i PDF
-// izvoz, da se logika klasifikacije ne duplira.
+// Annotates an "active printer per computer" row with the manufacturer derived from the
+// driver/name - one place used by both stats (grouping) and the PDF
+// export, so the classification logic isn't duplicated.
 function annotateManufacturer(activePrinters) {
   return activePrinters.map((item) => ({
     ...item,
@@ -307,9 +307,9 @@ export async function exportPdsuAnalyticsXlsx(site) {
   return { software, drivers, services, updates, printers, activePrinters: annotateManufacturer(activePrintersRaw) };
 }
 
-// Za PDF izvoz "Aktivni štampači" - sortirano po proizvođaču pa računaru,
-// da grupisanje po tipu bude vizuelno vidljivo i u ravnoj (non-nested)
-// PDF tabeli.
+// For the "Aktivni štampači" (active printers) PDF export - sorted by manufacturer, then computer,
+// so the grouping by type is visually apparent even in a flat (non-nested)
+// PDF table.
 export async function activePrintersForPdfExport(site) {
   const activePrinters = await getActivePrinterPerComputer(site);
   return annotateManufacturer(activePrinters).sort(

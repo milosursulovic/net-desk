@@ -1,15 +1,15 @@
--- Regresija: enrollManager (services/managers.service.js) nikad nije
--- revocirao prethodnu 'active' registraciju za isti ip_entry_id pre nego
--- što upiše novu, pa je svako ponovno enroll-ovanje iste mašine (Manager
--- servis se re-enroll-uje kad god izgubi svoje kredencijale - reinstall/
--- reprovizovanje) ostavljalo staru registraciju zauvek 'active'. Otud
--- listAgents-ov LEFT JOIN na managers (agents.repo.js) duplira red agenta u
--- listi za svaku mašinu sa 2+ aktivna managers reda - uživo potvrđeno na
--- najnovije upisanim agentima. Kod je popravljen (revokeOtherActiveManagers
--- se sad zove posle svakog enroll-a); ovo je jednokratno čišćenje već
--- nagomilanih duplikata - zadržava najnoviji (najveći id) 'active' red po
--- ip_entry_id, ostale prebacuje u 'revoked' (isti status koji bi normalan
--- re-enroll proizveo).
+-- Regression: enrollManager (services/managers.service.js) never revoked the
+-- previous 'active' registration for the same ip_entry_id before writing a
+-- new one, so every re-enroll of the same machine (the Manager service
+-- re-enrolls whenever it loses its credentials - reinstall/reprovisioning)
+-- left the old registration 'active' forever. Hence listAgents's LEFT JOIN
+-- on managers (agents.repo.js) duplicated the agent's row in the list for
+-- every machine with 2+ active managers rows - confirmed live on the most
+-- recently written agents. The code is fixed (revokeOtherActiveManagers is
+-- now called after every enroll); this is a one-off cleanup of the
+-- duplicates already accumulated - it keeps the newest (highest id) 'active'
+-- row per ip_entry_id and moves the rest to 'revoked' (the same status a
+-- normal re-enroll would produce).
 UPDATE managers m
 JOIN (
   SELECT ip_entry_id, MAX(id) AS keep_id

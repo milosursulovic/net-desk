@@ -1,12 +1,12 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
-// Deployment grupe koje označavaju OS kanal za auto-update targeting (vidi
-// migraciju 0006_deployment_groups_multi.sql) - mašina ima tačno JEDAN OS,
-// pa dodavanje agenta u dve od ovih grupa istovremeno je uvek greška u unosu
-// (npr. slučajno i win10 i win11), ne legitimna kombinacija kao npr.
-// odeljenje+"svi"+arhitektura. Hardkodovano namerno - nema kolone/koncepta
-// "kategorija" na deployment_groups_list, ovo su prosto poznata imena.
+// Deployment groups that mark the OS channel for auto-update targeting (see
+// migration 0006_deployment_groups_multi.sql) - a machine has exactly ONE OS,
+// so adding an agent to two of these groups at once is always a data-entry
+// mistake (e.g. accidentally both win10 and win11), not a legitimate combination
+// like department+"all"+architecture. Hardcoded on purpose - there's no
+// "category" column/concept on deployment_groups_list, these are simply known names.
 export const OS_DEPLOYMENT_GROUPS = ["win7", "win10", "win11", "winsrv"];
 
 export async function insertAgent({
@@ -119,15 +119,15 @@ export const CONNECTIVITY_STATUS_SQL = `
   END
 `;
 
-// "agents" (bez alijasa) je i dalje validan kvalifikator za svoje kolone i
-// tamo gde nema JOIN-a (npr. countAgentsByConnectivity ispod) - zato ovaj
-// isti izraz radi svuda, prefiksovan ili ne.
+// "agents" (unaliased) is still a valid qualifier for its own columns even
+// where there's no JOIN (e.g. countAgentsByConnectivity below) - which is why
+// this same expression works everywhere, prefixed or not.
 
-// Deljeno između listAgents() (paginirano) i listAgentIds() (svi id-jevi
-// koji odgovaraju filterima, za "selektuj sve po filteru" preko svih
-// strana) - isti filteri, ista logika, jedno mesto za izmenu. LEFT JOIN
-// na ip_entries (preko agents.ip_entry_id) je ovde samo zbog department
-// filtera - odeljenje živi na ip_entries, ne na agents.
+// Shared between listAgents() (paginated) and listAgentIds() (all ids
+// matching the filters, for "select all matching the filter" across all
+// pages) - same filters, same logic, one place to change. The LEFT JOIN
+// on ip_entries (via agents.ip_entry_id) is here only for the department
+// filter - department lives on ip_entries, not on agents.
 function buildAgentsWhereClause({
   search,
   status,
@@ -174,9 +174,9 @@ function buildAgentsWhereClause({
     whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) = ?`);
     params.push(connectivityStatus);
   }
-  // deploymentGroup/os/version/versionNot/department su multiselect na
-  // frontend-u - "bar jedan izabran" = pogađa BILO KOJU od izabranih
-  // vrednosti (IN/EXISTS-IN), ne AND/presek.
+  // deploymentGroup/os/version/versionNot/department are multiselects on the
+  // frontend - "at least one selected" = matches ANY of the selected
+  // values (IN/EXISTS-IN), not AND/intersection.
   if (deploymentGroup?.length) {
     whereParts.push(
       `EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id AND adg.group_name IN (${deploymentGroup.map(() => "?").join(",")}))`,
@@ -188,9 +188,9 @@ function buildAgentsWhereClause({
     params.push(...os);
   }
   if (osArchitecture) {
-    // Živi na ip_entries (isti izvor/kolona kao Home-ova arhitektura), ne
-    // agents - popunjava se preko istog inventory sync-a (os.Architecture,
-    // vidi extractOsArchitecture u agents.service.js).
+    // Lives on ip_entries (same source/column as Home's architecture), not
+    // agents - filled by the same inventory sync (os.Architecture, see
+    // extractOsArchitecture in agents.service.js).
     whereParts.push("ie.os_architecture = ?");
     params.push(osArchitecture);
   }
@@ -199,9 +199,9 @@ function buildAgentsWhereClause({
     params.push(...version);
   }
   if (versionNot?.length) {
-    // Agenti bez izveštene verzije (NULL) su isto "nisu na ovoj verziji" -
-    // korisno za pronalaženje agenata koji nikad nisu uspešno prijavili
-    // update, ne samo onih zaglavljenih na starijoj verziji.
+    // Agents with no reported version (NULL) are also "not on this version" -
+    // useful for finding agents that never successfully reported an update,
+    // not just those stuck on an older version.
     whereParts.push(
       `(agents.agent_version IS NULL OR agents.agent_version NOT IN (${versionNot.map(() => "?").join(",")}))`,
     );
@@ -231,10 +231,10 @@ function buildAgentsWhereClause({
     whereParts.push("DATE(agents.last_heartbeat_at) <= ?");
     params.push(heartbeatTo);
   }
-  // "Neaktivan" = nema potvrdu da je uključen - i "disabled" i "unknown" i
-  // "nikad prijavljeno" (NULL/nema reda uopšte) se tretiraju isto, jer je
-  // administratoru svejedno KOJI je razlog, samo da mašina nije potvrđeno
-  // zaštićena.
+  // "Inactive" = no confirmation that it's turned on - "disabled", "unknown"
+  // and "never reported" (NULL/no row at all) are all treated the same, because
+  // the administrator doesn't care WHICH reason it is, only that the machine
+  // isn't confirmed protected.
   if (antivirusInactive) {
     whereParts.push("(am.antivirus_status IS NULL OR am.antivirus_status != 'enabled')");
   }
@@ -244,11 +244,11 @@ function buildAgentsWhereClause({
   if (windowsUpdateInactive) {
     whereParts.push("(cm.wu_service_status IS NULL OR cm.wu_service_status != 'Running')");
   }
-  // Mreža (ping-based ip_entries.is_online) kaže da je računar gore, ali
-  // AGENT se ne javlja online - jak signal da je agent proces/servis
-  // zaglavljen ili pao (npr. posle lošeg deploy-a), ne da je računar
-  // ugašen. Suprotan smer (agent online, mreža offline - obično samo spor/
-  // flaky ping) se namerno ne tretira kao problem ovde.
+  // The network (ping-based ip_entries.is_online) says the computer is up, but
+  // the AGENT isn't reporting online - a strong signal that the agent
+  // process/service is stuck or crashed (e.g. after a bad deploy), not that the
+  // computer is turned off. The opposite direction (agent online, network
+  // offline - usually just a slow/flaky ping) is deliberately not treated as a problem here.
   if (agentOfflineIpOnline) {
     whereParts.push(`(${CONNECTIVITY_STATUS_SQL}) != 'online' AND ie.is_online = 1`);
   }
@@ -258,8 +258,8 @@ function buildAgentsWhereClause({
   if (processKillExempt) {
     whereParts.push("agents.process_kill_exempt = 1");
   }
-  // Agent u 2+ OS-grupe istovremeno (win7+win10 npr.) - skoro sigurno
-  // greška u unosu, vidi OS_DEPLOYMENT_GROUPS iznad.
+  // Agent in 2+ OS groups at once (e.g. win7+win10) - almost certainly a
+  // data-entry mistake, see OS_DEPLOYMENT_GROUPS above.
   if (deploymentGroupOsOverlap) {
     whereParts.push(
       `(SELECT COUNT(DISTINCT adg.group_name) FROM agent_deployment_groups adg
@@ -272,11 +272,11 @@ function buildAgentsWhereClause({
       "NOT EXISTS (SELECT 1 FROM agent_deployment_groups adg WHERE adg.agent_id = agents.id)",
     );
   }
-  // "Da li je NOVI (nezavisni HTTP kanal) Manager registrovan na ovoj
-  // mašini" - poklapa preko istog ip_entry_id, ne agent_id (Manager i Agent
-  // nemaju direktnu vezu, samo dele mašinu). Ne razlikuje "star mailbox-only
-  // Manager" od "nema Manager-a uopšte" - backend generalno ne može, stari
-  // Manager nikad ne javlja ništa serveru (vidi napomenu u planu).
+  // "Is the NEW (independent HTTP channel) Manager registered on this
+  // machine" - matches via the same ip_entry_id, not agent_id (the Manager and
+  // the Agent have no direct link, they just share the machine). Doesn't tell an
+  // "old mailbox-only Manager" from "no Manager at all" - the backend generally
+  // can't, the old Manager never reports anything to the server (see the note in the plan).
   if (hasManagerChannel === true) {
     whereParts.push(
       "EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active')",
@@ -286,11 +286,11 @@ function buildAgentsWhereClause({
       "NOT EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active')",
     );
   }
-  // Sertifikati i Secure DNS stanje žive na ip_entries (SecurityPostureCollector.cs
-  // preko inventory sync-a) - false grupiše "potvrđeno odsutno" (0) i
-  // "nikad provereno" (NULL) u isti "nema ga" rezultat, jer je admin-u
-  // podjednako akciono i jedno i drugo (mašina koju treba doterati), za
-  // razliku od hasManagerChannel iznad gde NULL/EXISTS razlika ne postoji.
+  // Certificates and Secure DNS state live on ip_entries (SecurityPostureCollector.cs
+  // via inventory sync) - false groups "confirmed absent" (0) and "never checked"
+  // (NULL) into the same "missing" result, because both are equally actionable
+  // for the admin (a machine that needs fixing), unlike hasManagerChannel
+  // above where the NULL/EXISTS distinction doesn't exist.
   if (trustedRootCertInstalled === true) {
     whereParts.push("ie.trusted_root_cert_installed = 1");
   } else if (trustedRootCertInstalled === false) {
@@ -306,13 +306,13 @@ function buildAgentsWhereClause({
   } else if (secureDnsDisabled === false) {
     whereParts.push("(ie.secure_dns_disabled = 0 OR ie.secure_dns_disabled IS NULL)");
   }
-  // managers.manager_version - isti "bar jedna izabrana" multiselect obrazac
-  // kao version/versionNot iznad, preko EXISTS (ne JOIN u WHERE) iz istog
-  // razloga kao hasManagerChannel: whereSql se koristi i u COUNT upitu koji
-  // nema AGENTS_MANAGER_JOIN. NOT EXISTS za managerVersionNot prirodno
-  // pokriva i "Manager uopšte nije registrovan" kao "nije na ovoj verziji" -
-  // isti tretman kao NULL agent_version slučaj kod versionNot, bez potrebe
-  // za posebnim NULL uslovom.
+  // managers.manager_version - same "at least one selected" multiselect pattern
+  // as version/versionNot above, via EXISTS (not a JOIN in WHERE) for the same
+  // reason as hasManagerChannel: whereSql is also used in the COUNT query, which
+  // has no AGENTS_MANAGER_JOIN. NOT EXISTS for managerVersionNot naturally
+  // covers "no Manager registered at all" as "not on this version" too -
+  // same treatment as the NULL agent_version case in versionNot, with no need
+  // for a separate NULL condition.
   if (managerVersion?.length) {
     whereParts.push(
       `EXISTS (SELECT 1 FROM managers m WHERE m.ip_entry_id = agents.ip_entry_id AND m.status = 'active' AND m.manager_version IN (${managerVersion.map(() => "?").join(",")}))`,
@@ -331,22 +331,22 @@ function buildAgentsWhereClause({
 }
 
 const AGENTS_IP_ENTRY_JOIN = "LEFT JOIN ip_entries ie ON ie.id = agents.ip_entry_id";
-// antivirus_status/firewall_status žive na agent_monitoring (heartbeat
-// signal, jedan red po agentu preko upsertAgentMonitoring), wu_service_status
-// živi na computer_metadata (deo hourly inventory sync-a, vezan preko
-// ip_entry_id kao i ostatak metapodataka) - dva odvojena izvora/ciklusa
-// osvežavanja, zato dva odvojena LEFT JOIN-a umesto jednog.
+// antivirus_status/firewall_status live on agent_monitoring (heartbeat
+// signal, one row per agent via upsertAgentMonitoring), wu_service_status
+// lives on computer_metadata (part of the hourly inventory sync, linked via
+// ip_entry_id like the rest of the metadata) - two separate sources/refresh
+// cycles, hence two separate LEFT JOINs instead of one.
 const AGENTS_MONITORING_JOIN = "LEFT JOIN agent_monitoring am ON am.agent_id = agents.id";
 const AGENTS_METADATA_JOIN = "LEFT JOIN computer_metadata cm ON cm.ip_entry_id = agents.ip_entry_id";
-// Samo za listAgents (badge na listi) - findAgentById/ostale funkcije ovde
-// namerno ne pribavljaju ovo, AgentDetailView.vue zove poseban
-// /manager-status endpoint (getAgentManagerStatusController) umesto da se
-// ovaj JOIN širi na svaki poziv.
-// Uslov "mgr.id = najnoviji active red za ovaj ip_entry_id" je odbrana u
-// dubinu (ne samo oslanjanje na revokeOtherActiveManagers u
-// enrollManager) - regresija: bez ovoga, svaki 'active' red za isti
-// ip_entry_id dupllira red agenta u rezultatu (LEFT JOIN 1:N), uživo
-// potvrđeno na novo enrollovanim agentima.
+// Only for listAgents (the badge in the list) - findAgentById/the other functions
+// here deliberately don't fetch this; AgentDetailView.vue calls a separate
+// /manager-status endpoint (getAgentManagerStatusController) instead of
+// widening this JOIN to every call.
+// The condition "mgr.id = newest active row for this ip_entry_id" is defense
+// in depth (not just relying on revokeOtherActiveManagers in
+// enrollManager) - regression: without it, every 'active' row for the same
+// ip_entry_id duplicates the agent's row in the result (LEFT JOIN 1:N),
+// confirmed live on newly enrolled agents.
 const AGENTS_MANAGER_JOIN = `
   LEFT JOIN managers mgr
     ON mgr.ip_entry_id = agents.ip_entry_id
@@ -357,10 +357,10 @@ const AGENTS_MANAGER_JOIN = `
     )
 `;
 
-// Isti pragovi kao CONNECTIVITY_STATUS_SQL - NULL (ne 'unknown') kad
-// nijedan managers red uopšte ne postoji za ovaj ip_entry_id (LEFT JOIN nije
-// pogodio ništa), da se razlikuje "Manager nije registrovan" od "Manager
-// registrovan ali još nije javio heartbeat".
+// Same thresholds as CONNECTIVITY_STATUS_SQL - NULL (not 'unknown') when no
+// managers row exists at all for this ip_entry_id (the LEFT JOIN matched
+// nothing), to distinguish "Manager not registered" from "Manager registered
+// but hasn't sent a heartbeat yet".
 const MANAGER_CHANNEL_STATUS_SQL = `
   CASE
     WHEN mgr.id IS NULL THEN NULL
@@ -421,10 +421,10 @@ export async function listAgents(filters) {
   return { items, total: Number(total) || 0 };
 }
 
-// Za "selektuj sve po filteru" na /agents - vraća SVE id-jeve koji
-// odgovaraju filterima, ne samo trenutnu stranu paginacije. 1000 je
-// sigurnosni gornji limit (ne prava paginacija) - dovoljno velik za
-// realnu veličinu flote, sprečava patološki neograničen upit.
+// For "select all matching the filter" on /agents - returns ALL ids that
+// match the filters, not just the current pagination page. 1000 is a
+// safety upper limit (not real pagination) - large enough for the
+// realistic fleet size, prevents a pathologically unbounded query.
 const MAX_MATCHING_IDS = 1000;
 
 export async function listAgentIds(filters) {
@@ -454,9 +454,9 @@ export async function listDistinctAgentOs(site) {
   return rows.map((r) => r.os_caption);
 }
 
-// os_architecture živi na ip_entries (isti izvor kao Home-ova arhitektura),
-// ne na agents - JOIN je zato uvek potreban (ne samo kad je site zadat, za
-// razliku od listDistinctAgentOs iznad).
+// os_architecture lives on ip_entries (same source as Home's architecture),
+// not on agents - so the JOIN is always needed (not only when a site is given,
+// unlike listDistinctAgentOs above).
 export async function listDistinctAgentOsArchitectures(site) {
   const whereParts = ["ie.os_architecture IS NOT NULL", "ie.os_architecture != ''"];
   const params = [];
@@ -494,10 +494,10 @@ export async function listDistinctAgentDeploymentGroups(site) {
   return rows.map((r) => r.group_name);
 }
 
-// Prirodno sortiranje ("1.2.10" posle "1.2.9", ne pre) - CAST na svaki
-// tačka-odvojen deo verzije kao broj. Pretpostavlja "x.y.z" oblik (isti
-// format kao AgentVersionInfo.cs u agentu) - agenti bez tog oblika i dalje
-// prolaze, samo im je redosled sortiranja manje pouzdan.
+// Natural sort ("1.2.10" after "1.2.9", not before) - CAST of each
+// dot-separated part of the version to a number. Assumes the "x.y.z" shape
+// (same format as AgentVersionInfo.cs in the agent) - agents without that
+// shape still pass through, their sort order is just less reliable.
 export async function listDistinctAgentVersions(site) {
   const whereParts = ["agents.agent_version IS NOT NULL", "agents.agent_version != ''"];
   const params = [];
@@ -522,10 +522,10 @@ export async function listDistinctAgentVersions(site) {
   return rows.map((r) => r.agent_version);
 }
 
-// Isto obrazac kao listDistinctAgentVersions iznad, ali za managers.manager_version
-// (odvojena tabela, povezana preko ip_entry_id - ne agent_id). Samo aktivni
-// Manager-i (status='active') se broje - revoked/istorijski ne treba da se
-// pojave u dropdown-u.
+// Same pattern as listDistinctAgentVersions above, but for managers.manager_version
+// (a separate table, linked via ip_entry_id - not agent_id). Only active
+// Managers (status='active') are counted - revoked/historical ones shouldn't
+// show up in the dropdown.
 export async function listDistinctManagerVersions(site) {
   const whereParts = [
     "mgr.status = 'active'",
@@ -615,10 +615,10 @@ export async function revokeAgentById(id) {
 }
 
 // agent_jobs/agent_monitoring/agent_monitoring_history/agent_update_log/
-// agent_deployment_groups/vnc_sessions svi imaju FK na agents.id sa ON
-// DELETE CASCADE - jedan DELETE ovde čisti sve to bez ručnog koda. Namerno
-// NE dira ip_entries (agents.ip_entry_id je jedini smer FK-a - obrisan
-// agent ne sme da povuče sa sobom i sam računar/IP unos).
+// agent_deployment_groups/vnc_sessions all have an FK to agents.id with ON
+// DELETE CASCADE - a single DELETE here cleans all of it with no manual code.
+// Deliberately does NOT touch ip_entries (agents.ip_entry_id is the only FK
+// direction - a deleted agent must not drag the computer/IP entry along with it).
 export async function deleteAgentById(id) {
   const [result] = await pool.execute(`DELETE FROM agents WHERE id = ?`, [id]);
   return result.affectedRows;
@@ -659,9 +659,9 @@ export async function upsertAgentMonitoring(agentId, data) {
   );
 }
 
-// Isti izvor kao AGENTS_METADATA_JOIN (computer_metadata.wu_service_status)
-// korišćen u listAgents - za detail stranicu jednog agenta (findAgentById ne
-// join-uje computer_metadata, samo agents tabelu).
+// Same source as AGENTS_METADATA_JOIN (computer_metadata.wu_service_status)
+// used in listAgents - for a single agent's detail page (findAgentById doesn't
+// join computer_metadata, only the agents table).
 export async function findAgentWindowsUpdateStatus(ipEntryId) {
   if (!ipEntryId) return null;
   const [rows] = await pool.execute(
@@ -671,12 +671,12 @@ export async function findAgentWindowsUpdateStatus(ipEntryId) {
   return rows?.[0]?.windowsUpdateStatus ?? null;
 }
 
-// ip/site sa povezanog ip_entries reda - za "Otvori na početnoj" link na
-// AgentDetailView.vue (pretraga po IP-u zahteva i tačan site query param,
-// vidi useCurrentSite.js - site živi isključivo u URL-u). department/description
-// su ovde iz istog razloga kao site/ip - žive na ip_entries, ne na agents
-// (isti izvor kao "Odeljenje" filter na AgentsView.vue), prikazuju se na
-// AgentDetailView.vue pored naziva agenta / kao opis.
+// ip/site from the linked ip_entries row - for the "Open on Home" link on
+// AgentDetailView.vue (searching by IP also requires the exact site query param,
+// see useCurrentSite.js - site lives exclusively in the URL). department/description
+// are here for the same reason as site/ip - they live on ip_entries, not on agents
+// (same source as the "Odeljenje" (department) filter on AgentsView.vue), and are
+// shown on AgentDetailView.vue next to the agent's name / as the description.
 export async function findAgentIpEntry(ipEntryId) {
   if (!ipEntryId) return null;
   const [rows] = await pool.execute(
@@ -725,9 +725,9 @@ export async function updateAgentVersion(agentId, version) {
   ]);
 }
 
-// Rezultat checkServiceFilesMismatchService (agentReleases.service.js),
-// perzistira se po ciklusu inventory sync-a - details je null kad nema
-// neusklađenosti (ili poređenje nije bilo moguće).
+// Result of checkServiceFilesMismatchService (agentReleases.service.js),
+// persisted per inventory sync cycle - details is null when there's no
+// mismatch (or the comparison wasn't possible).
 export async function updateAgentServiceFilesMismatch(agentId, mismatch, details) {
   await pool.execute(
     `UPDATE agents SET service_files_mismatch = ?, service_files_mismatch_details = ? WHERE id = ?`,

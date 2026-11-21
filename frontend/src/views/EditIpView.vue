@@ -114,7 +114,7 @@ const { isAdmin } = useCurrentUser()
 const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const error = ref('')
 const form = ref(createIpEntryForm())
-// 'department' se renderuje posebno iznad (GroupSelect), ne u generičkoj petlji.
+// 'department' is rendered separately above (GroupSelect), not in the generic loop.
 const fields = IP_ENTRY_FIELDS.filter((f) => f.name !== 'department')
 const groupOptions = ref([])
 
@@ -164,10 +164,10 @@ const handleUpdate = async () => {
   }
 }
 
-// Briše samo podatke o računaru (ime, RDP app, sistem, odeljenje) - ostavlja
-// IP/lokaciju/opis/tip netaknutim. Menja SAMO lokalni form state (kao i sva
-// ostala polja ovde) - korisnik i dalje mora da klikne "Sačuvaj izmene" da bi
-// se izmena stvarno upisala, isti obrazac kao ostatak forme.
+// Clears only the computer data (name, RDP app, system, department) - leaves
+// IP/site/description/type untouched. Changes ONLY the local form state (like all
+// the other fields here) - the user still has to click "Sačuvaj izmene" (save changes) for
+// the change to actually be written, same pattern as the rest of the form.
 async function clearComputerData() {
   const ok = await askConfirm(t('editIp.confirmClearMessage'), { title: t('editIp.confirmClearTitle') })
   if (!ok) return

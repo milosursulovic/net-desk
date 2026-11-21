@@ -4,30 +4,30 @@ using System.Runtime.InteropServices;
 namespace NetdeskAgent.Common.DnsLogs
 {
     /// <summary>
-    /// P/Invoke sloj nad WinDivert.dll - konstante/potpisi ovde su prepisani
-    /// direktno iz zvanične WinDivert 2.2.2 dokumentacije (include/windivert.h,
-    /// doc/WinDivert.html), ne iz sećanja - vrednosti FLAG_SNIFF (0x0001)/
-    /// LAYER_NETWORK (0) i INVALID_HANDLE_VALUE (-1) na grešci kod
-    /// WinDivertOpen su uživo provereni protiv tog izvora.
+    /// P/Invoke layer over WinDivert.dll - the constants/signatures here are copied
+    /// directly from the official WinDivert 2.2.2 documentation (include/windivert.h,
+    /// doc/WinDivert.html), not from memory - the values FLAG_SNIFF (0x0001)/
+    /// LAYER_NETWORK (0) and INVALID_HANDLE_VALUE (-1) on error from
+    /// WinDivertOpen were verified live against that source.
     ///
-    /// Zašto WinDivert a ne Npcap: Npcap-ov tihi (/S) instalacioni mod je
-    /// dostupan SAMO uz plaćeno "Npcap OEM" izdanje (uživo potvrđeno protiv
-    /// npcap.com dokumentacije - besplatna verzija nema tihu instalaciju,
-    /// pokušaj je izazvao 10-minutni job timeout na pravoj mašini). WinDivert
-    /// nema taj problem - drajver se sam, tiho instalira pri prvom
-    /// WinDivertOpen() pozivu, dovoljno je da WinDivert.dll/WinDivert64.sys
-    /// fajlovi samo SEDE pored .exe-a (nikakav poseban instalacioni korak).
-    /// Cena: WinDivert zvanično podržava samo Windows 10/11/Server (ne
-    /// Windows 7) - prihvaćeno, Windows 7 flota namerno ostaje bez DNS
-    /// packet-capture vidljivosti.
+    /// Why WinDivert and not Npcap: Npcap's silent (/S) install mode is
+    /// available ONLY with the paid "Npcap OEM" edition (confirmed live against the
+    /// npcap.com documentation - the free version has no silent install,
+    /// the attempt caused a 10-minute job timeout on a real machine). WinDivert
+    /// doesn't have that problem - the driver installs itself silently on the first
+    /// WinDivertOpen() call, it's enough for the WinDivert.dll/WinDivert64.sys
+    /// files to just SIT next to the .exe (no separate install step at all).
+    /// The cost: WinDivert officially supports only Windows 10/11/Server (not
+    /// Windows 7) - accepted, the Windows 7 fleet deliberately stays without DNS
+    /// packet-capture visibility.
     /// </summary>
     internal static class WinDivertInterop
     {
         internal const int WINDIVERT_LAYER_NETWORK = 0;
         internal const ulong WINDIVERT_FLAG_SNIFF = 0x0001;
 
-        // HANDLE se marshaluje kao IntPtr - INVALID_HANDLE_VALUE je (HANDLE)(-1),
-        // ne IntPtr.Zero (Win32 konvencija, ne .NET null-handle konvencija).
+        // HANDLE is marshaled as IntPtr - INVALID_HANDLE_VALUE is (HANDLE)(-1),
+        // not IntPtr.Zero (the Win32 convention, not the .NET null-handle convention).
         internal static readonly IntPtr InvalidHandleValue = new IntPtr(-1);
 
         [DllImport("WinDivert.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi, SetLastError = true)]
@@ -44,13 +44,13 @@ namespace NetdeskAgent.Common.DnsLogs
         [DllImport("WinDivert.dll", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
         internal static extern bool WinDivertClose(IntPtr handle);
 
-        // Odgovara WINDIVERT_ADDRESS iz windivert.h: INT64 Timestamp (8B) +
-        // spakovana bitfield-ova u jedan UINT32 (8+8+1+1+1+1+1+1+1+1+8=32 bita,
-        // ovde se ne raspakuje - filter string već garantuje da je svaki
-        // primljen paket outbound/UDP/port 53, ne treba nam post-hoc provera)
-        // + UINT32 Reserved2 (4B) + union WINDIVERT_DATA_* (max 64B). Ukupno
-        // 80 bajtova - mora se poklopiti sa native strukturom da bi
-        // WinDivertRecv ispravno pisao u nju (ne čitamo union sadržaj uopšte).
+        // Corresponds to WINDIVERT_ADDRESS from windivert.h: INT64 Timestamp (8B) +
+        // bitfields packed into one UINT32 (8+8+1+1+1+1+1+1+1+1+8=32 bits,
+        // not unpacked here - the filter string already guarantees that every
+        // received packet is outbound/UDP/port 53, we don't need a post-hoc check)
+        // + UINT32 Reserved2 (4B) + union WINDIVERT_DATA_* (max 64B). 80 bytes in
+        // total - must match the native structure so that
+        // WinDivertRecv writes into it correctly (we don't read the union contents at all).
         [StructLayout(LayoutKind.Sequential)]
         internal struct WinDivertAddress
         {

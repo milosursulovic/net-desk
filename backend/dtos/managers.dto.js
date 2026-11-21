@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { isValidIPv4 } from "../utils/ip.js";
 
-// Manager nema poseban inventory sync korak (za razliku od Agent-a) - ip je
-// zato OBAVEZAN već pri enroll-u, jer je to jedini trenutak kad se razrešava
-// ip_entry_id.
+// The Manager has no separate inventory sync step (unlike the Agent) - so ip
+// is REQUIRED already at enroll time, since that's the only moment
+// ip_entry_id gets resolved.
 export const ManagerEnrollSchema = z.object({
   hostname: z.string().max(255).nullable().optional(),
   managerVersion: z.string().max(50).nullable().optional(),
@@ -13,8 +13,8 @@ export const ManagerEnrollSchema = z.object({
 export const ManagerHeartbeatSchema = z.object({
   hostname: z.string().max(255).nullable().optional(),
   managerVersion: z.string().max(50).nullable().optional(),
-  // Živo, na svakom heartbeat-u ponovo prijavljeno stanje NetdeskAgent
-  // servisa (ne Manager-ovo sopstveno stanje) - vidi managers.service.js.
+  // Live state of the NetdeskAgent service, re-reported on every heartbeat
+  // (not the Manager's own state) - see managers.service.js.
   netdeskAgentServiceStatus: z.string().max(20).nullable().optional(),
   netdeskAgentStartMode: z.string().max(20).nullable().optional(),
 });
@@ -34,9 +34,9 @@ const ManagerJobCommandFields = z.object({
   payload: z.record(z.string(), z.any()).nullable().optional(),
 });
 
-// Isti "refine-chain" oblik kao agentJobs.dto.js's withCommandRefinements -
-// serviceName NIJE obavezan u payload-u (default "NetdeskAgent" se popunjava
-// server-side u createManagerJobService, ne ovde), zato nema refine za njega.
+// Same "refine-chain" shape as agentJobs.dto.js's withCommandRefinements -
+// serviceName is NOT required in the payload (the "NetdeskAgent" default is filled
+// in server-side in createManagerJobService, not here), hence no refine for it.
 function withManagerCommandRefinements(schema) {
   return schema
     .refine(

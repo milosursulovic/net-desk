@@ -1,7 +1,7 @@
 import { pool } from "../db/pool.js";
 
-// "groups" je rezervisana reč u MySQL/MariaDB (GROUPS window frame sintaksa)
-// - zato groups_list, ne groups.
+// "groups" is a reserved word in MySQL/MariaDB (GROUPS window frame syntax)
+// - hence groups_list, not groups.
 export async function listGroups() {
   const [rows] = await pool.execute(`SELECT name FROM groups_list ORDER BY name`);
   return rows.map((r) => r.name);
@@ -15,14 +15,14 @@ export async function insertGroup(name) {
   return result.insertId;
 }
 
-// Korelisani sub-upit (ne JOIN) namerno - broj grupa je mali (desetine, ne
-// hiljade). groups_list je sad SAMO za odeljenje (Home) - deployment grupe
-// žive u odvojenoj deployment_groups_list (deploymentGroups.repo.js).
+// Correlated subquery (not a JOIN) on purpose - the number of groups is small
+// (tens, not thousands). groups_list is now ONLY for departments (Home) -
+// deployment groups live in the separate deployment_groups_list (deploymentGroups.repo.js).
 //
-// ip_entries.department je utf8mb4_unicode_ci, dok je groups_list.name
-// utf8mb4_general_ci (istorijski nekonzistentne kolacije u šemi, van obima
-// ovde da se sve ujednači) - bez eksplicitnog COLLATE, MariaDB baca
-// "Illegal mix of collations" na ovom poređenju.
+// ip_entries.department is utf8mb4_unicode_ci, while groups_list.name is
+// utf8mb4_general_ci (historically inconsistent collations in the schema, out of
+// scope to unify everything here) - without an explicit COLLATE, MariaDB throws
+// "Illegal mix of collations" on this comparison.
 export async function listGroupsWithUsage() {
   const [rows] = await pool.execute(`
     SELECT

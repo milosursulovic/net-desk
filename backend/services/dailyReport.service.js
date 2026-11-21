@@ -50,26 +50,26 @@ import { computeDiskFillProjection } from "../utils/trendAnalysis.js";
 // baseline, but that feature was removed as unhelpful noise).
 const TREND_WINDOW_DAYS = 30;
 
-// Isti prozor kao countBlacklistedDomainHits(24, site) u notifications.
-// service.js - izveštaj prikazuje ISTIH 24h koje već pokreću upozorenje,
-// samo sa detaljima (koji računar/domen), ne fiksno vezano za periodStart
-// (koji može biti duži/kraći od 24h u zavisnosti kad je prošli izveštaj
-// generisan).
+// Same window as countBlacklistedDomainHits(24, site) in notifications.
+// service.js - the report shows the SAME 24h that already trigger the warning,
+// just with details (which computer/domain), not fixed to periodStart
+// (which may be longer/shorter than 24h depending on when the previous report was
+// generated).
 const BLACKLISTED_DOMAIN_WINDOW_HOURS = 24;
 
-// Postojeći redovi u daily_reports pre uvođenja lokacija su svi stvarno iz
-// bolnice (potvrđeno uživo pri planiranju multi-site feature-a) - isti
-// default kao SQL migracija (daily_reports.site DEFAULT 'bolnica').
+// Existing rows in daily_reports from before sites were introduced are all really from the
+// hospital (confirmed live while planning the multi-site feature) - same
+// default as the SQL migration (daily_reports.site DEFAULT 'bolnica').
 const DEFAULT_SITE = "bolnica";
 const SITE_LABELS = { bolnica: "Bolnica", dom_zdravlja: "Dom zdravlja" };
 
-// Snimak trenutnog CPU/RAM/disk stanja SVIH agenata u istoriju, vezan za
-// generisanje izveštaja (ne svaki heartbeat - agent_monitoring se već
-// ažurira na ~30s, i ta učestalost zauvek bi eksplodirala ovu tabelu bez
-// koristi). Namerno odvojeno od generateDailyReport(site) i pozvano SAMO
-// JEDNOM po ciklusu generisanja (ne po lokaciji) - ovo je snimak cele
-// flote, ne po-lokaciji upit, pa bi pozivanje dva puta (jednom po lokaciji)
-// upisalo duplirane redove istorije za svakog agenta.
+// Snapshot of the current CPU/RAM/disk state of ALL agents into history, tied to
+// report generation (not every heartbeat - agent_monitoring is already
+// updated every ~30s, and that frequency would blow up this table forever with no
+// benefit). Deliberately separate from generateDailyReport(site) and called ONLY
+// ONCE per generation cycle (not per site) - this is a snapshot of the whole
+// fleet, not a per-site query, so calling it twice (once per site) would
+// write duplicate history rows for every agent.
 async function snapshotCurrentMonitoring(periodEnd) {
   const currentMonitoring = await listCurrentMonitoringForAllAgents();
   await insertMonitoringSnapshot(
@@ -196,10 +196,10 @@ export async function generateDailyReport(
   return await findDailyReportById(id);
 }
 
-// Generiše po jedan izveštaj za SVAKU lokaciju u jednom ciklusu (isti cron
-// raspored kao pre uvođenja lokacija) - snimak agent_monitoring istorije se
-// radi TAČNO JEDNOM ovde (ne po lokaciji, vidi snapshotCurrentMonitoring),
-// dok se agregacije za sadržaj izveštaja rade po lokaciji.
+// Generates one report for EACH site in a single cycle (same cron
+// schedule as before sites were introduced) - the agent_monitoring history snapshot is
+// taken EXACTLY ONCE here (not per site, see snapshotCurrentMonitoring),
+// while the aggregations for the report contents are done per site.
 export async function generateDailyReportsForAllSites() {
   const periodEnd = new Date();
   await snapshotCurrentMonitoring(periodEnd);

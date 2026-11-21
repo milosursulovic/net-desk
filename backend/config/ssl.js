@@ -1,14 +1,14 @@
 import fs from "fs";
 import { SSL_KEY, SSL_CERT } from "./env.js";
 
-// Windows 7 agenti (.NET Framework 4.5.2, ServicePointManager.SecurityProtocol
-// = Tls12) bez KB4019276 update-a nemaju ECDHE/AES-GCM cipher suite-ove -
-// Node-ov moderan default cipher set ih ostavlja bez ijednog zajedničkog
-// suite-a sa serverom, pa TLS handshake propadne (.NET to prijavljuje
-// zbunjujuće kao "remote certificate is invalid"). Eksplicitno dodajemo
-// RSA/CBC suite-ove koje stariji Windows 7 klijenti nude kao fallback, uz
-// honorCipherOrder da moderni klijenti i dalje dobiju jače ECDHE/GCM suite-ove
-// prve u listi. minVersion ostaje TLS 1.2 (ništa slabije se ne dozvoljava).
+// Windows 7 agents (.NET Framework 4.5.2, ServicePointManager.SecurityProtocol
+// = Tls12) without the KB4019276 update lack ECDHE/AES-GCM cipher suites -
+// Node's modern default cipher set leaves them without a single suite in
+// common with the server, so the TLS handshake fails (.NET reports it
+// confusingly as "remote certificate is invalid"). We explicitly add the
+// RSA/CBC suites older Windows 7 clients offer as a fallback, with
+// honorCipherOrder so modern clients still get the stronger ECDHE/GCM suites
+// first in the list. minVersion stays TLS 1.2 (nothing weaker is allowed).
 const CIPHERS = [
   "ECDHE-RSA-AES128-GCM-SHA256",
   "ECDHE-RSA-AES256-GCM-SHA384",

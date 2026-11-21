@@ -4,12 +4,12 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Common.Inventory
 {
     /// <summary>
-    /// Telo POST /api/agents/inventory. Nazivi polja su namerno eksplicitno
-    /// fiksirani preko [JsonProperty] (ne oslanjamo se na automatsku camelCase
-    /// konverziju za akronimska polja poput "NICs"/"RAMModules" - backend ih
-    /// prihvata i u PascalCase i camelCase varijanti preko pick() helper-a
-    /// (metadata.service.js), ali ovde koristimo tačno prvu/PascalCase varijantu
-    /// iz backend koda da nema nikakve dvosmislenosti).
+    /// Body of POST /api/agents/inventory. The field names are deliberately pinned
+    /// explicitly via [JsonProperty] (we don't rely on automatic camelCase
+    /// conversion for acronym fields like "NICs"/"RAMModules" - the backend
+    /// accepts them in both PascalCase and camelCase variants via the pick() helper
+    /// (metadata.service.js), but here we use exactly the first/PascalCase variant
+    /// from the backend code so there's no ambiguity at all).
     /// </summary>
     public class InventoryRequest
     {
@@ -23,58 +23,58 @@ namespace NetdeskAgent.Common.Inventory
         public string Department { get; set; }
 
         /// <summary>
-        /// Da li folder C:\Izvolte postoji na ovoj mašini - fiksna, uvek ista
-        /// putanja (ne zavisi od sistemskog diska/instalacije), prosta
-        /// Directory.Exists provera u InventoryCollector.Collect(). Nullable
-        /// (ne obican bool) je NAMERNO - minimalni sync-evi (event log/DNS/
-        /// process detections u AgentWorker.cs) prave InventoryRequest
-        /// direktno bez ovog polja postavljenog, pa bi obican bool uvek nosio
-        /// default(false) i lažno prijavio "folder ne postoji" na svaki takav
-        /// sync. null + RawJsonSettings.NullValueHandling.Ignore znači da se
-        /// polje potpuno izostavi iz JSON-a kad nije stvarno proveravano -
-        /// backend ga onda ne dira (isti obrazac kao OS/rdp_app merge).
+        /// Whether the C:\Izvolte folder exists on this machine - a fixed, always identical
+        /// path (doesn't depend on the system disk/install), a simple
+        /// Directory.Exists check in InventoryCollector.Collect(). Nullable
+        /// (not a plain bool) is DELIBERATE - the minimal syncs (event log/DNS/
+        /// process detections in AgentWorker.cs) build an InventoryRequest
+        /// directly without this field set, so a plain bool would always carry
+        /// default(false) and falsely report "folder doesn't exist" on every such
+        /// sync. null + RawJsonSettings.NullValueHandling.Ignore means the
+        /// field is omitted from the JSON entirely when it wasn't actually checked -
+        /// the backend then doesn't touch it (the same pattern as the OS/rdp_app merge).
         /// </summary>
         [JsonProperty("hasIzvolteFolder")]
         public bool? HasIzvolteFolder { get; set; }
 
         /// <summary>
-        /// Popis fajlova (relativna putanja + veličina) u sopstvenom Service
-        /// instalacionom folderu - backend to poredi sa manifestom release-a
-        /// koji odgovara agentVersion-u koji ovaj agent prijavljuje preko
-        /// heartbeat-a (checkServiceFilesMismatchService), da uhvati
-        /// pokvaren/delimičan update. Null (ne prazna lista) na minimalnim
-        /// sync-evima gde se ne prikuplja - isti obrazac kao HasIzvolteFolder.
+        /// List of files (relative path + size) in its own Service
+        /// install folder - the backend compares this against the manifest of the release
+        /// matching the agentVersion this agent reports via
+        /// heartbeat (checkServiceFilesMismatchService), to catch a
+        /// broken/partial update. Null (not an empty list) on minimal
+        /// syncs where it isn't collected - the same pattern as HasIzvolteFolder.
         /// </summary>
         [JsonProperty("serviceFiles")]
         public List<InstalledFileItem> ServiceFiles { get; set; }
 
         /// <summary>
-        /// Da li je org-specifičan "CA_SSL_DECRIPT_BOR" root sertifikat
-        /// (cert_CA_SSL_DECRIPT_BOR.crt, uporeduje se po Thumbprint-u sa
-        /// referentnim fajlom preuzetim sa /uploads/downloads/) instaliran u
-        /// Local Machine "Trusted Root Certification Authorities" store-u.
-        /// Nullable iz istog razloga kao HasIzvolteFolder - null kad provera
-        /// nije mogla da se izvrši (npr. server nedostupan), ne "sigurno
-        /// nedostaje". Videti SecurityPostureCollector.cs.
+        /// Whether the org-specific "CA_SSL_DECRIPT_BOR" root certificate
+        /// (cert_CA_SSL_DECRIPT_BOR.crt, compared by Thumbprint against the
+        /// reference file downloaded from /uploads/downloads/) is installed in the
+        /// Local Machine "Trusted Root Certification Authorities" store.
+        /// Nullable for the same reason as HasIzvolteFolder - null when the check
+        /// couldn't run (e.g. the server was unreachable), not "definitely
+        /// missing". See SecurityPostureCollector.cs.
         /// </summary>
         [JsonProperty("trustedRootCertInstalled")]
         public bool? TrustedRootCertInstalled { get; set; }
 
         /// <summary>
-        /// Isto kao TrustedRootCertInstalled, samo za "SSL_TRUST" sertifikat
-        /// (cert_SSL_TRUST.crt) u Local Machine "Intermediate Certification
-        /// Authorities" store-u.
+        /// Same as TrustedRootCertInstalled, just for the "SSL_TRUST" certificate
+        /// (cert_SSL_TRUST.crt) in the Local Machine "Intermediate Certification
+        /// Authorities" store.
         /// </summary>
         [JsonProperty("intermediateCertInstalled")]
         public bool? IntermediateCertInstalled { get; set; }
 
         /// <summary>
-        /// Da li je Secure DNS (DNS-over-HTTPS) potvrđeno isključen preko
-        /// registry politike na SVA četiri pregledača koje
-        /// "Isključi Secure DNS" preset podešava (Chrome/Edge/Brave/Firefox) -
-        /// true samo ako su SVE četiri provere potvrdile isključeno stanje,
-        /// inače false (ne null - registry čitanje nema mrežnu zavisnost,
-        /// uvek daje određen odgovor). Videti SecurityPostureCollector.cs.
+        /// Whether Secure DNS (DNS-over-HTTPS) is confirmed disabled via
+        /// registry policy on ALL four browsers that the
+        /// "Isključi Secure DNS" (disable Secure DNS) preset configures (Chrome/Edge/Brave/Firefox) -
+        /// true only if ALL four checks confirmed the disabled state,
+        /// otherwise false (not null - the registry read has no network dependency,
+        /// it always gives a definite answer). See SecurityPostureCollector.cs.
         /// </summary>
         [JsonProperty("secureDnsDisabled")]
         public bool? SecureDnsDisabled { get; set; }
@@ -137,7 +137,7 @@ namespace NetdeskAgent.Common.Inventory
         public List<ProcessDetectionItem> ProcessDetections { get; set; }
     }
 
-    /// <summary>Odgovor POST /api/agents/inventory - metadata sadržaj nam ovde ne treba, samo potvrda.</summary>
+    /// <summary>Response of POST /api/agents/inventory - we don't need the metadata contents here, just the confirmation.</summary>
     public class InventoryResponse
     {
         [JsonProperty("ok")]
@@ -301,9 +301,9 @@ namespace NetdeskAgent.Common.Inventory
     }
 
     /// <summary>
-    /// Jedan fajl u sopstvenom Service instalacionom folderu - relativna
-    /// putanja (forward-slash, isti separator kao unutar release ZIP-a) i
-    /// veličina u bajtovima. Videti InventoryCollector.CollectServiceFiles().
+    /// One file in its own Service install folder - the relative
+    /// path (forward-slash, the same separator as inside the release ZIP) and
+    /// size in bytes. See InventoryCollector.CollectServiceFiles().
     /// </summary>
     public class InstalledFileItem
     {
@@ -314,7 +314,7 @@ namespace NetdeskAgent.Common.Inventory
         public long SizeBytes { get; set; }
     }
 
-    /// <summary>Odgovara syncComputerSoftware stavci u pdsu.service.js.</summary>
+    /// <summary>Corresponds to a syncComputerSoftware item in pdsu.service.js.</summary>
     public class SoftwareItem
     {
         public string DisplayName { get; set; }
@@ -323,7 +323,7 @@ namespace NetdeskAgent.Common.Inventory
         public string InstallDate { get; set; }
     }
 
-    /// <summary>Odgovara syncComputerDrivers stavci u pdsu.service.js.</summary>
+    /// <summary>Corresponds to a syncComputerDrivers item in pdsu.service.js.</summary>
     public class DriverItem
     {
         public string DeviceName { get; set; }
@@ -333,7 +333,7 @@ namespace NetdeskAgent.Common.Inventory
         public string DriverProviderName { get; set; }
     }
 
-    /// <summary>Odgovara syncComputerServices stavci u pdsu.service.js.</summary>
+    /// <summary>Corresponds to a syncComputerServices item in pdsu.service.js.</summary>
     public class ServiceItem
     {
         public string Name { get; set; }
@@ -344,7 +344,7 @@ namespace NetdeskAgent.Common.Inventory
         public string PathName { get; set; }
     }
 
-    /// <summary>Odgovara syncComputerUpdates stavci u pdsu.service.js (instalirane zakrpe).</summary>
+    /// <summary>Corresponds to a syncComputerUpdates item in pdsu.service.js (installed patches).</summary>
     public class InstalledUpdateItem
     {
         public string Description { get; set; }
@@ -356,7 +356,7 @@ namespace NetdeskAgent.Common.Inventory
         public string InstalledBy { get; set; }
     }
 
-    /// <summary>Odgovara syncComputerPrinters stavci u pdsu.service.js.</summary>
+    /// <summary>Corresponds to a syncComputerPrinters item in pdsu.service.js.</summary>
     public class PrinterItem
     {
         public string Name { get; set; }
@@ -374,7 +374,7 @@ namespace NetdeskAgent.Common.Inventory
         public string Severity { get; set; }
     }
 
-    /// <summary>Windows Event Log unos - computer_event_logs (append-only na backend-u).</summary>
+    /// <summary>A Windows Event Log entry - computer_event_logs (append-only on the backend).</summary>
     public class EventLogItem
     {
         public string LogName { get; set; }
@@ -386,10 +386,10 @@ namespace NetdeskAgent.Common.Inventory
     }
 
     /// <summary>
-    /// Agregiran DNS upit (domen + prvi/poslednji put viđen + broj upita u
-    /// ovom sync prozoru) - computer_dns_queries na backend-u, upsert-uje se
-    /// PO (računar, domen), ne dodaje se jedan red po pojedinačnom upitu.
-    /// Videti DnsLogs.DnsQueryCollector.Snapshot().
+    /// An aggregated DNS query (domain + first/last seen + query count in
+    /// this sync window) - computer_dns_queries on the backend, upserted
+    /// PER (computer, domain), not one row added per individual query.
+    /// See DnsLogs.DnsQueryCollector.Snapshot().
     /// </summary>
     public class DnsQueryItem
     {
@@ -400,9 +400,9 @@ namespace NetdeskAgent.Common.Inventory
     }
 
     /// <summary>
-    /// Pogodak sa watchlist-e pokrenutih procesa (npr. portable AnyDesk/
-    /// TeamViewer) - computer_process_detections na backend-u, upsert-uje
-    /// se PO (računar, ime procesa), isti obrazac kao DnsQueryItem. Videti
+    /// A hit from the watchlist of running processes (e.g. portable AnyDesk/
+    /// TeamViewer) - computer_process_detections on the backend, upserted
+    /// PER (computer, process name), the same pattern as DnsQueryItem. See
     /// ProcessMonitor.ProcessWatchCollector.Scan().
     /// </summary>
     public class ProcessDetectionItem
@@ -413,10 +413,10 @@ namespace NetdeskAgent.Common.Inventory
         public int Count { get; set; }
 
         /// <summary>
-        /// 1 ako je BAR JEDNA instanca ovog procesa uspešno ubijena u ovom
-        /// ciklusu (samo kad je AgentSettings.KillWatchedProcesses uključen),
-        /// inače 0. Agregira se na backend-u kao kill_count, isti obrazac
-        /// kao Count/detection_count.
+        /// 1 if AT LEAST ONE instance of this process was successfully killed in this
+        /// cycle (only when AgentSettings.KillWatchedProcesses is enabled),
+        /// otherwise 0. Aggregated on the backend as kill_count, the same pattern
+        /// as Count/detection_count.
         /// </summary>
         public int Killed { get; set; }
     }

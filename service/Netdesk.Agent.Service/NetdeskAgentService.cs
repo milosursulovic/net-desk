@@ -7,8 +7,8 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Service
 {
     /// <summary>
-    /// Windows Service omotač - sav stvaran rad je u AgentWorker-u tako da
-    /// isti kod radi i pod ServiceBase i u konzolnom debug modu (Program.cs).
+    /// Windows Service wrapper - all the real work is in AgentWorker so that
+    /// the same code runs both under ServiceBase and in console debug mode (Program.cs).
     /// </summary>
     public partial class NetdeskAgentService : ServiceBase
     {
@@ -28,8 +28,8 @@ namespace NetdeskAgent.Service
             _cts = new CancellationTokenSource();
             var worker = new AgentWorker();
 
-            // Task.Run umesto blokiranja OnStart-a - SCM očekuje brz povratak
-            // iz OnStart, inače Windows javlja "servis se nije na vreme pokrenuo".
+            // Task.Run instead of blocking OnStart - the SCM expects a quick return
+            // from OnStart, otherwise Windows reports "the service did not start in a timely fashion".
             _runTask = Task.Run(() => worker.RunAsync(_cts.Token));
         }
 

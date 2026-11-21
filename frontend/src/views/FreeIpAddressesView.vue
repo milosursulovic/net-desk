@@ -85,8 +85,8 @@ import { labelForSite } from '@/constants/sites.js'
 import AppButton from '@/components/AppButton.vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-// Samo za prikaz - stvarni opseg (mrežna+1 do broadcast-1) se računa na
-// serveru (ipAddresses.service.js).
+// Display only - the actual range (network+1 to broadcast-1) is computed on
+// the server (ipAddresses.service.js).
 const SITE_RANGE_LABELS = {
   bolnica: '10.230.62.0/23',
   dom_zdravlja: '10.160.64.0/21',
@@ -110,11 +110,11 @@ function ipToNum(ip) {
   return ip.split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0)
 }
 
-// freeIps dolazi već sortiran uzlazno po numeričkoj vrednosti (backend ih
-// enumeriše redom kroz opseg) - dovoljno je uporediti susedne stavke u nizu,
-// bez ponovnog sortiranja. "Opseg" = bar 2 UZASTOPNE slobodne adrese (razlika
-// tačno 1) - izolovana slobodna adresa (npr. ...1, ...3, ...5, sve
-// isprekidane) se namerno NE boji, to nije opseg koji se može dodeliti u nizu.
+// freeIps arrives already sorted ascending by numeric value (the backend
+// enumerates them in order through the range) - comparing adjacent items in the array is enough,
+// no re-sorting needed. A "range" = at least 2 CONSECUTIVE free addresses (a difference of
+// exactly 1) - an isolated free address (e.g. ...1, ...3, ...5, all
+// broken up) is deliberately NOT colored, that's not a range that can be assigned in sequence.
 const rangedIps = computed(() => {
   const marked = new Set()
   const ips = freeIps.value

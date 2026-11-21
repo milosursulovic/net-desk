@@ -16,9 +16,9 @@ const emit = defineEmits(['update:modelValue'])
 
 const customInput = ref('')
 
-// Unija predloženih opcija i već selektovanih vrednosti (npr. custom grupa
-// dodata ranije, ili grupa koja više ne postoji u predlozima) - da se ništa
-// selektovano ne "izgubi" iz prikaza.
+// Union of the suggested options and already selected values (e.g. a custom group
+// added earlier, or a group that no longer exists in the suggestions) - so nothing
+// selected gets "lost" from the display.
 const allOptions = computed(() => {
   const set = new Set([...props.options, ...props.modelValue])
   return [...set].sort((a, b) => a.localeCompare(b))

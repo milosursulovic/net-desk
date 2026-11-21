@@ -11,8 +11,8 @@ const router = express.Router();
 
 router.use(cacheNoStore);
 
-// Samo nalog "admin" for reads too - koji fičeri su uključeni je samo po
-// sebi administrativna stvar, ista logika kao users.routes.js/activityLog.routes.js.
+// Only the "admin" account, for reads too - which features are enabled is
+// inherently an administrative matter, same logic as users.routes.js/activityLog.routes.js.
 router.use(requireRootAdmin);
 
 router.get("/", asyncHandler(listSettingsController));

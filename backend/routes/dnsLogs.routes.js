@@ -10,9 +10,9 @@ import {
 
 const router = express.Router();
 
-// Istorija DNS upita zaposlenih je osetljiv employee-monitoring podatak, pa
-// je čitanje ograničeno na admin+operator (ne i viewer); pisanje (crna
-// lista domena) ostaje isključivo admin.
+// Employees' DNS query history is sensitive employee-monitoring data, so
+// reading is restricted to admin+operator (not viewer); writing (the domain
+// blacklist) stays admin-only.
 router.use(readRequiresOperator);
 
 router.get("/", asyncHandler(listDnsQueriesController));

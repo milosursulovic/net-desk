@@ -7,9 +7,9 @@ import AppButton from '@/components/AppButton.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
 defineProps({
-  // Kad se dugme prikazuje unutar UserMenu.vue dropdown-a, taj meni stavka
-  // je trigger - ovde ostaje samo modal (i dalje montiran/kontrolisan
-  // isključivo preko open() iz defineExpose ispod).
+  // When the button is shown inside UserMenu.vue's dropdown, that menu item
+  // is the trigger - only the modal remains here (still mounted/controlled
+  // exclusively via open() from defineExpose below).
   hideTrigger: { type: Boolean, default: false },
 })
 

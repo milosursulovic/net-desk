@@ -7,10 +7,10 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Inventory
 {
     /// <summary>
-    /// Instalirani softver preko registry Uninstall ključeva - namerno NE preko
-    /// WMI Win32_Product (poznato spor upit koji pokreće MSI consistency-check
-    /// odnosno "repair" za svaki paket, ozbiljno degradira performanse mašine).
-    /// Čita i 64-bit i 32-bit (WOW6432Node) pogled na HKLM.
+    /// Installed software via the registry Uninstall keys - deliberately NOT via
+    /// WMI Win32_Product (a notoriously slow query that triggers an MSI consistency check,
+    /// i.e. a "repair", for every package, seriously degrading machine performance).
+    /// Reads both the 64-bit and 32-bit (WOW6432Node) views of HKLM.
     /// </summary>
     public static class SoftwareCollector
     {
@@ -51,7 +51,7 @@ namespace NetdeskAgent.Common.Inventory
             }
             catch (PlatformNotSupportedException)
             {
-                // Registry64 pogled ne postoji na pravom 32-bit OS-u - preskoči.
+                // The Registry64 view doesn't exist on a real 32-bit OS - skip.
             }
             catch (Exception ex)
             {
@@ -66,9 +66,9 @@ namespace NetdeskAgent.Common.Inventory
             var displayName = subKey.GetValue("DisplayName") as string;
             if (string.IsNullOrWhiteSpace(displayName)) return null;
 
-            // SystemComponent=1 označava interne/skrivene komponente (npr. update
-            // paketi, redistributable-ovi koje Windows sam upravlja) - preskačemo
-            // ih kao i standardni "Programs and Features" prikaz u Panelu.
+            // SystemComponent=1 marks internal/hidden components (e.g. update
+            // packages, redistributables that Windows manages itself) - we skip
+            // them just like the standard "Programs and Features" view in Control Panel.
             var systemComponent = subKey.GetValue("SystemComponent");
             if (systemComponent is int && (int)systemComponent == 1) return null;
 
@@ -82,13 +82,13 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// Otkriveno uživo: neki drajver instaleri (npr. BIXOLON štampački
-        /// drajver) pišu fiksne-veličine bafere u registry bez pravog null-
-        /// terminatora na kraju iskorišćenog dela - RegistryKey.GetValue skida
-        /// SAMO JEDAN trailing null karakter, pa stotine preostalih "\0" bajtova
-        /// stižu ovde kao deo "stringa". Sve posle PRVOG null bajta se odbacuje
-        /// pre slanja backend-u, koji ima uske varchar kolone ("Data too long"
-        /// je uživo srušio ceo insert, ne samo taj jedan red).
+        /// Discovered live: some driver installers (e.g. the BIXOLON printer
+        /// driver) write fixed-size buffers into the registry without a proper null
+        /// terminator at the end of the used part - RegistryKey.GetValue strips
+        /// ONLY ONE trailing null character, so hundreds of remaining "\0" bytes
+        /// arrive here as part of the "string". Everything after the FIRST null byte is discarded
+        /// before sending to the backend, which has narrow varchar columns ("Data too long"
+        /// broke the whole insert live, not just that one row).
         /// </summary>
         private static string CleanRegistryString(string raw)
         {
@@ -98,13 +98,13 @@ namespace NetdeskAgent.Common.Inventory
         }
 
         /// <summary>
-        /// Registry obično čuva InstallDate kao "yyyymmdd", ali neki instaleri
-        /// pišu potpuno drugačiji/neispravan format (viđeno uživo: čist broj
-        /// poput "1784235052", ni nalik datumu). Backend upisuje ovo u MySQL
-        /// DATE kolonu - vraćanje sirove neprepoznate vrednosti bi srušilo ceo
-        /// insert (potvrđeno uživo testiranjem). Kad format nije prepoznat,
-        /// vraćamo null - "nepoznat datum instalacije" je legitimno stanje,
-        /// kolona je nullable.
+        /// The registry usually stores InstallDate as "yyyymmdd", but some installers
+        /// write a completely different/invalid format (seen live: a plain number
+        /// like "1784235052", nothing like a date). The backend writes this into a MySQL
+        /// DATE column - returning the raw unrecognized value would break the whole
+        /// insert (confirmed by live testing). When the format isn't recognized,
+        /// we return null - "unknown install date" is a legitimate state,
+        /// the column is nullable.
         /// </summary>
         private static string ParseInstallDate(string raw)
         {

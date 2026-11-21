@@ -134,7 +134,7 @@ describe("notifications (integration, real DB) - possible agent malfunction chec
     const domZdravlja = await countAgentOfflineButIpOnline("dom_zdravlja");
     expect(domZdravlja).toBe(0);
 
-    // Agent se javi online -> više nije mismatch.
+    // The agent reports online -> no longer a mismatch.
     await heartbeat(agentId, {}, "10.230.62.81");
     const afterHeartbeat = await countAgentOfflineButIpOnline("bolnica");
     expect(afterHeartbeat).toBe(bolnica - 1);

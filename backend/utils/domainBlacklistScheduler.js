@@ -1,9 +1,9 @@
 import { syncDomainBlacklists } from "../services/domainBlacklistSync.service.js";
 
-// Isti self-correcting setTimeout-chain obrazac kao serverHealthScheduler.js
-// - odmah pri startu (novi server odmah dobija punu listu, ne čeka do 24h),
-// pa ponovo svakih intervalHours otad, bez akumuliranog drift-a ako jedan
-// ciklus potraje duže (spor izvor/mreža).
+// Same self-correcting setTimeout-chain pattern as serverHealthScheduler.js
+// - immediately on startup (a new server gets the full list right away, doesn't wait up to 24h),
+// then again every intervalHours from then on, with no accumulated drift if one
+// cycle takes longer (a slow source/network).
 export function startDomainBlacklistSyncLoop(intervalHours = 24) {
   console.log(`🚫 Sinhronizacija crne liste domena na svakih ${intervalHours}h`);
 

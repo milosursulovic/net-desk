@@ -36,9 +36,9 @@ export async function authenticateManager(req, _res, next) {
   const providedHash = Buffer.from(hashApiKey(apiKey), "hex");
   const storedHash = Buffer.from(manager.apiKeyHash, "hex");
 
-  // Isti razlog kao agentAuth.middleware.js's authenticateAgent - dužina se
-  // proverava PRE timingSafeEqual jer ta funkcija baca na neusklađenim
-  // dužinama bafera umesto da vrati false.
+  // Same reason as agentAuth.middleware.js's authenticateAgent - the length is
+  // checked BEFORE timingSafeEqual because that function throws on mismatched
+  // buffer lengths instead of returning false.
   const isMatch =
     providedHash.length === storedHash.length &&
     crypto.timingSafeEqual(providedHash, storedHash);

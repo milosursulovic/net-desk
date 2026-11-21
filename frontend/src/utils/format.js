@@ -11,14 +11,14 @@ export function fmtDateOnly(d) {
   return isNaN(dt) ? '—' : dt.toLocaleDateString()
 }
 
-// Intl.RelativeTimeFormat lokalizuje "pre X" formulaciju sam (npr. srpski
-// padeži "pre 2 minuta" vs "pre 5 minuta", ili engleski "2 minutes ago") -
-// nema potrebe za ručnim t() ključevima po jedinici vremena. `locale` je
-// i18n.global.locale.value ('sr'/'en') iz pozivaoca (Vue komponenta).
-// 'sr-Latn' (ne golo 'sr') - bez toga Intl vrati ćirilicu, van stila
-// ostatka (latiničnog) interfejsa. numeric: 'always' - bez toga Intl za
-// male vrednosti vraća idiomatske reči ("juče", "prekjuče") umesto broja,
-// nekonzistentno sa ostatkom formata.
+// Intl.RelativeTimeFormat localizes the "X ago" phrasing itself (e.g. Serbian
+// grammatical cases "pre 2 minuta" vs "pre 5 minuta", or English "2 minutes ago") -
+// no need for manual t() keys per time unit. `locale` is
+// i18n.global.locale.value ('sr'/'en') from the caller (a Vue component).
+// 'sr-Latn' (not bare 'sr') - without it Intl returns Cyrillic, out of style with
+// the rest of the (Latin-script) interface. numeric: 'always' - without it Intl returns
+// idiomatic words for small values ("juče", "prekjuče") instead of a number,
+// inconsistent with the rest of the format.
 export function fmtRelative(d, locale = 'sr') {
   if (!d) return '—'
   const t = new Date(d).getTime()

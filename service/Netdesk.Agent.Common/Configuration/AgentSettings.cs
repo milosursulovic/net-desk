@@ -5,18 +5,18 @@ using Newtonsoft.Json;
 namespace NetdeskAgent.Common.Configuration
 {
     /// <summary>
-    /// Administrativna konfiguracija (server, tajming), učitana iz config.json.
-    /// Za razliku od AgentState, ovaj fajl ne piše sam agent - admin ga postavlja
-    /// pre prvog pokretanja servisa.
+    /// Administrative configuration (server, timing), loaded from config.json.
+    /// Unlike AgentState, this file isn't written by the agent itself - the admin sets it
+    /// before the service is first started.
     /// </summary>
     public class AgentSettings
     {
         public string ServerBaseUrl { get; set; }
 
         /// <summary>
-        /// Koristi se samo za jednokratni enroll poziv. Nakon uspešnog enroll-a
-        /// agent trajno koristi agentId+apiKey iz AgentState i ovo polje se više
-        /// ne čita - može se ukloniti iz config.json posle prve registracije.
+        /// Used only for the one-time enroll call. After a successful enroll the
+        /// agent permanently uses agentId+apiKey from AgentState and this field is no longer
+        /// read - it can be removed from config.json after the first registration.
         /// </summary>
         public string EnrollToken { get; set; }
 
@@ -28,19 +28,19 @@ namespace NetdeskAgent.Common.Configuration
         public int UpdateCheckIntervalSeconds { get; set; } = 1800;
 
         /// <summary>
-        /// Učestalije od DNS/Event Log sync-a (300s) namerno - cilj je
-        /// uhvatiti AKTIVNU remote-access sesiju u toku, ne ostaviti
-        /// istorijski trag koji stigne prekasno.
+        /// More frequent than the DNS/Event Log sync (300s) on purpose - the goal is to
+        /// catch an ACTIVE remote-access session in progress, not to leave a
+        /// historical trace that arrives too late.
         /// </summary>
         public int ProcessMonitorIntervalSeconds { get; set; } = 60;
 
         /// <summary>
-        /// Watchlist za ProcessMonitor.ProcessWatchCollector - substring,
-        /// case-insensitive poređenje sa imenom pokrenutog procesa (bez
-        /// ".exe" ekstenzije). Built-in default pokriva trenutne i starije
-        /// TeamViewer izvršne nazive - admin dopunjuje/menja preko
-        /// "Upiši key/value u config.json" preset skripte, bez potrebe za
-        /// rebuild/redeploy agenta.
+        /// Watchlist for ProcessMonitor.ProcessWatchCollector - a substring,
+        /// case-insensitive comparison against the name of the running process (without
+        /// the ".exe" extension). The built-in default covers current and older
+        /// TeamViewer executable names - the admin extends/changes it via the
+        /// "Upiši key/value u config.json" (write key/value to config.json) preset script, without needing to
+        /// rebuild/redeploy the agent.
         /// </summary>
         public List<string> WatchedProcessNames { get; set; } = new List<string>
         {
@@ -51,31 +51,31 @@ namespace NetdeskAgent.Common.Configuration
         };
 
         /// <summary>
-        /// Master prekidač za AKTIVNO ubijanje procesa sa WatchedProcessNames
-        /// (ne samo detekcija/log) - namerno podrazumevano FALSE. Watchlist
-        /// gore je popunjena podrazumevanim vrednostima, pa bi TRUE kao
-        /// default značio da rollout NOVE verzije agenta odmah, tiho počinje
-        /// da ubija te procese na celoj floti bez ikakvog eksplicitnog
-        /// opt-in koraka. Admin ovo svesno uključuje preko "Upiši key/value
-        /// u config.json" preset skripte, po mogućstvu prvo na pilot mašini.
+        /// Master switch for ACTIVELY killing processes from WatchedProcessNames
+        /// (not just detection/logging) - deliberately FALSE by default. The watchlist
+        /// above is filled with default values, so TRUE as the
+        /// default would mean that rolling out a NEW agent version immediately, silently starts
+        /// killing those processes across the whole fleet without any explicit
+        /// opt-in step. The admin turns this on knowingly via the "Upiši key/value
+        /// u config.json" (write key/value to config.json) preset script, preferably on a pilot machine first.
         /// </summary>
         public bool KillWatchedProcesses { get; set; } = false;
 
         /// <summary>
-        /// Port na kom lokalni UltraVNC server (instaliran pored agenta,
-        /// vezan samo na 127.0.0.1) sluša. Podrazumevani VNC port 5900 NIJE
-        /// korišćen kao default ovde jer je na upravljanim mašinama već
-        /// zauzet postojećim RealVNC serverom (nezavisna instalacija, van
-        /// ovog sistema) - UltraVNC treba instalirati na drugom portu da
-        /// izbegne konflikt. Videti NetdeskAgent.Common.Vnc.VncBridge.
+        /// The port the local UltraVNC server (installed next to the agent,
+        /// bound only to 127.0.0.1) listens on. The default VNC port 5900 is NOT
+        /// used as the default here because on managed machines it's already
+        /// taken by an existing RealVNC server (an independent install, outside
+        /// this system) - UltraVNC should be installed on a different port to
+        /// avoid the conflict. See NetdeskAgent.Common.Vnc.VncBridge.
         /// </summary>
         public int VncLocalPort { get; set; } = 5901;
 
         /// <summary>
-        /// Koliko sekundi prozor za pristanak korisnika (ConsentPrompt) čeka
-        /// odgovor pre nego što se tretira kao "timeout" i preuzimanje ekrana
-        /// se odbije. Zabrana samoinicijativnog preuzimanja ekrana - most se
-        /// nikad ne diže bez eksplicitnog "Da" u ovom roku.
+        /// How many seconds the user consent dialog (ConsentPrompt) waits for
+        /// an answer before it's treated as a "timeout" and the screen capture
+        /// is refused. Ban on unsolicited screen capture - the bridge
+        /// never comes up without an explicit "Yes" within this time.
         /// </summary>
         public int VncConsentTimeoutSeconds { get; set; } = 60;
 

@@ -1,10 +1,10 @@
-// Mora da se poklapa sa backend-ovim COMMAND_TYPES (dtos/agentJobs.dto.js).
-// start_netdesk_agent/stop_netdesk_agent/restart_netdesk_agent namerno NISU
-// ovde (backend i dalje prihvata te tipove, samo se ne nude ovde) - bile su
-// puki alias za restart_service/start_service/stop_service sa
-// payload.serviceName="NetdeskAgent", i zbunjivale su korisnika sad kad
-// AgentDetailView.vue ima poseban "Manager" tab sa istom svrhom preko
-// stvarno nezavisnog kanala.
+// Must match the backend's COMMAND_TYPES (dtos/agentJobs.dto.js).
+// start_netdesk_agent/stop_netdesk_agent/restart_netdesk_agent are deliberately NOT
+// here (the backend still accepts those types, they just aren't offered here) - they were
+// mere aliases for restart_service/start_service/stop_service with
+// payload.serviceName="NetdeskAgent", and confused users now that
+// AgentDetailView.vue has a separate "Manager" tab with the same purpose over a
+// truly independent channel.
 export const COMMAND_TYPES = [
   'restart_computer',
   'shutdown_computer',

@@ -13,9 +13,9 @@ const router = express.Router();
 
 router.use(cacheNoStore);
 
-// Ceo folder se javno servira bez auth-a (routes/index.js, /uploads/downloads
-// static mount) - upravljanje njime (šta se tamo nalazi) je namerno
-// admin-only na svakoj ruti, ne samo na delete-u kao kod flagged/agent-releases.
+// The whole folder is served publicly without auth (routes/index.js, /uploads/downloads
+// static mount) - managing it (what lives there) is deliberately
+// admin-only on every route, not just on delete as with flagged/agent-releases.
 router.use(requireRole("admin"));
 
 router.get("/", asyncHandler(listDownloadsFolderController));

@@ -104,10 +104,10 @@ async function closeSession(sessionId, reason) {
   }
 }
 
-// remoteAddress stize kao IPv4-mapirani IPv6 (::ffff:10.x) ili ::1 za
-// loopback - normalizuj na goli IPv4 da bi se poklopio sa ip_entries.ip. Kad
-// backend sam servira frontend (same-origin, vidi CORS napomenu u
-// routes/index.js) nema proxy-ja, ali X-Forwarded-For se postuje ako postoji.
+// remoteAddress arrives as IPv4-mapped IPv6 (::ffff:10.x) or ::1 for
+// loopback - normalize to bare IPv4 so it matches ip_entries.ip. When the
+// backend serves the frontend itself (same-origin, see the CORS note in
+// routes/index.js) there's no proxy, but X-Forwarded-For is honored if present.
 function viewerIpFromRequest(req) {
   const fwd = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   let ip = fwd || req.socket?.remoteAddress || "";
@@ -115,9 +115,9 @@ function viewerIpFromRequest(req) {
   return ip || null;
 }
 
-// MAC IKT (viewer) radne stanice se ne moze dobiti iz browsera - jedini
-// server-side izvor je razresavanje IP-a preko ip_entries -> computer_metadata
-// NIC-ova. Vraca null ako stanica nije upravljana (nema agenta/metapodataka).
+// The MAC of the IT worker's (viewer) workstation can't be obtained from the browser - the only
+// server-side source is resolving the IP via ip_entries -> computer_metadata
+// NICs. Returns null if the workstation isn't managed (no agent/metadata).
 async function resolveViewerMac(viewerIp) {
   if (!viewerIp) return null;
   try {
@@ -130,10 +130,10 @@ async function resolveViewerMac(viewerIp) {
   }
 }
 
-// Neizbrisivi audit trag pocetka sesije (akt: ime IKT radnika, ime
-// odobravaoca, tacno vreme, IP+MAC obe radne stanice). Cita svezu sesiju da
-// pokupi viewer IP/MAC (upisan kad se IKT browser zakacio) i agent IP/MAC +
-// odobravaoca (upisano pri pristanku).
+// Indelible audit trail of the session start (the act: IT worker's name, the
+// approver's name, exact time, IP+MAC of both workstations). Reads the fresh session to
+// pick up the viewer IP/MAC (written when the IT worker's browser attached) and the agent IP/MAC +
+// approver (written at consent time).
 async function logVncSessionStarted(sessionId) {
   const s = await findVncSessionById(sessionId);
   if (!s) return;
@@ -192,12 +192,12 @@ export function attachVncRelay(server) {
     try {
       url = new URL(req.url, "https://placeholder.invalid");
     } catch {
-      // Ne uništavamo socket ovde bezuslovno - ostavlja prostor da neki
-      // drugi "upgrade" listener na istom HTTPS serveru obradi putanju koju
-      // ovaj handler ne prepoznaje (Node poziva SVAKI registrovani listener,
-      // ne samo prvi koji se poklopi). Neprepoznata/nevalidna putanja
-      // jednostavno ostaje nerukovana ako je nijedan handler ne prepozna -
-      // klijent dobija timeout umesto eksplicitnog RST-a.
+      // We don't destroy the socket here unconditionally - this leaves room for some
+      // other "upgrade" listener on the same HTTPS server to handle a path that
+      // this handler doesn't recognize (Node calls EVERY registered listener,
+      // not just the first one that matches). An unrecognized/invalid path
+      // simply stays unhandled if no handler recognizes it -
+      // the client gets a timeout instead of an explicit RST.
       return;
     }
 
@@ -206,10 +206,10 @@ export function attachVncRelay(server) {
       const sessionId = Number(url.searchParams.get("sessionId"));
       const session = sessionId ? await findVncSessionById(sessionId) : null;
 
-      // Zabrana samoinicijativnog preuzimanja ekrana: most se NE sme
-      // uspostaviti dok korisnik na radnoj stanici nije eksplicitno odobrio
-      // sesiju. Agent to i sam postuje (ne zove vnc-stream bez 'granted'),
-      // ovo je odbrana u dubinu na serverskoj strani.
+      // Ban on unsolicited screen capture: the bridge must NOT be
+      // established until the user at the workstation has explicitly approved the
+      // session. The agent honors this itself (doesn't call vnc-stream without 'granted'),
+      // this is server-side defense in depth.
       if (
         !agent ||
         !session ||
@@ -224,10 +224,10 @@ export function attachVncRelay(server) {
         const entry = getOrCreateSession(sessionId, agent.id);
         entry.agentSocket = ws;
 
-        // Listener-i se kace SINHRONO, pre bilo kakvog await-a - "ws" ne
-        // bafera poruke stigle pre nego sto postoji "message" listener, pa bi
-        // await pre ovoga ispustio prve RFB bajtove (framebuffer update koji
-        // agent posalje odmah po otvaranju).
+        // Listeners are attached SYNCHRONOUSLY, before any await - "ws" doesn't
+        // buffer messages that arrive before a "message" listener exists, so an
+        // await before this would drop the first RFB bytes (the framebuffer update the
+        // agent sends right after opening).
         ws.on("message", (data, isBinary) => {
           const viewer = sessions.get(sessionId)?.viewerSocket;
           if (viewer?.readyState === WebSocket.OPEN) viewer.send(data, { binary: isBinary });
@@ -235,8 +235,8 @@ export function attachVncRelay(server) {
         ws.on("close", () => closeSession(sessionId, "agent_disconnected"));
         ws.on("error", () => closeSession(sessionId, "agent_error"));
 
-        // Aktivacija + neizbrisivi audit zapis pocetka sesije - async, posle
-        // kacenja listener-a. markVncSessionActive sam proverava 'granted'.
+        // Activation + indelible audit record of the session start - async, after
+        // attaching the listeners. markVncSessionActive checks 'granted' itself.
         markVncSessionActive(sessionId)
           .then((activated) => (activated ? logVncSessionStarted(sessionId) : null))
           .catch((err) => console.error("markVncSessionActive neuspešno", err));
@@ -264,8 +264,8 @@ export function attachVncRelay(server) {
         entry.requestedByUserId = jwtPayload.userId;
         entry.requestedByUsername = jwtPayload.username;
 
-        // Listener-i sinhrono, pre await-a (isti razlog kao agent strana -
-        // "ws" ne bafera poruke stigle pre "message" listener-a).
+        // Listeners synchronously, before await (same reason as the agent side -
+        // "ws" doesn't buffer messages that arrive before the "message" listener).
         ws.on("message", (data, isBinary) => {
           const agentSocket = sessions.get(sessionId)?.agentSocket;
           if (agentSocket?.readyState === WebSocket.OPEN) agentSocket.send(data, { binary: isBinary });
@@ -273,8 +273,8 @@ export function attachVncRelay(server) {
         ws.on("close", () => closeSession(sessionId, "viewer_disconnected"));
         ws.on("error", () => closeSession(sessionId, "viewer_error"));
 
-        // IP+MAC IKT radne stanice za audit (akt trazi obe stanice). MAC se
-        // razresava preko ip_entries - null ako IKT stanica nije upravljana.
+        // IP+MAC of the IT worker's workstation for the audit (the act requires both workstations). The MAC is
+        // resolved via ip_entries - null if the IT worker's workstation isn't managed.
         resolveViewerMac(viewerIp)
           .then((viewerMac) => setVncSessionViewerInfo(sessionId, { viewerIp, viewerMac }))
           .catch((err) => console.error("setVncSessionViewerInfo neuspešno", err));
@@ -282,8 +282,8 @@ export function attachVncRelay(server) {
       return;
     }
 
-    // Namerno NEMA socket.destroy() ovde - vidi napomenu kod URL parse
-    // catch-a iznad, ovaj handler ne sme da uništi socket za putanje koje
-    // pripadaju nekom drugom "upgrade" handleru na istom serveru.
+    // Deliberately NO socket.destroy() here - see the note at the URL parse
+    // catch above, this handler must not destroy the socket for paths that
+    // belong to some other "upgrade" handler on the same server.
   });
 }

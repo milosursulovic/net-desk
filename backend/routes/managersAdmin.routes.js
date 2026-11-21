@@ -13,9 +13,9 @@ router.use(cacheNoStore);
 
 router.post("/:managerId/jobs", asyncHandler(createManagerJobController));
 router.get("/:managerId/jobs", asyncHandler(listManagerJobsController));
-// "/jobs/:jobId/cancel" (drugi segment doslovno "jobs", ne broj) se nikad ne
-// poklapa sa "/:managerId/jobs" (drugi segment doslovno "jobs" TREĆI put bi
-// bio managerId koji ovde ne postoji) - isti obrazac kao agentsAdmin.routes.js.
+// "/jobs/:jobId/cancel" (second segment literally "jobs", not a number) never
+// matches "/:managerId/jobs" (the second segment literally "jobs" would be the THIRD time
+// managerId, which doesn't exist here) - same pattern as agentsAdmin.routes.js.
 router.post("/jobs/:jobId/cancel", asyncHandler(cancelManagerJobController));
 
 export default router;

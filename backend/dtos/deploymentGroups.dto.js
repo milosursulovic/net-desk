@@ -8,9 +8,9 @@ export const AgentDeploymentGroupSchema = z.object({
   groupName: z.string().trim().min(1).max(150),
 });
 
-// Isti agentIds oblik/limit kao BatchCreateJobSchema (agentJobs.dto.js) -
-// jedno mesto (agents.service.js) obrađuje listu sekvencijalno zbog istog
-// DB pool ograničenja.
+// Same agentIds shape/limit as BatchCreateJobSchema (agentJobs.dto.js) -
+// one place (agents.service.js) processes the list sequentially because of
+// the same DB pool limit.
 export const BatchAgentDeploymentGroupSchema = z.object({
   agentIds: z.array(z.coerce.number().int().positive()).min(1).max(500),
   groupName: z.string().trim().min(1).max(150),

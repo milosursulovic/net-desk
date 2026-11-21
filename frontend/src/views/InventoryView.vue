@@ -285,7 +285,7 @@ const { confirmState, askConfirm, resolveConfirm } = useConfirmDialog()
 const { isAdmin } = useCurrentUser()
 
 
-// Filter panel je na mobilnom skupljen po difoltu (ispod sm).
+// The filter panel is collapsed by default on mobile (below sm).
 const filtersOpen = ref(false)
 const activeFilterCount = computed(() => (filterType.value !== 'all' ? 1 : 0))
 const fmtDate = fmtDateOnly

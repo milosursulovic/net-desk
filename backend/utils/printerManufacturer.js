@@ -1,7 +1,7 @@
-// Win32_Printer (WMI) nema strukturiran proizvođač podatak - klasifikacija
-// se izvodi iz teksta drajvera/naziva štampača (skoro uvek sadrži brend,
-// npr. "HP Universal Printing PCL 6", "Canon Generic Plus PCL6"). Redosled
-// liste je bitan - prvo poklapanje pobeđuje.
+// Win32_Printer (WMI) has no structured manufacturer field - the classification
+// is derived from the driver/printer name text (it almost always contains the brand,
+// e.g. "HP Universal Printing PCL 6", "Canon Generic Plus PCL6"). The order of the
+// list matters - the first match wins.
 const MANUFACTURER_PATTERNS = [
   { label: "HP", pattern: /\bhp\b|hewlett[- ]?packard/i },
   { label: "Canon", pattern: /canon/i },
@@ -29,8 +29,8 @@ export function classifyPrinterManufacturer(item) {
   return "Nepoznato";
 }
 
-// Grupiše VEĆ anotirane redove (svaki mora imati .manufacturer) po brendu,
-// sortirano po broju računara opadajuće.
+// Groups ALREADY annotated rows (each must have .manufacturer) by brand,
+// sorted by computer count descending.
 export function groupByManufacturer(annotatedItems) {
   const map = new Map();
   for (const item of annotatedItems) {

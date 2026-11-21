@@ -73,8 +73,8 @@ export async function exportWithoutUltravncPdfController(req, res) {
     title: "NetDesk — Računari bez UltraVNC",
     subtitle: `Nema servis nalik UltraVNC u servis inventaru — ukupno: ${items.length}, generisano ${dateStamp}`,
     filename: `NetDesk_bez_UltraVNC_${dateStamp}.pdf`,
-    // Isti razlog kao komentar u exportActivePrintersPdfController - širine
-    // moraju stati u ~762pt korisne širine A4 landscape stranice.
+    // Same reason as the comment in exportActivePrintersPdfController - widths
+    // must fit the ~762pt usable width of an A4 landscape page.
     columns: [
       { header: "Računar", key: "computerName", width: 160 },
       { header: "IP", key: "ip", width: 100 },
@@ -192,10 +192,10 @@ export async function exportPdsuAnalyticsController(req, res) {
         rows: updates,
       },
       {
-        // Svi sinhronizovani štampači po računaru (ne samo podrazumevani) -
-        // dosta mašina nema nijedan štampač markiran kao "Podrazumevani",
-        // pa bi filtriranje samo na Default izbacilo te računare iz izveštaja.
-        // Kolona "Podrazumevani" govori koji red je Windows-ov Default, ako ga ima.
+        // All synced printers per computer (not just the default one) - many
+        // machines have no printer marked as "Podrazumevani" (default), so
+        // filtering on Default only would drop those computers from the report.
+        // The "Podrazumevani" column shows which row is Windows' Default, if any.
         name: "Aktivni štampači",
         columns: [
           { header: "Računar", key: "computerName", width: 22 },
@@ -238,9 +238,9 @@ export async function exportActivePrintersPdfController(req, res) {
     title: "NetDesk — Aktivni štampači po računaru",
     subtitle: `Svi sinhronizovani štampači po računaru, grupisano po proizvođaču — ukupno: ${items.length}, generisano ${dateStamp}`,
     filename: `NetDesk_Aktivni_stampaci_${dateStamp}.pdf`,
-    // A4 landscape usable width (842 - 2*40 margin) je ~762pt - ove širine
-    // moraju sabrati na manje od toga, inače krajnje kolone fizički padaju
-    // van stranice (pdfTable.js ne prelama/skalira kolone automatski).
+    // A4 landscape usable width (842 - 2*40 margin) is ~762pt - these widths
+    // must add up to less than that, otherwise the rightmost columns physically
+    // fall off the page (pdfTable.js doesn't wrap/scale columns automatically).
     columns: [
       { header: "Proizvođač", key: "manufacturer", width: 75 },
       { header: "Računar", key: "computerName", width: 105 },

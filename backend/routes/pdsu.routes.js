@@ -78,8 +78,8 @@ router.post(
 // Event Log
 router.get("/:id/event-logs", asyncHandler(getEventLogsController));
 
-// Izuzeci od crne liste (po računaru) - "ovo NIJE neželjeno na OVOM
-// računaru", ne dira globalni flag za sve ostale (vidi flagged.routes.js).
+// Blacklist exceptions (per computer) - "this is NOT unwanted on THIS
+// computer", doesn't touch the global flag for everyone else (see flagged.routes.js).
 router.get("/:id/flagged-exceptions", asyncHandler(listFlaggedExceptionsController));
 router.post("/:id/flagged-exceptions/:kind/:flaggedId", asyncHandler(addFlaggedExceptionController));
 router.delete("/:id/flagged-exceptions/:kind/:flaggedId", asyncHandler(removeFlaggedExceptionController));

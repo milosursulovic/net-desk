@@ -17,12 +17,12 @@ export async function ingestDnsQueries(ipEntryId, entries) {
       const domain = String(item.domain || "").trim().toLowerCase();
       if (!domain) return null;
 
-      // new Date(...) je namerno, ne sirov string - agent šalje ISO 8601 sa
-      // 7 decimala sekunde i "Z" sufiksom (C#-ov DateTime.ToString("o")),
-      // što MySQL DATETIME odbija direktno ("Incorrect datetime value" -
-      // Z sufiks se nikad ne prihvata, a >6 decimala takođe ne). new Date()
-      // parsira taj string ispravno u JS Date objekat, koji mysql2 zatim
-      // sam ispravno serijalizuje u MySQL-ov format.
+      // new Date(...) on purpose, not a raw string - the agent sends ISO 8601 with
+      // 7 fractional-second digits and a "Z" suffix (C#'s DateTime.ToString("o")),
+      // which MySQL DATETIME rejects directly ("Incorrect datetime value" -
+      // the Z suffix is never accepted, and neither are >6 decimals). new Date()
+      // parses that string correctly into a JS Date object, which mysql2 then
+      // serializes correctly into MySQL's format on its own.
       const firstSeen = item.firstSeen ? new Date(item.firstSeen) : new Date();
       const lastSeen = item.lastSeen ? new Date(item.lastSeen) : new Date();
 
@@ -40,10 +40,10 @@ export async function ingestDnsQueries(ipEntryId, entries) {
   return true;
 }
 
-// sortBy interpoluje se direktno u ORDER BY u repo-u (kolona ne može biti
-// bound parametar) - ova whitelist JESTE SQL injection zaštita, isti
-// obrazac kao inventory.dto.js's SORT_FIELDS. Nikad ne prosleđivati
-// nevalidiran sortBy dalje u repo.
+// sortBy is interpolated directly into ORDER BY in the repo (a column can't be
+// a bound parameter) - this whitelist IS the SQL injection protection, same
+// pattern as inventory.dto.js's SORT_FIELDS. Never pass an
+// unvalidated sortBy on to the repo.
 const SORT_FIELDS = {
   domain: "cdq.domain",
   firstSeen: "cdq.first_seen",
@@ -76,15 +76,15 @@ export async function listDnsQueriesService(query) {
   });
   const { page: safePage, totalPages } = paginate({ page, limit, total });
 
-  // Boolean(...) namerno - EXISTS(...) u repo-u vraća mysql2-ovu sirovu
-  // 0/1 vrednost, ne pravi JSON boolean.
+  // Boolean(...) on purpose - EXISTS(...) in the repo returns mysql2's raw
+  // 0/1 value, not a real JSON boolean.
   const mappedItems = items.map((item) => ({ ...item, isBlacklisted: Boolean(item.isBlacklisted) }));
 
   return { items: mappedItems, page: safePage, limit, total, totalPages, search };
 }
 
 // =========================
-// Crna lista domena - isti dedup-on-insert obrazac kao flagged.service.js
+// Domain blacklist - same dedup-on-insert pattern as flagged.service.js
 // (software/services).
 // =========================
 

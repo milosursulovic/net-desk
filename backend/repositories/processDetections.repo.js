@@ -1,10 +1,10 @@
 import { pool } from "../db/pool.js";
 import { buildLikeSearch } from "../utils/sqlSearch.js";
 
-// Isti obrazac kao computer_dns_queries (dnsLogs.repo.js) - agregat po
-// (ip_entry_id, process_name), ne jedan red po svakoj periodičnoj proveri.
-// detection_count raste preko vremena (koliko puta je ciklus zatekao proces
-// živ), first_seen/last_seen prate opseg. UNIQUE KEY čini upsert idempotentnim.
+// Same pattern as computer_dns_queries (dnsLogs.repo.js) - an aggregate per
+// (ip_entry_id, process_name), not one row per periodic check.
+// detection_count grows over time (how many times a cycle found the process
+// alive), first_seen/last_seen track the range. The UNIQUE KEY makes the upsert idempotent.
 export async function upsertProcessDetectionsBulk(rows) {
   if (!rows.length) return;
 
@@ -43,10 +43,10 @@ export async function listProcessDetections({ search, site, page, limit, sortBy,
   const whereParts = [];
   const params = [];
 
-  // Pretraga pokriva ime procesa I računar/IP/odeljenje od početka (ne
-  // samo domen kao što je isprva bio slučaj kod DNS logova - tamo je
-  // pretraga po hostname-u vraćala 0 rezultata jer je pokrivala samo
-  // domain kolonu, iako su podaci postojali).
+  // The search covers the process name AND computer/IP/department from the start (not
+  // just the domain as was initially the case for DNS logs - there, searching
+  // by hostname returned 0 results because it only covered the
+  // domain column, even though the data existed).
   const { where: searchWhere, params: searchParams } = buildLikeSearch(
     ["cpd.process_name", "ie.computer_name", "ie.ip", "ie.department"],
     search,

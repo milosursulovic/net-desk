@@ -45,7 +45,7 @@
       </button>
     </div>
 
-    <!-- ================= REZULTATI PRETRAGE (cela baza) ================= -->
+    <!-- ================= SEARCH RESULTS (whole database) ================= -->
     <template v-if="search.trim()">
       <div
         v-if="searchLoading"
@@ -126,7 +126,7 @@
       </div>
     </template>
 
-    <!-- ================= NORMALAN DASHBOARD (kad se ne pretražuje) ================= -->
+    <!-- ================= NORMAL DASHBOARD (when not searching) ================= -->
     <template v-else>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
@@ -192,7 +192,7 @@
         />
       </div>
 
-      <!-- ================= BEZ METAPODATAKA ================= -->
+      <!-- ================= WITHOUT METADATA ================= -->
       <SectionHeader :title="t('metadata.withoutMetadata')" />
       <div class="rounded-xl border border-line bg-surface p-4 shadow-sm overflow-x-auto">
         <div class="flex items-center justify-between gap-3 mb-3">
@@ -390,7 +390,7 @@
         </div>
       </div>
 
-      <!-- ================= PROCESOR I SKLADIŠTE ================= -->
+      <!-- ================= PROCESSOR AND STORAGE ================= -->
       <SectionHeader :title="t('metadata.cpuAndStorage')" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -436,7 +436,7 @@
         </div>
       </div>
 
-      <!-- ================= MATIČNA PLOČA / BIOS / WINDOWS UPDATE ================= -->
+      <!-- ================= MOTHERBOARD / BIOS / WINDOWS UPDATE ================= -->
       <SectionHeader :title="t('metadata.motherboardBiosWu')" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -895,10 +895,10 @@ async function exportMissingMetadataPdf() {
   }
 }
 
-// Pretraga preko CELE baze (isti obrazac kao PDSUAnalyticsView) - namerno
-// odvojena od klijentski učitanog `meta` (koji je samo trenutna stranica po
-// 200) i gađa /api/protected/metadata/search, koje pretražuje direktno u
-// bazi bez obzira šta je trenutno učitano u browseru.
+// Search across the WHOLE database (same pattern as PDSUAnalyticsView) - deliberately
+// separate from the client-loaded `meta` (which is only the current page of
+// 200) and hits /api/protected/metadata/search, which searches directly in the
+// DB regardless of what is currently loaded in the browser.
 const { search } = usePaginatedRoute({
   fields: { search: { type: 'string', default: '', omitIfEmpty: true } },
   useReplace: true,
@@ -960,10 +960,10 @@ const osDrilldownMachines = computed(() => {
 })
 
 async function fetchStatsPreferServer() {
-  // Napomena: /api/protected/metadata i /api/protected/metadata/stats već
-  // filtriraju na entry_type = 'computer' na backend-u (vidi metadata.repo.js).
-  // Namerno se NE oslanjamo na /api/protected/ip-addresses kao fallback ovde -
-  // ta lista nije filtrirana po tipu i vraćala bi i aparate.
+  // Note: /api/protected/metadata and /api/protected/metadata/stats already
+  // filter on entry_type = 'computer' on the backend (see metadata.repo.js).
+  // We deliberately do NOT rely on /api/protected/ip-addresses as a fallback here -
+  // that list isn't filtered by type and would also return devices.
   try {
     const res = await fetchWithAuth(`/api/protected/metadata/stats?site=${site.value}`)
     if (res.ok) {

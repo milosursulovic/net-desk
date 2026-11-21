@@ -54,9 +54,9 @@ describe("ipAddresses.service (integration, real DB)", () => {
     });
     ipEntryId = entry.id;
 
-    // osArchitecture/hasIzvolteFolder su agent-derived polja (postavljena
-    // preko inventory sync-a, vidi agents.service.js resolveIpEntryId) - ne
-    // postoje u UpsertIpSchema, pa se za ovaj test postavljaju direktno.
+    // osArchitecture/hasIzvolteFolder are agent-derived fields (set
+    // via inventory sync, see agents.service.js resolveIpEntryId) - they don't
+    // exist in UpsertIpSchema, so for this test they're set directly.
     await pool.execute(
       "UPDATE ip_entries SET os_architecture = ?, has_izvolte_folder = 1 WHERE id = ?",
       ["64-bit", ipEntryId],
@@ -155,10 +155,10 @@ describe("ipAddresses.service (integration, real DB)", () => {
   });
 
   it("listService filters by MULTIPLE selected rdpApp values (per-value substring match, ORed)", async () => {
-    // Sintetičke vrednosti (ne stvarni "AnyDesk"/"TeamViewer") namerno - ova
-    // dev baza je ogledalo produkcije, gde desetine stvarnih računara ima
-    // pravi AnyDesk instaliran, pa bi test sa realnim imenom alata morao da
-    // nagađa dovoljno veliki limit da nadmaši sve to stvarno poklapanje.
+    // Synthetic values (not the real "AnyDesk"/"TeamViewer") on purpose - this
+    // dev DB mirrors production, where dozens of real computers have
+    // AnyDesk actually installed, so a test with a real tool name would have to
+    // guess a large enough limit to outnumber all those real matches.
     const toolA = `VITEST_RDP_A_${Date.now()}`;
     const toolB = `VITEST_RDP_B_${Date.now()}`;
     const a = await createService({ ip: testIp(), rdpApp: toolA, entryType: "computer" });
@@ -344,16 +344,16 @@ describe("ipAddresses.service (integration, real DB)", () => {
 
   describe("freeIpAddressesService", () => {
     it("excludes an occupied address, and never includes the network/broadcast boundary addresses", async () => {
-      // Realan opseg bolnice (10.230.62.0/23) - adresa blizu kraja opsega,
-      // van dometa testIp()-a (203.0.113.x), pa mora ručno da se koristi
-      // stvarna adresa iz opsega da bi test bio smislen.
+      // The real hospital range (10.230.62.0/23) - an address near the end of the range,
+      // outside testIp()'s reach (203.0.113.x), so a real address from the range
+      // has to be used by hand for the test to be meaningful.
       const testAddress = "10.230.63.253";
       const entry = await createService({ ip: testAddress, site: "bolnica", entryType: "computer" });
       ipEntryId = entry.id;
 
       const out = await freeIpAddressesService("bolnica");
       expect(out.site).toBe("bolnica");
-      // /23 = 512 adresa - mrežna i broadcast = 510 upotrebljivih.
+      // /23 = 512 addresses - minus network and broadcast = 510 usable.
       expect(out.total).toBe(510);
       expect(out.freeIps).not.toContain(testAddress);
       expect(out.freeIps).not.toContain("10.230.62.0");
@@ -551,8 +551,8 @@ describe("ipAddresses.service (integration, real DB)", () => {
       expect(match).toBeTruthy();
       expect(match.hasLexarSsd).toBe(true);
       expect(match.reasons).toContain("lexar_ssd");
-      // Ne prijavljuje se has_hdd, jer je pravilo za HDD i dalje "tačno jedan
-      // disk" - ovde ih ima dva.
+      // has_hdd isn't reported, because the HDD rule is still "exactly one
+      // disk" - here there are two.
       expect(match.reasons).not.toContain("has_hdd");
     });
 

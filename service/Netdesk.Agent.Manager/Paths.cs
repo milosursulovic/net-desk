@@ -4,12 +4,12 @@ using System.IO;
 namespace NetdeskAgent.Manager
 {
     /// <summary>
-    /// Sopstvena, minimalna kopija - samo ono što Manager stvarno koristi
-    /// (ne cela Netdesk.Agent.Common.Configuration.Paths). Vrednosti MORAJU
-    /// ostati identične sa agent-ovim Paths.ManagerCommandFile/ManagerLogFile
-    /// (service/Netdesk.Agent.Common/Configuration/Paths.cs) - to je
-    /// dogovor preko fajl-sistema (mailbox putanja), ne deljen kod. Ako se
-    /// jednog dana promeni na agent strani, mora se ručno uskladiti i ovde.
+    /// Its own minimal copy - only what the Manager actually uses
+    /// (not the whole Netdesk.Agent.Common.Configuration.Paths). The values MUST
+    /// stay identical to the agent's Paths.ManagerCommandFile/ManagerLogFile
+    /// (service/Netdesk.Agent.Common/Configuration/Paths.cs) - that's an
+    /// agreement via the file system (the mailbox path), not shared code. If it ever
+    /// changes on the agent side, it must be aligned by hand here too.
     /// </summary>
     internal static class Paths
     {
@@ -21,11 +21,11 @@ namespace NetdeskAgent.Manager
 
         public static string ManagerLogFile => Path.Combine(DataDir, "logs", "manager.log");
 
-        // Manager-ov SOPSTVENI config/state za novi, nezavisni HTTP kanal -
-        // NAMERNO u odvojenom ProgramData folderu (NetdeskAgentManager, ne
-        // NetdeskAgent) da ne bude ikakve zabune sa mailbox putanjama iznad
-        // (koje ostaju u Agent-ovom folderu - to je fajl-sistemski ugovor,
-        // ne deljen kod, i mora ostati netaknuto).
+        // The Manager's OWN config/state for the new, independent HTTP channel -
+        // DELIBERATELY in a separate ProgramData folder (NetdeskAgentManager, not
+        // NetdeskAgent) so there's no confusion at all with the mailbox paths above
+        // (which stay in the Agent's folder - that's a file-system contract,
+        // not shared code, and must stay untouched).
         private static readonly string OwnDataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "NetdeskAgentManager");

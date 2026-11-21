@@ -14,19 +14,19 @@ using NetdeskAgent.Common.Manager;
 namespace NetdeskAgent.Common.Update
 {
     /// <summary>
-    /// Orkestrira proveru/preuzimanje/SHA-256 verifikaciju/digitalni potpis
-    /// nove verzije i prosleđivanje NetdeskAgentManager-u (preko
-    /// ManagerCommandClient) da izvrši stvarnu zamenu fajlova i restart.
-    /// Sama zamena fajlova NIJE ovde - to radi Manager kao odvojen, trajan
-    /// servis, jer NetdeskAgent.Service.exe ne sme (i ne može, dok je fajl u
-    /// upotrebi) da menja sopstveni izvršni fajl dok je pokrenut.
+    /// Orchestrates the check/download/SHA-256 verification/digital signature
+    /// of a new version and handing it off to NetdeskAgentManager (via
+    /// ManagerCommandClient) to perform the actual file swap and restart.
+    /// The file swap itself is NOT here - the Manager does that as a separate, persistent
+    /// service, because NetdeskAgent.Service.exe must not (and can't, while the file is in
+    /// use) change its own executable while it's running.
     ///
-    /// Bezbednost: SHA-256 integritet se uvek proverava. Digitalni potpis se
-    /// proverava AKO je poslat - organizacija već ima internu CA distribuiranu
-    /// u trusted root store svih upravljanih računara (koristi se već za HTTPS
-    /// ka Netdesk serveru), pa se lanac potpisnog sertifikata proverava preko
-    /// X509Chain protiv te iste trusted root - nema potrebe za posebnom
-    /// distribucijom javnog ključa agentu.
+    /// Security: SHA-256 integrity is always checked. The digital signature is
+    /// checked IF it's sent - the organization already has an internal CA distributed
+    /// into the trusted root store of all managed computers (already used for HTTPS
+    /// to the Netdesk server), so the signing certificate's chain is verified via
+    /// X509Chain against that same trusted root - no need for separate
+    /// distribution of a public key to the agent.
     /// </summary>
     public static class UpdateManager
     {
@@ -56,14 +56,14 @@ namespace NetdeskAgent.Common.Update
         }
 
         /// <summary>
-        /// Forsirana reinstalacija konkretnog release-a (force_reinstall_agent
-        /// job, videti AgentWorker.ProcessJobAsync) - BEZ isNewerVersion provere,
-        /// može "reinstalirati" i verziju na kojoj agent VEĆ tvrdi da je (npr.
-        /// popravka oštećene instalacije bez menjanja broja verzije). Digitalni
-        /// potpis se NE proverava ovde - job payload ne nosi potpis/sertifikat
-        /// (admin je eksplicitno izabrao ovaj release iz poverljivog admin
-        /// UI-ja preko autentifikovanog job mehanizma) - SHA-256 integritet i
-        /// dalje OBAVEZNO važi.
+        /// Forced reinstall of a specific release (force_reinstall_agent
+        /// job, see AgentWorker.ProcessJobAsync) - WITHOUT the isNewerVersion check,
+        /// it can "reinstall" even the version the agent ALREADY claims to be on (e.g.
+        /// repairing a damaged install without changing the version number). The digital
+        /// signature is NOT checked here - the job payload doesn't carry a signature/certificate
+        /// (the admin explicitly picked this release from the trusted admin
+        /// UI through the authenticated job mechanism) - SHA-256 integrity
+        /// still ALWAYS applies.
         /// </summary>
         public static async Task ForceInstallAsync(
             NetdeskApiClient client, AgentState state, string currentVersion,
@@ -106,7 +106,7 @@ namespace NetdeskAgent.Common.Update
 
                 if (!VerifySignatureIfPresent(packagePath, signature, signatureCertificatePem))
                 {
-                    // VerifySignatureIfPresent je već ulogovao tačan razlog.
+                    // VerifySignatureIfPresent has already logged the exact reason.
                     return;
                 }
 
@@ -170,11 +170,11 @@ namespace NetdeskAgent.Common.Update
         }
 
         /// <summary>
-        /// Vraća true ako je potpis validan ILI ako nema potpisa za proveru
-        /// (server nema podešeno potpisivanje za ovaj release, ili je
-        /// reinstalacija forsirana preko job-a koji ne nosi potpis). Vraća
-        /// false SAMO kad JE potpis prosleđen, a verifikacija (lanac ili sam
-        /// potpis) ne uspe - tada se update pouzdano odbacuje.
+        /// Returns true if the signature is valid OR if there's no signature to check
+        /// (the server has no signing configured for this release, or the
+        /// reinstall was forced via a job that doesn't carry a signature). Returns
+        /// false ONLY when a signature WAS passed and verification (the chain or the
+        /// signature itself) fails - then the update is reliably rejected.
         /// </summary>
         private static bool VerifySignatureIfPresent(string filePath, string signature, string signatureCertificatePem)
         {
@@ -186,12 +186,12 @@ namespace NetdeskAgent.Common.Update
                 return true;
             }
 
-            // Napomena o .NET Framework 4.5.2 kompatibilnosti: X509Certificate2 i
-            // X509Chain NE implementiraju IDisposable pre .NET 4.6 - "using" na
-            // njima je kompajl greška na pravom net452 (otkriveno tek preko
-            // stvarnog MSBuild-a sa pravim reference assembly-jima; runtime GAC
-            // DLL-ovi korišćeni za raniju csc.exe proveru su bili blaži). Zato
-            // se ovde koristi try/finally + .Reset() umesto "using".
+            // Note on .NET Framework 4.5.2 compatibility: X509Certificate2 and
+            // X509Chain do NOT implement IDisposable before .NET 4.6 - "using" on
+            // them is a compile error on real net452 (discovered only via
+            // a real MSBuild with the real reference assemblies; the runtime GAC
+            // DLLs used for the earlier csc.exe check were more lenient). That's why
+            // try/finally + .Reset() is used here instead of "using".
             X509Certificate2 cert = null;
             try
             {
@@ -203,11 +203,11 @@ namespace NetdeskAgent.Common.Update
                     return false;
                 }
 
-                // Ne koristimo X509Certificate2.GetRSAPublicKey() ni
+                // We use neither X509Certificate2.GetRSAPublicKey() nor
                 // RSA.VerifyData(byte[], byte[], HashAlgorithmName,
-                // RSASignaturePadding) - obe su dodate tek u .NET 4.6.
-                // Koristimo stariji RSACryptoServiceProvider API koji
-                // postoji od .NET 1.0.
+                // RSASignaturePadding) - both were only added in .NET 4.6.
+                // We use the older RSACryptoServiceProvider API that has
+                // existed since .NET 1.0.
                 var rsa = cert.PublicKey.Key as RSACryptoServiceProvider;
                 if (rsa == null)
                 {
@@ -244,9 +244,9 @@ namespace NetdeskAgent.Common.Update
             var chain = new X509Chain();
             try
             {
-                // NoCheck jer organizacija najverovatnije nema CRL/OCSP
-                // infrastrukturu za internu CA - sama provera lanca do
-                // trusted root ostaje i dalje smislena zaštita.
+                // NoCheck because the organization most likely has no CRL/OCSP
+                // infrastructure for the internal CA - checking the chain up to the
+                // trusted root by itself still remains meaningful protection.
                 chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
                 chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
 
@@ -300,7 +300,7 @@ namespace NetdeskAgent.Common.Update
             }
             catch
             {
-                // best effort čišćenje privremenog .zip fajla
+                // best-effort cleanup of the temporary .zip file
             }
         }
     }

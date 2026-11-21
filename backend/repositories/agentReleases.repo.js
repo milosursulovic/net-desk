@@ -14,8 +14,8 @@ const SELECT_FIELDS = `
   created_at AS createdAt
 `;
 
-// deployment_group (skalar) je legacy kolona - releases sada ciljaju grupe
-// preko agent_release_groups (many-to-many), pa se više ne bira/piše ovde.
+// deployment_group (scalar) is a legacy column - releases now target groups
+// through agent_release_groups (many-to-many), so it's no longer selected/written here.
 export async function insertRelease({
   version,
   fileName,
@@ -46,10 +46,10 @@ export async function insertReleaseGroups(releaseId, groups) {
   );
 }
 
-// Manifest fajlova unutar release ZIP-a (ime + veličina), popunjen JEDNOM
-// pri upload-u (uploadReleaseService čita zip preko adm-zip pre nego što ga
-// upiše na disk) - koristi se da se poredi sa onim što agent stvarno
-// prijavi da ima u svom Service folderu (checkServiceFilesMismatchService).
+// Manifest of the files inside the release ZIP (name + size), filled ONCE
+// at upload time (uploadReleaseService reads the zip via adm-zip before
+// writing it to disk) - used to compare against what the agent actually
+// reports having in its Service folder (checkServiceFilesMismatchService).
 export async function insertReleaseFiles(releaseId, files) {
   if (!files.length) return;
   const values = files.map((f) => [releaseId, f.path, f.size]);
@@ -67,8 +67,8 @@ export async function findReleaseFiles(releaseId) {
   return rows;
 }
 
-// Više release-ova može deliti isti version string (npr. ponovni upload) -
-// uzima se najskorije otpremljeni, isti obrazac kao "best" u
+// Several releases can share the same version string (e.g. a re-upload) -
+// the most recently uploaded one wins, same pattern as "best" in
 // checkForUpdateService.
 export async function findReleaseIdByVersion(version) {
   const [rows] = await pool.execute(
@@ -86,16 +86,16 @@ export async function findReleaseGroups(releaseId) {
   return rows.map((r) => r.deployment_group);
 }
 
-// Pun replace seta ciljanih grupa - DELETE pa bulk INSERT, isti obrazac kao
-// "pune zamene" sync funkcija u pdsu.service.js. Frontend šalje CEO novi
-// set (stare + dodate grupe za širenje, ili manji set za suženje).
+// Full replace of the targeted group set - DELETE then bulk INSERT, same pattern
+// as the "full replace" sync functions in pdsu.service.js. The frontend sends the
+// WHOLE new set (old + added groups to widen, or a smaller set to narrow).
 export async function setReleaseGroups(releaseId, groups) {
   await pool.execute(`DELETE FROM agent_release_groups WHERE release_id = ?`, [releaseId]);
   await insertReleaseGroups(releaseId, groups);
 }
 
-// Agent sad može imati VIŠE deployment grupa - pogađa ako je BILO KOJA od
-// njih ciljana ovim release-om (IN, ne =).
+// An agent can now have SEVERAL deployment groups - it matches if ANY of
+// them is targeted by this release (IN, not =).
 export async function isReleaseTargetingAnyGroup(releaseId, deploymentGroups) {
   if (!deploymentGroups?.length) return false;
   const placeholders = deploymentGroups.map(() => "?").join(",");
@@ -106,8 +106,8 @@ export async function isReleaseTargetingAnyGroup(releaseId, deploymentGroups) {
   return rows.length > 0;
 }
 
-// Prikuplja deploymentGroups (niz) za dati skup release-ova u JEDNOM
-// dodatnom upitu (ne N+1 po redu) i vraća mapu releaseId -> string[].
+// Collects deploymentGroups (array) for the given set of releases in ONE
+// extra query (not N+1 per row) and returns a map releaseId -> string[].
 async function fetchGroupsByReleaseIds(releaseIds) {
   if (!releaseIds.length) return {};
   const placeholders = releaseIds.map(() => "?").join(",");
@@ -136,9 +136,9 @@ export async function findReleaseById(id) {
   return release;
 }
 
-// Agent sad može imati VIŠE deployment grupa - vraća release-e koje ciljaju
-// BILO KOJU od njih (IN, ne =). DISTINCT jer isti release može biti pogođen
-// preko više od jedne od agent-ovih grupa.
+// An agent can now have SEVERAL deployment groups - returns the releases that
+// target ANY of them (IN, not =). DISTINCT because the same release can match
+// through more than one of the agent's groups.
 export async function findActiveReleasesForGroups(deploymentGroups) {
   if (!deploymentGroups?.length) return [];
   const placeholders = deploymentGroups.map(() => "?").join(",");
@@ -195,7 +195,7 @@ export async function setReleaseActive(id, isActive) {
   return result.affectedRows;
 }
 
-// Napomene su namerno editabilne i POSLE upload-a - vidi UpdateReleaseNotesSchema.
+// Notes are deliberately editable AFTER upload too - see UpdateReleaseNotesSchema.
 export async function updateReleaseNotes(id, releaseNotes) {
   const [result] = await pool.execute(
     `UPDATE agent_releases SET release_notes = ? WHERE id = ?`,
@@ -204,15 +204,15 @@ export async function updateReleaseNotes(id, releaseNotes) {
   return result.affectedRows;
 }
 
-// agent_release_groups/agent_release_files imaju ON DELETE CASCADE na
-// release_id - brišu se sami, ne treba posebna DELETE ovde.
+// agent_release_groups/agent_release_files have ON DELETE CASCADE on
+// release_id - they delete themselves, no separate DELETE needed here.
 export async function deleteRelease(id) {
   const [result] = await pool.execute(`DELETE FROM agent_releases WHERE id = ?`, [id]);
   return result.affectedRows;
 }
 
-// Releases nisu site-vezani, pa nema site-scope parametra ovde (za razliku
-// od agents.repo.js's listDistinctAgentOs i sličnih).
+// Releases aren't tied to a site, so there's no site-scope parameter here (unlike
+// agents.repo.js's listDistinctAgentOs and similar).
 export async function listDistinctReleaseDeploymentGroups() {
   const [rows] = await pool.execute(
     `SELECT DISTINCT deployment_group FROM agent_release_groups ORDER BY deployment_group`,

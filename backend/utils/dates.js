@@ -1,8 +1,8 @@
 /**
- * Tolerantan parser za "datum-ish" vrednosti sa klijenata (agent WMI/registry
- * podaci, ali i drugi izvori) - vraća null umesto da propusti neparsabilan
- * string do mysql2 (koji bi bacio grešku poput "Incorrect date value" i srušio
- * ceo insert). Prihvata Date instancu, ISO string/broj, ili { $date } oblik.
+ * Tolerant parser for "date-ish" values from clients (agent WMI/registry
+ * data, but other sources too) - returns null instead of letting an unparseable
+ * string through to mysql2 (which would throw an error like "Incorrect date value" and break
+ * the whole insert). Accepts a Date instance, an ISO string/number, or a { $date } shape.
  */
 export function parseDateMaybe(v) {
   if (v == null || v === "") return null;

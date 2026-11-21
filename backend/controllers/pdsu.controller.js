@@ -102,9 +102,9 @@ export async function exportComputerPdsuPdfController(req, res) {
     filename: `NetDesk_PDSU_${computer.computer_name || computer.ip}_${dateStamp}.pdf`,
     sections: [
       {
-        // Širine moraju stati u ~762pt korisne širine A4 landscape stranice
-        // (pdfTable.js ne prelama/skalira kolone automatski) - ova sekcija
-        // je ranije sabirala na 820pt, pa je poslednja kolona padala van stranice.
+        // Widths must fit the ~762pt usable width of an A4 landscape page
+        // (pdfTable.js doesn't wrap/scale columns automatically) - this section
+        // used to add up to 820pt, so the last column fell off the page.
         heading: `Programi (${software.length})`,
         columns: [
           { header: "Program", key: "display_name", width: 200 },
@@ -117,7 +117,7 @@ export async function exportComputerPdsuPdfController(req, res) {
         emptyText: "Nema podataka o instaliranom softveru.",
       },
       {
-        // Isto - ranije 800pt, poslednja kolona padala van stranice.
+        // Same - previously 800pt, the last column fell off the page.
         heading: `Drajveri (${drivers.length})`,
         columns: [
           { header: "Uređaj", key: "device_name", width: 200 },
@@ -285,7 +285,7 @@ export async function syncPrintersController(req, res) {
 }
 
 // =========================
-// Izuzeci od crne liste (po računaru)
+// Blacklist exceptions (per computer)
 // =========================
 
 const FLAG_KINDS = ["software", "services", "drivers"];

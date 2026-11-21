@@ -179,9 +179,9 @@ textarea {
   @apply bg-accent text-white hover:bg-accent-emphasis;
 }
 
-/* Tonal (subtle-bg + accent text) umesto solid sive - i dalje jasno niže u
-   hijerarhiji od primary (koji je pun bg-accent), ali ostaje u teal paleti
-   umesto generičkog slate-a koji ni u jednoj temi nije pripadao brendu. */
+/* Tonal (subtle-bg + accent text) instead of solid gray - still clearly lower in the
+   hierarchy than primary (which is a full bg-accent), but stays in the teal palette
+   instead of a generic slate that didn't belong to the brand in any theme. */
 .app-btn-secondary {
   @apply bg-accent-subtle text-accent-emphasis shadow-none hover:bg-accent/15;
 }
@@ -190,10 +190,10 @@ textarea {
   @apply border border-line bg-surface text-ink-secondary shadow-none hover:bg-surface-sunken;
 }
 
-/* bg-bad/bg-good su isti tokeni koji boje svaki drugi "greška"/"uspeh"
-   indikator u app-u (StatusPill, banneri...) - ranije su ova dva dugmeta bila
-   fiksni Tailwind red-600/emerald-600, blizu ali ne identična i bez tamne
-   varijante, pa su jedina mesta u app-u koja se NISU menjala sa temom. */
+/* bg-bad/bg-good are the same tokens that color every other "error"/"success"
+   indicator in the app (StatusPill, banners...) - previously these two buttons were
+   a fixed Tailwind red-600/emerald-600, close but not identical and with no dark
+   variant, so they were the only places in the app that did NOT change with the theme. */
 .app-btn-danger {
   @apply bg-bad text-white hover:brightness-90;
 }

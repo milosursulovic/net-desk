@@ -68,10 +68,10 @@ const { t, te, locale } = useI18n()
 const { toast, showToast } = useToast()
 const fmtDate = (d) => formatDate(d, locale.value === 'en' ? 'en-US' : 'sr-RS')
 
-// Setting label/description dolaze sa backend-a (deljeni izvor za API), pa
-// su hardkodovane na srpskom - za poznate ključeve prevod se uzima ovde,
-// backend tekst ostaje fallback za bilo koji budući ključ koji još nema
-// prevod.
+// The setting label/description come from the backend (a shared source for the API), so
+// they're hardcoded in Serbian - for known keys the translation is taken here,
+// the backend text stays as the fallback for any future key that doesn't have a
+// translation yet.
 const settingLabel = (setting) => {
   const key = `config.settings.${setting.key}.label`
   return te(key) ? t(key) : setting.label

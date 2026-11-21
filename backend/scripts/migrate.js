@@ -4,23 +4,23 @@ import { pathToFileURL } from "node:url";
 import mysql from "mysql2/promise";
 import { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME } from "../config/env.js";
 
-// migrations/*.sql, u redosledu imena fajla - konvencija je "NNNN_opis.sql"
-// (npr. "0001_add_foo_column.sql") da sortiranje po imenu bude i hronološki
-// redosled. Svaki fajl se primeni TAČNO JEDNOM - schema_migrations tabela
-// pamti koji je već primenjen, pa je ponovno pokretanje bezbedno (samo NOVI
-// fajlovi se izvrše).
+// migrations/*.sql, in filename order - the convention is "NNNN_description.sql"
+// (e.g. "0001_add_foo_column.sql") so that sorting by name is also chronological
+// order. Each file is applied EXACTLY ONCE - the schema_migrations table
+// remembers which ones were already applied, so re-running is safe (only NEW
+// files are executed).
 const MIGRATIONS_DIR = path.join(process.cwd(), "migrations");
 
-// dir je parametrizovan (podrazumevano MIGRATIONS_DIR) isključivo da bi test
-// mogao da pokaže na privremeni folder sa fiktivnim .sql fajlovima umesto da
-// dodiruje pravi migrations/ folder ili čeka na stvarne migracije da postoje.
+// dir is parameterized (defaults to MIGRATIONS_DIR) solely so a test
+// can point at a temporary folder with fake .sql files instead of
+// touching the real migrations/ folder or waiting for real migrations to exist.
 export async function runMigrations(dir = MIGRATIONS_DIR) {
   fs.mkdirSync(dir, { recursive: true });
 
-  // Poseban connection (ne deljeni app pool) - multipleStatements:true je
-  // namerno SAMO ovde, migracije legitimno mogu imati više SQL naredbi u
-  // jednom fajlu, dok aplikacijin glavni pool tu opciju nikad ne sme imati
-  // (širi SQL injection rizik svuda drugde).
+  // A dedicated connection (not the shared app pool) - multipleStatements:true is
+  // deliberately ONLY here, migrations can legitimately have several SQL statements in
+  // one file, while the application's main pool must never have that option
+  // (a wider SQL injection risk everywhere else).
   const connection = await mysql.createConnection({
     host: DB_HOST,
     port: DB_PORT,
@@ -67,11 +67,11 @@ export async function runMigrations(dir = MIGRATIONS_DIR) {
   }
 }
 
-// process.argv[1] je apsolutna putanja fajla koji je pokrenut sa `node ...` -
-// poklapanje sa import.meta.url (preko pathToFileURL, ne ručno sastavljanje
-// "file://" stringa - Windows apsolutne putanje sa slovom diska inače lako
-// upadnu u pogrešan broj kosih crta) znači da je OVAJ fajl direktno pokrenut
-// (`node scripts/migrate.js`), ne samo import-ovan iz testa.
+// process.argv[1] is the absolute path of the file launched with `node ...` -
+// matching it against import.meta.url (via pathToFileURL, not by hand-building a
+// "file://" string - Windows absolute paths with a drive letter otherwise easily
+// end up with the wrong number of slashes) means THIS file was run directly
+// (`node scripts/migrate.js`), not merely imported from a test.
 const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainModule) {
   runMigrations().catch((err) => {

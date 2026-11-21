@@ -48,11 +48,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import NavIcon from '@/components/NavIcon.vue'
 
-// Zajednička multiselect kontrola za filter dropdown-ove (Home/Agenti) -
-// standardni <select multiple> zahteva ctrl/cmd-klik za višestruki izbor
-// (loš UX, korisnici ga skoro nikad ne otkriju sami), pa je ovo checkbox
-// panel iza dugmeta umesto toga. Namerno bez eksterne biblioteke - svi
-// filteri ovde imaju desetine, ne hiljade opcija.
+// Shared multiselect control for filter dropdowns (Home/Agents) -
+// a standard <select multiple> requires ctrl/cmd-click for multiple selection
+// (bad UX, users almost never discover it on their own), so this is a checkbox
+// panel behind a button instead. Deliberately without an external library - all
+// filters here have dozens, not thousands, of options.
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   options: { type: Array, default: () => [] },

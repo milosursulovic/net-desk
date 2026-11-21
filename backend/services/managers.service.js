@@ -14,10 +14,10 @@ import { findIpEntryIdByIp, insertIpEntry } from "../repositories/ipEntries.repo
 import { computeConnectivityStatus, inferSiteFromIp } from "./agents.service.js";
 import { notFound } from "../utils/httpError.js";
 
-// Namerno odvojeno od agents.service.js's resolveIpEntryId - taj je pisan za
-// pun inventory-sync telo (OS/RDP-app/hasIzvolteFolder detekcija itd.).
-// Manager nema ništa od toga - samo ip/hostname pri enroll-u, pa ne postoji
-// ništa vredno deljenja osim same "nađi ili napravi ip_entry" ideje.
+// Deliberately separate from agents.service.js's resolveIpEntryId - that one is written for
+// a full inventory-sync body (OS/RDP-app/hasIzvolteFolder detection etc.).
+// The Manager has none of that - only ip/hostname at enroll, so there's
+// nothing worth sharing apart from the "find or create ip_entry" idea itself.
 async function resolveManagerIpEntryId(managerId, { ip, hostname }) {
   let ipEntryId = await findIpEntryIdByIp(ip);
   if (!ipEntryId) {
@@ -54,9 +54,9 @@ export async function enrollManager(dto) {
 
   const ipEntryId = await resolveManagerIpEntryId(id, { ip: dto.ip, hostname: dto.hostname });
 
-  // Enroll se ponovo poziva svaki put kad Manager servis izgubi svoje
-  // kredencijale (reinstall/reprovizovanje) - nova registracija za ISTI
-  // ip_entry_id zamenjuje staru, ne dodaje se pored nje.
+  // Enroll is called again every time the Manager service loses its
+  // credentials (reinstall/reprovisioning) - the new registration for the SAME
+  // ip_entry_id replaces the old one, it isn't added next to it.
   await revokeOtherActiveManagers(ipEntryId, id);
 
   const manager = await findManagerById(id);
@@ -99,9 +99,9 @@ export async function heartbeatManager(managerId, dto, remoteIp) {
   };
 }
 
-// Za AgentDetailView.vue "Manager" panel - null kad Manager nikad nije
-// enrollovao na ovoj mašini (stari mailbox-only Manager, ili nema ga uopšte -
-// backend te dve situacije ne može da razlikuje, videti napomenu u planu).
+// For AgentDetailView.vue's "Manager" panel - null when the Manager has never
+// enrolled on this machine (an old mailbox-only Manager, or none at all -
+// the backend can't tell those two situations apart, see the note in the plan).
 export async function getManagerByIpEntryId(ipEntryId) {
   const manager = await findManagerByIpEntryId(ipEntryId);
   if (!manager) return null;

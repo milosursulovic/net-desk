@@ -44,11 +44,11 @@ export async function listNotifications(site) {
 
   const notifications = [];
 
-  // `count` je dodat uz `message` da frontend UI ticker (NotificationTicker.vue)
-  // može da prevede po `id`-u za trenutno izabrani jezik aplikacije - `message`
-  // ostaje na srpskom kao fallback/za druge potrošače (dailyReport.service.js
-  // PDF, pushNotificationWatcher.js push tekst) koji nisu per-viewer jezički
-  // svesni.
+  // `count` is added alongside `message` so the frontend UI ticker (NotificationTicker.vue)
+  // can translate by `id` for the currently selected app language - `message`
+  // stays in Serbian as a fallback/for other consumers (dailyReport.service.js
+  // PDF, pushNotificationWatcher.js push text) that aren't per-viewer
+  // language-aware.
   if (diskFull > 0) {
     notifications.push({
       id: "disk-full",

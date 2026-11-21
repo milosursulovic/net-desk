@@ -21,13 +21,13 @@ const levelIcon = {
   info: 'info',
 }
 
-// Duplirano radi bešavne petlje animacije (drugi set je duplikat prvog).
+// Duplicated for a seamless animation loop (the second set is a copy of the first).
 const loopItems = computed(() => [...notifications.value, ...notifications.value])
 
-// Backend šalje stabilan `id` po tipu upozorenja (npr. "disk-full") + `count` -
-// za poznate id-jeve prevod ide preko lokalnog t() ključa, `message` (uvek na
-// srpskom - backend ne zna trenutni jezik) ostaje fallback za bilo koji budući
-// tip koji još nema prevod.
+// The backend sends a stable `id` per warning type (e.g. "disk-full") + `count` -
+// for known ids the translation goes through a local t() key, `message` (always in
+// Serbian - the backend doesn't know the current language) stays as the fallback for any future
+// type that doesn't have a translation yet.
 function notificationLabel(n) {
   const key = `notifications.${n.id}`
   return te(key) ? t(key, { count: n.count }) : n.message

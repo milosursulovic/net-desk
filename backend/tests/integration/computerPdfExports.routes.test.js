@@ -122,7 +122,7 @@ describe("single-computer PDF exports (integration, real DB)", () => {
 
       expect(withSw.status).toBe(200);
       // A PDF with an actual software row should be larger than one whose
-      // software table is just the "Nema podataka" empty state.
+      // software table is just the "Nema podataka" (no data) empty state.
       expect(withSw.body.length).toBeGreaterThan(empty.body.length);
     });
   });

@@ -46,9 +46,9 @@ async function deleteTestVncSession(id) {
   await pool.execute("DELETE FROM vnc_sessions WHERE id = ?", [id]);
 }
 
-// Zabrana samoinicijativnog preuzimanja ekrana: relay odbija agent socket dok
-// korisnik na radnoj stanici nije odobrio sesiju (consent_status='granted').
-// Testovi koji vežbaju sam byte-forwarding simuliraju dati pristanak.
+// Ban on unsolicited screen capture: the relay rejects the agent socket until
+// the user at the workstation has approved the session (consent_status='granted').
+// Tests that exercise the byte-forwarding itself simulate granted consent.
 async function grantTestConsent(id) {
   await markVncSessionConsentGranted(id, {
     approverUsername: "vitest-user",
@@ -272,8 +272,8 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
     });
     const { findAgentById } = await import("../../repositories/agents.repo.js");
     agentUid = (await findAgentById(agentId)).agentUid;
-    // Namerno BEZ grantTestConsent - consent_status ostaje 'pending', pa relay
-    // mora da odbije most (zabrana samoinicijativnog preuzimanja ekrana).
+    // Deliberately WITHOUT grantTestConsent - consent_status stays 'pending', so the relay
+    // must reject the bridge (ban on unsolicited screen capture).
     sessionId = await insertVncSession({ agentId, requestedByUserId: null });
 
     const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));

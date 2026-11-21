@@ -6,32 +6,32 @@ using NetdeskAgent.Common.Logging;
 namespace NetdeskAgent.Common.Update
 {
     /// <summary>
-    /// Rekurzivno kopiranje foldera - koristi ga NetdeskAgentManager za
-    /// backup/instalaciju update paketa. Postoji odvojeno od (i ispravlja bug
-    /// u) starom Netdesk.Agent.Updater/Program.cs, čije su BackupInstallDir/
-    /// CopyStagingIntoInstallDir bile RAVNE (Directory.GetFiles bez
-    /// SearchOption.AllDirectories) - nikad nisu ispravno kopirale amd64\/x86\
-    /// podfoldere iz pravog instalacionog rasporeda.
+    /// Recursive folder copy - used by NetdeskAgentManager for
+    /// backup/installation of the update package. It exists separately from (and fixes a bug
+    /// in) the old Netdesk.Agent.Updater/Program.cs, whose BackupInstallDir/
+    /// CopyStagingIntoInstallDir were FLAT (Directory.GetFiles without
+    /// SearchOption.AllDirectories) - they never correctly copied the amd64\/x86\
+    /// subfolders of the real install layout.
     /// </summary>
     public static class DirectorySync
     {
-        // Otkriveno uživo na prvom stvarnom update-u koji je uključio
-        // WinDivert.dll/WinDivert64.sys (1.7.0): WinDivert se učitava kao
-        // pravi kernel drajver, i STVARNO oslobađanje .sys fajla od strane
-        // Windows-a ume da kasni koji trenutak posle toga što je
-        // ManagerWorker.StopService već potvrdio da je NetdeskAgent servis
-        // (user-mode proces koji je zvao WinDivertClose) u Stopped stanju -
-        // drajver-unload nije garantovano sinhron sa gašenjem procesa koji ga
-        // je otvorio. Kratak retry sa pauzom apsorbuje tu vremensku rupu (i,
-        // uzgred, isti problem ako neki AV/EDR privremeno drži .sys fajl
-        // otvoren radi skeniranja - isti simptom, ista mitigacija).
+        // Discovered live on the first real update that included
+        // WinDivert.dll/WinDivert64.sys (1.7.0): WinDivert is loaded as a
+        // real kernel driver, and Windows ACTUALLY releasing the .sys file
+        // can lag a moment behind the point where
+        // ManagerWorker.StopService has already confirmed that the NetdeskAgent service
+        // (the user-mode process that called WinDivertClose) is in the Stopped state -
+        // driver unload isn't guaranteed to be synchronous with the shutdown of the process that
+        // opened it. A short retry with a pause absorbs that timing gap (and,
+        // incidentally, the same problem if some AV/EDR temporarily holds the .sys file
+        // open for scanning - the same symptom, the same mitigation).
         //
-        // Hvata i IOException (ERROR_SHARING_VIOLATION) i
-        // UnauthorizedAccessException (ERROR_ACCESS_DENIED) - Windows vraća
-        // JEDNU ili DRUGU za isti uzrok (drajver-fajl još učitan) zavisno od
-        // trenutka, .NET ih baca kao dva nepovezana tipa
-        // (UnauthorizedAccessException NE nasleđuje IOException) - hvatanje
-        // samo prvog je uživo propustilo drugi ("Access to the path
+        // Catches both IOException (ERROR_SHARING_VIOLATION) and
+        // UnauthorizedAccessException (ERROR_ACCESS_DENIED) - Windows returns
+        // ONE or THE OTHER for the same cause (the driver file still loaded) depending on
+        // timing, .NET throws them as two unrelated types
+        // (UnauthorizedAccessException does NOT inherit from IOException) - catching
+        // only the first one missed the second live ("Access to the path
         // 'WinDivert64.sys' is denied.").
         private const int MaxRetries = 8;
         private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(750);
@@ -69,18 +69,18 @@ namespace NetdeskAgent.Common.Update
                 }
                 catch (Exception ex) when (IsTransientLock(ex) && attempt < MaxRetries)
                 {
-                    // Fajl je (verovatno privremeno) zaključan - drajver-unload
-                    // kašnjenje ili AV/EDR sken. Namerno se NE loguje na svaki
-                    // pokušaj (spam), samo na kraju ako je stvarno trebalo da
-                    // se čeka - vidi log iznad na uspehu, i grešku ispod ako
-                    // ni MaxRetries pokušaja nije bilo dovoljno.
+                    // The file is (probably temporarily) locked - driver unload
+                    // delay or an AV/EDR scan. Deliberately NOT logged on every
+                    // attempt (spam), only at the end if waiting was actually
+                    // needed - see the log above on success, and the error below if
+                    // even MaxRetries attempts weren't enough.
                     Thread.Sleep(RetryDelay);
                 }
             }
 
-            // Poslednji pokušaj - propušta grešku dalje ako i dalje ne uspe
-            // posle svih retry-ja (isti ugovor kao pre ove izmene - pozivalac
-            // hvata ovo i javlja neuspeh).
+            // Last attempt - lets the error propagate if it still fails
+            // after all retries (the same contract as before this change - the caller
+            // catches this and reports the failure).
             File.Copy(sourcePath, destPath, true);
         }
 

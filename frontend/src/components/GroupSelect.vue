@@ -4,28 +4,28 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth.js'
 import NavIcon from '@/components/NavIcon.vue'
 import { parseError } from '@/utils/api.js'
 
-// Jedinstven dropdown za "grupu" (odeljenje na IP unosu, deployment grupa na
-// agentu) - obe strane sad biraju iz ISTE predefinisane, server-side liste
-// (backend/routes/groups.routes.js), umesto slobodnog teksta. Ne emituje
-// toast direktno - roditelj (koji već ima svoj ToastNotification) prikazuje
-// poruku preko 'error' event-a, isti obrazac kao ostale komponente ovde.
+// A single dropdown for "group" (department on an IP entry, deployment group on an
+// agent) - both sides now pick from the SAME predefined, server-side list
+// (backend/routes/groups.routes.js), instead of free text. Doesn't emit a
+// toast directly - the parent (which already has its own ToastNotification) shows the
+// message via the 'error' event, same pattern as the other components here.
 const props = defineProps({
   modelValue: { type: String, default: '' },
   options: { type: Array, default: () => [] },
   isAdmin: { type: Boolean, default: false },
   allowEmpty: { type: Boolean, default: true },
-  // Deployment grupe (agenti) i odeljenja (Home) su odvojene predefinisane
-  // liste sada - podrazumevano ostaje deljena groups_list, ali detalj
-  // strana agenta prosleđuje '/api/protected/deployment-groups'.
+  // Deployment groups (agents) and departments (Home) are separate predefined
+  // lists now - the default stays the shared groups_list, but the agent detail
+  // page passes '/api/protected/deployment-groups'.
   createEndpoint: { type: String, default: '/api/protected/groups' },
 })
 const emit = defineEmits(['update:modelValue', 'group-added', 'error'])
 
-// Trenutna vrednost može da postoji na podatku a da NIJE (više) u
-// groups_list (npr. legacy slobodan tekst iz vremena pre ove liste, ili
-// grupa obrisana posle - servis odbija brisanje grupe koja je u upotrebi,
-// ali ne i preimenovanje/ručnu izmenu direktno u bazi) - unija sprečava da
-// <select> tiho izgubi/promeni prikazanu vrednost.
+// The current value can exist on the record while NOT (any longer) being in
+// groups_list (e.g. legacy free text from before this list existed, or a
+// group deleted later - the service refuses to delete a group that's in use,
+// but not a rename/manual edit directly in the DB) - the union prevents the
+// <select> from silently losing/changing the displayed value.
 const allOptions = computed(() => {
   if (!props.modelValue || props.options.includes(props.modelValue)) return props.options
   return [...props.options, props.modelValue].sort((a, b) => a.localeCompare(b))

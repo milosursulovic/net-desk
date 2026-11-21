@@ -87,10 +87,10 @@ export async function getBatchStatusService(batchId) {
   return { batch, items };
 }
 
-// Otkazuje sve stavke koje još nisu u završnom stanju (vidi komentar uz
-// cancelActiveJobsInBatch). Ne baca grešku kad nema šta da se otkaže (npr.
-// sve je već završeno između učitavanja strane i klika) - frontend samo
-// prikaže cancelled=0 umesto toast greške.
+// Cancels every item not yet in a final state (see the comment on
+// cancelActiveJobsInBatch). Doesn't throw when there's nothing to cancel (e.g.
+// everything finished between the page loading and the click) - the frontend just
+// shows cancelled=0 instead of an error toast.
 export async function cancelBatchService(batchId) {
   const batch = await findJobBatchById(batchId);
   if (!batch) {

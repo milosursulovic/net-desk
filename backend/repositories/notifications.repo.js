@@ -93,14 +93,14 @@ export async function countFirewallInactiveAgents(site) {
   return Number(cnt) || 0;
 }
 
-// Mreža (ping-based ip_entries.is_online) kaže da je računar gore, ali AGENT
-// (last_heartbeat_at, isti CONNECTIVITY_STATUS_SQL izraz kao /agents lista i
-// njen filter) se ne javlja online - jak signal da je agent proces/servis
-// zaglavljen ili pao (npr. posle lošeg deploy-a), ne da je računar ugašen.
-// Suprotan smer (agent online, mreža offline - obično samo spor/flaky ping)
-// se namerno ne prijavljuje ovde, mnogo je češći i manje značajan. INNER
-// JOIN na ip_entries namerno (ne LEFT) - agent bez povezanog ip_entry-ja
-// nema sa čim da se uporedi, pa ne može biti "mismatch".
+// The network (ping-based ip_entries.is_online) says the computer is up, but the AGENT
+// (last_heartbeat_at, the same CONNECTIVITY_STATUS_SQL expression as the /agents list and
+// its filter) isn't reporting online - a strong signal that the agent process/service
+// is stuck or crashed (e.g. after a bad deploy), not that the computer is turned off.
+// The opposite direction (agent online, network offline - usually just a slow/flaky ping)
+// is deliberately not reported here; it's much more common and less significant. INNER
+// JOIN on ip_entries on purpose (not LEFT) - an agent without a linked ip_entry
+// has nothing to compare against, so it can't be a "mismatch".
 export async function countAgentOfflineButIpOnline(site) {
   const [[{ cnt }]] = await pool.execute(
     `
@@ -147,12 +147,12 @@ export async function countWuServiceUnavailable(site) {
   return Number(cnt) || 0;
 }
 
-// Broji DISTINKTNE računare (ne redove) čiji je last_seen na bar JEDNOM
-// crnolistiranom domenu u prozoru - namerno vremenski prozor (kao
-// countFailedJobsRecent), ne "ikad ceo istorijat", da notifikacija prirodno
-// nestane kad prestane skorašnja aktivnost (isti "self-resolving" duh kao
-// sve ostalo u listNotifications - inače bi ostala zauvek vidljiva jer
-// computer_dns_queries redovi nikad ne nestaju).
+// Counts DISTINCT computers (not rows) whose last_seen on at least ONE
+// blacklisted domain falls within the window - a time window on purpose (like
+// countFailedJobsRecent), not "the whole history ever", so the notification naturally
+// disappears once recent activity stops (the same "self-resolving" spirit as
+// everything else in listNotifications - otherwise it would stay visible forever since
+// computer_dns_queries rows never go away).
 export async function countBlacklistedDomainHits(hours = 24, site) {
   const [[{ cnt }]] = await pool.execute(
     `
@@ -168,23 +168,23 @@ export async function countBlacklistedDomainHits(hours = 24, site) {
   return Number(cnt) || 0;
 }
 
-// Isti vremenski-prozor obrazac kao countBlacklistedDomainHits iznad, samo
-// vraća redove (koji računar, koji domen) umesto samo broja - za dnevni
-// izveštaj, gde je bitno i ŠTA je posećeno, ne samo koliko računara.
+// The same time-window pattern as countBlacklistedDomainHits above, but it
+// returns rows (which computer, which domain) instead of just a count - for the daily
+// report, where WHAT was visited matters too, not just how many computers.
 //
-// FLAGGED_DOMAIN_MATCH_SQL je NAMERNO u WHERE, ne u JOIN ... ON kao pre -
-// to je bio produkcioni OOM bug (uživo pogodio 2026-08-13, kad je
-// flagged_domains skočio sa ~200 na ~88900 redova bulk-importom). Izraz je
-// skup SAMOSTALNIH korelisanih EXISTS podupita (svaki definiše SVOJ
-// lokalni "fd" alias, ne referencira spoljni join), pa "JOIN flagged_domains
-// fd ON <izraz>" nikad nije stvarno zavisio od TOG konkretnog fd reda -
-// MySQL ga je efektivno tretirao kao konstantu po cdq redu, proizvodeći
-// puni unakrsni proizvod (matched_cdq_rows × SVI redovi flagged_domains)
-// umesto filtriranja. Sa 147 pogodaka × 88863 flagged_domains, to je ~13
-// miliona redova koje je mysql2 pokušao da materijalizuje u JS objekte -
-// dovoljno da obori Node heap. WHERE izraz je već sam po sebi kompletan
-// filter (EXISTS podupiti), nikakav spoljni JOIN na flagged_domains nije
-// potreban - SELECT lista ovde nikad i nije čitala nijednu fd.* kolonu.
+// FLAGGED_DOMAIN_MATCH_SQL is DELIBERATELY in WHERE, not in JOIN ... ON as before -
+// that was a production OOM bug (hit live on 2026-08-13, when
+// flagged_domains jumped from ~200 to ~88900 rows via bulk import). The expression is
+// a set of SELF-CONTAINED correlated EXISTS subqueries (each defines ITS OWN
+// local "fd" alias, none references the outer join), so "JOIN flagged_domains
+// fd ON <expression>" never actually depended on THAT specific fd row -
+// MySQL effectively treated it as a constant per cdq row, producing a
+// full cross product (matched_cdq_rows × ALL flagged_domains rows)
+// instead of filtering. With 147 hits × 88863 flagged_domains, that's ~13
+// million rows mysql2 tried to materialize into JS objects -
+// enough to bring down the Node heap. The WHERE expression is already a complete
+// filter by itself (EXISTS subqueries), no outer JOIN on flagged_domains is
+// needed - the SELECT list here never read a single fd.* column anyway.
 export async function listBlacklistedDomainHits(hours = 24, site) {
   const [rows] = await pool.execute(
     `

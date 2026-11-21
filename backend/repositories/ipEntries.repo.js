@@ -27,12 +27,12 @@ function buildFastSearchSql(raw = "") {
 
   for (const t of terms) {
     const likePrefix = `${t}%`;
-    // Uživo otkriven bug: pretraga "server sala" cepa se na termine
-    // ["server", "sala"] AND-ovane, a department "Server sala" NIJE prefiks
-    // reči "sala" (to je DRUGA reč u vrednosti) - bez ovog dodatnog "% reč%"
-    // ogranka, drugi termin nikad ne bi pogodio ništa i ceo AND bi pao.
-    // Malo sporije za taj ogranak (vodeći % ne koristi indeks), ali
-    // department/computer_name su dovoljno mali da to nije problem.
+    // Live-discovered bug: the search "server sala" is split into the terms
+    // ["server", "sala"] AND-ed together, and the department "Server sala" is NOT a
+    // prefix match for "sala" (it's the SECOND word in the value) - without this extra
+    // "% word%" branch, the second term would never match anything and the whole AND would fail.
+    // A bit slower for that branch (a leading % can't use the index), but
+    // department/computer_name are small enough that it doesn't matter.
     const likeWordBoundary = `% ${t}%`;
     const ipPrefix = t.includes(".") ? `${t}%` : null;
 
@@ -199,10 +199,10 @@ export async function listIpEntries({
     whereBaseParts.push("entry_type IS NULL");
   }
 
-  // department/os/rdpApp su sad multiselect na frontend-u - dto sloj
-  // (ipAddresses.dto.js's multiValueFilter()) uvek normalizuje u niz
-  // (prazan kad filter nije poslat), pa je "bar jedan izabran" = "IN
-  // pogađa BILO KOJU od izabranih vrednosti", ne AND/presek.
+  // department/os/rdpApp are now multiselects on the frontend - the dto layer
+  // (ipAddresses.dto.js's multiValueFilter()) always normalizes to an array
+  // (empty when the filter wasn't sent), so "at least one selected" = "IN
+  // matches ANY of the selected values", not AND/intersection.
   if (department?.length) {
     whereBaseParts.push(`department IN (${department.map(() => "?").join(",")})`);
     baseParams.push(...department);
@@ -219,12 +219,11 @@ export async function listIpEntries({
   }
 
   if (rdpApp?.length) {
-    // rdp_app čuva SPOJEN string labela (npr. "AnyDesk, TeamViewer" - jedan
-    // računar može imati do sve četiri) - contains-match po pojedinačnoj
-    // labeli, ne exact-equals, pa se svaka izabrana vrednost svojim LIKE-om
-    // ORuje (ne može se IN-ovati direktno). Vrednosti dolaze sa fiksnog
-    // dropdown-a (RDP_APP_PATTERNS), ne slobodan tekst, pa nema potrebe za
-    // escape-ovanjem LIKE wildcard karaktera.
+    // rdp_app stores a JOINED string of labels (e.g. "AnyDesk, TeamViewer" - one
+    // computer can have all four) - a contains-match per individual label, not
+    // exact-equals, so each selected value is OR-ed with its own LIKE (it can't
+    // be IN-ed directly). Values come from a fixed dropdown (RDP_APP_PATTERNS),
+    // not free text, so there's no need to escape LIKE wildcard characters.
     whereBaseParts.push(`(${rdpApp.map(() => "rdp_app LIKE ?").join(" OR ")})`);
     baseParams.push(...rdpApp.map((v) => `%${v}%`));
   }
@@ -245,9 +244,9 @@ export async function listIpEntries({
   if (status === "offline") whereListParts.push("is_online = 0");
 
   if (pendingRepack) whereListParts.push("pending_repack = 1");
-  // "Nema Izvolte folder" grupiše potvrđeno odsutno (0) i nikad provereno
-  // (NULL, npr. minimalni sync koji ne dodiruje ovo polje) - oba su isto
-  // akciono stanje za admina.
+  // "No Izvolte folder" groups confirmed absent (0) and never checked
+  // (NULL, e.g. a minimal sync that doesn't touch this field) - both are the same
+  // actionable state for the admin.
   if (missingIzvolteFolder) whereListParts.push("(has_izvolte_folder = 0 OR has_izvolte_folder IS NULL)");
 
   const whereListSql = whereListParts.length
@@ -415,28 +414,29 @@ export async function updatePendingRepack(id, value) {
   return result.affectedRows;
 }
 
-// Kandidati za "preporuka za pakovanje" - računari na Windows 10/11 sa
-// poznatim hardverom (JOIN na computer_metadata prirodno isključuje računare
-// bez ijedne inventory sinhronizacije - nema CPU/RAM/disk podataka za njih).
-// Klasifikacija slab CPU/malo RAM-a/HDD se radi u servisu (cpuTier.js +
-// pragovi), ovaj upit samo vraća sirove specifikacije. Isti JOIN smer
-// (cm.ip_entry_id = ie.id) kao statsRamTotals/statsLowRamRows u
-// metadata.repo.js, ne preko ie.metadata_id. hasHdd je namerno STROŽE od
-// "postoji bar jedan HDD" - okida SAMO kad računar ima TAČNO JEDAN disk i taj
-// disk je HDD. Računar sa SSD+HDD (čest slučaj - SSD za OS, HDD za podatke)
-// se NE flaguje, jer OS tada verovatno radi sa SSD-a i HDD nije usko grlo;
-// dva HDD-a (bez SSD-a) se iz istog razloga (nejasan je koji disk je sistemski)
-// takođe ne flaguju - samo najjednostavniji, nedvosmislen slučaj "jedan disk,
-// taj disk je spor". media_type je 'HDD'/'SSD'/'Unspecified'/NULL
-// (MsftMediaTypeToString u HardwareCollector.cs; NULL na Windows 7 gde
-// MSFT_PhysicalDisk ne postoji, ali to je van dometa ovde jer je OS filter
-// već Windows 10/11). hasLexarSsd je namerno DRUGAČIJE strogo od hasHdd -
-// okida ako postoji BILO KOJI Lexar SSD, bez obzira na broj/vrstu ostalih
-// diskova (za razliku od "jedan disk" pravila kod HDD-a) - Lexar SSD je sam
-// po sebi red flag (poznati problemi sa pouzdanošću/otkazivanjem), isti
-// kriterijum kao postojeći statsLexarFlagRows u metadata.repo.js
-// (s.model LIKE '%lexar%' AND media_type LIKE '%SSD%'), ovde samo kao
-// dodatni razlog za preporuku umesto posebne liste.
+// Candidates for the "repack recommendation" - Windows 10/11 computers with
+// known hardware (the JOIN on computer_metadata naturally excludes computers
+// without a single inventory sync - there's no CPU/RAM/disk data for them).
+// Classifying weak CPU/low RAM/HDD is done in the service (cpuTier.js +
+// thresholds), this query only returns the raw specs. Same JOIN direction
+// (cm.ip_entry_id = ie.id) as statsRamTotals/statsLowRamRows in
+// metadata.repo.js, not via ie.metadata_id. hasHdd is deliberately STRICTER than
+// "at least one HDD exists" - it fires ONLY when the computer has EXACTLY ONE disk
+// and that disk is an HDD. A computer with SSD+HDD (a common case - SSD for the OS,
+// HDD for data) is NOT flagged, because the OS then probably runs from the SSD and
+// the HDD isn't the bottleneck; two HDDs (without an SSD) are likewise not flagged
+// for the same reason (it's unclear which disk is the system disk) - only the
+// simplest, unambiguous case "one disk, and that disk is slow". media_type is
+// 'HDD'/'SSD'/'Unspecified'/NULL (MsftMediaTypeToString in HardwareCollector.cs;
+// NULL on Windows 7 where MSFT_PhysicalDisk doesn't exist, but that's out of
+// reach here since the OS filter is already Windows 10/11). hasLexarSsd is
+// deliberately strict in a DIFFERENT way than hasHdd - it fires if there is ANY
+// Lexar SSD, regardless of the number/type of the other disks (unlike the
+// "one disk" rule for HDDs) - a Lexar SSD is a red flag by itself (known
+// reliability/failure problems), the same criterion as the existing
+// statsLexarFlagRows in metadata.repo.js (s.model LIKE '%lexar%' AND
+// media_type LIKE '%SSD%'), here just as an additional reason for the
+// recommendation instead of a separate list.
 export async function listRepackCandidates(site) {
   const whereParts = [
     "ie.entry_type = 'computer'",
@@ -573,9 +573,9 @@ export async function countIpEntriesCreatedSince(since, site) {
   return Number(cnt) || 0;
 }
 
-// Za "slobodne IP adrese" (ipAddresses.service.js's freeIpAddressesService)
-// - samo numerički opseg, ništa drugo, pozivalac gradi Set od ovoga da
-// filtrira generisanu listu svih adresa u opsegu.
+// For "free IP addresses" (ipAddresses.service.js's freeIpAddressesService)
+// - only the numeric range, nothing else; the caller builds a Set from this to
+// filter the generated list of all addresses in the range.
 export async function listIpNumericsInRange(minNumeric, maxNumeric) {
   const [rows] = await pool.execute(
     `SELECT ip_numeric AS ipNumeric FROM ip_entries WHERE ip_numeric BETWEEN ? AND ?`,
@@ -637,8 +637,8 @@ export async function listComputersWithoutAgent({ search, page, limit, site }) {
   return { entries, total, totalPages, page: safePage, limit };
 }
 
-// Puna (nepaginirana) verzija listComputersWithoutAgent - za PDF export, gde
-// treba kompletna lista, ne samo trenutna stranica.
+// Full (unpaginated) version of listComputersWithoutAgent - for the PDF export,
+// which needs the complete list, not just the current page.
 export async function listAllComputersWithoutAgent(search, site) {
   const searchClause = buildLikeSearch(["ip", "computer_name"], search, {
     prefixColumns: ["ip"],
@@ -682,10 +682,10 @@ export async function listAllComputersWithoutAgent(search, site) {
   return entries;
 }
 
-// site je NAMERNO UVEK primenjen (ne opcion) kad je zadat - duplikat imena
-// se gleda PO LOKACIJI, ne globalno preko cele flote, inače isto ime
-// računara na dve različite fizičke lokacije (npr. "PC-01" u bolnici i
-// "PC-01" u domu zdravlja) bi se stalno lažno prijavljivalo kao duplikat.
+// site is DELIBERATELY ALWAYS applied (not optional) when given - duplicate names
+// are checked PER SITE, not globally across the whole fleet, otherwise the same
+// computer name at two different physical sites (e.g. "PC-01" at the hospital
+// and "PC-01" at the health center) would constantly be falsely reported as a duplicate.
 export async function duplicateComputerNameGroups({ search, status, site }) {
   const base = buildFastSearchSql(search || "");
   const whereParts = [];

@@ -434,9 +434,9 @@ describe("agentReleases.service (integration, real DB + filesystem)", () => {
     expect(rows.length).toBe(0);
     const filePath = path.join(process.cwd(), "uploads", "agent-releases", release.filePath);
     expect(fs.existsSync(filePath)).toBe(false);
-    // Već obrisano - ne gura se u createdReleases (afterEach bi bezopasno
-    // no-op-ovao na već-nepostojećem id-ju, ali nema potrebe da se oslanja
-    // na to).
+    // Already deleted - not pushed into createdReleases (afterEach would harmlessly
+    // no-op on an already nonexistent id, but there's no need to rely
+    // on that).
   });
 
   it("deleteReleaseService rejects an unknown release id", async () => {

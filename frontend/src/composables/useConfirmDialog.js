@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 
 /**
- * Async potvrda umesto native confirm(). askConfirm() vraća Promise<boolean>
- * koji se razrešava kad korisnik klikne na dugme u <ConfirmDialog>.
+ * Async confirmation instead of the native confirm(). askConfirm() returns a Promise<boolean>
+ * that resolves when the user clicks a button in <ConfirmDialog>.
  */
 export function useConfirmDialog() {
   const confirmState = ref({ open: false, title: 'Potvrda', message: '' })

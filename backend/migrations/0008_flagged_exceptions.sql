@@ -1,10 +1,10 @@
--- Izuzeci po računaru za "neželjen" softver/servis/drajver - admin može da
--- kaže "ovo NIJE neželjeno na OVOM računaru" bez brisanja globalnog flag-a
--- (koji i dalje važi za sve ostale). Jedna tabela po flagged_* tabeli (ne
--- jedna polimorfna) - isti razlog kao zašto flagged_software/services/
--- drivers već postoje kao tri odvojene tabele, ne jedna sa "kind" kolonom.
--- Isti obrazac junction tabele kao agent_deployment_groups (0006), samo bez
--- surogat id-ja - kompozitni PK je i jedinstvenost i FK.
+-- Per-computer exceptions for "unwanted" software/services/drivers - the admin
+-- can say "this is NOT unwanted on THIS computer" without deleting the global
+-- flag (which still applies to every other computer). One table per flagged_*
+-- table (not one polymorphic table) - same reason flagged_software/services/
+-- drivers already exist as three separate tables rather than one with a "kind" column.
+-- Same junction-table pattern as agent_deployment_groups (0006), just without a
+-- surrogate id - the composite PK serves as both uniqueness and FK.
 
 CREATE TABLE flagged_software_exceptions (
   flagged_software_id INT NOT NULL,

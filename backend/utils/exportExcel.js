@@ -1,12 +1,12 @@
 import ExcelJS from "exceljs";
 
 /**
- * Šalje XLSX fajl kao response, na bazi exceljs (jedina export biblioteka
- * posle refaktora - zamenjuje ranije mešanje `xlsx` i `exceljs` paketa).
+ * Sends an XLSX file as the response, based on exceljs (the only export library
+ * after the refactor - replaces the earlier mix of the `xlsx` and `exceljs` packages).
  *
  * sheets: [{ name, columns, rows }]
- *   - columns: exceljs column defs, npr. [{ header: "IP", key: "ip", width: 14 }]
- *   - rows: niz objekata čiji ključevi odgovaraju `key` iz columns
+ *   - columns: exceljs column defs, e.g. [{ header: "IP", key: "ip", width: 14 }]
+ *   - rows: an array of objects whose keys match `key` from columns
  */
 export async function sendXlsxExport(res, { filename, sheets }) {
   const workbook = new ExcelJS.Workbook();

@@ -1,20 +1,20 @@
 import { z } from "zod";
 
-// Klasične osnovne vrednosti sada žive u deployment_groups_list (seed-ovane
-// u migraciji 0006_deployment_groups_multi.sql), ne kao konstanta ovde -
-// deployment grupe su odvojena lista od odeljenja (groups_list).
+// The classic base values now live in deployment_groups_list (seeded in
+// migration 0006_deployment_groups_multi.sql), not as a constant here -
+// deployment groups are a separate list from departments (groups_list).
 const DeploymentGroupValue = z.string().trim().min(1).max(150);
 
-// 100 (ne 20) - čisto sanity ceiling, ne poslovno pravilo. Organizacija ima
-// već 49 stvarnih odeljenja preko obe lokacije (deployment grupe su sad
-// usklađene sa odeljenjima, ne fiksna 4-vrednosna lista), pa je 20 bilo
-// stvarno dostižno i blokiralo je legitiman rollout na sva odeljenja.
+// 100 (not 20) - purely a sanity ceiling, not a business rule. The org already
+// has 49 real departments across both sites (deployment groups are now
+// aligned with departments, not a fixed 4-value list), so 20 was actually
+// reachable and blocked a legitimate rollout to all departments.
 const MAX_DEPLOYMENT_GROUPS = 100;
 
 export const CreateReleaseSchema = z.object({
   version: z.string().min(1).max(50),
-  // Release sada cilja VIŠE grupa odjednom (agent_release_groups tabela) -
-  // ne jednu skalarnu vrednost kao ranije.
+  // A release now targets SEVERAL groups at once (agent_release_groups table) -
+  // not a single scalar value as before.
   deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
   releaseNotes: z.string().nullable().optional(),
 });
@@ -26,16 +26,16 @@ export const UpdateReportSchema = z.object({
   reason: z.string().nullable().optional(),
 });
 
-// Za "širenje" rollout-a - menja SET ciljanih grupa na već otpremljenom
-// release-u (pun replace, ne append - frontend šalje stari set + nove
-// grupe da bi "proširio", ili manji set da bi suzio).
+// For "widening" a rollout - changes the SET of targeted groups on an already
+// uploaded release (full replace, not append - the frontend sends the old set +
+// new groups to "widen", or a smaller set to narrow).
 export const UpdateReleaseGroupsSchema = z.object({
   deploymentGroups: z.array(DeploymentGroupValue).min(1).max(MAX_DEPLOYMENT_GROUPS),
 });
 
-// Napomene su editabilne i posle upload-a (za razliku od verzije/fajla) -
-// null je validna vrednost (brisanje napomene), prazan string se normalizuje
-// na null u servisu.
+// Notes stay editable after upload (unlike the version/file) - null is a
+// valid value (clearing the note), an empty string is normalized to null in
+// the service.
 export const UpdateReleaseNotesSchema = z.object({
   releaseNotes: z.string().max(4000).nullable(),
 });

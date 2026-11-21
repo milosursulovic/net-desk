@@ -1,10 +1,10 @@
 namespace NetdeskAgent.Common.Manager
 {
     /// <summary>
-    /// "Mailbox" poruka od NetdeskAgent.Service.exe ka NetdeskAgentManager
-    /// servisu - serijalizovana kao JSON u Paths.ManagerCommandFile. Plain
-    /// PascalCase (bez [JsonProperty]) je namerno - ovo nikad ne prelazi HTTP
-    /// granicu ka Node backend-u (koji bi tražio camelCase), isti obrazac kao
+    /// A "mailbox" message from NetdeskAgent.Service.exe to the NetdeskAgentManager
+    /// service - serialized as JSON into Paths.ManagerCommandFile. Plain
+    /// PascalCase (no [JsonProperty]) is deliberate - this never crosses the HTTP
+    /// boundary to the Node backend (which would expect camelCase), the same pattern as
     /// AgentState.cs.
     /// </summary>
     public class ManagerCommand
@@ -12,31 +12,31 @@ namespace NetdeskAgent.Common.Manager
         public string CommandId { get; set; }
         public string IssuedAtUtc { get; set; }
 
-        /// <summary>"control_service" ili "install_files".</summary>
+        /// <summary>"control_service" or "install_files".</summary>
         public string Action { get; set; }
 
-        // --- control_service polja - ServiceName NIJE hardkodovan na
-        // "NetdeskAgent", radi za bilo koji naziv servisa koji Manager sme
-        // da kontroliše. ---
+        // --- control_service fields - ServiceName is NOT hardcoded to
+        // "NetdeskAgent", it works for any service name the Manager is allowed
+        // to control. ---
         public string ServiceName { get; set; }
 
-        /// <summary>"start", "stop" ili "restart".</summary>
+        /// <summary>"start", "stop" or "restart".</summary>
         public string ServiceAction { get; set; }
 
-        // --- install_files polja - StagingDir/InstallDir su proizvoljne
-        // putanje (ne hardkodovane na Service folder) - isti mehanizam može
-        // u budućnosti da instalira/ažurira BILO KOJU komponentu na BILO
-        // KOJOJ putanji (npr. potpuno odvojen folder/servis van C:\Program
-        // Files\NetdeskAgent\), ne samo NetdeskAgent Service. Namerno NEMA
-        // BackupDir/rollback - stop → obriši InstallDir potpuno → kopiraj
-        // StagingDir → start, bez čuvanja stare verzije. Backup-pa-rollback
-        // je uklonjen namerno: sam rollback (kopiranje unazad) je ranije
-        // PAO na istom razlogu kao originalna instalacija (zaključan fajl),
-        // ostavljajući mašinu u konfuznom stanju ("i update i rollback
-        // neuspešni") - jednostavan "obriši pa instaliraj" nema tu drugu
-        // tačku otkaza. ServerBaseUrl/AgentId/ApiKey/FromVersion/ToVersion su
-        // OPCIONI - ako ServerBaseUrl nije popunjen, Manager ne pokušava da
-        // javi rezultat serveru (videti ManagerWorker.ReportResultIfConfiguredAsync).
+        // --- install_files fields - StagingDir/InstallDir are arbitrary
+        // paths (not hardcoded to the Service folder) - the same mechanism can
+        // in the future install/update ANY component at ANY
+        // path (e.g. a completely separate folder/service outside C:\Program
+        // Files\NetdeskAgent\), not just the NetdeskAgent Service. Deliberately NO
+        // BackupDir/rollback - stop → delete InstallDir completely → copy
+        // StagingDir → start, without keeping the old version. Backup-then-rollback
+        // was removed on purpose: the rollback itself (copying back) previously
+        // FAILED for the same reason as the original install (a locked file),
+        // leaving the machine in a confusing state ("both the update and the rollback
+        // failed") - a simple "delete then install" doesn't have that second
+        // point of failure. ServerBaseUrl/AgentId/ApiKey/FromVersion/ToVersion are
+        // OPTIONAL - if ServerBaseUrl isn't filled in, the Manager doesn't try to
+        // report the result to the server (see ManagerWorker.ReportResultIfConfiguredAsync).
         public string StagingDir { get; set; }
         public string InstallDir { get; set; }
         public string ServerBaseUrl { get; set; }

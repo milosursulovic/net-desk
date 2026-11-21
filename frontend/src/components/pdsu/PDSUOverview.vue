@@ -84,18 +84,18 @@ const emit = defineEmits([
   'export-without-netdesk-agent-manager',
 ])
 
-// Samo redovi SA agentom mogu da se selektuju na Agenti stranici (bez
-// agenta nema kome da se pošalje komanda).
+// Only rows WITH an agent can be selected on the Agents page (without an
+// agent there's nobody to send a command to).
 const managerAgentRows = computed(() =>
   props.withoutNetdeskAgentManager.filter((row) => row.agentId),
 )
 
-// Isti obrazac kao "🎯 Selektuj agente" na kartici neželjenih programa
-// (PDSUFlagged.vue) - umesto checkbox-po-redu selekcije + slanja komande
-// direktno sa ove stranice, prosto odeš na Agenti stranicu sa već
-// selektovanim ID-jevima i odatle pošalješ BILO KOJU komandu (ne samo
-// instalaciju Manager-a) preko postojećeg batch mehanizma. Nema backend
-// poziva ovde - ID-jevi su već učitani u props.withoutNetdeskAgentManager.
+// Same pattern as "🎯 Selektuj agente" (select agents) on the unwanted programs card
+// (PDSUFlagged.vue) - instead of per-row checkbox selection + sending a command
+// directly from this page, you simply go to the Agents page with the IDs already
+// selected and send ANY command from there (not just the
+// Manager install) via the existing batch mechanism. No backend
+// call here - the IDs are already loaded in props.withoutNetdeskAgentManager.
 function selectAgentsFor() {
   const ids = managerAgentRows.value.map((row) => row.agentId)
   router.push({ path: '/agents', query: { site: site.value, agentIds: ids.join(',') } })
@@ -379,7 +379,7 @@ function percentageClass(percent) {
       </div>
     </div>
 
-    <!-- Bez PDSU podataka -->
+    <!-- Without PDSU data -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -434,7 +434,7 @@ function percentageClass(percent) {
       </div>
     </div>
 
-    <!-- Bez UltraVNC -->
+    <!-- Without UltraVNC -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -518,7 +518,7 @@ function percentageClass(percent) {
       </div>
     </div>
 
-    <!-- Bez NetdeskAgentManager-a -->
+    <!-- Without NetdeskAgentManager -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3 flex-wrap">
         <div>

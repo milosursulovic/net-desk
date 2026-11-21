@@ -10,8 +10,8 @@ import {
 
 const router = express.Router();
 
-// Samo nalog "admin" (ne bilo koji admin-role nalog) za sve, uključujući
-// čitanje liste - ko ima koju ulogu je samo po sebi osetljivo, unlike most
+// Only the "admin" account (not any admin-role account) for everything, including
+// reading the list - who has which role is inherently sensitive, unlike most
 // other /api/protected modules where GET is open to any authenticated role.
 router.use(requireRootAdmin);
 

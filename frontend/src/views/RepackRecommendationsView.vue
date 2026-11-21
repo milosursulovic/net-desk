@@ -144,15 +144,15 @@ const items = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const search = ref('')
-// Prazno = bez filtera (prikaži sve razloge) - kad je bar jedan čekiran,
-// prikazuje se PRESEK (računar mora imati SVE čekirane razloge, ne bilo koji
-// od njih) - npr. čekiranje "Obični HDD" i "Malo RAM-a" pokazuje samo
-// računare koji imaju OBA, ne one koji imaju bilo koji od ta dva.
+// Empty = no filter (show all reasons) - when at least one is checked,
+// the INTERSECTION is shown (a computer must have ALL checked reasons, not any
+// of them) - e.g. checking "Obični HDD" (plain HDD) and "Malo RAM-a" (low RAM) shows only
+// computers that have BOTH, not those that have either of the two.
 const reasonFilters = ref([])
-// Odvojeno od "Slab procesor" reason checkbox-a iznad - taj filtrira PO ČEMU
-// je računar preporučen, ovaj filtrira PO STVARNOM tipu procesora bez obzira
-// na razlog (npr. "Jak" pokazuje preporučene računare sa dobrim procesorom,
-// ali npr. lošim RAM-om/HDD-om/Lexar SSD-om).
+// Separate from the "Slab procesor" (weak CPU) reason checkbox above - that one filters by WHY
+// the computer is recommended, this one filters by the ACTUAL processor type regardless
+// of the reason (e.g. "Jak" (strong) shows recommended computers with a good processor,
+// but e.g. poor RAM/HDD/Lexar SSD).
 const cpuTierFilter = ref('')
 
 const filteredItems = computed(() => {

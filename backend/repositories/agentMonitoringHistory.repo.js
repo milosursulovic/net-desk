@@ -48,15 +48,15 @@ export async function listCurrentMonitoringForAllAgents() {
 // agent) - the caller groups by agentId in JS. Joined with hostname since
 // the report needs it for display, not just the agent id.
 //
-// BUG FIX (uživo otkriven OOM pad celog servera): ova funkcija je ranije
-// primala SAMO `since`, dok je dailyReport.service.js pozivao
-// listMonitoringHistorySince(windowStart, site) - drugi argument je tiho
-// odbačen (JS ne baca grešku na višak argumenata), pa je upit VRAĆAO CELU
-// flotu (oba sajta) na SVAKO generisanje izveštaja, za BILO KOJI sajt -
-// neomeđen rast tokom vremena (istorija + broj agenata na oba sajta) je na
-// kraju eksplodirao V8 heap i srušio ceo Node proces, ne samo taj jedan
-// zahtev. site parametar sad stvarno filtrira, isti JOIN obrazac kao
-// agents.repo.js (site živi na ip_entries, ne agents).
+// BUG FIX (a live-discovered OOM crash of the whole server): this function used
+// to accept ONLY `since`, while dailyReport.service.js called
+// listMonitoringHistorySince(windowStart, site) - the second argument was silently
+// dropped (JS doesn't throw on extra arguments), so the query RETURNED THE WHOLE
+// fleet (both sites) on EVERY report generation, for ANY site - unbounded growth
+// over time (history + agent count on both sites) eventually blew up the V8 heap
+// and crashed the entire Node process, not just that one request. The site
+// parameter now really filters, same JOIN pattern as agents.repo.js (site lives
+// on ip_entries, not agents).
 export async function listMonitoringHistorySince(since, site) {
   const [rows] = await pool.execute(
     `

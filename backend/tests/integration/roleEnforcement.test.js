@@ -111,10 +111,10 @@ describe("role enforcement across modules (integration, real DB)", () => {
   });
 
   it("viewer IS allowed to mark a report as read (personal action, not a data mutation)", async () => {
-    // Generisanje izveštaja više nema HTTP rutu (samo cron, videti
-    // dailyReportScheduler.js) - ovaj test ionako testira mark-read
-    // dozvole, ne generisanje samo, pa poziva servis direktno da napravi
-    // izveštaj za setup.
+    // Report generation no longer has an HTTP route (cron only, see
+    // dailyReportScheduler.js) - this test tests mark-read
+    // permissions anyway, not generation itself, so it calls the service directly to create
+    // a report for setup.
     const generated = await generateDailyReportsForAllSites();
     reportIds = generated.map((r) => r.id);
     reportId = reportIds[0];

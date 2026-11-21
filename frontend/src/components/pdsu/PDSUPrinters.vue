@@ -46,9 +46,9 @@ function statusBadgeClass(status) {
   return 'bg-bad text-white'
 }
 
-// Grupisanje po proizvođaču sad broji SVAKI štampač (ne jedan po računaru),
-// pa isti računar može da se pojavi više puta u group.computers ako ima
-// više štampača istog brenda - značke ovde treba da budu po računaru, ne po štampaču.
+// Grouping by manufacturer now counts EVERY printer (not one per computer),
+// so the same computer can appear several times in group.computers if it has
+// several printers of the same brand - the badges here should be per computer, not per printer.
 function uniqueComputers(computers) {
   const seen = new Set()
   return (computers || []).filter((c) => {
@@ -154,7 +154,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Aktivni štampač po računaru (svi sinhronizovani štampači, ne samo podrazumevani) -->
+    <!-- Active printer per computer (all synced printers, not just the default one) -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -217,7 +217,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Grupisanje aktivnih štampača po proizvođaču -->
+    <!-- Active printers grouped by manufacturer -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -264,7 +264,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Štampači sa problematičnim statusom -->
+    <!-- Printers with a problematic status -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -319,7 +319,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Najčešći štampači -->
+    <!-- Most common printers -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -354,7 +354,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Najčešći drajveri -->
+    <!-- Most common drivers -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -391,7 +391,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Retki štampači -->
+    <!-- Rare printers -->
     <div class="pdsu-card mb-4">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>
@@ -437,7 +437,7 @@ async function exportActivePrintersPdf() {
       </div>
     </div>
 
-    <!-- Računari sa najviše štampača -->
+    <!-- Computers with the most printers -->
     <div class="pdsu-card">
       <div class="pdsu-card-header flex items-center justify-between gap-3">
         <div>

@@ -23,11 +23,11 @@ namespace NetdeskAgent.Manager
         }
 
         /// <summary>
-        /// Pokreće istu radnu petlju direktno u konzoli, bez SCM-a - za razvoj
-        /// i debug bez instaliranja pravog Windows servisa. Koristiti:
+        /// Runs the same work loop directly in the console, without the SCM - for development
+        /// and debugging without installing a real Windows service. Usage:
         ///   Netdesk.Agent.Manager.exe --console
-        /// Napomena: u konzolnom modu OnCustomCommand (SCM-only) ne postoji -
-        /// mailbox se ovde proverava isključivo na periodičan tick.
+        /// Note: in console mode OnCustomCommand (SCM-only) doesn't exist -
+        /// the mailbox is checked here exclusively on the periodic tick.
         /// </summary>
         private static void RunConsole()
         {

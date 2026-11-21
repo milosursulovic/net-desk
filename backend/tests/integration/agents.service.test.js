@@ -290,9 +290,9 @@ describe("agents.service (integration, real DB)", () => {
     const found = await findAgentByUid(enrolled.agentId);
     agentId = found.id;
 
-    // Dev baza sada ima i pravu (produkcijsku) kopiju podataka - ne sme se
-    // slučajno pogoditi IP koji već pripada nekom stvarnom unosu, zato
-    // provera slobodne adrese pre nego što se odabere.
+    // The dev DB now also has a real (production) copy of the data - we must not
+    // accidentally hit an IP that already belongs to some real entry, hence
+    // checking for a free address before picking one.
     const { findIpEntryIdByIp } = await import("../../repositories/ipEntries.repo.js");
     let domZdravljaIp;
     for (let host = 250; host >= 1; host--) {
@@ -310,8 +310,8 @@ describe("agents.service (integration, real DB)", () => {
     const entry = await getIpEntryByIdService(ipEntryId);
     expect(entry.site).toBe("dom_zdravlja");
 
-    // Admin ručno ispravlja site (npr. mašina fizički prebačena) - sledeći
-    // sync sa ISTE IP adrese ne sme da ga vrati na pretpostavljenu vrednost.
+    // The admin corrects site by hand (e.g. the machine was physically moved) - the next
+    // sync from the SAME IP address must not revert it to the guessed value.
     await pool.execute("UPDATE ip_entries SET site = 'bolnica' WHERE id = ?", [ipEntryId]);
     const reloaded = await findAgentById(agentId);
     await syncAgentInventory(reloaded, { ip: domZdravljaIp, hostname });
@@ -498,9 +498,9 @@ describe("agents.service (integration, real DB)", () => {
       expect(test.items.map((a) => a.id)).not.toContain(agentId);
     });
 
-    // Deployment grupa je sada slobodan tekst (usklađena sa stvarnim
-    // odeljenjima), ne fiksna test/it/pilot/rest enumeracija - ovaj test
-    // potvrđuje da filtriranje radi i za proizvoljno ime odeljenja.
+    // The deployment group is now free text (aligned with the real
+    // departments), not a fixed test/it/pilot/rest enumeration - this test
+    // confirms filtering works for an arbitrary department name too.
     it("filters by an arbitrary (department-like) deploymentGroup value, not just the classic ones", async () => {
       const hostname = testHostname();
       const enrolled = await enrollAgent({ hostname });
@@ -564,10 +564,10 @@ describe("agents.service (integration, real DB)", () => {
     );
 
     it("filters by MULTIPLE selected deploymentGroup values (union/OR, not intersection)", async () => {
-      // Sintetička imena grupa (ne stvarna "pilot"/"test") namerno - bez
-      // search filtera koji bi suzio na jednog agenta (pa bi test morao da
-      // menja šta zapravo proverava), realne grupe u ovoj dev bazi bi mogle
-      // da nadmaše limit:50 pre nego što stignu novokreirani test agenti.
+      // Synthetic group names (not the real "pilot"/"test") on purpose - without
+      // a search filter that would narrow it to one agent (so the test would have to
+      // change what it actually checks), real groups in this dev DB could
+      // exceed limit:50 before the newly created test agents show up.
       const groupA = `VITEST_GRP_A_${Date.now()}`;
       const groupB = `VITEST_GRP_B_${Date.now()}`;
 
@@ -690,8 +690,8 @@ describe("agents.service (integration, real DB)", () => {
       const found = await findAgentByUid(enrolled.agentId);
       agentId = found.id;
 
-      // Nema još monitoring podataka - i dalje treba da se pojavi (NULL se
-      // tretira kao "nije potvrđeno aktivan", ne kao "propušteno").
+      // No monitoring data yet - it should still show up (NULL is
+      // treated as "not confirmed active", not as "skipped").
       const noDataYet = await listAgentsService({
         page: 1, limit: 50, search: hostname, status: "all", antivirusInactive: true,
       });
@@ -776,15 +776,15 @@ describe("agents.service (integration, real DB)", () => {
       await linkAgentToIpEntry(agentId, ipEntryId);
       await pool.execute("UPDATE ip_entries SET is_online = 1 WHERE id = ?", [ipEntryId]);
 
-      // Agent nikad nije poslao heartbeat -> connectivityStatus 'unknown',
-      // ne 'online' - dok je ip_entries.is_online = 1 = mismatch.
+      // The agent never sent a heartbeat -> connectivityStatus 'unknown',
+      // not 'online' - while ip_entries.is_online = 1 = mismatch.
       const mismatch = await listAgentsService({
         page: 1, limit: 50, search: hostname, status: "all", agentOfflineIpOnline: true,
       });
       expect(mismatch.items.map((a) => a.id)).toContain(agentId);
 
-      // Agent se javi online preko heartbeat-a -> mismatch nestaje (oba
-      // signala se sad slažu).
+      // The agent reports online via heartbeat -> the mismatch disappears (both
+      // signals now agree).
       await heartbeat(agentId, {}, "10.230.62.81");
       const resolved = await listAgentsService({
         page: 1, limit: 50, search: hostname, status: "all", agentOfflineIpOnline: true,

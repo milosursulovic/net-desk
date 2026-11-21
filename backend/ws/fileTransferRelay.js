@@ -7,22 +7,22 @@ import { findAgentByUid } from "../repositories/agents.repo.js";
 import { findVncSessionById } from "../repositories/vncSessions.repo.js";
 import { insertActivityLog } from "../repositories/activityLog.repo.js";
 
-// Isti 30-min hard cap kao ws/vncRelay.js, isti razlog (zaboravljena/
-// napuštena sesija ne sme da drži kanal otvoren zauvek). Odvojena mapa/
-// tajmer od vncRelay.js - fajl-transfer kanal ima sopstveni životni vek,
-// namerno NE deli CancellationToken/socket sa VNC ekranskim kanalom (vidi
-// AgentWorker.cs) - zatvaranje jednog ne sme da obori drugi.
+// Same 30-min hard cap as ws/vncRelay.js, same reason (a forgotten/
+// abandoned session must not keep the channel open forever). A separate map/
+// timer from vncRelay.js - the file-transfer channel has its own lifetime,
+// it deliberately does NOT share a CancellationToken/socket with the VNC screen channel (see
+// AgentWorker.cs) - closing one must not bring down the other.
 const MAX_SESSION_MS = 30 * 60 * 1000;
 
 // sessionId -> { agentSocket, viewerSocket, agentId, startedAt, timeoutHandle,
 //                viewerRole, viewerUserId, viewerUsername, pendingDownload }
-// pendingDownload (kad postoji): { requestId, res }
+// pendingDownload (when present): { requestId, res }
 const sessions = new Map();
 
-// Isto kao ws/vncRelay.js's authenticateAgentSocket - namerno duplirano
-// umesto deljeno (isti razlog kao ws/webrtcSignaling.js je nekad imao:
-// svaki WS "upgrade" handler na server.on("upgrade") mora sam da parsira
-// svoj URL/auth, nema express middleware lanac ovde).
+// Same as ws/vncRelay.js's authenticateAgentSocket - deliberately duplicated
+// rather than shared (the same reason ws/webrtcSignaling.js once had:
+// each WS "upgrade" handler on server.on("upgrade") must parse its own
+// URL/auth, there's no express middleware chain here).
 async function authenticateAgentSocket(url) {
   const agentUid = url.searchParams.get("agentId");
   const apiKey = url.searchParams.get("apiKey");
@@ -40,10 +40,10 @@ async function authenticateAgentSocket(url) {
   return isMatch ? agent : null;
 }
 
-// Isto kao ws/vncRelay.js's authenticateViewer - isti "admin"/"operator"
-// prag kao gledanje ekrana (obično "viewer" ne sme ni VNC ekran da gleda).
-// Otpremanje fajlova (upload) je STROŽE od ovoga - vidi proveru u
-// viewer ws.on("message") ispod, gde se dodatno traži TAČNO "admin".
+// Same as ws/vncRelay.js's authenticateViewer - the same "admin"/"operator"
+// threshold as viewing the screen (a plain "viewer" may not even view the VNC screen).
+// Uploading files is STRICTER than this - see the check in the
+// viewer ws.on("message") below, where exactly "admin" is additionally required.
 function authenticateViewer(token) {
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
@@ -94,26 +94,26 @@ function getOrCreateSession(sessionId, agentId) {
 }
 
 /**
- * Treći WS relay na istom HTTPS serveru kao ws/vncRelay.js (isti "upgrade"
- * event, isti port/sertifikat) - namenski ODVOJEN kanal za AnyDesk-stil
- * transfer fajlova tokom VNC sesije (kopiraj fajl sa udaljene mašine /
- * otpremi fajl na nju), pošto RFB/VNC protokol nema koncept fajla.
+ * A third WS relay on the same HTTPS server as ws/vncRelay.js (same "upgrade"
+ * event, same port/certificate) - a dedicated SEPARATE channel for AnyDesk-style
+ * file transfer during a VNC session (copy a file from the remote machine /
+ * upload a file to it), since the RFB/VNC protocol has no concept of a file.
  *
  *   - /api/agents/file-transfer?sessionId=N          (agent, outbound-initiated)
  *   - /api/protected/file-transfer/:sessionId?token=JWT  (admin browser)
  *
- * Uglavnom slep bidirekcioni passthrough (kao vncRelay.js) za "list"/
- * "upload_*" poruke, SA DVE namernim izuzetkom:
- *   1) viewer->agent "upload_start" poruka se propušta SAMO ako je
- *      viewer-ov JWT role tačno "admin" (strože od "admin"/"operator" praga
- *      za konekciju/list/download - pisanje proizvoljnog fajla na udaljeni
- *      disk je veći blast radius od čitanja/gledanja ekrana).
- *   2) "download" (preuzimanje sa udaljene mašine) NE ide preko viewer-ovog
- *      WS-a uopšte - to je hibridni put preko obične HTTP GET rute
- *      (routes/agentsAdmin.routes.js), koja poziva streamDownloadToResponse
- *      ispod da prosledi zahtev agent-u i piše dolazne bajtove DIREKTNO na
- *      HTTP response - izbegava Blob-akumulaciju i OOM rizik u browseru za
- *      velike fajlove, browser strana je obična `<a href>` veza.
+ * Mostly a blind bidirectional passthrough (like vncRelay.js) for "list"/
+ * "upload_*" messages, WITH TWO deliberate exceptions:
+ *   1) the viewer->agent "upload_start" message is let through ONLY if the
+ *      viewer's JWT role is exactly "admin" (stricter than the "admin"/"operator" threshold
+ *      for connect/list/download - writing an arbitrary file to a remote
+ *      disk is a bigger blast radius than reading/viewing the screen).
+ *   2) "download" (fetching from the remote machine) does NOT go over the viewer's
+ *      WS at all - it's a hybrid path over a regular HTTP GET route
+ *      (routes/agentsAdmin.routes.js), which calls streamDownloadToResponse
+ *      below to forward the request to the agent and writes the incoming bytes DIRECTLY to the
+ *      HTTP response - avoids Blob accumulation and OOM risk in the browser for
+ *      large files, the browser side is a plain `<a href>` link.
  */
 export function attachFileTransferRelay(server) {
   const wss = new WebSocketServer({ noServer: true });
@@ -123,9 +123,9 @@ export function attachFileTransferRelay(server) {
     try {
       url = new URL(req.url, "https://placeholder.invalid");
     } catch {
-      // Namerno bez socket.destroy() - drugi "upgrade" handler na istom
-      // serveru (vncRelay.js, webrtcSignaling.js ranije) treba šansu da
-      // obradi putanje koje ovaj ne prepoznaje.
+      // Deliberately no socket.destroy() - another "upgrade" handler on the same
+      // server (vncRelay.js, webrtcSignaling.js previously) needs a chance to
+      // handle paths this one doesn't recognize.
       return;
     }
 
@@ -147,11 +147,11 @@ export function attachFileTransferRelay(server) {
           const current = sessions.get(sessionId);
           if (!current) return;
 
-          // Dok je download u toku, SVE što stigne od agenta (JSON
-          // download_start/download_end/download_error kao tekst, sirovi
-          // bajtovi kao binarno) ide na HTTP response, NE viewer-ovom WS-u -
-          // download ne prolazi kroz viewer socket uopšte (vidi napomenu na
-          // vrhu fajla).
+          // While a download is in progress, EVERYTHING arriving from the agent (JSON
+          // download_start/download_end/download_error as text, raw
+          // bytes as binary) goes to the HTTP response, NOT the viewer's WS -
+          // the download doesn't go through the viewer socket at all (see the note at
+          // the top of the file).
           if (current.pendingDownload) {
             if (isBinary) {
               try {
@@ -166,7 +166,7 @@ export function attachFileTransferRelay(server) {
             try {
               msg = JSON.parse(data.toString());
             } catch {
-              /* nije JSON - ignoriši, ne prosleđuj dalje */
+              /* not JSON - ignore, don't forward */
             }
             if (msg && msg.requestId === current.pendingDownload.requestId) {
               if (msg.type === "download_start") {
@@ -246,14 +246,14 @@ export function attachFileTransferRelay(server) {
             try {
               msg = JSON.parse(data.toString());
             } catch {
-              /* nije JSON - ignoriši (npr. bilo šta drugo), i dalje prosledi dole */
+              /* not JSON - ignore (e.g. anything else), still forward below */
             }
 
             if (msg?.type === "upload_start") {
-              // Strože od konekcionog admin/operator praga - pisanje
-              // proizvoljnog fajla na udaljeni disk je veći blast radius od
-              // čitanja/gledanja ekrana. Ne prosleđuje se agentu ako viewer
-              // nije TAČNO "admin".
+              // Stricter than the admin/operator connection threshold - writing
+              // an arbitrary file to a remote disk is a bigger blast radius than
+              // reading/viewing the screen. Not forwarded to the agent unless the viewer
+              // is EXACTLY "admin".
               if (current.viewerRole !== "admin") {
                 try {
                   ws.send(
@@ -298,17 +298,17 @@ export function attachFileTransferRelay(server) {
       return;
     }
 
-    // Namerno bez socket.destroy() - isti razlog kao URL parse catch iznad.
+    // Deliberately no socket.destroy() - same reason as the URL parse catch above.
   });
 }
 
-// Pozvano iz backend/services/fileTransfer.service.js (hibridni HTTP
-// download put - vidi napomenu na vrhu fajla). Piše DIREKTNO na `res` kako
-// bajtovi stižu od agenta preko WS-a, umesto da ih akumulira u memoriji.
-// Odbija ako sesija/agent nije povezan, ili ako je već u toku drugo
-// preuzimanje za isti sessionId - namerno pojednostavljeno na "jedan
-// transfer odjednom po sesiji" (interni RMM alat, niska konkurentnost u
-// praksi za jednog admina koji gleda jednog agenta).
+// Called from backend/services/fileTransfer.service.js (the hybrid HTTP
+// download path - see the note at the top of the file). Writes DIRECTLY to `res` as
+// bytes arrive from the agent over WS, instead of accumulating them in memory.
+// Refuses if the session/agent isn't connected, or if another
+// download is already in progress for the same sessionId - deliberately simplified to "one
+// transfer at a time per session" (an internal RMM tool, low concurrency in
+// practice for one admin looking at one agent).
 export function streamDownloadToResponse(sessionId, filePath, res) {
   return new Promise((resolve, reject) => {
     const entry = sessions.get(sessionId);

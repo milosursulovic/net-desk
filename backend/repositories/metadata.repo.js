@@ -91,11 +91,11 @@ export async function findMetadataIdByIpEntryId(ipEntryId) {
   return row?.id ?? null;
 }
 
-// Za Wake-on-LAN (ipAddresses.service.js's wakeService) - sve poznate MAC
-// adrese za ovaj računar (obično 1-3, Ethernet/WiFi/virtuelni adapteri).
-// Šalje se magic packet za SVAKU (bezopasno - nepostojeći/pogrešan MAC na
-// istom broadcast segmentu se jednostavno ignoriše, samo prava mrežna
-// kartica reaguje), da se ne pogađa koji je "pravi" adapter.
+// For Wake-on-LAN (ipAddresses.service.js's wakeService) - every known MAC
+// address for this computer (usually 1-3, Ethernet/WiFi/virtual adapters).
+// A magic packet is sent for EACH one (harmless - a nonexistent/wrong MAC on
+// the same broadcast segment is simply ignored, only the real network card
+// responds), so there's no guessing which adapter is the "real" one.
 export async function findMacsForIpEntry(ipEntryId) {
   const [rows] = await pool.execute(
     `
@@ -125,10 +125,10 @@ export async function listMetadataIds(offset, limit, site) {
   return rows || [];
 }
 
-// Pretraga preko cele baze (ne samo trenutno učitane strane) - isti obrazac
-// kao pdsuAnalytics.repo.js searchSoftwareRows/searchDriverRows/itd: LIKE
-// preko relevantnih kolona, JOIN sa ip_entries za računar/IP/odeljenje, hard
-// LIMIT da jedan preširok upit ne vrati celu bazu.
+// Search across the whole database (not just the currently loaded page) - same
+// pattern as pdsuAnalytics.repo.js searchSoftwareRows/searchDriverRows/etc.: LIKE
+// across the relevant columns, JOIN with ip_entries for computer/IP/department, a hard
+// LIMIT so one overly broad query can't return the whole database.
 export async function searchMetadataRows(term, limit = 100, site) {
   const { where, params } = buildLikeSearch(
     [
@@ -426,12 +426,12 @@ export async function statsTotalWithMeta(site) {
   return Number(totalWithMeta) || 0;
 }
 
-// metadata_id je denormalizovana FK na ip_entries (postavlja je
-// txAttachMetadataToIpEntry) - "bez metapodataka" je prosto IS NULL, ne
-// treba JOIN/EXISTS provera kao za PDSU (koji nema takvu denormalizaciju).
-// computer_metadata_{ram_modules,storage,gpus,nics} sve imaju ON DELETE
-// CASCADE ka computer_metadata.id, pa brisanje reda ovde automatski čisti
-// i njih - nema potrebe za ručnim brisanjem četiri child tabele.
+// metadata_id is a denormalized FK on ip_entries (set by
+// txAttachMetadataToIpEntry) - "no metadata" is simply IS NULL, no
+// JOIN/EXISTS check needed like for PDSU (which has no such denormalization).
+// computer_metadata_{ram_modules,storage,gpus,nics} all have ON DELETE
+// CASCADE to computer_metadata.id, so deleting the row here automatically cleans
+// them up too - no need to manually delete the four child tables.
 export async function deleteMetadataForIpEntry(ipEntryId) {
   await pool.execute(`UPDATE ip_entries SET metadata_id = NULL WHERE id = ?`, [ipEntryId]);
   const [result] = await pool.execute(

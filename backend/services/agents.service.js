@@ -98,12 +98,12 @@ export async function heartbeat(agentId, dto, remoteIp) {
 
   const agent = await findAgentById(agentId);
 
-  // Globalni prekidač (Config strana, process_monitor_enabled) se namerno
-  // NE prosleđuje agentu kao posebno polje - umesto toga se OR-uje u
-  // POSTOJEĆE processKillExempt polje pre slanja. Agent (AgentWorker.cs)
-  // već tretira "exempt" kao "ne ubijaj na ovoj mašini" bez ikakve razlike
-  // da li je to zbog per-agent whitelist-e ili globalnog isključivanja -
-  // nula izmena/rekompajliranja na C# strani je potrebno za ovaj prekidač.
+  // The global switch (Config page, process_monitor_enabled) is deliberately
+  // NOT passed to the agent as a separate field - instead it's OR-ed into
+  // the EXISTING processKillExempt field before sending. The agent (AgentWorker.cs)
+  // already treats "exempt" as "don't kill on this machine" with no distinction
+  // whether it's due to the per-agent whitelist or the global switch-off -
+  // zero changes/recompiles are needed on the C# side for this switch.
   const monitorEnabled = await isFeatureEnabled("process_monitor_enabled");
 
   return {
@@ -113,9 +113,9 @@ export async function heartbeat(agentId, dto, remoteIp) {
       agentId: agent.agentUid,
       status: agent.status,
       lastHeartbeatAt: agent.lastHeartbeatAt,
-      // Boolean(...) namerno - mysql2 vraća TINYINT(1) kao JS broj (0/1), a
-      // C#-ov HeartbeatAgentInfo.ProcessKillExempt je pravi bool - Json.NET
-      // baca JsonSerializationException na broj tamo gde očekuje true/false.
+      // Boolean(...) on purpose - mysql2 returns TINYINT(1) as a JS number (0/1), and
+      // C#'s HeartbeatAgentInfo.ProcessKillExempt is a real bool - Json.NET
+      // throws JsonSerializationException on a number where it expects true/false.
       processKillExempt: Boolean(agent.processKillExempt) || !monitorEnabled,
     },
   };
@@ -212,8 +212,8 @@ export async function listAgentsService({
   return { items: itemsWithStatus, page: safePage, limit, total, totalPages, search, status };
 }
 
-// Za "selektuj sve po filteru" na /agents - isti filter-oblik kao
-// listAgentsService, bez page/limit (svi id-jevi, ne jedna strana).
+// For "select all matching the filter" on /agents - same filter shape as
+// listAgentsService, without page/limit (all ids, not one page).
 export async function listAgentIdsService(filters) {
   const ids = await listAgentIds(filters);
   return { ids };
@@ -226,10 +226,10 @@ export async function agentFilterOptionsService(site) {
   const managerVersion = await listDistinctManagerVersions(site);
   const department = await listDistinctDepartments(site);
 
-  // Deployment grupe su sad ODVOJENE od odeljenja (deployment_groups_list,
-  // ne groups_list) - predlozi su unija predefinisane liste, grupa već u
-  // upotrebi na agentima, i grupa koje release-i ciljaju. Site-scope se
-  // primenjuje samo na agente - releases nisu site-vezani.
+  // Deployment groups are now SEPARATE from departments (deployment_groups_list,
+  // not groups_list) - suggestions are the union of the predefined list, groups already in
+  // use on agents, and groups targeted by releases. Site scope is
+  // applied only to agents - releases aren't tied to a site.
   const [predefined, agentGroups, releaseGroups] = await Promise.all([
     listDeploymentGroups(),
     listDistinctAgentDeploymentGroups(site),
@@ -268,16 +268,16 @@ export async function getAgentService(id) {
     site: ipEntry?.site ?? null,
     department: ipEntry?.department ?? null,
     description: ipEntry?.description ?? null,
-    // Zamenjuje findAgentById-jev GROUP_CONCAT string (isto polje ime, samo
-    // display-only na listi) pravim nizom - detalj strana radi add/remove
-    // pojedinačnih grupa preko njega.
+    // Replaces findAgentById's GROUP_CONCAT string (same field name, only
+    // display-only in the list) with a real array - the detail page adds/removes
+    // individual groups through it.
     deploymentGroups,
   };
 }
 
-// Deployment grupe direktno pokreću auto-update targeting (checkForUpdateService
-// u agentReleases.service.js gleda presek agent-ovih grupa i release-ovih
-// ciljanih grupa) - zato je add/remove admin-only u ruti.
+// Deployment groups directly drive auto-update targeting (checkForUpdateService
+// in agentReleases.service.js looks at the intersection of the agent's groups and the release's
+// targeted groups) - which is why add/remove is admin-only in the route.
 export async function addAgentDeploymentGroupService(id, groupName) {
   const agent = await findAgentById(id);
   if (!agent) {
@@ -296,9 +296,9 @@ export async function removeAgentDeploymentGroupService(id, groupName) {
   return await getAgentService(id);
 }
 
-// Masovna dodela - ista "created/skipped" forma kao createBatchJobService
-// (agentJobs.service.js), sekvencijalno iz istog razloga (DB pool
-// ograničenje, batch može ciljati do 500 agenata odjednom).
+// Bulk assignment - same "created/skipped" shape as createBatchJobService
+// (agentJobs.service.js), sequential for the same reason (DB pool
+// limit, a batch can target up to 500 agents at once).
 export async function addAgentsDeploymentGroupService(agentIds, groupName) {
   const uniqueIds = [...new Set(agentIds)];
   const updated = [];
@@ -317,10 +317,10 @@ export async function addAgentsDeploymentGroupService(agentIds, groupName) {
   return { updated, skipped };
 }
 
-// "Whitelist" - agent i dalje detektuje/loguje procese sa watchlist-e na ovom
-// računaru (vidljivost/audit trag se ne gubi), ali ih NIKAD ne ubija čak i
-// kad je AgentSettings.KillWatchedProcesses globalno uključen (npr. IT admin
-// koristi TeamViewer za legitimnu podršku na ovoj mašini).
+// "Whitelist" - the agent still detects/logs watchlist processes on this
+// computer (visibility/audit trail isn't lost), but NEVER kills them even
+// when AgentSettings.KillWatchedProcesses is globally enabled (e.g. an IT admin
+// uses TeamViewer for legitimate support on this machine).
 export async function setAgentProcessKillExemptService(id, exempt) {
   const affected = await updateAgentProcessKillExempt(id, exempt);
   if (!affected) {
@@ -337,11 +337,11 @@ export async function revokeAgentService(id) {
   return await findAgentById(id);
 }
 
-// Zahteva da agent VEĆ bude 'revoked' - brisanje aktivnog agenta bi ostavilo
-// mašinu koja i dalje ima važeći api_key_hash i pokušava heartbeat/poll
-// protiv obrisanog agent_id-a (agentAuth.middleware.js radi lookup po id-u,
-// ne po agent_uid-u - nestao red znači 401 na svaki sledeći poziv sa te
-// mašine, umesto čistog "povučen" odgovora). Revoke prvo je namerni korak.
+// Requires the agent to ALREADY be 'revoked' - deleting an active agent would leave a
+// machine that still has a valid api_key_hash and keeps trying heartbeat/poll
+// against a deleted agent_id (agentAuth.middleware.js looks up by id,
+// not by agent_uid - a vanished row means a 401 on every subsequent call from that
+// machine, instead of a clean "revoked" response). Revoking first is a deliberate step.
 export async function deleteAgentService(id) {
   const agent = await findAgentById(id);
   if (!agent) {
@@ -354,14 +354,14 @@ export async function deleteAgentService(id) {
   return { success: true };
 }
 
-// Isti obrazac poklapanja za UltraVNC kao listComputersWithoutUltravnc() u
-// pdsuAnalytics.repo.js/hasUltravnc u ipEntries.repo.js - držati u sinhronizaciji.
-// Poredi samo protiv servisnog "name" polja (ne displayName), isto kao ta
-// mesta i kao is_flagged EXISTS upiti u pdsu.repo.js.
-// Vraća `undefined` kad services nije poslat u ovom sync-u (ne diraj
-// postojeću vrednost), a `null`/spojen string kad JESTE poslat (potpuna
-// zamena na svakom sync-u sa listom servisa - isto ponašanje kao
-// computer_name/department, čak i kad se ništa od poznatih alata ne nađe).
+// Same UltraVNC matching pattern as listComputersWithoutUltravnc() in
+// pdsuAnalytics.repo.js/hasUltravnc in ipEntries.repo.js - keep them in sync.
+// Compares only against the service "name" field (not displayName), same as those
+// places and the is_flagged EXISTS queries in pdsu.repo.js.
+// Returns `undefined` when services weren't sent in this sync (don't touch the
+// existing value), and `null`/a joined string when they WERE sent (full
+// replace on every sync with a service list - same behavior as
+// computer_name/department, even when none of the known tools are found).
 function detectRdpApps(services) {
   if (!Array.isArray(services)) return undefined;
 
@@ -375,9 +375,9 @@ function detectRdpApps(services) {
   return found.length ? found.join(", ") : null;
 }
 
-// Agent šalje InventoryRequest sa PascalCase poljima (RawJsonSettings, vidi
-// NetdeskApiClient.cs) - OS objekat i njegov Caption se zato tolerantno
-// čitaju u oba slova, isti obrazac kao metadata.service.js-ov pick().
+// The agent sends InventoryRequest with PascalCase fields (RawJsonSettings, see
+// NetdeskApiClient.cs) - so the OS object and its Caption are read tolerantly
+// in both casings, same pattern as metadata.service.js's pick().
 function extractOsCaption(body) {
   const os = body?.OS ?? body?.os;
   if (!os) return undefined;
@@ -390,21 +390,21 @@ function extractOsArchitecture(body) {
   return emptyToNull(os.Architecture ?? os.architecture);
 }
 
-// hasIzvolteFolder je nullable na C# strani (vidi InventoryModels.cs) - kad
-// nije poslato (minimalni event-log/DNS/process-detection sync-evi ga nikad
-// ne postavljaju), RawJsonSettings.NullValueHandling.Ignore ga potpuno
-// izostavi iz JSON-a, pa je ovde undefined - "ne diraj postojeću vrednost",
-// isti obrazac kao os/rdp_app.
+// hasIzvolteFolder is nullable on the C# side (see InventoryModels.cs) - when
+// not sent (the minimal event-log/DNS/process-detection syncs never
+// set it), RawJsonSettings.NullValueHandling.Ignore omits it entirely
+// from the JSON, so it's undefined here - "don't touch the existing value",
+// same pattern as os/rdp_app.
 function extractHasIzvolteFolder(body) {
   if (body?.hasIzvolteFolder === undefined || body?.hasIzvolteFolder === null) return undefined;
   return Boolean(body.hasIzvolteFolder);
 }
 
-// serviceFiles je opciono, isti obrazac kao hasIzvolteFolder iznad -
-// InventoryCollector.CollectServiceFiles() ga popunjava samo na PUNOM
-// inventory sync-u (ne na minimalnim event-log/DNS/process-detection
-// sync-evima), pa je undefined kad nije poslato ("ne diraj postojeći
-// service_files_mismatch flag", ne "obriši ga").
+// serviceFiles is optional, same pattern as hasIzvolteFolder above -
+// InventoryCollector.CollectServiceFiles() fills it only on a FULL
+// inventory sync (not on the minimal event-log/DNS/process-detection
+// syncs), so it's undefined when not sent ("don't touch the existing
+// service_files_mismatch flag", not "clear it").
 function extractServiceFiles(body) {
   if (!Array.isArray(body?.serviceFiles)) return undefined;
   return body.serviceFiles
@@ -412,14 +412,14 @@ function extractServiceFiles(body) {
     .filter((f) => f.path && Number.isFinite(f.size));
 }
 
-// trustedRootCertInstalled/intermediateCertInstalled/secureDnsDisabled su
-// nullable na C# strani (SecurityPostureCollector.cs) isto kao
-// hasIzvolteFolder iznad - undefined kad polje nije poslato ("ne diraj
-// postojeću vrednost"), a i kad JESTE poslato, null je legitiman odgovor
-// (provera nije mogla da se izvrši ovog ciklusa, npr. server sa referentnim
-// sertifikatom nedostupan) - za razliku od hasIzvolteFolder, ovde se null
-// eksplicitno čuva u bazi umesto da se svede na false, jer "nije provereno"
-// i "potvrđeno odsutno" moraju ostati razlučivi.
+// trustedRootCertInstalled/intermediateCertInstalled/secureDnsDisabled are
+// nullable on the C# side (SecurityPostureCollector.cs) just like
+// hasIzvolteFolder above - undefined when the field wasn't sent ("don't touch the
+// existing value"), and even when it WAS sent, null is a legitimate answer
+// (the check couldn't run this cycle, e.g. the server with the reference
+// certificate was unreachable) - unlike hasIzvolteFolder, here null is
+// explicitly stored in the DB instead of being collapsed to false, because "not checked"
+// and "confirmed absent" must remain distinguishable.
 function extractTrustedRootCertInstalled(body) {
   if (body?.trustedRootCertInstalled === undefined) return undefined;
   return body.trustedRootCertInstalled === null ? null : Boolean(body.trustedRootCertInstalled);
@@ -435,12 +435,12 @@ function extractSecureDnsDisabled(body) {
   return body.secureDnsDisabled === null ? null : Boolean(body.secureDnsDisabled);
 }
 
-// Pretpostavlja lokaciju po IP opsegu SAMO za potpuno nov unos (prvi put
-// vidimo tu IP adresu) - ne dira site na već postojećem unosu, jer ga je
-// admin mogao ručno ispraviti (npr. laptop koji je fizički prenet, ali još
-// javlja sa stare IP adrese). Bolnica 10.230.62.0/23 i dom_zdravlja
-// 10.160.64.0/21 oba u potpunosti upadaju pod svoj prvi-dva-oktet prefiks,
-// pa je prost prefiks dovoljan bez pune CIDR matematike.
+// Guesses the location from the IP range ONLY for a brand-new entry (the first time
+// we see that IP address) - doesn't touch site on an existing entry, because the
+// admin may have corrected it by hand (e.g. a laptop physically moved, but still
+// reporting from the old IP address). Bolnica 10.230.62.0/23 and dom_zdravlja
+// 10.160.64.0/21 both fall entirely under their first-two-octet prefix,
+// so a simple prefix is enough without full CIDR math.
 export function inferSiteFromIp(ip) {
   if (typeof ip !== "string") return null;
   if (ip.startsWith("10.160.")) return "dom_zdravlja";
@@ -536,15 +536,15 @@ async function resolveIpEntryId(agent, body) {
   return ipEntryId;
 }
 
-// Svaki od koraka ispod piše u SVOJU tabelu, ključano samo preko ipEntryId
-// (već razrešenog) - niko od njih ne čita rezultat drugog, pa su bezbedni za
-// paralelno izvršavanje umesto sekvencijalnog. Ranije su svi bili await-ovani
-// jedan za drugim - sabrano, jedan pun inventory sync je znao da traje 8+
-// sekundi (svaki korak par stotina ms), što je uz veći broj agenata koji
-// sinhrono rade sync počelo da isceđuje deljeni DB connection pool (uživo
-// otkriveno pri širenju na drugu lokaciju - vidi DB_CONNECTION_LIMIT u
-// config/env.js). Promise.all svodi ukupno trajanje na otprilike trajanje
-// najsporijeg pojedinačnog koraka umesto njihovog zbira.
+// Each of the steps below writes to ITS OWN table, keyed only by ipEntryId
+// (already resolved) - none of them reads another's result, so they're safe to
+// run in parallel instead of sequentially. Previously they were all awaited
+// one after another - added up, one full inventory sync could take 8+
+// seconds (each step a few hundred ms), which, with more agents
+// syncing concurrently, started draining the shared DB connection pool (discovered
+// live while expanding to the second site - see DB_CONNECTION_LIMIT in
+// config/env.js). Promise.all reduces the total duration to roughly the duration of the
+// slowest individual step instead of their sum.
 export async function syncAgentInventory(agent, body) {
   const ipEntryId = await resolveIpEntryId(agent, body);
 

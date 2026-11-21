@@ -24,10 +24,10 @@ export function useCurrentUser() {
   load()
   const isAdmin = computed(() => currentUser.value?.role === 'admin')
   const isOperatorOrAdmin = computed(() => ['admin', 'operator'].includes(currentUser.value?.role))
-  // Iznad same "admin" uloge - za module koje treba da vidi/koristi SAMO
-  // nalog sa korisničkim imenom "admin", ne bilo koji admin nalog (isti
-  // razlog kao requireRootAdmin na backend-u: uloga "admin" može biti
-  // dodeljena više naloga).
+  // Above the "admin" role itself - for modules that ONLY the account with the
+  // username "admin" should see/use, not any admin account (same
+  // reason as requireRootAdmin on the backend: the "admin" role can be
+  // granted to several accounts).
   const isRootAdmin = computed(
     () => currentUser.value?.role === 'admin' && currentUser.value?.username === 'admin',
   )

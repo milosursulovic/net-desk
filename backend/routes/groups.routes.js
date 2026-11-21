@@ -10,13 +10,13 @@ import {
 
 const router = express.Router();
 
-// GET otvoren svim ulogovanim (odeljenje/deployment grupa dropdown-ovi),
-// POST nasleđuje writeRequiresOperator iz protected.routes.js - namerno bez
-// dodatnog requireRole("admin"), dodavanje predefinisane grupe je
-// niskorizična, lako povratna akcija (isti nivo kao npr. flagged domains).
-// DELETE je admin-only - uklanjanje deljene, već-u-upotrebi reference je
-// osetljivije od dodavanja (servis i dalje odbija brisanje grupe koja je u
-// upotrebi, ovo je dodatni sloj, ne jedina zaštita).
+// GET open to all signed-in users (department/deployment group dropdowns),
+// POST inherits writeRequiresOperator from protected.routes.js - deliberately without
+// an extra requireRole("admin"), adding a predefined group is a
+// low-risk, easily reversible action (same level as e.g. flagged domains).
+// DELETE is admin-only - removing a shared, already-in-use reference is
+// more sensitive than adding one (the service still refuses to delete a group that's in
+// use, this is an extra layer, not the only protection).
 router.get("/", asyncHandler(listGroupsController));
 router.get("/usage", asyncHandler(listGroupsUsageController));
 router.post("/", asyncHandler(createGroupController));

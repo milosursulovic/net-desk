@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-// Agent prijavljuje ishod prozora za pristanak sa radne stanice. 'granted' =
-// korisnik odobrio; ostale vrednosti znace da most ne sme da se digne.
-// approverUsername je obavezno samo za 'granted' (ko je odobrio); kod ostalih
-// ishoda moze biti null (npr. niko nije kliknuo, nema prijavljenog korisnika).
+// The agent reports the outcome of the consent dialog from the workstation.
+// 'granted' = the user approved; any other value means the bridge must not start.
+// approverUsername is required only for 'granted' (who approved); for other
+// outcomes it may be null (e.g. nobody clicked, no user signed in).
 export const VncConsentSchema = z
   .object({
     consentStatus: z.enum(["granted", "denied", "timeout", "unavailable"]),
