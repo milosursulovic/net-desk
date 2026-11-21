@@ -369,7 +369,18 @@
     "colAction": "Akcija",
     "colIp": "IP adresa",
     "noEntries": "Nema zapisa.",
-    "pageOfTotal": "Strana {page} / {total} ({count} ukupno)"
+    "pageOfTotal": "Strana {page} / {total} ({count} ukupno)",
+    "category": "Kategorija",
+    "catAll": "Sve",
+    "catVnc": "VNC / udaljeni pristup",
+    "catAuth": "Prijave",
+    "catRequests": "HTTP zahtevi",
+    "catOther": "Ostalo",
+    "dateFrom": "Od datuma",
+    "dateTo": "Do datuma",
+    "exportXlsx": "Izvezi XLSX",
+    "exporting": "Izvoz…",
+    "exportError": "Greška pri izvozu logova."
   },
   "deploymentGroups": {
     "title": "Deployment grupe",

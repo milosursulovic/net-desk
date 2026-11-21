@@ -2,7 +2,10 @@ import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { requireRootAdmin } from "../middlewares/requireRole.middleware.js";
 import { cacheNoStore } from "../middlewares/cacheNoStore.middleware.js";
-import { listActivityLogController } from "../controllers/activityLog.controller.js";
+import {
+  listActivityLogController,
+  exportActivityLogController,
+} from "../controllers/activityLog.controller.js";
 
 const router = express.Router();
 
@@ -13,5 +16,8 @@ router.use(cacheNoStore);
 router.use(requireRootAdmin);
 
 router.get("/", asyncHandler(listActivityLogController));
+// XLSX export istih filtera (kategorija/datum/korisnik/akcija), bez paginacije.
+// requireRootAdmin iznad vazi i ovde - audit export je samo za nalog "admin".
+router.get("/export", asyncHandler(exportActivityLogController));
 
 export default router;

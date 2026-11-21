@@ -205,4 +205,62 @@ describe("activity-log routes (integration, real DB)", () => {
       expect(item.username).toContain(username);
     }
   });
+
+  const HTTP_ACTION = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /;
+
+  it("category=requests returns only HTTP-request audit rows", async () => {
+    const { id, username, token } = await tokenForRealUser("operator");
+    realUserId = id;
+    const ip = testIp();
+    const createRes = await request(app)
+      .post("/api/protected/ip-addresses")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ip, computerName: "AUDIT-TEST-PC", site: "bolnica", entryType: "computer" });
+    entryId = createRes.body.id;
+
+    const res = await request(app)
+      .get(`/api/protected/activity-log?category=requests&username=${username}&limit=200`)
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeGreaterThan(0);
+    for (const item of res.body.items) expect(item.action).toMatch(HTTP_ACTION);
+  });
+
+  it("category=vnc returns only semantic vnc_* rows, never HTTP-request rows", async () => {
+    const res = await request(app)
+      .get("/api/protected/activity-log?category=vnc&limit=200")
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
+    expect(res.status).toBe(200);
+    for (const item of res.body.items) {
+      expect(item.action.startsWith("vnc_")).toBe(true);
+      expect(item.action).not.toMatch(HTTP_ACTION);
+    }
+  });
+
+  it("a future dateFrom yields no rows", async () => {
+    const res = await request(app)
+      .get("/api/protected/activity-log?dateFrom=2999-01-01&limit=200")
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBe(0);
+    expect(res.body.total).toBe(0);
+  });
+
+  it("export returns an XLSX attachment for root admin", async () => {
+    const res = await request(app)
+      .get("/api/protected/activity-log/export?category=vnc")
+      .set("Authorization", `Bearer ${rootAdminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    expect(res.headers["content-disposition"]).toContain("attachment");
+  });
+
+  it("export is rejected for a non-root admin-role token with 403", async () => {
+    const res = await request(app)
+      .get("/api/protected/activity-log/export")
+      .set("Authorization", `Bearer ${adminToken()}`);
+    expect(res.status).toBe(403);
+  });
 });
