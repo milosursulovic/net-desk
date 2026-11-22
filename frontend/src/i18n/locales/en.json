@@ -151,6 +151,10 @@
         "label": "Remote screen control (VNC)",
         "description": "Enables \"Take screen control\" on the agent page (requires UltraVNC installed on the managed machine)."
       },
+      "vnc_consent_bypass_legacy": {
+        "label": "VNC without consent for old agents (temporary)",
+        "description": "Agents older than 1.7.0 can't ask the user for consent, so their VNC session waits forever. When on, their session opens without consent (logged as 'vnc_consent_bypassed'). Agents 1.7.0+ always ask for consent. Turn off as soon as every agent is updated."
+      },
       "process_monitor_enabled": {
         "label": "Suspicious process killing",
         "description": "Global switch for automatically killing watchlist processes (AnyDesk, TeamViewer, etc.) on all agents. Detection still runs (visible on \"Suspicious Processes\") while this is off - nothing gets killed, as if every agent were temporarily whitelisted. On by default so an app upgrade doesn't silently disable existing protection."

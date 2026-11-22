@@ -4,6 +4,7 @@ import {
   markVncSessionEnded,
   markVncSessionConsentGranted,
   markVncSessionConsentDenied,
+  markVncSessionConsentBypassed,
 } from "../repositories/vncSessions.repo.js";
 import { insertJob } from "../repositories/agentJobs.repo.js";
 import { findAgentById } from "../repositories/agents.repo.js";
@@ -11,7 +12,20 @@ import { insertActivityLog } from "../repositories/activityLog.repo.js";
 import { findUserById } from "../repositories/users.repo.js";
 import { isFeatureEnabled } from "./appSettings.service.js";
 import { VNC_SHARED_PASSWORD } from "../config/env.js";
+import { compareVersions } from "../utils/semver.js";
 import { badRequest, forbidden, notFound } from "../utils/httpError.js";
+
+// First agent version that shows the consent dialog and reports its outcome.
+export const CONSENT_MIN_AGENT_VERSION = "1.7.0";
+
+// Rollout bypass (the 'vnc_consent_bypass_legacy' setting on the Config page):
+// while it's on, an agent older than CONSENT_MIN_AGENT_VERSION (which can't ask
+// for consent - its session would otherwise wait forever) skips the consent
+// gate. Agents that CAN ask always do, regardless of the setting.
+export function shouldBypassConsent(agentVersion, bypassEnabled) {
+  if (!bypassEnabled) return false;
+  return compareVersions(agentVersion, CONSENT_MIN_AGENT_VERSION) < 0;
+}
 
 export async function startVncSessionService(agentId, requestedByUserId) {
   const vncEnabled = await isFeatureEnabled("vnc_enabled");
@@ -28,6 +42,26 @@ export async function startVncSessionService(agentId, requestedByUserId) {
   }
 
   const sessionId = await insertVncSession({ agentId, requestedByUserId });
+
+  // Before the job is queued, so an old agent that connects to vnc-stream right
+  // away already finds the session usable.
+  const bypassEnabled = await isFeatureEnabled("vnc_consent_bypass_legacy");
+  if (shouldBypassConsent(agent.agentVersion, bypassEnabled)) {
+    await markVncSessionConsentBypassed(sessionId);
+    const initiator = requestedByUserId ? await findUserById(requestedByUserId) : null;
+    await insertActivityLog({
+      userId: requestedByUserId ?? null,
+      username: initiator?.username ?? null,
+      action: "vnc_consent_bypassed",
+      ipAddress: null,
+      statusCode: null,
+      details: JSON.stringify({
+        sessionId,
+        agentId,
+        agentVersion: agent.agentVersion ?? null,
+      }),
+    });
+  }
 
   // The same job-poll mechanism as every other command (up to ~15s for the agent
   // to notice) - deliberately no separate "wake the agent immediately"

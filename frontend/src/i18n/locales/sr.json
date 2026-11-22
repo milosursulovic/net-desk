@@ -151,6 +151,10 @@
         "label": "Udaljena kontrola ekrana (VNC)",
         "description": "Omogućava 'Uzmi kontrolu ekrana' na stranici agenta (zahteva UltraVNC instaliran na upravljanoj mašini)."
       },
+      "vnc_consent_bypass_legacy": {
+        "label": "VNC bez pristanka za stare agente (privremeno)",
+        "description": "Agenti stariji od 1.7.0 ne umeju da traže pristanak korisnika, pa njihova VNC sesija zauvek čeka. Uključeno: za njih se sesija otvara bez pristanka (u logu kao 'vnc_consent_bypassed'). Agenti 1.7.0+ uvek traže pristanak. Isključi čim svi agenti budu ažurirani."
+      },
       "process_monitor_enabled": {
         "label": "Ubijanje sumnjivih procesa",
         "description": "Globalni prekidač za automatsko ubijanje watchlist procesa (AnyDesk, TeamViewer i sl.) na svim agentima. Detekcija i dalje radi (vidljivo na 'Sumnjivi procesi') dok je isključeno - samo se ništa ne ubija, kao da su svi agenti privremeno na whitelisti. Podrazumevano uključeno da ne bi nadogradnja app-a tiho ugasila postojeću zaštitu."

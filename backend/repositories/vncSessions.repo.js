@@ -78,6 +78,22 @@ export async function markVncSessionConsentDenied(
   return result.affectedRows;
 }
 
+// Rollout bypass ('vnc_consent_bypass_legacy' setting): the agent is too old to ask
+// for consent, so the session proceeds without it. consent_at records when the
+// bypass was applied; approver_username stays NULL - nobody approved anything.
+export async function markVncSessionConsentBypassed(id) {
+  const [result] = await pool.execute(
+    `
+    UPDATE vnc_sessions
+    SET consent_status = 'bypassed',
+        consent_at = NOW()
+    WHERE id = ? AND consent_status = 'pending'
+    `,
+    [id],
+  );
+  return result.affectedRows;
+}
+
 // IP/MAC of the IT worker's (viewer) workstation - the MAC can't be obtained from the browser, so
 // the caller resolves it through ip_entries (may be null if the workstation isn't
 // managed). Set when the viewer WebSocket attaches to the relay.
@@ -92,9 +108,10 @@ export async function setVncSessionViewerInfo(id, { viewerIp, viewerMac }) {
 export async function markVncSessionActive(id) {
   const [result] = await pool.execute(
     // Activates only if consent was given - defense in depth alongside the check in
-    // ws/vncRelay.js (the agent bridge must not be established without 'granted').
+    // ws/vncRelay.js (the agent bridge must not be established without 'granted',
+    // or 'bypassed' for a pre-1.7.0 agent during the rollout).
     `UPDATE vnc_sessions SET status = 'active', started_at = NOW()
-     WHERE id = ? AND status = 'pending' AND consent_status = 'granted'`,
+     WHERE id = ? AND status = 'pending' AND consent_status IN ('granted', 'bypassed')`,
     [id],
   );
   return result.affectedRows;

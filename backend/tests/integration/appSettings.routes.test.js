@@ -13,7 +13,7 @@ describe("app settings routes (integration, real DB)", () => {
     // see a clean slate - vitest.config.js disables file parallelism, so
     // this can't race.
     await pool.execute(
-      "DELETE FROM app_settings WHERE setting_key IN ('vnc_enabled', 'process_monitor_enabled', 'app_language')",
+      "DELETE FROM app_settings WHERE setting_key IN ('vnc_enabled', 'vnc_consent_bypass_legacy', 'process_monitor_enabled', 'app_language')",
     );
   });
 
@@ -48,6 +48,7 @@ describe("app settings routes (integration, real DB)", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
       expect.objectContaining({ key: "vnc_enabled", value: false }),
+      expect.objectContaining({ key: "vnc_consent_bypass_legacy", value: false }),
       expect.objectContaining({ key: "process_monitor_enabled", value: true }),
       expect.objectContaining({ key: "app_language", value: "sr" }),
     ]);

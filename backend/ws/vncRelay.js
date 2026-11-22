@@ -214,7 +214,9 @@ export function attachVncRelay(server) {
         !agent ||
         !session ||
         session.agentId !== agent.id ||
-        session.consentStatus !== "granted"
+        // 'bypassed' = pre-1.7.0 agent while the 'vnc_consent_bypass_legacy'
+        // rollout setting is on, see services/vncSessions.service.js.
+        !["granted", "bypassed"].includes(session.consentStatus)
       ) {
         socket.destroy();
         return;

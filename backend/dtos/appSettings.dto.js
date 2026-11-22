@@ -13,6 +13,18 @@ export const APP_SETTINGS = [
     default: "false",
   },
   {
+    // Rollout aid for the info-security consent gate - meant to be on only
+    // until the whole fleet runs agent 1.7.0+. See services/vncSessions.service.js.
+    key: "vnc_consent_bypass_legacy",
+    label: "VNC bez pristanka za stare agente (privremeno)",
+    description:
+      "Agenti stariji od 1.7.0 ne umeju da traže pristanak korisnika, pa njihova VNC sesija zauvek čeka. " +
+      "Uključeno: za njih se sesija otvara bez pristanka (u logu kao 'vnc_consent_bypassed'). " +
+      "Agenti 1.7.0+ uvek traže pristanak. Isključi čim svi agenti budu ažurirani.",
+    type: "boolean",
+    default: "false",
+  },
+  {
     key: "process_monitor_enabled",
     label: "Ubijanje sumnjivih procesa",
     description:

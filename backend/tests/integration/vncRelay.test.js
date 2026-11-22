@@ -11,6 +11,8 @@ import { generateApiKey, hashApiKey } from "../../utils/apiKey.js";
 import {
   insertVncSession,
   markVncSessionConsentGranted,
+  markVncSessionConsentBypassed,
+  findVncSessionById,
 } from "../../repositories/vncSessions.repo.js";
 import { pool } from "../../db/pool.js";
 import { deleteTestAgent, testHostname } from "../helpers/testDb.js";
@@ -278,5 +280,34 @@ describe("VNC relay (integration, real DB + real WebSocket server)", () => {
 
     const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
     await expect(waitForOpen(agentWs)).rejects.toBeTruthy();
+  });
+
+  it("accepts an agent connection for a session whose consent was bypassed (rollout window)", async () => {
+    apiKey = generateApiKey();
+    agentId = await insertAgent({
+      agentUid: crypto.randomUUID(),
+      apiKeyHash: hashApiKey(apiKey),
+      hostname: testHostname(),
+      osCaption: null,
+      osVersion: null,
+      osBuild: null,
+      agentVersion: "1.6.0",
+    });
+    const { findAgentById } = await import("../../repositories/agents.repo.js");
+    agentUid = (await findAgentById(agentId)).agentUid;
+    sessionId = await insertVncSession({ agentId, requestedByUserId: null });
+    await markVncSessionConsentBypassed(sessionId);
+
+    const agentWs = new WebSocket(agentWsUrl(sessionId, agentUid, apiKey));
+    try {
+      await waitForOpen(agentWs);
+      // markVncSessionActive must accept 'bypassed' too, otherwise the session
+      // never leaves 'pending' and gets no vnc_session_started audit record.
+      await expect
+        .poll(async () => (await findVncSessionById(sessionId)).status)
+        .toBe("active");
+    } finally {
+      agentWs.close();
+    }
   });
 });

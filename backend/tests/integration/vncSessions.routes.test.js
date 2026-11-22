@@ -135,4 +135,60 @@ describe("vnc session routes (integration, real DB)", () => {
       await upsertSetting("vnc_enabled", "true", null);
     }
   });
+
+  describe("vnc_consent_bypass_legacy (rollout setting)", () => {
+    async function startSessionFor(agentVersion) {
+      agentId = await insertAgent({
+        agentUid: crypto.randomUUID(),
+        apiKeyHash: "test-hash",
+        hostname: testHostname(),
+        osCaption: null,
+        osVersion: null,
+        osBuild: null,
+        agentVersion,
+      });
+      const res = await request(app)
+        .post(`/api/protected/agents/${agentId}/vnc/start`)
+        .set("Authorization", `Bearer ${adminToken()}`);
+      expect(res.status).toBe(201);
+      sessionId = res.body.id;
+      return res.body;
+    }
+
+    async function deleteBypassAuditRows() {
+      await pool.execute(
+        "DELETE FROM activity_log WHERE action = 'vnc_consent_bypassed' AND JSON_EXTRACT(details, '$.sessionId') = ?",
+        [sessionId ?? 0],
+      );
+    }
+
+    afterEach(async () => {
+      await deleteBypassAuditRows();
+      await pool.execute("DELETE FROM app_settings WHERE setting_key = 'vnc_consent_bypass_legacy'");
+    });
+
+    it("setting on: a pre-1.7.0 agent's session skips consent and is audited as vnc_consent_bypassed", async () => {
+      await upsertSetting("vnc_consent_bypass_legacy", "true", null);
+      const session = await startSessionFor("1.6.0");
+      expect(session.consentStatus).toBe("bypassed");
+      expect(session.approverUsername).toBeNull();
+
+      const [logs] = await pool.query(
+        "SELECT username FROM activity_log WHERE action = 'vnc_consent_bypassed' AND JSON_EXTRACT(details, '$.sessionId') = ?",
+        [sessionId],
+      );
+      expect(logs).toHaveLength(1);
+    });
+
+    it("setting on: a 1.7.0+ agent still has to ask for consent", async () => {
+      await upsertSetting("vnc_consent_bypass_legacy", "true", null);
+      const session = await startSessionFor("1.7.0");
+      expect(session.consentStatus).toBe("pending");
+    });
+
+    it("setting off (default): a pre-1.7.0 agent's session waits for consent", async () => {
+      const session = await startSessionFor("1.6.0");
+      expect(session.consentStatus).toBe("pending");
+    });
+  });
 });
