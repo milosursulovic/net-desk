@@ -18,6 +18,9 @@ backend/uploads/
 # Server-specific auto-deploy script (hardcoded paths/task names, not shared)
 deploy/
 
+# Built installers + deploy.local.json (enroll tokens) - see service/Build-Installer.ps1
+agent-deploy/
+
 # .NET (service/)
 service/**/bin/
 service/**/obj/

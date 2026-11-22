@@ -3,6 +3,40 @@
 A practical step-by-step guide to installing it on one managed computer.
 For architecture, project structure and digital signing see `README.md`.
 
+## Quick path: single-file installer (recommended)
+
+`service/Build-Installer.ps1` builds `agent-deploy/Paket/` - a folder with
+`NetdeskAgentSetup.exe`, `Install.cmd` and the prerequisites. The setup is
+one exe (Windows 7 SP1+, .NET 4.5.2+) that installs Service + Manager,
+imports the root CA, writes both config.json files (server URL picked by
+OS: `netdesk.local` + hosts entry on Windows 7, IP elsewhere) and applies
+the Windows 7 TLS 1.2 registry fix. Always a full clean install (both
+services removed, Program Files\NetdeskAgent and ProgramData\NetdeskAgent
+wiped, so the agent re-enrolls).
+
+```
+powershell -ExecutionPolicy Bypass -File service\Build-Installer.ps1
+```
+
+Enroll tokens/URLs/root CA come from `agent-deploy/deploy.local.json`
+(untracked - a template is generated on first run).
+
+On the target machine: copy the `Paket` folder and double-click
+`Install.cmd` (it asks for elevation itself). It installs .NET 4.8 and,
+on Windows 7, WMF 5.1 when missing, then runs `NetdeskAgentSetup.exe
+/quiet`. Already-installed prerequisites are skipped, so the same folder
+works on Windows 7 SP1 and 10/11. Windows 7 needs a reboot afterwards for
+TLS 1.2 (`Install.cmd /reboot` reboots automatically). Log:
+`%ProgramData%\NetdeskAgentSetup.log`.
+
+Prerequisites stay in `Paket/` between builds. To (re)populate them, drop
+`NDP48-x86-x64-AllOS-ENU.exe`, `Win7AndW2K8R2-KB3191566-x64.zip` and
+`Win7-KB3191566-x86.zip` next to `deploy.local.json` and rebuild - the
+build copies/unpacks whatever is missing, after which the downloads can
+be deleted.
+
+The manual steps below are still valid for debugging/one-off installs.
+
 ## 0. Prerequisite (once, on the build machine)
 
 Visual Studio 2019+ with the ".NET Framework 4.5.2 targeting pack" (Visual
