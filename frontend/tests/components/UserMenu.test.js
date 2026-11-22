@@ -4,6 +4,14 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { i18n } from '@/i18n/index.js'
 import UserMenu from '@/components/UserMenu.vue'
 
+// useCurrentUser() calls fetchWithAuth('/api/auth/me') on mount. Unmocked,
+// the missing/fake token makes fetchWithAuth push the REAL app router to
+// /login, which lazy-loads LoginView - that dynamic import can land after the
+// test environment is torn down (EnvironmentTeardownError, flaky in CI).
+vi.mock('@/utils/fetchWithAuth.js', () => ({
+  fetchWithAuth: vi.fn(() => Promise.resolve({ ok: false, json: async () => ({}) })),
+}))
+
 // The dropdown itself is <teleport to="body"> (needed so it isn't clipped by
 // the sticky header's overflow-x-auto) - its content ends up as a real child
 // of document.body, not inside wrapper.element, so assertions on the menu
