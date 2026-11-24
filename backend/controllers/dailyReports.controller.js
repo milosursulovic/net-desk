@@ -3,6 +3,7 @@ import {
   getReportByIdService,
   listReportsService,
   markReportReadService,
+  markAllReportsReadService,
 } from "../services/dailyReport.service.js";
 import { parseIdParam } from "../utils/idParam.js";
 import { toInt, clamp } from "../utils/numbers.js";
@@ -36,6 +37,11 @@ export async function getReportPdfController(req, res) {
   const id = parseIdParam(req, "id", "ID izveštaja");
   const report = await getReportByIdService(id);
   sendReportPdf(res, report);
+}
+
+export async function markAllReportsReadController(req, res) {
+  const out = await markAllReportsReadService(siteFilter(req.query.site));
+  res.json(out);
 }
 
 export async function markReportReadController(req, res) {

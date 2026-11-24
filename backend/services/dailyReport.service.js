@@ -4,6 +4,7 @@ import {
   findDailyReportById,
   listDailyReports,
   markDailyReportOpened,
+  markAllDailyReportsOpened,
 } from "../repositories/dailyReports.repo.js";
 import {
   countAgentsByConnectivity,
@@ -267,6 +268,13 @@ export async function markReportReadService(id) {
   }
   await markDailyReportOpened(id);
   return await findDailyReportById(id);
+}
+
+// "Mark all as read" on the Reports page - scoped to the current site like the
+// list itself (undefined site = every site).
+export async function markAllReportsReadService(site) {
+  const updated = await markAllDailyReportsOpened(site);
+  return { updated };
 }
 
 export async function listReportsService({ page, limit, site }) {

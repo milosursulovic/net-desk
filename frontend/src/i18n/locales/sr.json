@@ -966,7 +966,9 @@
     "readShort": "Pročitano",
     "generatedAt": "(generisano {date})",
     "errorLoad": "Neuspešno učitavanje izveštaja.",
-    "errorDownloadPdf": "Neuspešno preuzimanje PDF-a"
+    "errorDownloadPdf": "Neuspešno preuzimanje PDF-a",
+    "markAllRead": "Označi sve kao pročitano",
+    "errorMarkAllRead": "Neuspešno obeležavanje izveštaja kao pročitanih"
   },
   "notifications": {
     "disk-full": "{count} računara ima disk preko 90% popunjenosti",

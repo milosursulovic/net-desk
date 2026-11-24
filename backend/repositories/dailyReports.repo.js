@@ -76,6 +76,17 @@ export async function listDailyReports({ limit, offset, site }) {
 // Only sets opened_at the FIRST time (WHERE opened_at IS NULL) - it marks
 // "first read at", not "last viewed at", so re-opening an already-read
 // report doesn't move the timestamp forward.
+// Bulk variant of markDailyReportOpened ("mark all as read"), same first-read
+// semantics: already-read reports keep their original opened_at. Optionally
+// scoped to one site.
+export async function markAllDailyReportsOpened(site) {
+  const [r] = await pool.execute(
+    `UPDATE daily_reports SET opened_at = NOW() WHERE opened_at IS NULL ${site ? "AND site = ?" : ""}`,
+    site ? [site] : [],
+  );
+  return r.affectedRows;
+}
+
 export async function markDailyReportOpened(id) {
   const [r] = await pool.execute(
     `UPDATE daily_reports SET opened_at = NOW() WHERE id = ? AND opened_at IS NULL`,

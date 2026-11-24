@@ -191,7 +191,12 @@
 
     <!-- Istorija -->
     <div class="rounded-xl border border-line bg-surface p-4 shadow-sm no-print">
-      <h2 class="font-semibold text-ink mb-3">{{ t('reports.historyTitle') }}</h2>
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h2 class="font-semibold text-ink">{{ t('reports.historyTitle') }}</h2>
+        <AppButton v-if="hasUnread" variant="neutral" :disabled="markingAll" @click="markAllAsRead">
+          {{ t('reports.markAllRead') }}
+        </AppButton>
+      </div>
       <div v-if="!history.length" class="text-sm text-ink-muted">{{ t('reports.noPreviousReports') }}</div>
       <div v-else class="space-y-1">
         <RouterLink
@@ -301,6 +306,30 @@ async function markAsRead(id) {
     if (historyItem) historyItem.openedAt = updated.openedAt
   } catch (err) {
     console.error('Neuspešno obeležavanje izveštaja kao pročitanog:', err)
+  }
+}
+
+const markingAll = ref(false)
+const hasUnread = computed(() => history.value.some((h) => !h.openedAt))
+
+// Marks every unread report of the current site (not just the 30 listed) - then
+// reloads the list so the dots reflect the server's opened_at values.
+async function markAllAsRead() {
+  markingAll.value = true
+  try {
+    const res = await fetchWithAuth(`/api/protected/reports/mark-all-read?site=${site.value}`, {
+      method: 'POST',
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    await loadHistory()
+    if (report.value && !report.value.openedAt) {
+      report.value.openedAt = history.value.find((h) => h.id === report.value.id)?.openedAt ?? null
+    }
+  } catch (err) {
+    console.error('Neuspešno obeležavanje svih izveštaja kao pročitanih:', err)
+    showToast(t('reports.errorMarkAllRead'), { kind: 'error', duration: 3000 })
+  } finally {
+    markingAll.value = false
   }
 }
 

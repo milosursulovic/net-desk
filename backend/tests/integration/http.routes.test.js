@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createApp } from "../../app.js";
 import { AGENT_ENROLL_TOKEN } from "../../config/env.js";
-import { adminToken } from "../helpers/authToken.js";
+import { adminToken, viewerToken } from "../helpers/authToken.js";
 import {
   deleteTestAgent,
   deleteTestIpEntry,
@@ -310,6 +310,16 @@ describe("HTTP routes (integration, real Express app + real DB)", () => {
         // 200 if a report already exists, 404 if none do yet - either way it
         // must be the "no report found" 404, not a "bad :id" 400.
         expect([200, 404]).toContain(res.status);
+      });
+
+      it("POST /reports/mark-all-read is reachable by a viewer and returns a count", async () => {
+        // An invalid site is ignored by siteFilter -> would mean "all sites";
+        // a valid one keeps this test's side effect to a single site.
+        const res = await request(app)
+          .post("/api/protected/reports/mark-all-read?site=bolnica")
+          .set("Authorization", `Bearer ${viewerToken()}`);
+        expect(res.status).toBe(200);
+        expect(typeof res.body.updated).toBe("number");
       });
     },
   );

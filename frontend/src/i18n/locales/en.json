@@ -966,7 +966,9 @@
     "readShort": "Read",
     "generatedAt": "(generated {date})",
     "errorLoad": "Failed to load the report.",
-    "errorDownloadPdf": "Failed to download the PDF"
+    "errorDownloadPdf": "Failed to download the PDF",
+    "markAllRead": "Mark all as read",
+    "errorMarkAllRead": "Failed to mark the reports as read"
   },
   "notifications": {
     "disk-full": "{count} computers have disk usage over 90%",

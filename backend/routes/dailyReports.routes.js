@@ -7,6 +7,7 @@ import {
   getReportByIdController,
   getReportPdfController,
   markReportReadController,
+  markAllReportsReadController,
 } from "../controllers/dailyReports.controller.js";
 
 const router = express.Router();
@@ -21,6 +22,8 @@ router.use(cacheNoStore);
 // was removed as unhelpful.
 router.get("/", asyncHandler(listReportsController));
 router.get("/latest", asyncHandler(getLatestReportController));
+// Literal segment - registered before the "/:id" routes (see http.routes.test.js).
+router.post("/mark-all-read", asyncHandler(markAllReportsReadController));
 router.get("/:id", asyncHandler(getReportByIdController));
 router.get("/:id/pdf", asyncHandler(getReportPdfController));
 router.post("/:id/mark-read", asyncHandler(markReportReadController));

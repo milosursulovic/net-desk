@@ -5,6 +5,7 @@ import {
   getReportByIdService,
   listReportsService,
   markReportReadService,
+  markAllReportsReadService,
 } from "../../services/dailyReport.service.js";
 import { enrollAgent, heartbeat } from "../../services/agents.service.js";
 import { createService as createIpEntryService } from "../../services/ipAddresses.service.js";
@@ -107,6 +108,22 @@ describe("dailyReport.service (integration, real DB)", () => {
     await expect(markReportReadService(999999999)).rejects.toMatchObject({
       status: 404,
     });
+  });
+
+  it("markAllReportsReadService marks every unread report of the site and keeps first-read times", async () => {
+    const generated = await generateDailyReport();
+    reportId = generated.id;
+    expect(generated.openedAt).toBeNull();
+
+    const { updated } = await markAllReportsReadService(generated.site);
+    expect(updated).toBeGreaterThanOrEqual(1);
+    const marked = await getReportByIdService(generated.id);
+    expect(marked.openedAt).not.toBeNull();
+
+    // Second call: nothing left unread, opened_at isn't moved forward.
+    expect((await markAllReportsReadService(generated.site)).updated).toBe(0);
+    const again = await getReportByIdService(generated.id);
+    expect(new Date(again.openedAt).getTime()).toBe(new Date(marked.openedAt).getTime());
   });
 
   it("generateDailyReport snapshots current agent_monitoring into agent_monitoring_history", async () => {
